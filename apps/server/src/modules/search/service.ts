@@ -17,7 +17,9 @@ import { AppError } from "../../core/errors.ts";
 import { chunks, searchEntities } from "../../db/schema.ts";
 import { type ChunkOptions, chunkSections, type Section } from "./chunker.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
-import { HIT_CLOSE, HIT_OPEN, parseQuery, type Segment, toFtsQuery, toSegments } from "./query.ts";
+import { markPassages, RELAXED_COVERAGE, rankKeyword, weighTerms } from "./keyword.ts";
+import { parseQuery, plainQuery, type Segment, toFtsQuery, toSegments } from "./query.ts";
+import { holdsExcluded, reasonFor, type ScoringTerm, scoreFields } from "./score.ts";
 
 /** Bumped when chunking or indexing rules change in a way that needs a rebuild. */
 export const INDEX_VERSION = 1;
@@ -52,8 +54,10 @@ export interface SearchResult {
   /** In-app route that opens the source, at the matching page when there is one. */
   url: string;
   tags: string[];
-  /** 0–1, relative to the best result of this search. */
+  /** 0–1 on one scale for every source (score.ts): not relative to the best result. */
   score: number;
+  /** Why it is here, in a few words ("All 3 words, side by side"). */
+  why?: string;
   passages: ResultPassage[];
   /** Which layers found this result. */
   sources: string[];
@@ -77,10 +81,18 @@ export interface SearchParams {
 export interface SearchResponse {
   query: string;
   mode: "keyword" | "semantic" | "hybrid";
-  /** True when no result had every word and the search fell back to matching any word. */
+  /** True when too few results had every word, and results holding most of them were added after those that do. */
   relaxed: boolean;
+  /** How many items hold every word that matters. */
+  everyWord: number;
+  /** Words typed that only shape the question ("how", "to"), left out of matching and ranking. */
+  ignored: string[];
   total: number;
   results: SearchResult[];
+  /** Places and repeaters whose names match, kept out of the results list. */
+  places: SearchResult[];
+  /** The query looks like one of their names, a callsign or a frequency: show them first. */
+  placesFirst: boolean;
   facets: Record<string, number>;
   /** Sources that could not answer, with a reason a person can read. */
   warnings: Array<{ source: string; message: string }>;
@@ -131,12 +143,13 @@ export interface PassageSearchResponse {
 }
 
 /**
- * When no passage holds every word of a question, a passage is kept only if it holds at
- * least this share of the words, each weighed by how rare it is in the library. A
- * passage that shares one common word with the question ("code", "water") is not about
- * the question, and a model handed it will often answer from it all the same.
+ * When too few passages or items hold every word of a question, one is kept only if it
+ * holds at least this share of the words, each weighed by how rare it is in the library
+ * (keyword.ts). A passage that shares one common word with the question ("code",
+ * "water") is not about the question, and a model handed it will often answer from it
+ * all the same.
  */
-export const RELAXED_COVERAGE = 0.5;
+export { RELAXED_COVERAGE };
 
 /**
  * A passage found by meaning alone is kept only when it is at least this similar to the
@@ -340,21 +353,58 @@ export function onDeviceFirst<T extends { kind: string }>(results: T[]): T[] {
   return [...results.filter((result) => result.kind !== TO_DOWNLOAD), ...results.filter((result) => result.kind === TO_DOWNLOAD)];
 }
 
-interface KeywordRow {
-  chunkId: number;
-  entityRowId: number;
-  rank: number;
-  snippet: string;
-  titleMarked: string;
-  page: number | null;
-  heading: string;
-  kind: string;
-  entityId: string;
-  title: string;
-  subtitle: string | null;
-  collection: string | null;
-  url: string;
-  tags: string;
+/** Places and repeaters shown in their strip beside the results. */
+export const PLACES_SHOWN = 5;
+
+/**
+ * True when the query looks like the name of one of the places or repeaters found, or
+ * like a callsign or a frequency: then their strip comes before the results.
+ */
+export function looksLikeAName(q: string, places: SearchResult[]): boolean {
+  const typed = q.trim().toLowerCase();
+  if (/^[a-z]{1,2}\d[a-z]{1,4}$/i.test(typed) || /^\d{2,4}([.,]\d+)?\s*(mhz|khz)?$/i.test(typed)) return places.length > 0;
+  return typed.length >= 3 && places.some((place) => place.title.toLowerCase() === typed || place.title.toLowerCase().startsWith(`${typed} `));
+}
+
+/**
+ * Similarity to the question (cosine, from the embedding model) as a score on the
+ * shared scale. The built-in model scores unrelated text about 0.1 to 0.3 and text on
+ * the subject 0.4 and more, so 0.2 maps to nothing and 0.7 to the most meaning alone
+ * can earn, `MEANING_CEILING`: below a result that holds every word.
+ */
+export const MEANING_CEILING = 0.6;
+export function meaningScore(similarity: number): number {
+  return MEANING_CEILING * Math.min(1, Math.max(0, (similarity - 0.2) / 0.5));
+}
+
+/**
+ * Words and meaning on one scale. A result found both ways scores 1 − (1 − words)(1 − meaning):
+ * more than either alone, never above 1. Found by meaning alone, it scores its meaning.
+ */
+export function blendMeaning(
+  byWords: SearchResult[],
+  byMeaning: SearchResult[],
+  weights: { keywordWeight: number; semanticWeight: number },
+): SearchResult[] {
+  const key = (result: SearchResult) => `${result.kind}:${result.entityId}`;
+  const meaning = new Map(byMeaning.map((result) => [key(result), result]));
+  const blended = byWords.map((result) => {
+    const near = meaning.get(key(result));
+    if (!near) return result;
+    meaning.delete(key(result));
+    const words = Math.min(1, result.score * weights.keywordWeight);
+    const sense = Math.min(1, meaningScore(near.score) * weights.semanticWeight);
+    return {
+      ...result,
+      score: Math.round((1 - (1 - words) * (1 - sense)) * 1000) / 1000,
+      sources: [...new Set([...result.sources, ...near.sources])],
+      why: result.why ? `${result.why}, and by meaning` : "Found by meaning",
+    };
+  });
+  for (const near of meaning.values()) {
+    blended.push({ ...near, score: Math.round(Math.min(1, meaningScore(near.score) * weights.semanticWeight) * 1000) / 1000, why: "Found by meaning" });
+  }
+  return blended.sort((a, b) => b.score - a.score);
 }
 
 /** Appends the page to a document URL so the viewer opens where the match is. */
@@ -464,95 +514,107 @@ export function createSearchService(ctx: AppContext): SearchService {
     return { chunks: passages.length, changed: true, rowId };
   });
 
-  function keywordRows(match: string, params: SearchParams, limit: number): KeywordRow[] {
-    const kinds = params.kinds?.length ? params.kinds : undefined;
-    const kindFilter = kinds ? `AND e.kind IN (${kinds.map(() => "?").join(",")})` : "";
-    // Column weights follow the FTS table's column order: title, heading, text, tags.
-    const statement = sqlite.prepare(
-      `SELECT c.id AS chunkId, c.entity_row_id AS entityRowId,
-              bm25(chunks_fts, 8.0, 3.0, 1.0, 4.0) AS rank,
-              snippet(chunks_fts, 2, '${HIT_OPEN}', '${HIT_CLOSE}', '…', 32) AS snippet,
-              highlight(chunks_fts, 0, '${HIT_OPEN}', '${HIT_CLOSE}') AS titleMarked,
-              c.page AS page, c.heading AS heading,
-              e.kind AS kind, e.entity_id AS entityId, e.title AS title, e.subtitle AS subtitle,
-              e.collection AS collection, e.url AS url, c.tags AS tags
-       FROM chunks_fts
-       JOIN chunks c ON c.id = chunks_fts.rowid
-       JOIN search_entities e ON e.id = c.entity_row_id
-       WHERE chunks_fts MATCH ? ${kindFilter}
-       ORDER BY e.kind = ?, rank
-       LIMIT ?`,
-    );
-    // What is on this device first (TO_DOWNLOAD), so that a page of results never reaches a catalogue entry
-    // while something kept is still to come.
-    return statement.all(match, ...(kinds ?? []), TO_DOWNLOAD, limit) as KeywordRow[];
-  }
-
   function keywordSearch(
     params: SearchParams,
-    limit: number,
-  ): { results: SearchResult[]; relaxed: boolean; facets: Record<string, number>; total: number } {
+    window: number,
+  ): {
+    results: SearchResult[];
+    relaxed: boolean;
+    everyWord: number;
+    facets: Record<string, number>;
+    total: number;
+    terms: ScoringTerm[];
+  } {
     const parsed = parseQuery(params.q);
-    const tagClause = params.tag ? ` AND {tags}: "${params.tag.replace(/"/g, '""')}"` : "";
-    let match = toFtsQuery(parsed, "all");
-    if (!match) return { results: [], relaxed: false, facets: {}, total: 0 };
+    const ranking = rankKeyword(sqlite, parsed, { kinds: params.kinds, tag: params.tag, window, toDownload: TO_DOWNLOAD });
+    const page = ranking.items.slice(0, window);
+    if (page.length === 0) return { results: [], relaxed: false, everyWord: 0, facets: ranking.facets, total: 0, terms: ranking.terms };
 
-    // Fetch more passages than results wanted: several can belong to one entity.
-    let rows = keywordRows(match + tagClause, params, limit * 6);
-    let relaxed = false;
-    if (rows.length === 0 && parsed.required.length > 1) {
-      match = toFtsQuery(parsed, "any")!;
-      rows = keywordRows(match + tagClause, params, limit * 6);
-      relaxed = rows.length > 0;
-    }
-
-    const byEntity = new Map<number, SearchResult & { best: number }>();
-    for (const row of rows) {
-      let result = byEntity.get(row.entityRowId);
-      if (!result) {
-        result = {
-          kind: row.kind,
-          entityId: row.entityId,
-          title: row.title,
-          titleSegments: toSegments(row.titleMarked),
-          subtitle: row.subtitle,
-          collection: row.collection,
-          url: withPage(row.url, row.page),
-          tags: row.tags ? row.tags.split(TAG_SEPARATOR) : [],
-          score: 0,
-          passages: [],
+    const ids = page.map((item) => item.entityRowId);
+    const entities = new Map(
+      (
+        sqlite
+          .prepare(
+            `SELECT e.id AS id, e.kind AS kind, e.entity_id AS entityId, e.title AS title, e.subtitle AS subtitle,
+                    e.collection AS collection, e.url AS url,
+                    (SELECT c.tags FROM chunks c WHERE c.entity_row_id = e.id LIMIT 1) AS tags
+             FROM search_entities e WHERE e.id IN (${ids.map(() => "?").join(",")})`,
+          )
+          .all(...ids) as Array<{
+          id: number;
+          kind: string;
+          entityId: string;
+          title: string;
+          subtitle: string | null;
+          collection: string | null;
+          url: string;
+          tags: string | null;
+        }>
+      ).map((row) => [row.id, row]),
+    );
+    // Snippets only for what is shown: every word that matters is marked, whichever of them a passage holds.
+    const marked = markPassages(
+      sqlite,
+      toFtsQuery(parsed, "any")!,
+      page.flatMap((item) => item.passages.slice(0, 3).map((passage) => passage.chunkId)),
+    );
+    const results = page.flatMap((item): SearchResult[] => {
+      const entity = entities.get(item.entityRowId);
+      if (!entity) return [];
+      const best = item.passages[0]!;
+      const shown = item.passages.slice(0, 3).flatMap((passage) => {
+        const snippet = marked.get(passage.chunkId)?.snippet ?? "";
+        return snippet.trim() ? [{ chunkId: passage.chunkId, segments: toSegments(snippet), page: passage.page, heading: passage.heading || null }] : [];
+      });
+      const titleMarked = marked.get(best.chunkId)?.titleMarked;
+      return [
+        {
+          kind: entity.kind,
+          entityId: entity.entityId,
+          title: entity.title,
+          titleSegments: titleMarked ? toSegments(titleMarked) : [{ text: entity.title, hit: false }],
+          subtitle: entity.subtitle,
+          collection: entity.collection,
+          url: withPage(entity.url, best.page),
+          tags: entity.tags ? entity.tags.split(TAG_SEPARATOR) : [],
+          score: item.parts.score,
+          why: reasonFor(item.parts),
+          passages: shown,
           sources: ["keyword"],
-          best: -row.rank,
+        },
+      ];
+    });
+    return {
+      results,
+      relaxed: ranking.relaxed,
+      everyWord: ranking.everyWord,
+      facets: ranking.facets,
+      total: ranking.total,
+      terms: ranking.terms,
+    };
+  }
+
+  /**
+   * Results another engine found (kiwix-serve, a module's table), scored again on the
+   * shared scale from what they show. One that shows a word that was excluded is dropped,
+   * and so is one showing less than `RELAXED_COVERAGE` of what the query is about: the
+   * same rule as for Outpost's own items that lack a word.
+   */
+  function rescore(results: SearchResult[], terms: ScoringTerm[], excluded: string[]): SearchResult[] {
+    return results
+      .flatMap((result) => {
+        const fields = {
+          title: result.title,
+          heading: result.subtitle,
+          tags: result.tags.join(" "),
+          text: result.passages.map((passage) => passage.segments.map((segment) => segment.text).join("")).join(" … "),
         };
-        byEntity.set(row.entityRowId, result);
-      }
-      if (result.passages.length < 3 && row.snippet.trim()) {
-        result.passages.push({
-          chunkId: row.chunkId,
-          segments: toSegments(row.snippet),
-          page: row.page,
-          heading: row.heading || null,
-        });
-      }
-    }
-    const results = onDeviceFirst([...byEntity.values()].sort((a, b) => b.best - a.best));
-    // Relative to the best match of all, which may be one to download.
-    const top = Math.max(0, ...results.map((result) => result.best));
-    for (const result of results) result.score = top > 0 ? Math.max(0, Math.min(1, result.best / top)) : 0;
-
-    const facetRows = sqlite
-      .prepare(
-        `SELECT e.kind AS kind, count(DISTINCT e.id) AS n
-         FROM chunks_fts JOIN chunks c ON c.id = chunks_fts.rowid JOIN search_entities e ON e.id = c.entity_row_id
-         WHERE chunks_fts MATCH ? GROUP BY e.kind`,
-      )
-      .all(match + tagClause) as Array<{ kind: string; n: number }>;
-    const facets: Record<string, number> = {};
-    for (const row of facetRows) facets[row.kind] = row.n;
-    // Every item that matches, of the kinds asked for: the rows above stop at what this page needs.
-    const total = facetRows.filter((row) => !params.kinds?.length || params.kinds.includes(row.kind)).reduce((sum, row) => sum + row.n, 0);
-
-    return { results: results.map(({ best: _best, ...result }) => result), relaxed, facets, total };
+        if (holdsExcluded(excluded, fields)) return [];
+        const parts = scoreFields(terms, fields);
+        if (parts.found === 0 || parts.coverage < RELAXED_COVERAGE) return [];
+        return [{ ...result, score: parts.score, why: reasonFor(parts) }];
+      })
+      .sort((a, b) => b.score - a.score);
   }
 
   /** The passages whose words match, best first, with the share of the question's words each holds. */
@@ -780,12 +842,31 @@ export function createSearchService(ctx: AppContext): SearchService {
           : {};
 
       if (!q) {
-        return { query: q, mode, relaxed: false, total: 0, results: [], facets: {}, warnings, ...later, tookMs: 0 };
+        return {
+          query: q,
+          mode,
+          relaxed: false,
+          everyWord: 0,
+          ignored: [],
+          total: 0,
+          results: [],
+          places: [],
+          placesFirst: false,
+          facets: {},
+          warnings,
+          ...later,
+          tookMs: 0,
+        };
       }
 
-      const keyword = mode === "semantic" ? { results: [], relaxed: false, facets: {}, total: 0 } : keywordSearch(params, window);
-      const lists =
-        mode === "semantic" ? [] : [{ weight: ctx.services.settings.get("search.hybrid.keywordWeight"), items: keyword.results }];
+      const parsed = parseQuery(q);
+      const keyword =
+        mode === "semantic"
+          ? { results: [], relaxed: false, everyWord: 0, facets: {} as Record<string, number>, total: 0, terms: weighTerms(sqlite, parsed) }
+          : keywordSearch(params, window);
+      const lexical: SearchResult[] = [...keyword.results];
+      const places: SearchResult[] = [];
+      let meaning: SearchResult[] = [];
 
       const active = sources.filter((source) => {
         if (!source.isAvailable()) return false;
@@ -803,7 +884,11 @@ export function createSearchService(ctx: AppContext): SearchService {
           if (!source.searchInParts) return source.search({ q, kinds: params.kinds, limit: window, signal: params.signal });
           // Every collection's best matches, however far down the list this page is, so
           // that the count and the pages do not change from one page to the next.
-          const { results, outcome } = await gatherParts(source, { q, signal: params.signal, budgetMs: referenceBudgets.onePartMs });
+          const { results, outcome } = await gatherParts(source, {
+            q: plainQuery(parsed) || q,
+            signal: params.signal,
+            budgetMs: referenceBudgets.onePartMs,
+          });
           const problem = outcome.message ?? missingMessage(outcome.missing);
           if (problem) warnings.push({ source: source.id, message: problem });
           return results;
@@ -812,11 +897,27 @@ export function createSearchService(ctx: AppContext): SearchService {
       answers.forEach((answer, index) => {
         const source = active[index]!;
         if (answer.status === "fulfilled") {
-          lists.push({ weight: source.weight(), items: answer.value });
-          if (source.layer === "reference" && answer.value.length > 0) {
-            keyword.facets.reference = (keyword.facets.reference ?? 0) + answer.value.length;
+          if (source.layer === "semantic") {
+            meaning = answer.value;
+            return;
           }
-          if (source.layer === "local" && answer.value.length > 0) keyword.facets[source.kind ?? source.id] = answer.value.length;
+          if (source.layer === "reference") {
+            const found = rescore(answer.value, keyword.terms, parsed.excluded);
+            lexical.push(...found);
+            if (found.length > 0) keyword.facets.reference = (keyword.facets.reference ?? 0) + found.length;
+            return;
+          }
+          // Places and repeaters: scored from their names, never lower than half their own table's order says.
+          const found = answer.value
+            .map((result) => {
+              const parts = scoreFields(keyword.terms, { title: result.title, heading: result.subtitle, text: "" });
+              return { ...result, score: Math.max(parts.score, 0.5 * result.score), why: reasonFor(parts) || "Matches the name" };
+            })
+            .sort((a, b) => b.score - a.score);
+          if (found.length > 0) keyword.facets[source.kind ?? source.id] = found.length;
+          // Asked for by kind, they are the results; otherwise they wait in their own strip, out of the main list.
+          if (params.kinds?.includes(source.kind ?? source.id)) lexical.push(...found);
+          else places.push(...found);
         } else {
           // A message written for a person is passed on; anything else (a raw library error) is put in words.
           warnings.push({
@@ -829,36 +930,28 @@ export function createSearchService(ctx: AppContext): SearchService {
         }
       });
 
-      let results: SearchResult[];
-      if (lists.length === 1) {
-        results = onDeviceFirst(lists[0]!.items);
-      } else {
-        const fused = reciprocalRankFusion(
-          lists,
-          (item) => `${item.kind}:${item.entityId}`,
-          ctx.services.settings.get("search.hybrid.rrfK"),
-        );
-        const top = fused[0]?.score ?? 1;
-        results = onDeviceFirst(
-          fused.map(({ item, score }) => {
-            const all = lists.flatMap((list) => list.items.filter((other) => other.kind === item.kind && other.entityId === item.entityId));
-            return {
-              ...item,
-              score: score / top,
-              sources: [...new Set(all.flatMap((other) => other.sources))],
-              passages: item.passages.length > 0 ? item.passages : (all.find((other) => other.passages.length > 0)?.passages ?? []),
-            };
-          }),
-        );
+      // One scale: every result found by words was scored by the same rule, so they are simply put in order.
+      let results = [...lexical].sort((a, b) => b.score - a.score);
+      if (mode !== "keyword" && meaning.length > 0) {
+        results = blendMeaning(results, meaning, {
+          keywordWeight: ctx.services.settings.get("search.hybrid.keywordWeight"),
+          semanticWeight: ctx.services.settings.get("search.hybrid.semanticWeight"),
+        });
       }
+      results = onDeviceFirst(results);
+      places.sort((a, b) => b.score - a.score);
 
       return {
         query: q,
         mode,
         relaxed: keyword.relaxed,
+        everyWord: keyword.everyWord,
+        ignored: parsed.ignored ?? [],
         // Results found another way can only add to what the words found.
         total: Math.max(results.length, keyword.total),
         results: results.slice(offset, offset + limit),
+        places: places.slice(0, PLACES_SHOWN),
+        placesFirst: looksLikeAName(q, places),
         facets: keyword.facets,
         warnings,
         ...later,
@@ -873,7 +966,15 @@ export function createSearchService(ctx: AppContext): SearchService {
         params.onStart?.(0);
         return { collections: 0, searched: 0, missing: [], message: null };
       }
-      return source.searchInParts!({ ...params, q, budgetMs: referenceBudgets.inPartsMs });
+      // kiwix-serve is asked for the words that matter, and what it finds is put on the same scale as everything else.
+      const parsed = parseQuery(q);
+      const terms = weighTerms(sqlite, parsed);
+      return source.searchInParts!({
+        ...params,
+        q: plainQuery(parsed) || q,
+        budgetMs: referenceBudgets.inPartsMs,
+        onPart: (part) => params.onPart({ ...part, results: rescore(part.results, terms, parsed.excluded) }),
+      });
     },
 
     addSource(source) {

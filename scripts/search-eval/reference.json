@@ -1,0 +1,2345 @@
+{
+"about": "What 36 reference collections (ZIM archives) answered to the household questions of queries.json, as kiwix-serve gave it: titles, article paths and the start of each snippet, in kiwix-serve order. Recorded 23 November 2026 from a real library. Texts are short quotations of the archives (Stack Exchange and Wikimedia projects, CC BY-SA; others under their own open licences), used to test ranking.",
+"collections": [
+{
+"title": "3D Printing Q&A",
+"hits": [
+{
+"title": "ABS de-layering on Ender 3",
+"path": "questions/10328/abs-de-layering-on-ender-3",
+"snippet": "...how it's delayering, and what the model is supposed to print like? – R.. GitHub STOP HELPING ICE Jun 21 '19 at 01:48 Also, not related to answering the quest"
+},
+{
+"title": "questions/tagged/3d-design_page=8",
+"path": "questions/tagged/3d-design_page%253D8",
+"snippet": "...How to join pieces automatically using interlocking or similar? I have a piece, which I need to cut into two different pieces, see image 1. Image 1 Then I ne"
+},
+{
+"title": "questions/tagged/safety_page=4",
+"path": "questions/tagged/safety_page%253D4",
+"snippet": "...water is out.… safety chamber asked Jan 12 '21 at 14:28 Trish 22,909 15 55 107 1 vote 2 answers Long Print with Lotmaxx SC-10 I am trying to print something "
+},
+{
+"title": "Commercially available 3D printer fume and UFP extractor",
+"path": "questions/3771/commercially-available-3d-printer-fume-and-ufp-extractor",
+"snippet": "...water\" – Trish May 27 '19 at 14:47 0 There are two main options you could consider. The first being a diy filter and the second being a commercially availabl"
+},
+{
+"title": "I can set the voltage and current of the TMC2130 driver manually. But, in which cases some of the components could burn up?",
+"path": "questions/13304/i-can-set-the-voltage-and-current-of-the-tmc2130-driver-manually-but-in-which-",
+"snippet": "...burn up? Asked Apr 02 '20 at 11:54 Active Apr 22 '20 at 19:30 Viewed 5,209 times 1 I need to know if something will burn up beforehand I plug all the circuit"
+},
+{
+"title": "What is the best way to collect sanding dust?",
+"path": "questions/16572/what-is-the-best-way-to-collect-sanding-dust",
+"snippet": "...treat the water with chemicals to break down the microplastics. – inf3rno Jun 19 '21 at 11:43 Melting it has a significant energy impact. As suggested, vacuu"
+},
+{
+"title": "Identifying PLA/PETG or ABS",
+"path": "questions/3356/identifying-pla-petg-or-abs",
+"snippet": "...a fan, and it extruded kind of OK, but adhesion was poor. 240° without a fan seems a bit on the hot side (see photo). Even 255°C seems to extrude OK without "
+},
+{
+"title": "Can you identify filament type by filament burn test (and additional observations)?",
+"path": "questions/21713/can-you-identify-filament-type-by-filament-burn-test-and-additional-observatio",
+"snippet": "...burn test (and additional observations)? Asked Dec 01 '23 at 05:47 Active Dec 02 '23 at 14:18 Viewed 217 times 2 I read some pages about 3D filament burn tes"
+},
+{
+"title": "Melting 3D printed scraps: Burns up",
+"path": "questions/18634/melting-3d-printed-scraps-burns-up",
+"snippet": "...burn. you can go a bit hotter with a controlled atmosphere - simplest form of which may be sealed chamber loaded with only plastic (your scraps and some virg"
+},
+{
+"title": "Has anyone experienced scorching or burning of cork heatbed insulation?",
+"path": "questions/3122/has-anyone-experienced-scorching-or-burning-of-cork-heatbed-insulation",
+"snippet": "...burn? Cork is a slow combustion material. That is to say, yes it burns but very slowly and it doesn't produce flame so it doesn't spread. Also, when burning,"
+},
+{
+"title": "Finding the right material to print RC CAR cover",
+"path": "questions/12067/finding-the-right-material-to-print-rc-car-cover",
+"snippet": "...RC CAR cover Asked Feb 24 '20 at 21:47 Active Feb 25 '20 at 17:49 Viewed 982 times 2 My problem is that I have used a 3D printing machine from the University"
+},
+{
+"title": "questions/tagged/temperature_page=2",
+"path": "questions/tagged/temperature_page%253D2",
+"snippet": "...a clogged nozzle. The heat-block was caked in melted filament. At this point, I just chalked it up to a gap forming between the Bowden tube and the nozzle. I"
+},
+{
+"title": "School grant proposal",
+"path": "questions/8577/school-grant-proposal",
+"snippet": "...too. A specific tool, etc. The suggestion was to include a base proposal with stretch goals that include everything needed. My current ideas are: 3D Printer "
+},
+{
+"title": "Laser cutting on RepRap",
+"path": "questions/683/laser-cutting-on-reprap",
+"snippet": "...power, the less turned to heat, the longer it takes to cut, the longer you risk exposure to your eyes. That's right, a low powered laser is MORE dangerous th"
+},
+{
+"title": "What is the power consumption of the heatbed and hotend?",
+"path": "questions/5537/what-is-the-power-consumption-of-the-heatbed-and-hotend",
+"snippet": "...What is the power consumption of your heatbed (size) and hotend (model)? I want to verify that it is possible to use a battery to power them. heated-bed hote"
+},
+{
+"title": "Anet A8 (Prusa i3) Power Supply Fuse",
+"path": "questions/6291/anet-a8-prusa-i3-power-supply-fuse",
+"snippet": "...in a secondary fuse before the power supply (which I will be doing in the near future). As for now though, my plan is to just replace the power supply fuse i"
+},
+{
+"title": "Spindle DC motor and drill bit specifications for Circuit etching CNC machine",
+"path": "questions/10709/spindle-dc-motor-and-drill-bit-specifications-for-circuit-etching-cnc-machine",
+"snippet": "...and cut: Etching: take copper off the surface like chemicals or a laser would Drilling: drill holes for THT (through-hole) components and possibly 2-sided bo"
+}
+]
+},
+{
+"title": "A Library of Knots",
+"hits": []
+},
+{
+"title": "Amateur Radio Q&A",
+"hits": [
+{
+"title": "Why doesn't adding a resistor inline to a 12 V car charger change output voltage",
+"path": "questions/3653/why-doesn-t-adding-a-resistor-inline-to-a-12-v-car-charger-change-output-volta",
+"snippet": "...car charger for my little UV5Rv2 HT. It was advertised to work with the radio, so I didn't think much of it. It turns out, all it does is pass my car electri"
+},
+{
+"title": "How to figure out my car battery's capacity?",
+"path": "questions/18529/how-to-figure-out-my-car-battery-s-capacity",
+"snippet": "...How to figure out my car battery's capacity? Asked May 29 '21 at 17:33 Active May 31 '21 at 21:47 Viewed 167 times 3 I was participating in an emergency radi"
+},
+{
+"title": "How do I power my radio in a vehicle mobile install?",
+"path": "questions/300/how-do-i-power-my-radio-in-a-vehicle-mobile-install",
+"snippet": "...How do I power my radio in a vehicle mobile install? Asked Oct 24 '13 at 13:32 Active Jan 26 '21 at 02:11 Viewed 1.5k times 6 I want to install a 30W mobile "
+},
+{
+"title": "Counterpoise wire voltages?",
+"path": "questions/15403/counterpoise-wire-voltages",
+"snippet": "...for a very rough estimate, a 1/4 wave \"counterpoise wire\" is effectively one leg of a half-wave dipole, so you can treat it as such to get some number. In pr"
+},
+{
+"title": "What safety procedures should be followed when developing and testing a high power amp?",
+"path": "questions/20362/what-safety-procedures-should-be-followed-when-developing-and-testing-a-high-p",
+"snippet": "...a high power amp? Asked Jan 02 '22 at 00:40 Active Jan 08 '22 at 01:09 Viewed 289 times 3 I'm designing a 300W power amplifier using the MRF300AN from NXP ta"
+},
+{
+"title": "What does it mean to have \"RF in your signal\"?",
+"path": "questions/7764/what-does-it-mean-to-have-rf-in-your-signal",
+"snippet": "...radio? 3. A 4-turn air core balun is likely not enough for 20. See the bar charts on G3TXQ's page; the bars where the green falls on 20m is what you need. – "
+},
+{
+"title": "Will antenna insulation protect from RF burns?",
+"path": "questions/22757/will-antenna-insulation-protect-from-rf-burns",
+"snippet": "...RF burn is the frequency dominates the potential for RF burn. The higher the frequency, the further away you must be. For example, say a 2.4 GHz dish antenna"
+},
+{
+"title": "Can the tip of an antenna burn insulation/drywall?",
+"path": "questions/9001/can-the-tip-of-an-antenna-burn-insulation-drywall",
+"snippet": "...burn insulation/drywall? Asked Aug 04 '17 at 19:51 Active Aug 05 '17 at 14:43 Viewed 886 times 2 In my house, I’ve got a mag mount antenna mounted on a piece"
+},
+{
+"title": "How can RF exposure hurt you?",
+"path": "questions/558/how-can-rf-exposure-hurt-you",
+"snippet": "...by \"burn\" they mean a real burn, much as if you'd grabbed something that was very hot if your hand were to suddenly become the ground path between your rig a"
+},
+{
+"title": "How do hardware CW tutors work?",
+"path": "questions/18711/how-do-hardware-cw-tutors-work",
+"snippet": "...a little information from those two links. When those websites cease to exist, then what? You also might get more answers with additional information. Even a"
+},
+{
+"title": "Removing the whip on a 2m/70cm antenna makes no difference",
+"path": "questions/10422/removing-the-whip-on-a-2m-70cm-antenna-makes-no-difference",
+"snippet": "...of a new aerial on my car which has 3 loading coils. Whilst doing this I took the whip out on the top to see how drastically I might have needed to cut the a"
+},
+{
+"title": "Are cold temperatures harmful for ham radio equipment?",
+"path": "questions/12014/are-cold-temperatures-harmful-for-ham-radio-equipment",
+"snippet": "...a workbench in my garage. While I was wrapping up, I started wondering if the cold temperatures this winter might be harmful to any of the radio equipment. I"
+},
+{
+"title": "Computer cables in shack — what to do with them?",
+"path": "questions/5037/computer-cables-in-shack-what-to-do-with-them",
+"snippet": "...in shack — what to do with them? Asked Jun 26 '15 at 15:23 Active Jun 29 '15 at 11:56 Viewed 312 times 2 What should I do with all the cables connecting this"
+},
+{
+"title": "How does an antenna tuner work to remove the mismatch at the antenna's feedpoint?",
+"path": "questions/23897/how-does-an-antenna-tuner-work-to-remove-the-mismatch-at-the-antenna-s-feedpoi",
+"snippet": "...work to remove the mismatch at the antenna's feedpoint? Asked Jul 01 '26 at 18:18 Active Jul 23 '26 at 03:44 Viewed 627 times 4 There is a lot of confusing i"
+},
+{
+"title": "Long Wire Antenna for SWL",
+"path": "questions/9850/long-wire-antenna-for-swl",
+"snippet": "...a premade antenna not fitting your lot. Simply cut to size. The balun can be optional for simply receiving. In fact, I would connect with the balun and then "
+},
+{
+"title": "How to tell if a vacuum tube has gone bad?",
+"path": "questions/23363/how-to-tell-if-a-vacuum-tube-has-gone-bad",
+"snippet": "...power is far below where the manual says I should expect it. Here is the schematic of the oscillator+multipliers+final. I've gone through and checked the not"
+},
+{
+"title": "What is Electrical length in RF and how to electrically cut and measure the RF cable in degree?",
+"path": "questions/12122/what-is-electrical-length-in-rf-and-how-to-electrically-cut-and-measure-the-rf",
+"snippet": "...cut and measure the RF cable in degree? Asked Oct 26 '18 at 20:02 Active Nov 12 '18 at 22:39 Viewed 5,802 times 1 What is electrical length in detail? Why is"
+}
+]
+},
+{
+"title": "Arduino Q&A",
+"hits": [
+{
+"title": "Solar Power Inside a Car",
+"path": "questions/26751/solar-power-inside-a-car",
+"snippet": "...car mease run cables inside the car which is not ideal. Of course having battery explide is even less ideal :) Also the car give 24V if I'm not mistaking and"
+},
+{
+"title": "Powering Arduino with car batteries",
+"path": "questions/638/powering-arduino-with-car-batteries",
+"snippet": "...with car batteries Asked Mar 06 '14 at 08:57 Active Apr 25 '15 at 23:20 Viewed 2.0k times 20 Presumably, one powers an Arduino board with car batteries for l"
+},
+{
+"title": "Determining power consumption with Arduino and JeeLib",
+"path": "questions/9499/determining-power-consumption-with-arduino-and-jeelib",
+"snippet": "...to serve as a car theft deterrent. Originally I was using a 9V battery and delay() but I've refined my approach to consume less power. Here's my code, utiliz"
+},
+{
+"title": "Why my 4WD Bluetooth car run so slow",
+"path": "questions/72453/why-my-4wd-bluetooth-car-run-so-slow",
+"snippet": "...Bluetooth car run so slow Asked Feb 11 '20 at 13:26 Active May 12 '21 at 12:50 Viewed 321 times 1 Code /*Arduino Bluetooth Controlled Car * * Created by Glen"
+},
+{
+"title": "Measure low current with variable voltage",
+"path": "questions/3576/measure-low-current-with-variable-voltage",
+"snippet": "...a water with silver electrode. At start it will be purified water so conductivity will be really low. But with time silver particle will be released in water"
+},
+{
+"title": "questions/tagged/current_page=11",
+"path": "questions/tagged/current_page%253D11",
+"snippet": "...water with silver electrode. At start it will be purified water so conductivity will be really low. But with time silver particle will be released in water, "
+},
+{
+"title": "questions/tagged/sensors_page=19",
+"path": "questions/tagged/sensors_page%253D19",
+"snippet": "...1000L water tank? I want to read in the values to an arduino analog input. The approaches I have been looking at are: 1.) A ultrasonic distance sensor; my co"
+},
+{
+"title": "Managing configurations via EEPROM by writing it with the hex file",
+"path": "questions/72548/managing-configurations-via-eeprom-by-writing-it-with-the-hex-file",
+"snippet": "...a board I'm developing, and I ran into a bit of a snag. I have the need to detect what board the main processor's code is running on, since there are a numbe"
+},
+{
+"title": "Burning Arduinos one after another",
+"path": "questions/43188/burning-arduinos-one-after-another",
+"snippet": "...a short-circuit to two completely different cheap (under 4$ each) Arduino Uno clones, rendering Windows sound alert for unplugged USB several times. This sub"
+},
+{
+"title": "Expected signature for ATmega328P is 1E 95 0F; I can not burn bootloader on my arduino Uno",
+"path": "questions/85969/expected-signature-for-atmega328p-is-1e-95-0f-i-can-not-burn-bootloader-on-my-",
+"snippet": "...not burn bootloader on my arduino Uno Asked Sep 13 '21 at 15:06 Active Nov 23 '23 at 14:04 Viewed 2,616 times 3 well... the problem starts from the time that"
+},
+{
+"title": "Yellow LED got burned, green LED didn't",
+"path": "questions/46981/yellow-led-got-burned-green-led-didn-t",
+"snippet": "...to burn the led. I think that somewhere along the line from the computer via the usb cable, the Arduino board and the output pin, the current or voltage was "
+},
+{
+"title": "Can't burn Bootloader on Atmega328P Using Arduino Uno",
+"path": "questions/54700/can-t-burn-bootloader-on-atmega328p-using-arduino-uno",
+"snippet": "...'Burn Bootloader', I'm getting this error message. avrdude: Device signature = 0x000000 avrdude: Yikes! Invalid device signature. Double check connections an"
+},
+{
+"title": "How do I burn the bootloader?",
+"path": "questions/473/how-do-i-burn-the-bootloader",
+"snippet": "...burn the bootloader? Asked Feb 26 '14 at 22:09 Active Dec 22 '23 at 12:28 Viewed 8.9k times 23 I was instructed to \"burn the bootloader\" to my Arduino to fix"
+},
+{
+"title": "Help with arduino car project",
+"path": "questions/16967/help-with-arduino-car-project",
+"snippet": "...car project Asked Oct 18 '15 at 22:34 Active Feb 16 '16 at 07:40 Viewed 422 times 0 So in computer engineering I've got to make a arduino based car, I've add"
+},
+{
+"title": "Long range wireless RC airplane control",
+"path": "questions/71637/long-range-wireless-rc-airplane-control",
+"snippet": "...say Jump[er T16 with any RX. As you new in Arduino I guess you also new in flight controllers SW. So better to start with something already manufactured. Let"
+},
+{
+"title": "How to get started with writing code for a Hall Effect sensor?",
+"path": "questions/89053/how-to-get-started-with-writing-code-for-a-hall-effect-sensor",
+"snippet": "...a mounted magnet near it. The end game is to measure a car wheel rpm. Pointers? Tips? programming sketch frequency hall-effect edited Mar 24 '22 at 00:41 sa_"
+},
+{
+"title": "Arduino RTC - getting the time from RTC after the power is cut off",
+"path": "questions/18312/arduino-rtc-getting-the-time-from-rtc-after-the-power-is-cut-off",
+"snippet": "...the power is cut off Asked Dec 01 '15 at 14:33 Active Dec 04 '15 at 20:08 Viewed 5,284 times 2 I have a new DS1307 (original, not a Chinese rip off), with a "
+},
+{
+"title": "Can a power cut damage the software?",
+"path": "questions/86790/can-a-power-cut-damage-the-software",
+"snippet": "...a different technology than SD cards do (what are the names or differences of the respective technologies)? Or are there several entirely independent memorie"
+},
+{
+"title": "LED doesn't register as LOW after a switch has cut all power to it",
+"path": "questions/33355/led-doesn-t-register-as-low-after-a-switch-has-cut-all-power-to-it",
+"snippet": "...a switch has cut all power to it Asked Jan 13 '17 at 23:31 Active Jan 14 '17 at 12:16 Viewed 129 times 0 I have the following build: And the following code: "
+},
+{
+"title": "Ethernet shield reconnection problem after power cut",
+"path": "questions/63013/ethernet-shield-reconnection-problem-after-power-cut",
+"snippet": "...a power cut. if I press the reset manually it works again. Also arduino mega is plug-in with uninterruptible power supply but modem is not connected uninterr"
+}
+]
+},
+{
+"title": "Based Cooking",
+"hits": [
+{
+"title": "Yibin Burning Noodles | Based Cooking",
+"path": "based.cooking/yibin-burning-noodles/",
+"snippet": "...the oil is approximately 150°C Pour oil through a strainer onto the ground chilies. Stir thoroughly. Add the melted pork lard. Stir thoroughly. Noodles Boil "
+},
+{
+"title": "Autumn Soup | Based Cooking",
+"path": "based.cooking/autumn-soup/",
+"snippet": "...pot in oven (350F) to bake until veggies are soft. If there is too much stock, don’t be scared to pour some down the drain. Puree (I use electric beaters) wh"
+},
+{
+"title": "Jam | Based Cooking",
+"path": "based.cooking/jam/",
+"snippet": "...burn. As soon as some juice collects on the bottom of the pot, add sugar and stir until it is no longer visible. Keep the pot on low fire, stirring often and"
+},
+{
+"title": "Baked Trout | Based Cooking",
+"path": "based.cooking/baked-trout/",
+"snippet": "...power) butter cayenne (optional) Directions Clean the trout and wrap each fish in a very thin slice of bacon, sprinkled with minced garlic (or garlic powder)"
+}
+]
+},
+{
+"title": "Best of Wikipedia",
+"hits": [
+{
+"title": "Electric car",
+"path": "Electric_car",
+"snippet": "...car This article is about electric automobiles. For all types of electric transportation, see Electric vehicle. Modern all-electric cars Tesla Model 3 Nissan"
+},
+{
+"title": "Tesla Model S",
+"path": "Tesla_Model_S",
+"snippet": "...-size car that was produced by the American automaker Tesla from 2012 to 2026. The automaker's second vehicle, the Model S has been described as one of the m"
+},
+{
+"title": "Electric vehicle",
+"path": "Electric_vehicle",
+"snippet": "...car. For other uses of the term \"EV\", see EV. An electric vehicle (EV) is a vehicle propelled mostly by electric power. EVs encompass electric cars and other"
+},
+{
+"title": "Death of Jeffrey Epstein",
+"path": "Death_of_Jeffrey_Epstein",
+"snippet": "...on duty Inquiries FBI and DOJ investigations Coroner New York City Medical Examiner Arrests Michael Thomas and Tova Noel Charges Conspiracy (1 count each) Re"
+},
+{
+"title": "Water purification",
+"path": "Water_purification",
+"snippet": "Water purification This article is about treatment of natural water sources (mainly). For treatment of wastewater, see wastewater treatment. Typical drinking wa"
+},
+{
+"title": "Amway",
+"path": "Amway",
+"snippet": "...water purifiers air purifiers Brands Amway Home, Glister, G&H, Nutrilite, Artistry, AmwayQueen, eSpring, Atmosphere, XS Energy Revenue US$ 8.1 billion (2022)"
+},
+{
+"title": "Natural-gas processing",
+"path": "Natural-gas_processing",
+"snippet": "...water, carbon dioxide (CO2), hydrogen sulfide (H2S), mercury and higher molecular mass hydrocarbons (condensate) to produce pipeline quality dry natural gas "
+},
+{
+"title": "Waylon Smithers",
+"path": "Waylon_Smithers",
+"snippet": "...with TMZ, said that this was a mistake but the producers did not have enough money to correct it. Hidden categories: Articles with short description Short de"
+},
+{
+"title": "Dermatology",
+"path": "Dermatology",
+"snippet": "...a specialty with both medical and surgical aspects. A dermatologist is a specialist medical doctor who has undergone advanced training (typically 4 years bey"
+},
+{
+"title": "Vaginitis",
+"path": "Vaginitis",
+"snippet": "...a bad smell. Certain types of vaginitis may result in complications during pregnancy. The three main causes are infections, specifically bacterial vaginosis,"
+},
+{
+"title": "Burn",
+"path": "Burn",
+"snippet": "Burn Burn Second-degree burn of the hand Specialty Dermatology, critical care medicine, plastic surgery Symptoms First degree: Red without blisters Second degre"
+},
+{
+"title": "Mr. Burns",
+"path": "Mr._Burns",
+"snippet": "...qualities led Wizard magazine to rate him the 45th-greatest villain of all time. TV Guide named him #2 in their 2013 list of the 60 nastiest villains of all "
+},
+{
+"title": "Ken Burns",
+"path": "Ken_Burns",
+"snippet": "...Cancer: The Emperor of All Maladies (2015) and The Gene: An Intimate History (2020). Burns's documentaries have earned two Academy Award nominations (for 198"
+},
+{
+"title": "Thatcherism",
+"path": "Thatcherism",
+"snippet": "...a series on Conservatism in the United Kingdom Ideologies Burkean Civic Compassionate Green Independent Liberal Classical Muscular Neo One-nation Powellism P"
+},
+{
+"title": "Sexual violence",
+"path": "Sexual_violence",
+"snippet": "...a series on Violence against women Murder Bride burning Dowry death Honor killing Femicide Statistics Infanticide Matricide Pregnant women Sati Sex-selective"
+},
+{
+"title": "Spanish conquest of Yucatán",
+"path": "Spanish_conquest_of_Yucat%25C3%25A1n",
+"snippet": "...do Sul (1762–63) Cuba (1762) Nicaragua (1762) Philippines (1762) Chile (1766–1767) Algiers (1775) Banda Oriental (1776–1777) North America (1779–83) Peru (17"
+},
+{
+"title": "Bandsaw",
+"path": "Bandsaw",
+"snippet": "...a power saw with a long, sharp blade with two ends welded together to form an oval band. The banded blade of toothed metal is stretched between two or more w"
+},
+{
+"title": "Sawmill",
+"path": "Sawmill",
+"snippet": "...cut with a ripping chain ground to cut along the length of the log as opposed to across the diameter of the log. Before the invention of the sawmill, boards "
+},
+{
+"title": "Cuts Like a Knife",
+"path": "Cuts_Like_a_Knife",
+"snippet": "...Power Station, New York City, US Genre Rock Length 38:53 Label A&M Producers Bryan Adams Bob Clearmountain Bryan Adams chronology You Want It You Got It (198"
+}
+]
+},
+{
+"title": "Bicycles Q&A",
+"hits": [
+{
+"title": "Bicycle computers with nonvolatile memory",
+"path": "questions/45897/bicycle-computers-with-nonvolatile-memory",
+"snippet": "...car, your electronic dash odometer doesn't go to zero. It would be stupid. When my Samsung Note 4 battery dies right in the middle of something, I remove and"
+},
+{
+"title": "How do you measure return on investment (ROI) for an electric bike?",
+"path": "questions/46956/how-do-you-measure-return-on-investment-roi-for-an-electric-bike",
+"snippet": "...car that gets 45 mpg and has low annual maintenance costs. Car costs The car trip takes 20 minutes on avg., so time cost is 40 minutes/day, 178 hours/year, o"
+},
+{
+"title": "Livestream 16 hour bike race",
+"path": "questions/40383/livestream-16-hour-bike-race",
+"snippet": "...to one of the bikes and swap the power backs on each stop. Will this work? What other things should we consider? We are planning on using https://livestream."
+},
+{
+"title": "Why did the manufacturer fit a usb port on my e-bike battery when it is not connected?",
+"path": "questions/73076/why-did-the-manufacturer-fit-a-usb-port-on-my-e-bike-battery-when-it-is-not-co",
+"snippet": "...car industry that (cheap) things are installed but not wired up or activated via software but it is still cheaper to ship basic wiring for unused features th"
+},
+{
+"title": "Water safety during touring?",
+"path": "questions/2969/water-safety-during-touring",
+"snippet": "...water? How to operate with water bags? How to maintain water-containers? Related questions Water tests during travelling? - a general question here. How do y"
+},
+{
+"title": "Is sanitizer an effective degreaser?",
+"path": "questions/73341/is-sanitizer-an-effective-degreaser",
+"snippet": "...in water ? – An Ant Nov 13 '20 at 10:13 It mostly just evaporates. The chain must then be lubed well. See, for example, https://forum.cyclingnews.com/threads"
+},
+{
+"title": "Why are emergency inflation cartridges filled with CO2?",
+"path": "questions/50132/why-are-emergency-inflation-cartridges-filled-with-co2",
+"snippet": "...water out of air is not really that big of a deal. The problem with water is that if the folks doing the tank filling don't take proper care they can fill a "
+},
+{
+"title": "Does going faster always result in more calories burnt",
+"path": "questions/76924/does-going-faster-always-result-in-more-calories-burnt",
+"snippet": "...a lot of low/medium effort, long distance training. Often the best way to up the exercise is simply take the long way. – mattnz May 21 '21 at 22:58 @mattnz: "
+},
+{
+"title": "Should I add my base metabolic rate to a calorie estimate from a ride?",
+"path": "questions/87279/should-i-add-my-base-metabolic-rate-to-a-calorie-estimate-from-a-ride",
+"snippet": "...a calorie estimate from a ride? Asked Jan 14 '23 at 19:41 Active Aug 13 '24 at 20:03 Viewed 271 times 1 Hı, I am beginner in cycling . I learned my body's Ba"
+},
+{
+"title": "questions/tagged/strava_page=3",
+"path": "questions/tagged/strava_page%253D3",
+"snippet": "...burn information is dramatically different between Strava IOS App and Cyclemeter IOS app. Which is more accurate? I use Cyclemeter to track rides on my iPhon"
+},
+{
+"title": "best ride to burn tummy fat",
+"path": "questions/27321/best-ride-to-burn-tummy-fat",
+"snippet": "...to burn tummy fat Asked Dec 30 '14 at 10:56 Active Sep 22 '15 at 12:17 Viewed 1,411 times 2 what type of ride should I choose? I own kross k10 bike. Currentl"
+},
+{
+"title": "How to measure calories burned?",
+"path": "questions/4668/how-to-measure-calories-burned",
+"snippet": "...burn significantly different amounts of calories. Your options are to approximate an ergometer or to use some proxy for effort such as heart rate or respirat"
+},
+{
+"title": "How accurate is the 'calories burned' figure on my GPS device?",
+"path": "questions/30327/how-accurate-is-the-calories-burned-figure-on-my-gps-device",
+"snippet": "...burn data from a bike computer is with a direct-force power meter, and -- in my experience, at least -- most simple algorithms to estimate calorie burn will "
+},
+{
+"title": "Remove glue residue after sticker removal",
+"path": "questions/80845/remove-glue-residue-after-sticker-removal",
+"snippet": "...petrol (from the lawnmower can) on a cloth rag for this scenario and the glue residue wiped right off, no effort. It smells and is flammable but is a good, e"
+},
+{
+"title": "Degreaser and oil recommendations for Nexus 8",
+"path": "questions/51008/degreaser-and-oil-recommendations-for-nexus-8",
+"snippet": "...use petrol on plastic parts (to be on the safe side). And don't just dip the hub into degreaser if it won't be completely stripped, cleaned, re-lubed and the"
+},
+{
+"title": "What are the Trek Domane frame bottom hex screws for?",
+"path": "questions/77237/what-are-the-trek-domane-frame-bottom-hex-screws-for",
+"snippet": "...petrol I like to store in that position, when using my MSR, because any minor spillage when decanting doesn't end up on the paintwork. I'm far less bothered "
+},
+{
+"title": "Can I charge my E-bike with a Jump Start Battery?",
+"path": "questions/39176/can-i-charge-my-e-bike-with-a-jump-start-battery",
+"snippet": "...a Jump Start Battery? Asked May 27 '16 at 07:15 Active May 09 '25 at 15:34 Viewed 4,824 times 5 I bought a Huffy electric bike but I don't have charger. The "
+},
+{
+"title": "How to practice jumping over cars with disc brakes and SPD shoes?",
+"path": "questions/4344/how-to-practice-jumping-over-cars-with-disc-brakes-and-spd-shoes",
+"snippet": "...a sub-question, to avoid accidents. I am looking for some safe ways to practice jumping over cars. I use SPD shoes and disc brakes because I have noticed tha"
+},
+{
+"title": "What is the reason for starting before the traffic light turns green?",
+"path": "questions/15949/what-is-the-reason-for-starting-before-the-traffic-light-turns-green",
+"snippet": "...a complete stop at traffic lights but go before the light turns green. They start riding as soon as the light in the intersecting direction turns red. I usua"
+},
+{
+"title": "What kind of cutting wheels cut hardened U-lock shackles best?",
+"path": "questions/86013/what-kind-of-cutting-wheels-cut-hardened-u-lock-shackles-best",
+"snippet": "...What kind of cutting wheels cut hardened U-lock shackles best? Asked Sep 26 '22 at 17:31 Active Jan 16 '23 at 14:55 Viewed 2,307 times 3 I have a question wh"
+},
+{
+"title": "Ancheer electric mountain bike cuts out under load",
+"path": "questions/59499/ancheer-electric-mountain-bike-cuts-out-under-load",
+"snippet": "...use. To diagnose the problem, I've used a multimeter on the battery while going up a steep hill. It begins at 40V 14A and cuts out at 31V 7A. I believe the i"
+},
+{
+"title": "Rad Wagon 4, loss of power after rear wheel removal",
+"path": "questions/100357/rad-wagon-4-loss-of-power-after-rear-wheel-removal",
+"snippet": "...4 to replace the brake pads. I was a bit hasty in the process, and I don't have a ton of experienced with through-axle bikes. The only part of the process I "
+}
+]
+},
+{
+"title": "CIA World Factbook (2020 edition)",
+"hits": [
+{
+"title": "References :: Definitions and Notes — The World Factbook",
+"path": "docs/notesanddefs.html",
+"snippet": "...to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Armenia Aruba"
+},
+{
+"title": "References :: Definitions and Notes — The World Factbook - Central Intelligence Agency",
+"path": "docs/print_notesanddefs.html",
+"snippet": "...to invest more in schools, while countries with older populations (high percentage ages 65 and over) need to invest more in the health sector. The age struct"
+},
+{
+"title": "Africa :: Niger — The World Factbook",
+"path": "geos/ng.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "Africa :: Congo, Republic of the — The World Factbook",
+"path": "geos/cf.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "Africa :: Tunisia — The World Factbook",
+"path": "geos/ts.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "Europe :: Norway — The World Factbook",
+"path": "geos/no.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "Field Listing :: Environment - current issues — The World Factbook",
+"path": "fields/293.html",
+"snippet": "...-and-burn agriculture - a rotating cultivation technique in which trees are cut down and burned in order to clear land for temporary agriculture; the land is"
+},
+{
+"title": "Africa :: Madagascar — The World Factbook",
+"path": "geos/ma.html",
+"snippet": "...and burn agriculture for rice cultivation and doro-tanetry, a less intensive burning used to augment grass growth for cattle grazing. The fires mostly burn i"
+},
+{
+"title": "Central America :: Dominican Republic — The World Factbook",
+"path": "geos/dr.html",
+"snippet": "...sativa) is the common hemp plant, which provides hallucinogens with some sedative properties, and includes marijuana (pot, Acapulco gold, grass, reefer), tet"
+},
+{
+"title": "Appendix T :: Terrorist Organizations — The World Factbook",
+"path": "appendix/appendix-t.html",
+"snippet": "...safe haven in the camp targets, tactics, and weapons – until the mid-2000s, operatives conducted small-scale bombing and shooting attacks in Lebanon against "
+},
+{
+"title": "Appendix T :: Terrorist Organizations — The World Factbook - Central Intelligence Agency",
+"path": "appendix/print_appendixt.html",
+"snippet": "...safe haven in the camp targets, tactics, and weapons – until the mid-2000s, operatives conducted small-scale bombing and shooting attacks in Lebanon against "
+},
+{
+"title": "Africa :: Central African Republic — The World Factbook",
+"path": "geos/ct.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "East Asia/Southeast Asia :: Singapore — The World Factbook",
+"path": "geos/sn.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "Australia - Oceania :: Australia — The World Factbook",
+"path": "geos/as.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "Field Listing :: Background — The World Factbook",
+"path": "fields/325.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "Field Listing :: Economic overview — The World Factbook",
+"path": "fields/207.html",
+"snippet": "...a country to view World Afghanistan Akrotiri Albania Algeria American Samoa Andorra Angola Anguilla Antarctica Antigua and Barbuda Arctic Ocean Argentina Arm"
+},
+{
+"title": "North America :: United States — The World Factbook - Central Intelligence Agency",
+"path": "geos/print_us.html",
+"snippet": "...in 1776 and were recognized as the new nation of the United States of America following the Treaty of Paris in 1783. During the 19th and 20th centuries, 37 n"
+},
+{
+"title": "Field Listing :: Industries — The World Factbook",
+"path": "fields/216.html",
+"snippet": "...power equipment, machine tools and automated manufacturing systems, electronics and telecommunications equipment, fishing, food and beverages, furniture, pap"
+}
+]
+},
+{
+"title": "Canadian Prepper: food (videos)",
+"hits": [
+{
+"title": "10 Ways to Clean Drinking Water After Disaster",
+"path": "index/10_ways_to_clean_drinking_water_after_disaster-XS2b",
+"snippet": "..."
+}
+]
+},
+{
+"title": "Canadian Prepper: winter prepping (videos)",
+"hits": [
+{
+"title": "Winter Power Outage? This Will Keep You Alive.",
+"path": "index/winter_power_outage_this_will_keep_you_alive-9amz",
+"snippet": "..."
+}
+]
+},
+{
+"title": "Cooking Q&A (Seasoned Advice)",
+"hits": [
+{
+"title": "Which measuring scale should I buy?",
+"path": "questions/112917/which-measuring-scale-should-i-buy",
+"snippet": "...to buy a measuring scale so that I can stop using cups and start measuring by weight. I’m personally not sure which to buy. Here are two options: Can some ex"
+},
+{
+"title": "Whiskey and Water",
+"path": "questions/24403/whiskey-and-water",
+"snippet": "...to it I would think one would find branded bottled water in every liquor store. [Edit/Clarification: When I ask for \"validation\" of this I am looking for mor"
+},
+{
+"title": "Can I purify / kill germs in a water to make it drinkable by putting it in a freezer?",
+"path": "questions/50172/can-i-purify-kill-germs-in-a-water-to-make-it-drinkable-by-putting-it-in-a-fre",
+"snippet": "...a water to make it drinkable by putting it in a freezer? Asked Nov 29 '14 at 13:31 Active Oct 02 '22 at 23:42 Viewed 2.1k times 2 I've conducted a research o"
+},
+{
+"title": "In Canada, must commercially sold mussels be purged and purified in UV filtered water for 42 hours?",
+"path": "questions/100036/in-canada-must-commercially-sold-mussels-be-purged-and-purified-in-uv-filtered",
+"snippet": "...water and oatmeal? No. This used to be done to help purge the mussel of any grit. All commercially sold mussels legally have to be purged and purified in UV "
+},
+{
+"title": "Are rinsed out plastic milk jugs safe for storing water?",
+"path": "questions/66907/are-rinsed-out-plastic-milk-jugs-safe-for-storing-water",
+"snippet": "...water storage should be changed out every so often; I think every few months or so. – intcreator Feb 28 '16 at 03:09 The date on bottled water is generally a"
+},
+{
+"title": "Is it safe to use a grill to cook when chemically treated wood was burned in it?",
+"path": "questions/108690/is-it-safe-to-use-a-grill-to-cook-when-chemically-treated-wood-was-burned-in-i",
+"snippet": "...to burn or eat food cooked over this timber. The main risk with this compound is that the smoke and ash will contain arsenic (\"As\" is the abbreviation for th"
+},
+{
+"title": "Which fuels (burning materials) can be used in a wood fired oven?",
+"path": "questions/28348/which-fuels-burning-materials-can-be-used-in-a-wood-fired-oven",
+"snippet": "...in a wood fired oven? Asked Nov 11 '12 at 03:13 Active Jan 23 '17 at 03:37 Viewed 4,054 times 5 I have recently made a brick wood fired oven. It's a black / "
+},
+{
+"title": "Is using treated wood safe for smoking meat?",
+"path": "questions/7970/is-using-treated-wood-safe-for-smoking-meat",
+"snippet": "...like a terrible idea, but maybe your meat would have rhythm? Mambo chicken? – Michael Natkin Oct 09 '10 at 05:25 1 Answers1 25 Good lord no. You have no idea"
+},
+{
+"title": "Why does microwave popcorn burn?",
+"path": "questions/54013/why-does-microwave-popcorn-burn",
+"snippet": "...burn? Asked Jan 26 '15 at 18:18 Active Mar 01 '25 at 01:12 Viewed 1.8k times 11 I've been experimenting some with do it yourself microwave popcorn, and some "
+},
+{
+"title": "Badly burned hand on pan sitting on unlit burner",
+"path": "questions/92344/badly-burned-hand-on-pan-sitting-on-unlit-burner",
+"snippet": "...burn bad enough to blister? The pan was moved for cleaning and was on the unlit burner for about 15-20 minutes. Updated/Edited 10-14-18 Yes, the whole palm g"
+},
+{
+"title": "Why boiling burns food once water evaporates but sauteing doesn't?",
+"path": "questions/84415/why-boiling-burns-food-once-water-evaporates-but-sauteing-doesn-t",
+"snippet": "...burn. The way I see it is when cooking the former method once all the water evaporates it turns to sauteing since the meat oil and added oil are still there,"
+},
+{
+"title": "How to protect hand skin when preparing food",
+"path": "questions/13488/how-to-protect-hand-skin-when-preparing-food",
+"snippet": "...are safe when dealing with food. – duchessofstokesay Mar 27 '11 at 15:41 1 Also, I said latex-free that way if you are allergic to latex they won't bother yo"
+},
+{
+"title": "Non-plastic cutting board that can be cleaned in a dishwasher",
+"path": "questions/114224/non-plastic-cutting-board-that-can-be-cleaned-in-a-dishwasher",
+"snippet": "...safe - irrespective of the quantity or the potential for harm. – frIT Oct 04 '22 at 10:01 @frIT how safe is \"safe\"? – RonJohn Oct 04 '22 at 14:59 1 @RonJohn "
+},
+{
+"title": "Why wooden sticks for ice cream bars?",
+"path": "questions/59574/why-wooden-sticks-for-ice-cream-bars",
+"snippet": "...of petrol manufacturing, so if we didn't use it for plastic junk, it would be sitting around in huge piles at the refinery – TFD Aug 04 '15 at 08:29 1 Wooden"
+},
+{
+"title": "Should I be suspicious of meat/seafood on sale?",
+"path": "questions/49247/should-i-be-suspicious-of-meat-seafood-on-sale",
+"snippet": "...a local grocery store had a sale where Fresh Salmon Fillets, apparently normally $6.99/lb, were dropped down to $1.99/lb. My parents were all too eager to lo"
+},
+{
+"title": "cooking dried legumes",
+"path": "questions/119696/cooking-dried-legumes",
+"snippet": "...jump start the cooking/rehydration by boiling hard for 5 to 15 minutes (depending on the type of beans). Of course, lentils are an exception to this. – mosca"
+},
+{
+"title": "How do you reduce static in a coffee grinder?",
+"path": "questions/7414/how-do-you-reduce-static-in-a-coffee-grinder",
+"snippet": "...is a great question. Drives me batty. I had to go back to a regular blade-type grinder because the static causes such a mess. – Michael Natkin Sep 18 '10 at "
+},
+{
+"title": "Stack oatverflow",
+"path": "questions/92292/stack-oatverflow",
+"snippet": "...-cut oats they bubble up and overflow. I am using the microwave instructions. 1/3 cup of oats 1 Cup of water Microwave on 70% power for 4 minutes What am I d"
+},
+{
+"title": "Can you finish a quality steak in the microwave",
+"path": "questions/127782/can-you-finish-a-quality-steak-in-the-microwave",
+"snippet": "...to your liking Let the steak rest for a few minutes If your steak cut is relatively thin, around 1 inch/ 3 cm one can skip step 2 and just use a 10 min rest "
+},
+{
+"title": "How long does coconut curry last in the fridge?",
+"path": "questions/49228/how-long-does-coconut-curry-last-in-the-fridge",
+"snippet": "...power cut we had two days ago for 12 hours. I ate a bit of leftover pork after the power cut and it was fine and the milk was also fine. My house is not hot "
+}
+]
+},
+{
+"title": "Engineering Q&A",
+"hits": [
+{
+"title": "How can batteries in electric/hybrid cars charge at such a high rate?",
+"path": "questions/26954/how-can-batteries-in-electric-hybrid-cars-charge-at-such-a-high-rate",
+"snippet": "...up to 0.875 MJ/kg, this means the 20kg battery can only have a maximum possible capacity of 17.5 MJ. Therefore, a deployment of 4MJ in 33 seconds would mean "
+},
+{
+"title": "What would be needed to make a tesla fastest car in the world?",
+"path": "questions/14117/what-would-be-needed-to-make-a-tesla-fastest-car-in-the-world",
+"snippet": "...to make a tesla fastest car in the world? Asked Mar 07 '17 at 18:23 Active Mar 07 '17 at 22:49 Viewed 127 times -2 If you were aiming for 300mph then what wo"
+},
+{
+"title": "Battery Swapping in Electric Cars",
+"path": "questions/22010/battery-swapping-in-electric-cars",
+"snippet": "...to be housed under the bonnet instead of having it under the floor of the car so as to do away with underground swapping (like the one showcased by Tesla)? I"
+},
+{
+"title": "Metallurgy: Purifying Cobalt-Nickel-Copper alloys to Cobalt, Nickel, Copper",
+"path": "questions/51524/metallurgy-purifying-cobalt-nickel-copper-alloys-to-cobalt-nickel-copper",
+"snippet": "...water freezes, it rejects the salt. If you were to heat the combination up just above the melting point of copper, you may get some copper out. The problem i"
+},
+{
+"title": "Design review needed for novel ion trap air scrubber / purifier concept",
+"path": "questions/18923/design-review-needed-for-novel-ion-trap-air-scrubber-purifier-concept",
+"snippet": "...water droplets. I'm thinking about building a proof of concept but would like the community's feedback. Schematic attached. Existing scrubbers mix pretreat g"
+},
+{
+"title": "How does humidity, specifically using a humidifier, affect the filtration of PM2.5 particles from a room?",
+"path": "questions/37721/how-does-humidity-specifically-using-a-humidifier-affect-the-filtration-of-pm2",
+"snippet": "...water and be easier to pick up by an air filter? Would it just help my body absorb the pollution better and not the filter at all so it's actually worse? Not"
+},
+{
+"title": "How come there is no home clean incinerator/burner yet?",
+"path": "questions/48959/how-come-there-is-no-home-clean-incinerator-burner-yet",
+"snippet": "...to burn family wastes, cooking, or for small industries Tried already using various keyword in online global marketplace Now i wonder, why? chemical-engineer"
+},
+{
+"title": "Most efficient heat exchanger for dirty air/water medium?",
+"path": "questions/302/most-efficient-heat-exchanger-for-dirty-air-water-medium",
+"snippet": "...a external wood burning stove. Most of the designs are pretty much just a firebox surrounded by water which is a step up from just putting a pot of water ove"
+},
+{
+"title": "Why don't we light the methane escaping from the NordStream pipeline?",
+"path": "questions/52680/why-don-t-we-light-the-methane-escaping-from-the-nordstream-pipeline",
+"snippet": "...a refinery's flare? pipelines chemistry edited Sep 29 '22 at 17:20 Transistor 12,848 2 25 35 asked Sep 29 '22 at 12:29 Akita 111 1 I would say that a leak an"
+},
+{
+"title": "Why afterburners are needed instead of burning more fuel inside the turbine?",
+"path": "questions/19114/why-afterburners-are-needed-instead-of-burning-more-fuel-inside-the-turbine",
+"snippet": "...burn more oxygen. But why is not possible to design jet engines that burn more oxygen instead of adding another separate component, the afterburner? Why do j"
+},
+{
+"title": "Is it only \"home-burned\" CDs/discs that \"expire\" in a few years, or does that also apply to \"professionally pressed\" ones as well?",
+"path": "questions/46968/is-it-only-home-burned-cds-discs-that-expire-in-a-few-years-or-does-that-also-",
+"snippet": "...\"burn\" vs. \"press\". \"Burning\" a CD (or other optical media) is fundamentally different from \"pressing\". That is quite different from magnetic media (at least"
+},
+{
+"title": "Why do 2-stroke engines burn more oil?",
+"path": "questions/26858/why-do-2-stroke-engines-burn-more-oil",
+"snippet": "...burn just as much oil. In both engines, my understanding is that the oil has to be used within the cylinders to keep them from seizing, so surely a 4-stroke "
+},
+{
+"title": "Why wont Petrol engine run on Acetylene?",
+"path": "questions/9092/why-wont-petrol-engine-run-on-acetylene",
+"snippet": "...wont Petrol engine run on Acetylene? Asked May 30 '16 at 09:49 Active Mar 12 '18 at 01:47 Viewed 4,573 times 4 Boiling temperature of Acetylene is -84°C and "
+},
+{
+"title": "questions/tagged/computer-engineering_page=4",
+"path": "questions/tagged/computer-engineering_page%253D4",
+"snippet": "...on a project to make a Heads Up Display in my car. I need a way to present my project in front of my class, for I obviously cannot bring my car into the pres"
+},
+{
+"title": "Energy comparison of gas and electric automobiles",
+"path": "questions/56244/energy-comparison-of-gas-and-electric-automobiles",
+"snippet": "...say a typical electric car has a range of 300 miles and requires 30 kWh to charge. That works out to 100 Wh per mile traveled. This sounds reasonable — cruis"
+},
+{
+"title": "Is there a reason (in terms of the physics involved) why it is better to push start a car in 2nd gear rather than 1st?",
+"path": "questions/32547/is-there-a-reason-in-terms-of-the-physics-involved-why-it-is-better-to-push-st",
+"snippet": "...start a car in 2nd gear rather than 1st? Asked Dec 26 '19 at 21:45 Active Dec 29 '19 at 23:07 Viewed 6,837 times 14 I am struggling to understand why it is r"
+},
+{
+"title": "How to handle reflections when cutting metal with a laser?",
+"path": "questions/9039/how-to-handle-reflections-when-cutting-metal-with-a-laser",
+"snippet": "...used to cut metal, however all laser cutting machines I've found can't cut metal, I'm guessing because it reflects the light? What is different in the design"
+},
+{
+"title": "How does a power hacksaw lift on the forward stroke?",
+"path": "questions/35990/how-does-a-power-hacksaw-lift-on-the-forward-stroke",
+"snippet": "...they do. I know I don't lift the saw on the backstroke. It would just getstuck in the gullet of the cut. – DKNguyen Feb 19 '23 at 05:10 2 Answers2 1 If a pow"
+},
+{
+"title": "How do you determine the apt cutting speed of a hot wire foam cutter?",
+"path": "questions/28585/how-do-you-determine-the-apt-cutting-speed-of-a-hot-wire-foam-cutter",
+"snippet": "...a bit more resistance. If it's not hot enough, then you'd need more power. This would also allow you to adjust the temperature while cutting if needed. eithe"
+},
+{
+"title": "150W laser cutting various materials",
+"path": "questions/60024/150w-laser-cutting-various-materials",
+"snippet": "...and power of laser. Laser prob fine either way unless very perfectly reflective. Might not be the right kind of laser for glass and ceramic, depends on thick"
+}
+]
+},
+{
+"title": "Food for Preppers",
+"hits": []
+},
+{
+"title": "Gardenology",
+"hits": [
+{
+"title": "Lawn mower",
+"path": "Lawn_mower",
+"snippet": "...to cut grass or other plants to an even length. Environmental issues Cars, trucks and other vehicles get most of the attention when it comes to air pollution"
+},
+{
+"title": "Storage and refrigeration",
+"path": "Storage_and_refrigeration",
+"snippet": "...to the transportation and storage of the crops. The time required to transport fruit crops to the centers of consumption varies from a few hours to ten days,"
+},
+{
+"title": "Phoenix acaulis",
+"path": "Phoenix_acaulis",
+"snippet": "Water: ◍ ? Features: ✓ Hardiness: ☃ Bloom: ❀ USDA Zones: ? Sunset Zones: [[{{{domain}}}]] > [[{{{superregnum}}}]] > Plantae > [[{{{subregnum}}}]] > [[{{{superdi"
+},
+{
+"title": "Harmal",
+"path": "Harmal",
+"snippet": "...Water: ☂ {{{water}}} Features: ❀ {{{features}}} Poisonous: ☠ {{{poisonous}}} Hardiness: ❆ {{{hardiness}}} USDA Zones: {{{usda_zones}}} Sunset Zones: {{{sunse"
+},
+{
+"title": "Zedoary",
+"path": "Zedoary",
+"snippet": "...Water: ☂ {{{water}}} Features: ❀ {{{features}}} Poisonous: ☠ {{{poisonous}}} Hardiness: ❆ {{{hardiness}}} USDA Zones: {{{usda_zones}}} Sunset Zones: {{{sunse"
+},
+{
+"title": "Aspidosperma quebracho-blanco",
+"path": "Aspidosperma_quebracho-blanco",
+"snippet": "...A. quebracho-blanco Subspecies: {{{subspecies}}} [[{{{diversity_link}}}|Diversity]] {{{diversity}}} Binomial name Aspidosperma quebracho-blanco Schltr. Trino"
+},
+{
+"title": "Western Poison-oak",
+"path": "Western_Poison-oak",
+"snippet": "...a dense shrub in open sunlight, or as a climbing vine in shaded areas. Like Poison ivy, it reproduces by creeping rootstocks or by seeds. The leaves are divi"
+},
+{
+"title": "Raisin",
+"path": "Raisin",
+"snippet": "...a loanword from Old French; in Old French and French, raisin means \"grape\", while a raisin in French is called a raisin sec, a \"dry grape\". The Old French wo"
+},
+{
+"title": "Agroecology",
+"path": "Agroecology",
+"snippet": "...-and-burn is a method sometimes used by shifting cultivators to create short term yields from marginal soils. When practiced repeatedly, or without interveni"
+},
+{
+"title": "Fire resistant",
+"path": "Fire_resistant",
+"snippet": "Fire resistant While all plants will burn if they are sufficiently dry enough, some plants are more fire resistant than others. As such, one of the aspects of F"
+},
+{
+"title": "Damnacanthus",
+"path": "Damnacanthus",
+"snippet": "...and disease info on this plant? Edit this section! Species Gallery If you have a photo of this plant, please upload it! Plus, there may be other photos avail"
+},
+{
+"title": "Variegation",
+"path": "Variegation",
+"snippet": "...in their tissues. A lack of chlorophyll producing tissue in some tissues causes variegation with white or yellow coloured zones on the leaf, contrasting with"
+},
+{
+"title": "Cannabis cultivation",
+"path": "Cannabis_cultivation",
+"snippet": "A basic description of hemp cultivation can be seen in the US propaganda film Hemp for Victory, shot during WWII. While it is possible to grow cannabis simply f"
+},
+{
+"title": "Organic Gardener's Composting",
+"path": "Organic_Gardener's_Composting",
+"snippet": "...in the '70's, I made the momentous move from the East Coast to the West and quickly discovered that much of my garden knowledge needed an update. Seattle's c"
+},
+{
+"title": "Garden tool",
+"path": "Garden_tool",
+"snippet": "The first power tool to become popular with gardeners was the lawn mower. This has been followed by a very wide range of power tools, including cultivators, str"
+},
+{
+"title": "Sage",
+"path": "Sage",
+"snippet": "...power to make people wise by strengthening the memory. In modern medicine it is but little used. In domestic practice, however, it is credited with tonic, su"
+}
+]
+},
+{
+"title": "Grimgrains",
+"hits": [
+{
+"title": "GrimGrains — brownies",
+"path": "grimgrains.com/site/brownies.html",
+"snippet": "...a special attention to how you treat the eggs and sugar. These two ingredients need good whipping to add heft to the batter. How do you know you've got the w"
+},
+{
+"title": "GrimGrains — bamboo charcoal powder",
+"path": "grimgrains.com/site/bamboo_charcoal_powder.html",
+"snippet": "...Lacto-fermentation RSS feed | Mastodon bamboo charcoal powder Bamboo charcoal comes from pieces of bamboo plants, harvested after at least five years, and bu"
+},
+{
+"title": "GrimGrains — dried orange peel",
+"path": "grimgrains.com/site/dried_orange_peel.html",
+"snippet": "...of the orange pulp. The peel is a source of vitamin C. To make dried orange peel, wash the fruit well with running water. Dry, and peel the oranges with a sh"
+},
+{
+"title": "GrimGrains — buckwheat tea",
+"path": "grimgrains.com/site/buckwheat_tea.html",
+"snippet": "...and watch them so they don't burn. Transfer to a bowl, let cool. infusion buckwheat groats20 g, roasted water800 ml, hot Add 20 g (2 tbsp) of roasted buckwhe"
+},
+{
+"title": "GrimGrains — Vegetable curry",
+"path": "grimgrains.com/site/vegetable_curry.html",
+"snippet": "...power it has, although the deeper the flavor of the roux will be (not important in this case because the roux is primarily a thickener). If you want roux wit"
+},
+{
+"title": "GrimGrains — tools",
+"path": "grimgrains.com/site/tools.html",
+"snippet": "...cut. This tool is also ideal for left-handed people, making cutting a pain-free experience. Jump back to top Rolling pin A simple tool, essential for baking "
+},
+{
+"title": "GrimGrains — whole wheat pancakes",
+"path": "grimgrains.com/site/whole_wheat_pancakes.html",
+"snippet": "...power of baking powder can weaken overtime. To test that the baking powder is still good, drop a teaspoonful into a cup of hot water, if bubbles are visible "
+}
+]
+},
+{
+"title": "Homebrewing Q&A",
+"hits": [
+{
+"title": "Countering excessive maltodextrin",
+"path": "questions/2406/countering-excessive-maltodextrin",
+"snippet": "...of water, boil it, add hops at the same ratio as the 5 gallons, boil for the same time, and add that water, that would be less of \"watering down\" and more of"
+},
+{
+"title": "Addition of spring water at bottling",
+"path": "questions/11575/addition-of-spring-water-at-bottling",
+"snippet": "...water at this time? beer asked Feb 02 '14 at 01:55 Husker Steve 809 6 12 1 Answers1 3 You can always add water to make up the volume. Just be sure the water "
+},
+{
+"title": "Is my gummy wild yeast unusual?",
+"path": "questions/6461/is-my-gummy-wild-yeast-unusual",
+"snippet": "...water to create a bread starter. I've been keeping the starter alive since then; at first, by feeding it every day, three times a day. More recently, it spen"
+},
+{
+"title": "Hard Cider causing burning stomach sensation",
+"path": "questions/25006/hard-cider-causing-burning-stomach-sensation",
+"snippet": "...a few ciders. I haven't figured out the exact causes yet but I will share a few theories worth testing: 1) Acidity. Some apples are much higher acidity than "
+},
+{
+"title": "tap water with chloramine",
+"path": "questions/6371/tap-water-with-chloramine",
+"snippet": "...a total loss. Can the chloramine levels be great enough that it actually prevents yeast from taking off? water asked Feb 18 '12 at 06:19 Fred 31 1 3 Answers3"
+},
+{
+"title": "Keeping a barrel",
+"path": "questions/1011/keeping-a-barrel",
+"snippet": "...a barrel Asked Dec 30 '09 at 14:59 Active Jan 18 '10 at 05:25 Viewed 623 times 7 Our club acquired a 65 gallon American oak wine barrel that we want to age b"
+},
+{
+"title": "Is brew with burned steeping bag safe to drink?",
+"path": "questions/12559/is-brew-with-burned-steeping-bag-safe-to-drink",
+"snippet": "...a burn flavor after a week of fermentation it isn't likely that I will taste it later on in the process? Trying to decide whether to ditch the batch or not. "
+},
+{
+"title": "Why is using a banjo burner indoors dangerous?",
+"path": "questions/11176/why-is-using-a-banjo-burner-indoors-dangerous",
+"snippet": "...burn pattern is completely different. You would never get 5-10g wort up to boil with your home furnace. That said, no one can stop you from using a loaded pi"
+},
+{
+"title": "power is cutting out on my (electric) boiler",
+"path": "questions/10591/power-is-cutting-out-on-my-electric-boiler",
+"snippet": "...went to heat my liquor, the element started to cut out (water was around 60°C). When I left the power off for a while, the element turned back on, but then c"
+},
+{
+"title": "At what point on a Yeast's Optimal Temperature Range should the power to a Fermwrap be turned off?",
+"path": "questions/11759/at-what-point-on-a-yeast-s-optimal-temperature-range-should-the-power-to-a-fer",
+"snippet": "...At what point on a Yeast's Optimal Temperature Range should the power to a Fermwrap be turned off? Asked Feb 17 '14 at 05:03 Active Mar 06 '18 at 16:01 Viewe"
+},
+{
+"title": "How do I use this Digital Temperature Controller?",
+"path": "questions/1879/how-do-i-use-this-digital-temperature-controller",
+"snippet": "...for a Digital Temperature Controller. Rather than buy the one from Norther Brewer, I found what I thought was a better deal from Pex Supplies. However, it lo"
+}
+]
+},
+{
+"title": "Knots by Wikipedia",
+"hits": [
+{
+"title": "Quipu",
+"path": "Quipu",
+"snippet": "...a few to several thousand cords. Objects which can unambiguously be identified as quipus first appear in the archaeological record during the 1st millennium "
+},
+{
+"title": "Lucet",
+"path": "Lucet",
+"snippet": "...Inro Laminate Lath art Lapidary Leatherworking Miniatures Mosaic Glass Micromosaic Macaroni art Netsuke Ornament Pargeting Pietra dura Private press Oshibana"
+},
+{
+"title": "Crochet",
+"path": "Crochet",
+"snippet": "...Handicrafts Hidden categories: Articles with short description Short description matches Wikidata Pages with French IPA Articles containing French-language t"
+},
+{
+"title": "Portuguese bowline",
+"path": "Portuguese_bowline",
+"snippet": "...to be confused with the separate French bowline, thanks to its description under that name in the 1922 book Standard Seamanship for the Merchant Service by F"
+},
+{
+"title": "San Diego Jam knot",
+"path": "San_Diego_Jam_knot",
+"snippet": "...to tie a line to the hook, swivel, clip, or artificial fly. This knot is also known as the San Diego knot, reverse clinch knot or Heiliger knot. This is a co"
+},
+{
+"title": "Bowline on a bight",
+"path": "Bowline_on_a_bight",
+"snippet": "...ought to fasten their cow-tail carabiner through both loops.[4] European cavers widely advocate the use of a figure eight twisted version of the bowline on a"
+},
+{
+"title": "Yosemite bowline",
+"path": "Yosemite_bowline",
+"snippet": "...tie-in with only one hand.[7] Testing found it a strong knot for the purpose.[8] It is recommended that any knot which is used to attach a rope to a safety h"
+},
+{
+"title": "Hitching tie",
+"path": "Hitching_tie",
+"snippet": "...tie A diagram of how to tie the hitching tie knot The hitching tie is a simple knot used to tie off stuff sacks that allows quick access as it unties quickly"
+},
+{
+"title": "Gordian Knot",
+"path": "Gordian_Knot",
+"snippet": "...in Gordium in Phrygia, regarding a complex knot that tied an oxcart. Reputedly, whoever could untie it would be destined to rule all of Asia. In 333 BC, Alex"
+},
+{
+"title": "Queue (hairstyle)",
+"path": "Queue_(hairstyle)",
+"snippet": "...A queue or cue is a hairstyle historically worn by the Jurchen and Manchu peoples of Manchuria. During the Manchu-led Qing dynasty, it was required to be wor"
+},
+{
+"title": "Cornrows",
+"path": "Cornrows",
+"snippet": "...A woman with cornrows A woman with cornrows Cornrows (also called canerows in the Caribbean) are a style of three-strand braids in which the hair is braided "
+},
+{
+"title": "Braid (hairstyle)",
+"path": "Braid_(hairstyle)",
+"snippet": "...power, social position, and religion.[10] Braiding is traditionally a social art. Because of the time it takes to braid hair, people have often taken time to"
+}
+]
+},
+{
+"title": "Medical Library",
+"hits": []
+},
+{
+"title": "Military Medicine",
+"hits": []
+},
+{
+"title": "Motor Vehicle Mechanics Q&A",
+"hits": [
+{
+"title": "Battery light comes on after starting the car. How big of a problem is this?",
+"path": "questions/8160/battery-light-comes-on-after-starting-the-car-how-big-of-a-problem-is-this",
+"snippet": "...car. How big of a problem is this? Asked Dec 24 '13 at 15:39 Active Oct 30 '19 at 14:46 Viewed 5.5k times 3 On my way to work this morning, the battery light"
+},
+{
+"title": "Where is the battery located on a Chevrolet Cobalt and how do you change it?",
+"path": "questions/7024/where-is-the-battery-located-on-a-chevrolet-cobalt-and-how-do-you-change-it",
+"snippet": "...how do you change it? Asked Sep 04 '13 at 20:53 Active May 02 '18 at 12:35 Viewed 1.1e+01k times 4 I'm trying to get a 2006 Cobalt back on the road. It's pre"
+},
+{
+"title": "How to maintain a sometimes-used vehicle?",
+"path": "questions/12/how-to-maintain-a-sometimes-used-vehicle",
+"snippet": "...to keep the car in good, running condition? What can keep the battery charged? Are trickle chargers recommended? How about oil? Should I make sure I take the"
+},
+{
+"title": "Do I need to change car-battery or retry jumping?",
+"path": "questions/65051/do-i-need-to-change-car-battery-or-retry-jumping",
+"snippet": "...car-battery or retry jumping? Asked Mar 31 '19 at 19:55 Active Jan 23 '21 at 14:39 Viewed 897 times 2 I didn't drive my car for months. Jump-started it once "
+},
+{
+"title": "whether changing a 2010 Nissan Santra car Battery can cause the BCM to stop car from running",
+"path": "questions/50371/whether-changing-a-2010-nissan-santra-car-battery-can-cause-the-bcm-to-stop-ca",
+"snippet": "...Santra car Battery can cause the BCM to stop car from running Asked Dec 15 '17 at 20:13 Active Aug 04 '26 at 05:01 Viewed 446 times 3 I have a 2010 Nissan Se"
+},
+{
+"title": "What if I do not reprogram the computer after changing car battery?",
+"path": "questions/97138/what-if-i-do-not-reprogram-the-computer-after-changing-car-battery",
+"snippet": "...the car is concerned it is still connected to a 12V power source. battery vw passat edited Jun 21 '24 at 16:07 morpheus asked Jun 21 '24 at 00:13 morpheus 26"
+},
+{
+"title": "Use ozonated distilled water for maintenance-free batteries?",
+"path": "questions/13170/use-ozonated-distilled-water-for-maintenance-free-batteries",
+"snippet": "...water be avoided? battery asked Nov 15 '14 at 05:53 cnst 1,525 7 22 35 3 Answers3 2 Ozone is used only as a purifying agent. Ozone decomposes irreversibly in"
+},
+{
+"title": "Avoiding a Frozen valve stem",
+"path": "questions/87730/avoiding-a-frozen-valve-stem",
+"snippet": "...water. Water vapor is a gas much like nitrogen or oxygen and will be in suspension in air or in nitrogen, unless the air/nitrogen is purified or dried out. P"
+},
+{
+"title": "2011 Chevy Cobalt. starting problem",
+"path": "questions/68576/2011-chevy-cobalt-starting-problem",
+"snippet": "...water into the battery... not only will your H20:H2SO4 concentration ( 62:38 ) be accurate anymore, but sulfuric acid is heavier than water, that means the w"
+},
+{
+"title": "Service intervals for old, low mileage car",
+"path": "questions/8986/service-intervals-for-old-low-mileage-car",
+"snippet": "...treat it right...? – Bob Cross Mar 07 '14 at 19:58 I am thinking more of a generic question, for an old but low mileage car as opposed to a model specific qu"
+},
+{
+"title": "If you smell burning oil, should you continue to use your vehicle?",
+"path": "questions/54665/if-you-smell-burning-oil-should-you-continue-to-use-your-vehicle",
+"snippet": "...a very hot manifold or exhaust to cause it to do this, plus you need a lot of oil. Almost always, oil will just cake on a manifold. You'll get some smoke and"
+},
+{
+"title": "Golf MK4 Turn signals not working",
+"path": "questions/50138/golf-mk4-turn-signals-not-working",
+"snippet": "...it be a fuse? Could the hazards still work if I had blown a fuse? I'm really confused to be honest. golf turn-signal asked Dec 06 '17 at 20:54 N3X 13 1 3 1 A"
+},
+{
+"title": "Do straight/short pipes burn out valves?",
+"path": "questions/24749/do-straight-short-pipes-burn-out-valves",
+"snippet": "...burn out valves? Asked Jan 15 '16 at 00:55 Active Jun 17 '22 at 11:33 Viewed 1.1k times 10 I have heard that straight/short/custom pipes can burn out valves "
+},
+{
+"title": "Burning a lot of oil. Need tips to reduce!",
+"path": "questions/22878/burning-a-lot-of-oil-need-tips-to-reduce",
+"snippet": "...can burn through two to three quarts on a 400-600 mile road trip. I have not noticed any oil leaking out under the car. I've replaced brakes, rotors, the muf"
+},
+{
+"title": "Emissions per mile of high MPG lean-burn gas-powered cars versus standard gas-powered cars",
+"path": "questions/40839/emissions-per-mile-of-high-mpg-lean-burn-gas-powered-cars-versus-standard-gas-",
+"snippet": "...-burn gas-powered cars versus standard gas-powered cars. Honda made some great lean-burn cars in the early to mid nineties. But the lean-burn era was short l"
+},
+{
+"title": "How to (relatively safely) store a small amount (200 milliliters) of gasoline for up to a month?",
+"path": "questions/89531/how-to-relatively-safely-store-a-small-amount-200-milliliters-of-gasoline-for-",
+"snippet": "...store a small amount (200 milliliters) of gasoline for up to a month? Asked Aug 15 '22 at 11:23 Active Aug 17 '22 at 00:19 Viewed 7,302 times 21 In my countr"
+},
+{
+"title": "How to maintain car gas bottles safely",
+"path": "questions/68722/how-to-maintain-car-gas-bottles-safely",
+"snippet": "...petrol. LPG is filled up from a different pump at a station. LPG is put into bottles like the one in the story. gasoline asked Jul 08 '19 at 09:55 Snack_Food"
+},
+{
+"title": "How to refurbish an old motorcycle?",
+"path": "questions/32821/how-to-refurbish-an-old-motorcycle",
+"snippet": "...petrol and put new petrol in the tank (I've heard this should be done; is this necessary?) Remove rust from brake rotors (are the brake rotors still safe des"
+},
+{
+"title": "Highest Voted 'jump-start' Questions",
+"path": "questions/tagged/jump-start",
+"snippet": "...jump-start asked Jul 18 '11 at 22:31 JohnFx 768 1 6 15 25 votes 4 answers Why do cars die after removing jumper cables? I work at an auction site where we ha"
+},
+{
+"title": "questions/tagged/jump-start_page=7",
+"path": "questions/tagged/jump-start_page%253D7",
+"snippet": "...[jump-start] The process of using a charged battery from a functional vehicle to start a vehicle, usually one with a battery too drained to turn the engine. "
+},
+{
+"title": "questions/tagged/jump-start_page=9",
+"path": "questions/tagged/jump-start_page%253D9",
+"snippet": "...jump-start throttle tacoma asked May 16 '24 at 18:51 Twisted Tenor 1 0 votes 1 answer Car won’t start despite a jump 2010 Ford Fusion SEL Been having some tr"
+},
+{
+"title": "Oil leak, weird engine noise, power steering cuts in and out [MX-5 Mk1 1997]",
+"path": "questions/44328/oil-leak-weird-engine-noise-power-steering-cuts-in-and-out-mx-5-mk1-1997",
+"snippet": "...is a small patch of what I assume is oil underneath the rear-right side of the engine. What is likely wrong, and what should I check? Here is a video of the "
+},
+{
+"title": "2006 kia Sedona van was driving home and it cut off and had to get it towed home will crank over but wanted start",
+"path": "questions/95187/2006-kia-sedona-van-was-driving-home-and-it-cut-off-and-had-to-get-it-towed-ho",
+"snippet": "...and it cut off and had to get it towed home will crank over but wanted start Asked Feb 22 '24 at 12:49 Active Jul 12 '26 at 21:09 Viewed 211 times 1 After ge"
+},
+{
+"title": "What differences are there between straight cut and helical cut gears?",
+"path": "questions/39044/what-differences-are-there-between-straight-cut-and-helical-cut-gears",
+"snippet": "...in formula one, and most other motorsports they use straight cut gears as shown below. in most normal cars you will see helical cut gears as shown below. if "
+},
+{
+"title": "Power cut while driving",
+"path": "questions/57830/power-cut-while-driving",
+"snippet": "...Power cut while driving Asked Aug 10 '18 at 20:27 Active Mar 13 '19 at 20:52 Viewed 67 times 1 I was wondering if you can advise regarding an issue with a vw"
+},
+{
+"title": "My Yamaha cut off while idling and now there is no power",
+"path": "questions/27256/my-yamaha-cut-off-while-idling-and-now-there-is-no-power",
+"snippet": "...cut off while idling and now there is no power Asked Mar 16 '16 at 21:01 Active Apr 23 '16 at 19:59 Viewed 1,112 times 4 I Started my FZR600 this morning for"
+}
+]
+},
+{
+"title": "NHS Medicines A to Z",
+"hits": [
+{
+"title": "Side effects of docusate - NHS",
+"path": "www.nhs.uk/medicines/docusate/side-effects-of-docusate/",
+"snippet": "...treat diarrhoea without speaking to a pharmacist or doctor. If you take the combined contraceptive pill or the progestogen-only pill and you have severe diar"
+},
+{
+"title": "Side effects of ketoconazole - NHS",
+"path": "www.nhs.uk/medicines/ketoconazole/side-effects-of-ketoconazole/",
+"snippet": "...a burning feeling or redness on your skin, although redness may be less obvious on brown or black skin. If any of these happen, try using less cream. Apply i"
+},
+{
+"title": "Side effects of fusidic acid - NHS",
+"path": "www.nhs.uk/medicines/fusidic-acid/side-effects-of-fusidic-acid/",
+"snippet": "...A to Z NHS services Healthy living Mental health Care and support Browse More Home Health A to Z Medicines A to Z Fusidic acid (Fucidin) Back to Fusidic acid"
+},
+{
+"title": "Side effects of chloramphenicol - NHS",
+"path": "www.nhs.uk/medicines/chloramphenicol/side-effects-of-chloramphenicol/",
+"snippet": "...breastfeeding and fertility Using it with other medicines and herbal supplements Common questions Page last reviewed: 30 January 2026 Next review due: 30 Jan"
+}
+]
+},
+{
+"title": "Post Disaster Resource Library",
+"hits": [
+{
+"title": "DOH Pub 821-031 Purifying Water During an Emergency",
+"path": "home?file=files%2FWater%20(2).pdf",
+"snippet": "Water_DOH Pub 821-031Purifying Water During an Emergency"
+}
+]
+},
+{
+"title": "Public Domain Recipes",
+"hits": [
+{
+"title": "Yibin Burning Noodles",
+"path": "publicdomainrecipes.com/yibin-burning-noodles/",
+"snippet": "...150°C Pour oil through a strainer onto the ground chilies. Stir thoroughly. Add the melted pork lard. Stir thoroughly. Noodles Boil the noodles for approxima"
+},
+{
+"title": "Autumn Soup",
+"path": "publicdomainrecipes.com/autumn-soup/",
+"snippet": "...pot in oven (350F) to bake until veggies are soft. If there is too much stock, don’t be scared to pour some down the drain. Puree (I use electric beaters) wh"
+},
+{
+"title": "Jam",
+"path": "publicdomainrecipes.com/jam/",
+"snippet": "...burn. As soon as some juice collects on the bottom of the pot, add sugar and stir until it is no longer visible. Keep the pot on low fire, stirring often and"
+},
+{
+"title": "Baked Trout",
+"path": "publicdomainrecipes.com/baked-trout/",
+"snippet": "...power) butter cayenne (optional) Directions Clean the trout and wrap each fish in a very thin slice of bacon, sprinkled with minced garlic (or garlic powder)"
+}
+]
+},
+{
+"title": "Rabbit Waves",
+"hits": [
+{
+"title": "Rabbit Waves",
+"path": "rabbitwaves.ca/site/first_aid_kit.html",
+"snippet": "...a life. It may not be possible for EMS personnel to come to assist you in an emergency. You may need to contact a doctor and request advice on providing care"
+},
+{
+"title": "Rabbit Waves",
+"path": "rabbitwaves.ca/site/celestial_compass.html",
+"snippet": "The Spring Triangle The Winter Hexagon The Northern Cross In the northern hemisphere it is visible for most of the year but it is particularly evident in the su"
+}
+]
+},
+{
+"title": "Restarters",
+"hits": [
+{
+"title": "How flip clocks work",
+"path": "How_flip_clocks_work",
+"snippet": "...of how a split-flap display works The earliest form of digital clock displayed the digits (Hours and minutes, and possibly days or the week and months), with"
+},
+{
+"title": "Main Page",
+"path": "Main_Page",
+"snippet": "...how to fix a particular make and model of device, which we leave to the various fix-it sites and many disassembly videos. Here, we concentrate on basic and w"
+},
+{
+"title": "Main Page/en",
+"path": "Main_Page/en",
+"snippet": "...how to fix a particular make and model of device, which we leave to the various fix-it sites and many disassembly videos. Here, we concentrate on basic and w"
+},
+{
+"title": "Basic electronic components/fr",
+"path": "Basic_electronic_components/fr",
+"snippet": "...car elles prennent beaucoup de place. Par conséquent, une puce peut contenir des milliards de transistors mais peu ou pas de résistances ! Identification Les"
+},
+{
+"title": "Basic electronic components/en",
+"path": "Basic_electronic_components/en",
+"snippet": "...car park has a capacity, but a capacitor has a capacitance. It's measured in Farads (F), or more usually microFarads (μF - millionths of a Farad), nanoFarads"
+},
+{
+"title": "Vacuum cleaners",
+"path": "Vacuum_cleaners",
+"snippet": "...a glued joint will rarely have the strength of the original plastic, though ingenuity and inventiveness or a 3D printer might save the day. Also, check the m"
+},
+{
+"title": "The Absolute Basics",
+"path": "The_Absolute_Basics",
+"snippet": "...a long way. Even if you don't consider yourself handy, a logical approach and a bit of curiosity might get you further than you'd think possible, and we all "
+},
+{
+"title": "Electric circuits, volts amps watts and ohms",
+"path": "Electric_circuits%252C_volts_amps_watts_and_ohms",
+"snippet": "...A knowledge of basic electrical theory is essential for anything more than purely mechanical repairs, and will greatly help in diagnosing faults and working "
+},
+{
+"title": "Personal Protective Equipment",
+"path": "Personal_Protective_Equipment",
+"snippet": "...burn causing blistering. Immediately placing the affected part under a cold running tap for a few minutes will bring relief, and will often avert blistering."
+},
+{
+"title": "Glossary:ISO",
+"path": "Glossary%253AISO",
+"snippet": "Glossary:ISO ISO is the International Organisation for Standardisation which publishes thousands of standards, but in computing the term is often used to refer "
+},
+{
+"title": "Stuff/fr",
+"path": "Stuff/fr",
+"snippet": "...damage. Take out all the screws you can see. Look harder, and take out the 3 screws you didn't see at first. It should now come apart. If not, take out the s"
+},
+{
+"title": "Batteries",
+"path": "Batteries",
+"snippet": "...(petrol/diesel) car batteries, uninterruptable power supplies, emergency lighting, security alarms, but also used in milk floats, golf buggies etc. Smaller s"
+},
+{
+"title": "Glossary",
+"path": "Glossary",
+"snippet": "...can store electric charge. Its capacitance (or its capacity for storing charge) is measured in Farads. See Capacitors in the Wiki. Capacitance Capacitance is"
+},
+{
+"title": "AC and DC",
+"path": "AC_and_DC",
+"snippet": "...play a CD or browse the Internet on your computer, the electronics needs a constant and unvarying source of power in order to do its job. Imagine trying to d"
+},
+{
+"title": "Optoelectronic components",
+"path": "Optoelectronic_components",
+"snippet": "...a lid, or in order to image a scene as in a camera. Again, several principles are used across different devices. In total, this amounts to a fair number of d"
+},
+{
+"title": "Paper shredders",
+"path": "Paper_shredders",
+"snippet": "...to be fixable. Safety Always unplug before opening the device. Place the mains plug on the bench in front of you so you can see it's unplugged. It could be v"
+},
+{
+"title": "Restarter Safety Guidelines",
+"path": "Restarter_Safety_Guidelines",
+"snippet": "...what you are doing and follow the repair process. Involve them in the repair. Always consider safety. There is an experienced, designated safety volunteer at"
+},
+{
+"title": "Glossary:UPS",
+"path": "Glossary%253AUPS",
+"snippet": "Glossary:UPS A UPS or Uninterruptible Power Supply is a back-up power supply that automatically cuts in on failure of the mains, allowing computers, telecommuni"
+},
+{
+"title": "Small cooking appliances",
+"path": "Small_cooking_appliances",
+"snippet": "...cut-outs. It shouldn't be hard to determine which is broken and hence get a head start in repairing it. Safety As with all mains electrical devices, dangerou"
+}
+]
+},
+{
+"title": "ScoutWiki",
+"hits": [
+{
+"title": "Compass",
+"path": "Compass",
+"snippet": "...to China. Since there has been frequently confusion as to when a compass was introduced for the first time, it may be appropriate to list the important event"
+},
+{
+"title": "Camp Emerald Bay",
+"path": "Camp_Emerald_Bay",
+"snippet": "...as a Unit or individual. Geared to youth aged 10 ½ to 17. The bread and butter of the summer camp experience is the Traditional Merit Badge Program. Camp Eme"
+},
+{
+"title": "First aid",
+"path": "First_aid",
+"snippet": "...by a lay person, to a sick or injured person until definitive medical treatment can be accessed, or until the illness or injury is dealt with (as not all ill"
+},
+{
+"title": "Filter (water)",
+"path": "Filter_(water)",
+"snippet": "...(water) A water filter is a device which removes impurities from water by means of a fine physical barrier, chemical processes and/or biological process. Fil"
+},
+{
+"title": "Portable water purification",
+"path": "Portable_water_purification",
+"snippet": "...water purification There is often a need to be able to treat water in remote or rural locations, or in emergency settings, to make it safe for drinking purpo"
+},
+{
+"title": "Backpacking",
+"path": "Backpacking",
+"snippet": "...water, and shelter, or the means to obtain them, but very little else, and often in a more compact and simpler form than one would use for stationary camping"
+},
+{
+"title": "First aid kit",
+"path": "First_aid_kit",
+"snippet": "...that a responsible person has ready access to a first aid kit. Schools keep a first aid kit in the main office, whether or not there is a designated nurse. C"
+},
+{
+"title": "Ten Essentials",
+"path": "Ten_Essentials",
+"snippet": "...a several additions, such as a plastic tarp, duct tape, sewing kit, etc. The Ten Essentials were first described in the 1930s by The Mountaineers (Pacific NW"
+},
+{
+"title": "Campfires Burning",
+"path": "Campfires_Burning",
+"snippet": "Campfires Burning Campfire's Burning is a popular Campfire song and can be sung in a round. It is sung to the tune of \"London's Burning\" Lyrics Campfires burnin"
+},
+{
+"title": "Auld Lang Syne",
+"path": "Auld_Lang_Syne",
+"snippet": "...burn, fray mornin sun til dyn; But seas between us bred hay roard sin ald lang syn. CHORUS An thers a han, my trustee feer! an gees a han o thyn! And we’ll t"
+},
+{
+"title": "Campfire",
+"path": "Campfire",
+"snippet": "...may burn out of control in two basic ways: on the ground or in the trees. Dead leaves or pine needles on the ground may ignite from direct contact with burni"
+},
+{
+"title": "Mari the Marigold",
+"path": "Mari_the_Marigold",
+"snippet": "...car. As soon as Mari got into the car, she put on her seat belt. She had promised Lupe she would do this every time they went for a ride. “Thanks for doing t"
+},
+{
+"title": "Bowline",
+"path": "Bowline",
+"snippet": "...to tie the end of the rope to a climbing harness, or the like. The advantage of the bowline in this application is that the knot is easy to untie even after "
+},
+{
+"title": "Spanish bowline",
+"path": "Spanish_bowline",
+"snippet": "...knot has an elegant symmetry and can be tied quickly when mastered. Unlike the Portuguese bowline, each loop is separately fixed, which is a nice feature. It"
+},
+{
+"title": "Bowline on a bight",
+"path": "Bowline_on_a_bight",
+"snippet": "...a bight is a knot which makes a pair of fixed-size loops in the middle of a rope. Its advantages are that its loops do not slip and it is reasonably easy to "
+},
+{
+"title": "Double bowline",
+"path": "Double_bowline",
+"snippet": "...tie the bowline by laying the working end on the standing part and twisting to form a loop (the \"hole\" that the rabbit comes out of). Wrap the loop once more"
+},
+{
+"title": "Irish bowline",
+"path": "Irish_bowline",
+"snippet": "...tie a cow hitch then cross the end over the standing part to form a pretzel. Second step viewing the knot from the side move the end under the knot to the ba"
+},
+{
+"title": "Saw",
+"path": "Saw",
+"snippet": "...power. The teeth of the saw are each bent to specific angle and this angle is called \"set\". The set of a tooth is dependent on the kind of cut the saw will b"
+},
+{
+"title": "Spare Time Activities/How to make moccasins",
+"path": "Spare_Time_Activities/How_to_make_moccasins",
+"snippet": "...of a “buckskin man.” Don’t make the common mistake of calling them mocassins, though. The word is pronounced mok-a-sims, accenting the first syllable. But th"
+},
+{
+"title": "Scout method",
+"path": "Scout_method",
+"snippet": "...to achieve the goals of the Scouting organizations. The World Organization of the Scout Movement (WOSM) describes the Scouting movement as \"...a voluntary no"
+},
+{
+"title": "Drill bit",
+"path": "Drill_bit",
+"snippet": "...to cut two grooves in opposite sides of a round bar, then to twist the bar to produce the helical flutes. This gave the tool its name. Nowadays, the drill bi"
+},
+{
+"title": "Adze",
+"path": "Adze",
+"snippet": "...-cut wood in hand woodworking. Generally, the user stands astride a board or log and swings the adze downwards towards their feet, chipping off a piece of wo"
+}
+]
+},
+{
+"title": "Sustainable Living Q&A",
+"hits": [
+{
+"title": "Are electric cars as environmentally friendly as we think they are?",
+"path": "questions/612/are-electric-cars-as-environmentally-friendly-as-we-think-they-are",
+"snippet": "...car battery is 3 years and all of the batteries end up at a landfill at the end of their lifetime, how sustainable are electric cars in providing a cleaner e"
+},
+{
+"title": "Rough cost-benefit of stopping car to recycle batteries",
+"path": "questions/6712/rough-cost-benefit-of-stopping-car-to-recycle-batteries",
+"snippet": "...to stop the car. This is a tougher question, as it is more nuanced than simply looking for big factors that clearly indicate which of two options is better. "
+},
+{
+"title": "Is an electric vehicle more sustainable just because it runs on batteries?",
+"path": "questions/2947/is-an-electric-vehicle-more-sustainable-just-because-it-runs-on-batteries",
+"snippet": "...car, that there will carbon savings: electric cars are typically 80-90% efficient, compared to about 20% for a fossil car. So even with a coal plant at 33% e"
+},
+{
+"title": "Is the drain-off water from water purifiers fit for gardening?",
+"path": "questions/10448/is-the-drain-off-water-from-water-purifiers-fit-for-gardening",
+"snippet": "...water, performs reverse osmosis and then treats it with UV-C rays. The water that is released at stage 2 (RO) is usually drained-off. Can this water be used "
+},
+{
+"title": "Are there hard water purifiers for the main water pipe into an apartment?",
+"path": "questions/4541/are-there-hard-water-purifiers-for-the-main-water-pipe-into-an-apartment",
+"snippet": "...water purifiers for the main water pipe into an apartment? Asked Jun 17 '15 at 12:29 Active Jun 18 '15 at 07:18 Viewed 125 times 4 The water supply in our ap"
+},
+{
+"title": "What are the most sustainable options for filtering tap water for drinking?",
+"path": "questions/9499/what-are-the-most-sustainable-options-for-filtering-tap-water-for-drinking",
+"snippet": "...water for drinking? Asked Sep 21 '19 at 16:40 Active Sep 26 '19 at 10:18 Viewed 448 times 4 I live in Europe (Belgium), where tap water is generally safe for"
+},
+{
+"title": "How should I dispose of scrap lumber from renovating?",
+"path": "questions/7169/how-should-i-dispose-of-scrap-lumber-from-renovating",
+"snippet": "...a home in Wisconsin, USA, and in the process of making repairs and upgrades I find I'm generating a fair amount of scrap lumber each month. I keep whatever I"
+},
+{
+"title": "Chemicals From Pressure-Treated Wood",
+"path": "questions/2813/chemicals-from-pressure-treated-wood",
+"snippet": "...a secondary fungicide and an insecticide, and chromium is a fixative which also provides ultraviolet (UV) light resistance. Recognized for the greenish tint "
+},
+{
+"title": "Impact of ash from barbecue on compost heap",
+"path": "questions/6779/impact-of-ash-from-barbecue-on-compost-heap",
+"snippet": ".../burn. Whilst the vast majority of store-bought BBQ fuels won't impart anything particularly bad into the food being cooked, the by-products (ash and partial"
+},
+{
+"title": "How is biochar production as a CDR method different from crop residue burning?",
+"path": "questions/11929/how-is-biochar-production-as-a-cdr-method-different-from-crop-residue-burning",
+"snippet": "...heat pumps utilizing renewable or nuclear electricity (and large-scale heat storage is used if the electricity is intermittent renewable to provide heat duri"
+},
+{
+"title": "Which kind of paper should be recycled and which should be burned?",
+"path": "questions/203/which-kind-of-paper-should-be-recycled-and-which-should-be-burned",
+"snippet": "...burn paper briquettes) composting Not all kinds of paper are suitable for all those ways. Reusing is possible only with relatively good quality and less prin"
+},
+{
+"title": "Is burning wood the same as letting it biodegrade from a CO2 emissions perspective?",
+"path": "questions/7009/is-burning-wood-the-same-as-letting-it-biodegrade-from-a-co2-emissions-perspec",
+"snippet": "...burn phases, they have gotten very good at that. Rocket mass heaters (mass heaters in general) are even better. In any case, 'complete combustion' is the goa"
+},
+{
+"title": "How I use/clean this old SIGG bottle that makes water taste bad?",
+"path": "questions/5462/how-i-use-clean-this-old-sigg-bottle-that-makes-water-taste-bad",
+"snippet": "...store. Methylated spirits can corrode aluminium, so it should not be used for that. But petrol/gasoline or white gas (Coleman fuel) would be OK. The standard"
+},
+{
+"title": "Which alternative fuels are practical for cars in Europe? Is there a map of stations?",
+"path": "questions/12234/which-alternative-fuels-are-practical-for-cars-in-europe-is-there-a-map-of-sta",
+"snippet": "...to a petrol car allows using E85 fuel; Compressed Natural Gas (CNG) - converting traditional internal combustion vehicles is possible; Biodiesel - works on d"
+},
+{
+"title": "Does it matter where I charge my device?",
+"path": "questions/2814/does-it-matter-where-i-charge-my-device",
+"snippet": "...my car (using a charger that plugs into the car's electrical system and is powered by the car's gasoline engine) or my home (using electricity supplied by my"
+},
+{
+"title": "How should EV drivers prepare for winter driving?",
+"path": "questions/12022/how-should-ev-drivers-prepare-for-winter-driving",
+"snippet": "...car batteries can be jump-started in minutes. The article goes on to argue that because EVs aren't good at handling situations like this, people shouldn't bu"
+},
+{
+"title": "Any electric vehicle that can be used as a home energy storage?",
+"path": "questions/10034/any-electric-vehicle-that-can-be-used-as-a-home-energy-storage",
+"snippet": "...5 A BMW i3 mitigates vehicle weight with a carbon-fiber body and with a load of batteries for a moderate driving range. A U.S. 2018 i3 has a driving range of"
+},
+{
+"title": "What types of plugged in electronics use energy even when turned off?",
+"path": "questions/2461/what-types-of-plugged-in-electronics-use-energy-even-when-turned-off",
+"snippet": "...a remote control. Many PCs draw a substantial amount of power (sometimes up to ~15W) to not only monitor their power button but to allow wake-on-LAN, wake-on"
+},
+{
+"title": "What breed of chickens would make the best lawn mowers for a food forest preperation?",
+"path": "questions/5377/what-breed-of-chickens-would-make-the-best-lawn-mowers-for-a-food-forest-prepe",
+"snippet": "...What breed of chickens would make the best lawn mowers for a food forest preperation? Asked Jun 27 '16 at 20:41 Active Oct 13 '19 at 04:04 Viewed 2,820 times"
+},
+{
+"title": "Renovating old pears trees vs removal and replacement with new trees?",
+"path": "questions/3196/renovating-old-pears-trees-vs-removal-and-replacement-with-new-trees",
+"snippet": "...\"a lifestyle that can be maintained indefinitely without depleting available resources\"? What are the issues? gardening plants edited Apr 13 '17 at 12:42 Com"
+},
+{
+"title": "Is there a more sustainable alternative to buying water glasses for the kitchen or dining room?",
+"path": "questions/12587/is-there-a-more-sustainable-alternative-to-buying-water-glasses-for-the-kitche",
+"snippet": "...power source? Besides, buying water glasses from store is something you do only rarely, since the water glasses will be used a long time. I don't think any k"
+}
+]
+},
+{
+"title": "The Great Outdoors Q&A",
+"hits": [
+{
+"title": "How to properly insulate electronic devices in a car",
+"path": "questions/23073/how-to-properly-insulate-electronic-devices-in-a-car",
+"snippet": "...How to properly insulate electronic devices in a car Asked Sep 09 '19 at 15:29 Active Sep 26 '19 at 07:40 Viewed 2,702 times 3 I'll be driving to Norway in N"
+},
+{
+"title": "Highest Voted 'storage' Questions",
+"path": "questions/tagged/storage",
+"snippet": "...to lose loft, and won't provide as much comfort or warmth when used again. If so, how should I store my sleeping bag when I won't be using it for months… sle"
+},
+{
+"title": "My car broke down in Siberia. What do I do now?",
+"path": "questions/18740/my-car-broke-down-in-siberia-what-do-i-do-now",
+"snippet": "...car on an overland road in Siberia during winter, so the temperature was supposedly well below freezing. The car stopped working, and with no cellphone recep"
+},
+{
+"title": "How to safely rescue someone drowning as an untrained bystander?",
+"path": "questions/16405/how-to-safely-rescue-someone-drowning-as-an-untrained-bystander",
+"snippet": "...by a comment thread in this question here. As far as I know the consensus basically boils down to: It is very hard rescuing someone who is drowning. It can b"
+},
+{
+"title": "Is there an organization for adults to learn outdoor skills with their kids?",
+"path": "questions/16523/is-there-an-organization-for-adults-to-learn-outdoor-skills-with-their-kids",
+"snippet": "...a tautline knot how-to I found online to tie it, since I was never a Scout. After reading a comment by @KRyan on a recent question, and considering my recent"
+},
+{
+"title": "What to do if someone gets impaled in the stomach?",
+"path": "questions/17459/what-to-do-if-someone-gets-impaled-in-the-stomach",
+"snippet": "...in a very rural area. She was on a fence and fell onto a t-post which basically impaled her, but which fell out by the time she hit the ground. (Details are "
+},
+{
+"title": "Can I use sunlight to purify water without a special container?",
+"path": "questions/16907/can-i-use-sunlight-to-purify-water-without-a-special-container",
+"snippet": "...water with sunlight and without a special container? Clarify: can water in a shallow pan be purified by sunlight? There are multiple reasons a person might n"
+},
+{
+"title": "How can I purify non-drinkable water that may have had organisms in it?",
+"path": "questions/14257/how-can-i-purify-non-drinkable-water-that-may-have-had-organisms-in-it",
+"snippet": "...water situation. I just want a clear answer on what to do to be able to drink the water. Is boiling non-drinkable water enough? health water-purification edi"
+},
+{
+"title": "What is the safest way to purify water?",
+"path": "questions/7/what-is-the-safest-way-to-purify-water",
+"snippet": "...water? Asked Jan 24 '12 at 20:06 Active Jul 24 '19 at 10:27 Viewed 1.5k times 62 There are a number of ways to purify water, off the top of my head we have f"
+},
+{
+"title": "Is campfire smoke safe for inhalation and cooking?",
+"path": "questions/8283/is-campfire-smoke-safe-for-inhalation-and-cooking",
+"snippet": "...burn any kind of wood as campfire if you are going to be cooking on it directly? Like broiling a steak on a grill over the fire where the smoke and the flame"
+},
+{
+"title": "Heal burn wounds in the wild",
+"path": "questions/10117/heal-burn-wounds-in-the-wild",
+"snippet": "...is a tough question. The best answer is \"get help\" however possible. If the burns are really that bad and cover a percentage of the body, the burn victim has"
+},
+{
+"title": "How should I treat hypothermia?",
+"path": "questions/245/how-should-i-treat-hypothermia",
+"snippet": "...I treat it? And what are the dangers if the symptoms are ignored? cold-weather hypothermia edited Apr 13 '17 at 12:48 Community 1 asked Jan 25 '12 at 07:24 J"
+},
+{
+"title": "Different woods and how they burn/what if we are unsure of the wood?",
+"path": "questions/21229/different-woods-and-how-they-burn-what-if-we-are-unsure-of-the-wood",
+"snippet": "...to burn so well, and it just goes on and on) In good time, perhaps I will make sense of it all. In the mean time, I hope that I can find some other general r"
+},
+{
+"title": "Burning paste for BBQ",
+"path": "questions/28933/burning-paste-for-bbq",
+"snippet": "...burn down to a puddle of mainly water). The advantage of gel over ordinary denatured alcohol is mainly that it doesn't flow and so concentrates the heat wher"
+},
+{
+"title": "Can I obtain alcohol fuel in or near Glasgow Airport?",
+"path": "questions/15417/can-i-obtain-alcohol-fuel-in-or-near-glasgow-airport",
+"snippet": "...store spirits is always safe. edited May 21 '22 at 08:11 Toby Speight 5,208 25 45 answered Dec 05 '18 at 17:31 Andrew Jay 2,333 10 14 1 And extremely expensi"
+},
+{
+"title": "questions/tagged/cooking_page=2",
+"path": "questions/tagged/cooking_page%253D2",
+"snippet": "...Is it safe to add boiling water to Mylar? Many pre-packaged meals are designed to cook in the pouch by adding boiling water. If I am making my own meals with"
+},
+{
+"title": "What's the difference between white gas, propane, kerosene, and gasoline?",
+"path": "questions/31/what-s-the-difference-between-white-gas-propane-kerosene-and-gasoline",
+"snippet": "...'petrol'. In the UK we also have 'white spirit' which should not be confused with 'white gas', it's not the same thing. – A E Oct 28 '14 at 14:29 2 Typical C"
+},
+{
+"title": "Improvised fridge?",
+"path": "questions/29468/improvised-fridge",
+"snippet": "...a grocery store. For example: you can pick up bags of ice, but they’ll melt, so you’ll need an easy way to dump out the melted water, and it’ll be heavy, so "
+},
+{
+"title": "questions_page=91",
+"path": "questions_page%253D91",
+"snippet": "...a bed and tucked under the mattress, but would any make sense to use in a tent?… camping tents bugs mosquitoes asked Jan 26 '12 at 20:34 jrdioko 3,765 6 31 4"
+},
+{
+"title": "Is a flare a good fire starting tool?",
+"path": "questions/21280/is-a-flare-a-good-fire-starting-tool",
+"snippet": "...a flare a good fire starting tool? Asked Dec 14 '18 at 13:50 Active May 16 '25 at 13:38 Viewed 4,347 times 4 We have a couple of questions showing that in dr"
+},
+{
+"title": "Highest Voted 'bowline-knots' Questions",
+"path": "questions/tagged/bowline-knots",
+"snippet": "...on a bight? This is a topic often discussed online, but all I could find so far was people sharing their opinions (including numbers) on what tie-in knot is "
+},
+{
+"title": "How to tie an EBSB bowline?",
+"path": "questions/16347/how-to-tie-an-ebsb-bowline",
+"snippet": "...How to tie an EBSB bowline? Asked Jun 20 '17 at 21:02 Active Apr 22 '21 at 15:30 Viewed 6,545 times 11 According to the most comprehensive reference ever wri"
+},
+{
+"title": "How safe is the bowline knot in different situations?",
+"path": "questions/3798/how-safe-is-the-bowline-knot-in-different-situations",
+"snippet": "...How safe is the bowline knot in different situations? Asked Mar 12 '13 at 10:56 Active May 11 '19 at 13:44 Viewed 1.2k times 26 The bowline knot (picture bel"
+},
+{
+"title": "Overhand versus underhand loop in tying up a bowline knot",
+"path": "questions/27254/overhand-versus-underhand-loop-in-tying-up-a-bowline-knot",
+"snippet": "...tie up a bowline knot starting up with an underhand loop (*). Bowline knots are most typically started with an overhand by flipping the standing part of the "
+},
+{
+"title": "Which knot for climbing: figure eight, yosemite bowline, bowline on a bight?",
+"path": "questions/1126/which-knot-for-climbing-figure-eight-yosemite-bowline-bowline-on-a-bight",
+"snippet": "...tie-in knot is the best. Here's what I've found out from different sources: Figure eight: Fool proof to check, very hard to open after a fall Yosemite bowlin"
+},
+{
+"title": "How do you deal with blackberry bushes on the west coast when bushwhacking?",
+"path": "questions/21342/how-do-you-deal-with-blackberry-bushes-on-the-west-coast-when-bushwhacking",
+"snippet": "...to cut a tunnel, where you cut both ends, it is a lot of work. When you cut them, you are cutting a long fairly stable thorn covered vine, it becomes two no "
+},
+{
+"title": "What are the differences between high-end sleeping pads and cut to fit foam mats?",
+"path": "questions/953/what-are-the-differences-between-high-end-sleeping-pads-and-cut-to-fit-foam-ma",
+"snippet": "...cut to fit foam mats? Asked Feb 06 '12 at 22:01 Active Dec 20 '17 at 05:41 Viewed 1,209 times 10 I'm pretty tall and I find that to purchase a brand-name sle"
+},
+{
+"title": "What are the tradeoffs for a Tomahawk over an Axe",
+"path": "questions/1152/what-are-the-tradeoffs-for-a-tomahawk-over-an-axe",
+"snippet": "...clear on what the advantage (or disadvantage) is of a tomahawk style axe over a typical belt or hand axe, such as this estwing. gear edited Jul 16 '14 at 11:"
+}
+]
+},
+{
+"title": "The Urban Prepper (videos)",
+"hits": [
+{
+"title": "Cooking Module | Urban Bug Out Bag | Version 3.0",
+"path": "index/cooking_module_urban_bug_out_bag_version_3_0--5CI",
+"snippet": "..."
+},
+{
+"title": "Don't Get A Ticket From The Police: Make THIS Kit Instead!",
+"path": "index/don_t_get_a_ticket_from_the_police_make_this_kit_instead-tiPD",
+"snippet": "..."
+},
+{
+"title": "Add a Patient Communication Board to your Medical Preps",
+"path": "index/add_a_patient_communication_board_to_your_medical_preps-Zl3N",
+"snippet": "..."
+}
+]
+},
+{
+"title": "USDA Guide to Home Canning",
+"hits": []
+},
+{
+"title": "Water Treatment Library",
+"hits": [
+{
+"title": "Purifying Water During an Emergency",
+"path": "home?file=files%2FWater%20(2).pdf",
+"snippet": "The treatments described work only to remove bacteria or viruses from water"
+}
+]
+},
+{
+"title": "WikiMed Medical Encyclopedia (introductions only, without images)",
+"hits": [
+{
+"title": "List of medical abbreviations: C",
+"path": "List_of_medical_abbreviations%253A_C",
+"snippet": "...A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Latin abbreviations Prescription abbreviations Acronyms in healthcare Abbreviations for medical organisat"
+},
+{
+"title": "Organisms involved in water purification",
+"path": "Organisms_involved_in_water_purification",
+"snippet": "...in water purification A flowering water-purifying plant (Iris pseudacorus) Most organisms involved in water purification originate from the waste, wastewater"
+},
+{
+"title": "Crotalidae polyvalent immune Fab",
+"path": "Crotalidae_polyvalent_immune_Fab",
+"snippet": ".../water moccasin) snake envenomation. CroFab is composed of several monovalent Fab (fragment antigen-binding) proteins derived from the blood of sheep immuniz"
+},
+{
+"title": "NEWater",
+"path": "NEWater",
+"snippet": "...reverse osmosis and ultraviolet radiation. The water is potable quality and can be added to drinking water supply reservoirs where it is withdrawn and treate"
+},
+{
+"title": "Burn scar contracture",
+"path": "Burn_scar_contracture",
+"snippet": "Burn scar contracture Burn scar contracture Following burn injury, a patient shows severe joint contracture Specialty Dermatology Burn scar contracture is the t"
+},
+{
+"title": "Lund and Browder chart",
+"path": "Lund_and_Browder_chart",
+"snippet": "...a tool useful in the management of burns for estimating the total body surface area affected. It was created by Dr. Charles Lund, Senior Surgeon at Boston Ci"
+},
+{
+"title": "Escharotomy",
+"path": "Escharotomy",
+"snippet": "...used to treat full-thickness (third-degree) circumferential burns. In full-thickness burns, both the epidermis and the dermis are destroyed along with sensor"
+},
+{
+"title": "Friction burn",
+"path": "Friction_burn",
+"snippet": "...burn, rope burn, rug burn, sand burn, brush burn Friction burn caused by a rope Specialty Dermatology Causes Carpet, rope, rug, treadmill, sand, swingset Fri"
+},
+{
+"title": "Burn",
+"path": "Burn",
+"snippet": "Burn This article is about the injury. For other uses, see Burn (disambiguation). Burn Second-degree burn of the hand Specialty Dermatology, critical care medic"
+},
+{
+"title": "Burning mouth syndrome",
+"path": "Burning_mouth_syndrome",
+"snippet": "...Headache Society defines it as \"an intra-oral burning sensation for which no medical or dental cause can be found\". To ensure the correct diagnosis of burnin"
+},
+{
+"title": "Lightning injury",
+"path": "Lightning_injury",
+"snippet": "...a populated area. Specialty Emergency medicine Types Direct strikes, side splash, contact injury, ground current Causes Lightning strike Diagnostic method Ba"
+},
+{
+"title": "Sexual violence",
+"path": "Sexual_violence",
+"snippet": "...do Pará Maputo Istanbul Related topics Prosecution of gender-targeted crimes Women's shelter 25 November 6 February By country Sex and the law Victimology Vi"
+},
+{
+"title": "Piezoelectric surgery",
+"path": "Piezoelectric_surgery",
+"snippet": "...to cut hard tissue while leaving soft tissue untouched by the process. The ultrasonic frequency is modulated from 10, 30, and 60 cycles/s (Hz) to 29 kHz. The"
+},
+{
+"title": "Bone cutter",
+"path": "Bone_cutter",
+"snippet": "...high amplitude sound to remove material (in this case bone), providing the ability to cut. Some tissue sonic cutters are being produced. Costotome – A costot"
+},
+{
+"title": "Gigli saw",
+"path": "Gigli_saw",
+"snippet": "...cut at the level of amputation. In addition, it was once commonly used to perform craniotomies for brain surgery, before the invention of powered skull saws."
+}
+]
+},
+{
+"title": "Wikiquote (without images)",
+"hits": [
+{
+"title": "Electric vehicles",
+"path": "Electric_vehicles",
+"snippet": "...to focus specifically on e-bikes instead of regular bikes because “e-bikes encourage users to cycle farther and more often than conventional bicycles.” Any c"
+},
+{
+"title": "Renewable energy",
+"path": "Renewable_energy",
+"snippet": "...need to build more of them quickly; we’re not adding them fast enough.\" - Daniel Cohan, Rice University. (May 30, 2022) (Wind turbines in Gansu province, Chi"
+},
+{
+"title": "Victorious (season 4)",
+"path": "Victorious_(season_4)",
+"snippet": "...to February 2, 2013. The series revolves around aspiring singer Tori Vega (portrayed by Victoria Justice), a teenager who attends a performing arts high scho"
+},
+{
+"title": "Grey's Anatomy (Season 18)",
+"path": "Grey's_Anatomy_(Season_18)",
+"snippet": "...a primetime television medical drama, airing on ABC, that follows Meredith Grey, a first-year surgical intern at the beginning of the drama, and her fellow i"
+},
+{
+"title": "ER (season 7)",
+"path": "ER_(season_7)",
+"snippet": "...on NBC, that follows the lives of doctors and nurses in a Chicago emergency room. Homecoming [7.01] [Elizabeth's hands itch] Benton: Are you allergic to any "
+},
+{
+"title": "ER (season 2)",
+"path": "ER_(season_2)",
+"snippet": "...a long running medical drama, airing on NBC, that follows the lives of doctors and nurses in a Chicago emergency room. Welcome Back, Carter! [2.01] Benton: I"
+},
+{
+"title": "Abzu",
+"path": "Abzu",
+"snippet": "...water from underground aquifers which was given a religious fertilising quality in Sumerian and Akkadian mythology. Lakes, springs, rivers, wells, and other "
+},
+{
+"title": "Ritual purification",
+"path": "Ritual_purification",
+"snippet": "...water from the holy teats of heaven. This water consecrates the heavens, it purifies the earth. It purifies the cattle in their pen. It purifies the sheep in"
+},
+{
+"title": "Oil",
+"path": "Oil",
+"snippet": "...water, literally \"water fearing\") and lipophilic (miscible with other oils, literally \"fat loving\"). Oils have a high carbon and hydrogen content and are usu"
+},
+{
+"title": "Periyar E. V. Ramasamy",
+"path": "Periyar_E._V._Ramasamy",
+"snippet": "...treat the low-caste. These treat them so demeaningly only in situations mutually affecting them; but men treat cruelly and as slaves, from their birth till d"
+},
+{
+"title": "The Odyssey (2026 film)",
+"path": "The_Odyssey_(2026_film)",
+"snippet": "...a sacrifice. I don’t want Odysseus’s song, I want Odysseus! Telemachus Zeus's law tells us to treat strangers as we be treated because they might be gods in "
+},
+{
+"title": "Halloween",
+"path": "Halloween",
+"snippet": "...A Jack-o'-lantern. On Halloween first house for Trick-or-treatingtrick-or-treating. Halloween or Hallowe'en (/ˌhæləˈwiːn, -oʊˈiːn, ˌhɑːl-/; a contraction of "
+},
+{
+"title": "Burning Man",
+"path": "Burning_Man",
+"snippet": "...burn it in the desert and hold an annoying festival around it. John Oliver, in Last Week Tonight (15 June 2014) Greetings from Burning Man! Burning Man is an"
+},
+{
+"title": "William J. Burns (diplomat)",
+"path": "William_J._Burns_(diplomat)",
+"snippet": "...Hersh, How America Took Out The Nord Stream Pipeline, February 8 2023 External links Categories: Directors of Central Intelligence United States Deputy Secre"
+},
+{
+"title": "R. Nicholas Burns",
+"path": "R._Nicholas_Burns",
+"snippet": "\"Biden’s pick for China ambassador says ‘we cannot trust the Chinese’ on Taiwan\" in The Guardian (2021) External links Encyclopedic article on R. Nicholas Burns"
+},
+{
+"title": "Muslim National Guard",
+"path": "Muslim_National_Guard",
+"snippet": "...petrol, which would be used not only as fuel in transport, but as an excellent means of incendiarism on a large and devastating scale. This use of it the Mus"
+},
+{
+"title": "J. B. S. Haldane",
+"path": "J._B._S._Haldane",
+"snippet": "...as petrol. ...[I]t is very light, and bulk for bulk has only one third of the efficiency of petrol. This will not, however, detract from its use in aeroplane"
+},
+{
+"title": "Last words in James Bond media",
+"path": "Last_words_in_James_Bond_media",
+"snippet": "...his safe. The poor young woman, almost crying, tries to deny but Drax cruelly send his Dobermans to chase her. Terrified, Corinne runs away as far as she can"
+},
+{
+"title": "21 Jump Street",
+"path": "21_Jump_Street",
+"snippet": "...Jump Street 21 Jump Street (1987–1991) is an American police drama about undercover cops specializing in youth crime. It was created by Stephen J. Cannell an"
+},
+{
+"title": "21 Jump Street (film)",
+"path": "21_Jump_Street_(film)",
+"snippet": "21 Jump Street (film) 21 Jump Street is a 2012 American buddy cop action comedy film directed by Phil Lord and Christopher Miller in their live action directori"
+},
+{
+"title": "The Wiggles Movie",
+"path": "The_Wiggles_Movie",
+"snippet": "...a better magician by stealing Greg's magic wand, but, is confronted by Dorothy the Dinosaur, who believes the Wiggles have forgotten her birthday, while in f"
+},
+{
+"title": "Good Will Hunting",
+"path": "Good_Will_Hunting",
+"snippet": "...a 1997 film about Will Hunting, a janitor at MIT, who has an extraordinary ability in mathematics, and a psychologist who tries to help him with his gift and"
+},
+{
+"title": "Looney Tunes: Back in Action",
+"path": "Looney_Tunes%253A_Back_in_Action",
+"snippet": "...a plot to possess a mysterious blue diamond in the course of rescuing his famous actor father. Directed by Joe Dante. Written by Larry Doyle. How do they sol"
+},
+{
+"title": "The Pirates Who Don't Do Anything: A VeggieTales Movie",
+"path": "The_Pirates_Who_Don't_Do_Anything%253A_A_VeggieTales_Movie",
+"snippet": "...to a ship with some pirates fighting) Prince Alexander: Stand firm, men, for the King and Monteria! (YELLS) Back to the sea, dog! (GRUNTING) (A barell rolls "
+},
+{
+"title": "Austin Powers: The Spy Who Shagged Me",
+"path": "Austin_Powers%253A_The_Spy_Who_Shagged_Me",
+"snippet": "...a rocket ship] Astronaut: [voice only, in helmet] Houston, this is Condor. We are doing an EVA of the payload, we are about Presenting with Module with... [h"
+},
+{
+"title": "Pokémon/Season 10",
+"path": "Pok%25C3%25A9mon/Season_10",
+"snippet": "...Power of One Destiny Deoxys | Lucario and The Mystery of Mew | Arceus and the Jewel of Life | Master of Illusions | Victini and Reshiram | I Choose You! | Th"
+},
+{
+"title": "The Powerpuff Girls Movie",
+"path": "The_Powerpuff_Girls_Movie",
+"snippet": "...to create the perfect...crime-fighting little girls? Blossom [after Buttercup \"accidentally\" punched Rocko Socko, freeing the dog] Buttercup! You're a genius"
+},
+{
+"title": "Diamond",
+"path": "Diamond",
+"snippet": "...cut by [wit], it casts a brighter beam; Yet, wit apart, it is a diamond still. Young Bevil, in Night Thoughts, quoted in James Plumptre Four discourses on su"
+}
+]
+},
+{
+"title": "Wikivoyage (without images)",
+"hits": [
+{
+"title": "Winter driving",
+"path": "Winter_driving",
+"snippet": "...car. A weak battery, ice on electrical parts or in fuel, frozen diesel, or a frozen cooling system may cause your car to break down. If you get stuck, you ma"
+},
+{
+"title": "Hiking",
+"path": "Hiking",
+"snippet": "...to the next, and also to towns on the way. Often they follow routes used before roads were built. These and similar trails can be and are used also for day h"
+},
+{
+"title": "Packing list",
+"path": "Packing_list",
+"snippet": "...to claim for. This article will walk through the process of building your own packing lists for your own travel plans, hopefully with useful suggestions for "
+},
+{
+"title": "Örö",
+"path": "%25C3%2596r%25C3%25B6",
+"snippet": "...car (it's for the company running the services on Örö). Thus, if you're driving to Kasnäs, park the car in the parking lot in the harbour. All ferries have t"
+},
+{
+"title": "Portishead",
+"path": "Portishead",
+"snippet": "...nearly car free route following 🌍 Clevedon Lane until 🌍 Clapton in Gordano and going north from there. This route passes through the beautiful Gordano Valley"
+},
+{
+"title": "Smiths Falls",
+"path": "Smiths_Falls",
+"snippet": "...the CPR had extended its Toronto-Smiths Falls mainline to reach Montréal; in 1924, 1600 CPR workers were employed in Smiths Falls. This gave the town direct "
+},
+{
+"title": "Boston Bar",
+"path": "Boston_Bar",
+"snippet": "A settlement developed on the east bank of the river to the north of the confluence with Anderson River. This was later moved to the present site with the const"
+},
+{
+"title": "Revelstoke",
+"path": "Revelstoke",
+"snippet": "...CPR, and it maintains a strong connection to that industry. However forestry, construction, tourism and retail have increased over the past decades. Today, t"
+},
+{
+"title": "Daniel Boone National Forest",
+"path": "Daniel_Boone_National_Forest",
+"snippet": "...of water surface and nearly 200 miles of tree-lined shore. Visitors can enjoy boating, swimming, fishing and camping in the great outdoors. Do Boating With m"
+},
+{
+"title": "Apo Kayan",
+"path": "Apo_Kayan",
+"snippet": "...water should be drinkable as is (never drink stagnant water), but it is probably safer to carry some water purifying pills or a mechanical water purifier. Sl"
+},
+{
+"title": "Poon Hill",
+"path": "Poon_Hill",
+"snippet": "...water chats and birds chirping makes the environment impressive. Rhododendron when it blooms brings the butterfly out. You will not find Himalayan large crea"
+},
+{
+"title": "Gwaii Haanas National Park Reserve",
+"path": "Gwaii_Haanas_National_Park_Reserve",
+"snippet": "...a UNESCO World Heritage Site and a National Historic Site of Canada in 1981. The remains of a Haida village on the eastern side of the island - SG̱ang Gwaay "
+},
+{
+"title": "Hines",
+"path": "Hines",
+"snippet": "...with a drive-thru that adds fruit, cream, and other flavors to Pepsi products. It has a few food items like soup, chips, and salsa, and treats including fudg"
+},
+{
+"title": "Sauna",
+"path": "Sauna",
+"snippet": "...A sauna is a bathing facility where sweating in a hot room is an essential part of the cleaning procedure. The word is Finnish and the Finnish sauna is famou"
+},
+{
+"title": "Burns",
+"path": "Burns",
+"snippet": "...W E → Ontario → Boise Pasco ← John Day ← N S → Hines → Alturas Hidden categories: Has default banner Has mapframe Has map markers Airport listing Go listing "
+},
+{
+"title": "Black Rock City",
+"path": "Black_Rock_City",
+"snippet": "...burn from going barefoot; avoid it by wearing socks and closed shoes. Dehydration: Make SURE that you drink enough water so that you are pissing clear (the n"
+},
+{
+"title": "Ayr (Scotland)",
+"path": "Ayr_(Scotland)",
+"snippet": "...-century social venture. Belfast is a fascinating city: take the direct bus from Ayr. Routes through Ayr END ← W E → Cumnock → Lanark → Edinburgh Glasgow ← K"
+},
+{
+"title": "Anjuna",
+"path": "Anjuna",
+"snippet": "...petrol pump is near Vagator, to get there head north at Starco junction until you hit the main T junction at Vagator, turn right and head for about 2 km (1.2"
+},
+{
+"title": "Aitutaki",
+"path": "Aitutaki",
+"snippet": "...petrol deposit. Cars typically tend to be automatics and are pretty reliable under the hood but will usually have some superficial damage. Scooters are much "
+},
+{
+"title": "Ozurgeti",
+"path": "Ozurgeti",
+"snippet": "petrol (updated Aug 2015) 🌍 Gulf (გალფი). petrol (updated Aug 2015) 🌍 Lukoil (ლუკოილი), Kostava Str. petrol (updated Aug 2015) 🌍 Socar (სოკარი), Takaishvili Str"
+},
+{
+"title": "Aragon",
+"path": "Aragon",
+"snippet": "...a stopping point en route to the Pyrenees 🌍 Monegros – a desert region known for the Laguna de Sariñena, a wildlife protection area for migrating birds 🌍 Ter"
+},
+{
+"title": "San Gil",
+"path": "San_Gil",
+"snippet": "...is a city with a population of 50,000 in the Santander region in Eastern Andino. It is known as \"Colombia's adventure sport capital\". Get in 🌍 Bus terminal. "
+},
+{
+"title": "East Matunuck",
+"path": "East_Matunuck",
+"snippet": "...are a 3-5 minute walk to the beach. Many local surfers go here for the exceptional waves. At the coast guard house there are also showers and a place to buy "
+},
+{
+"title": "Deep Creek Lake",
+"path": "Deep_Creek_Lake",
+"snippet": "...in the forested mountains of Western Maryland, centered around the large man-made lake of the same name. In addition to the lake and all of its recreational "
+},
+{
+"title": "Chernobyl",
+"path": "Chernobyl",
+"snippet": "...power plant's reactor 4 encased in a sarcophagus. A replacement to the one shown in the picture was installed in 2016. Chernobyl (Russian: Чернобыль) or Chor"
+},
+{
+"title": "Eidfjord",
+"path": "Eidfjord",
+"snippet": "...cut deep into the bedrock where tall waterfalls plunge to the valley floor below. View from Øktanuten in Eidfjord. Hardangerjøkulen glacier in the distance. "
+},
+{
+"title": "Carluke",
+"path": "Carluke",
+"snippet": "...has cut deep into the sandstone bedrock. It was a draughty place suitable for windmills, but the power of these was limited and erratic, and weaving was by h"
+}
+]
+},
+{
+"title": "Wiktionary in Simple English",
+"hits": [
+{
+"title": "charge",
+"path": "charge",
+"snippet": "...of electrical energy that something holds. And once you've used up the electric charge, your electric car stops working. The batteries will slowly lose their"
+},
+{
+"title": "set",
+"path": "set",
+"snippet": "...a car can drive on it. This glue needs two hours to set. The past tense and past participle of set. It is illegal to set fire to the forest. Someone has set "
+},
+{
+"title": "dehydration",
+"path": "dehydration",
+"snippet": "...(uncountable) Dehydration is the condition of lower than normal water levels. They drink fluids constantly to avoid dehydration. When a baby is sick, look fo"
+},
+{
+"title": "burn",
+"path": "burn",
+"snippet": "...burn yourself. Things on fire are burning. The house next door is burning. (slang) A person is burned if someone else successfully insults him. Related words"
+},
+{
+"title": "burns",
+"path": "burns",
+"snippet": "burns Verb Plain form burn Third-person singular burns Past tense burned Past participle burned Present participle burning Plain form burn Third-person singular"
+},
+{
+"title": "burning",
+"path": "burning",
+"snippet": "...burn Third-person singular burns Past tense burned Past participle burned Present participle burning Plain form burn Third-person singular burns Past tense b"
+},
+{
+"title": "jump",
+"path": "jump",
+"snippet": "...the big jump over the water. A jump is a ramp used to jump. Synonyms: ramp, inclined plane, incline and slope He went off the jump at full speed. A jump is a"
+},
+{
+"title": "start",
+"path": "start",
+"snippet": "...start Plural starts The beginning of something in place or time. Synonyms: beginning, outset, square one, drawing board and introduction Antonyms: end, finis"
+},
+{
+"title": "half",
+"path": "half",
+"snippet": "...car might cost about half as much again as in Britain. These cookies are not half as good as the ones your mum makes. The apples are half price today. When I"
+},
+{
+"title": "jigsaw",
+"path": "jigsaw",
+"snippet": "jigsaw Pronunciation IPA (key): /ˈdʒɪɡsɔː/ Noun Singular jigsaw Plural jigsaws A power jigsaw Battery-powered jigsaw (countable) A jigsaw is a saw with a fine a"
+},
+{
+"title": "corruption",
+"path": "corruption",
+"snippet": "corruption Pronunciation IPA (key): /kəˈrʌpʃən/ Audio (US) (file) Hyphenation: cor‧rup‧tion Noun Singular corruption Plural corruptions (uncountable) Corruption"
+},
+{
+"title": "nepotism",
+"path": "nepotism",
+"snippet": "...Noun Singular nepotism Plural nepotisms Nepotism is when someone in power unfairly favors a family member. Typically, nepotism happens when family members wo"
+}
+]
+},
+{
+"title": "Woodworking Q&A",
+"hits": [
+{
+"title": "Making biscuits cuts by hand",
+"path": "questions/425/making-biscuits-cuts-by-hand",
+"snippet": "...how to actually make the biscuits Use the power tool itself Does anyone have tips or suggestions on how to make biscuit cuts by hand? joinery hand-tools edit"
+},
+{
+"title": "Drying Wood Methods",
+"path": "questions/4988/drying-wood-methods",
+"snippet": "...a good water barrier in a thick coating. Ideally you'd want to slop either one on heavily, and if you want to go to the trouble to apply more than one coat s"
+},
+{
+"title": "Does burning wood increase any mechanical proprieties?",
+"path": "questions/3460/does-burning-wood-increase-any-mechanical-proprieties",
+"snippet": "...people burn wood for Sho Sugi Ban finishing technique. But.... Does burning wood increase any mechanical proprieties? Are there any other advantages to burni"
+},
+{
+"title": "How should I dispose of sawdust safely?",
+"path": "questions/65/how-should-i-dispose-of-sawdust-safely",
+"snippet": "...a small table saw, radial saw and a router table that I built. I don't have a central dust collection, and only the radial saw has any dust collection built "
+},
+{
+"title": "Recycling wood based on the level of treatment",
+"path": "questions/10793/recycling-wood-based-on-the-level-of-treatment",
+"snippet": "...it's not a good way to ask for what I am looking for (woodworking recycling). I try to find a way to recycle used furniture, based on the level of treatment "
+},
+{
+"title": "Highest Voted 'burning' Questions",
+"path": "questions/tagged/burning",
+"snippet": "...burn? While working with some black cherry that was felled on our property, I noticed that when I got blade burn the wood would turn this lovely shade of pur"
+},
+{
+"title": "Routing boards without burn",
+"path": "questions/10/routing-boards-without-burn",
+"snippet": "...burn Asked Mar 17 '15 at 15:28 Active Jul 13 '15 at 21:46 Viewed 2,244 times 28 It seems when I utilize routers, they always seem to burn the edge of the boa"
+},
+{
+"title": "How often should I sharpen?",
+"path": "questions/7011/how-often-should-i-sharpen",
+"snippet": "...sharpen a whittling knife? I realize the best answer is, 'when it feels dull', but my 9 year old son is doing the whittling and is not yet experienced enough"
+},
+{
+"title": "How to flatten stubborn hollow on the back of a plane iron?",
+"path": "questions/13711/how-to-flatten-stubborn-hollow-on-the-back-of-a-plane-iron",
+"snippet": "...to a coarser surface. 400 grit is way too fine for this job, and frankly it's a silly grit for manufacturers to offer at the coarse end of a progression of g"
+},
+{
+"title": "Wood legs, steel frame and glasstop design",
+"path": "questions/10548/wood-legs-steel-frame-and-glasstop-design",
+"snippet": "...a lot of space and want neat design for a glass table. I have designed a table which will have: legs- 4 oak\\beech, 3\" x 3\" frame on top of the legs - 8' long"
+},
+{
+"title": "What power tool is best suited to use for small straight cuts?",
+"path": "questions/12792/what-power-tool-is-best-suited-to-use-for-small-straight-cuts",
+"snippet": "...What power tool is best suited to use for small straight cuts? Asked May 04 '21 at 00:48 Active May 04 '21 at 03:35 Viewed 521 times 2 Hi guys I am wondering"
+},
+{
+"title": "Highest Voted 'power-tools' Questions",
+"path": "questions/tagged/power-tools",
+"snippet": "...to use gloves with power tools? I don't use gloves when operating my power tools, but I know a few people who do--for instance, when operating a router with "
+},
+{
+"title": "questions/tagged/power-tools_page=6",
+"path": "questions/tagged/power-tools_page%253D6",
+"snippet": "...a greater depth of cut. But will… table-saw power-tools cutting rip-cut asked Apr 04 '19 at 05:54 Wynne 183 1 5 3 votes 2 answers How to achieve a rounded ed"
+},
+{
+"title": "questions/tagged/power-tools_page=2",
+"path": "questions/tagged/power-tools_page%253D2",
+"snippet": "...[power-tools] Tools that use some form of power other than muscle, usually electricity. Questions about usage, maintenance and safety procedures, as well as "
+},
+{
+"title": "Edge jointing end grain cutting board strips with a power jointer",
+"path": "questions/2258/edge-jointing-end-grain-cutting-board-strips-with-a-power-jointer",
+"snippet": "...a power jointer Asked Aug 20 '15 at 00:05 Active Feb 10 '19 at 19:42 Viewed 8,967 times 10 I used to plane the edges of the wood strips I cut using a hand pl"
+}
+]
+}
+]
+}

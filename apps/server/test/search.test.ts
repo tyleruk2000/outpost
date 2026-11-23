@@ -127,7 +127,8 @@ describe("keyword search", () => {
   it("ranks a title match above a passing mention and links to the page", async () => {
     const { body } = await app.api("GET", "/api/search?q=water");
     expect(body.results.map((result: { entityId: string }) => result.entityId)).toEqual(["d1", "n1"]);
-    expect(body.results[0].score).toBe(1);
+    expect(body.results[0].score).toBeGreaterThan(0.9);
+    expect(body.results[0].why).toBe("In the title");
     expect(body.results[0].titleSegments).toContainEqual({ text: "Water", hit: true });
     expect(body.results[0].url).toMatch(/^\/library\/documents\/d1\?page=\d$/);
     expect(body.facets).toEqual({ document: 1, note: 1 });
@@ -233,7 +234,7 @@ describe("keyword search", () => {
     }
     const { body } = await app.api("GET", "/api/search?q=water");
     expect(body.results.map((result: { kind: string }) => result.kind)).toEqual(["document", "note", ...Array(4).fill("catalog")]);
-    // A score is still relative to the best match, so that no entry to download reads as better than 100%.
+    // Scores are on one scale from 0 to 1, whatever found the result.
     expect(body.results.every((result: { score: number }) => result.score <= 1)).toBe(true);
     expect(body.facets).toEqual({ document: 1, note: 1, catalog: 4 });
 
