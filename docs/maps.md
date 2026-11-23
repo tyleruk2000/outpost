@@ -70,8 +70,9 @@ anything is downloading. Then:
   to find** (hospitals, shelters, food and more, for the Layers tab) and **Country file**.
   Something here shows its size, where it is kept and the day its data is from; something
   on its way shows its progress, with Pause; a storage location that is not connected says
-  so and what still works. Each row's **…** menu has Details, Show on the map, Update where
-  it can be updated, and Remove.
+  so and what still works. Each row's **…** menu has Details, Show on the map, **Update…**
+  where it can be updated, **Move…** (everything but roads, which stay with Outpost's own
+  data) and **Remove**.
 - **Other areas**: areas drawn by hand, maps of your own and satellite pictures of an area.
 - **Whole world**: the world overview, the world's towns, borders and airports, and
   satellite pictures of the world.
@@ -115,7 +116,41 @@ once read; nothing is chosen for you, and your answer is chosen the next time:
   keep working and rebuilding waits.
 
 With a file kept for a place, adding roads or places reads it again with no download and
-no question (**Build roads**). Remove a kept file from its row's **…** menu, or under Storage.
+no question (**Build roads**). Remove a kept file from its row's **…** menu.
+
+When a newer file is kept for the same place, the older one says so, with its size, where it
+is and the day it is from, and offers **Remove the older file**. Nothing is removed until you
+choose.
+
+### Updating map data
+
+Every row says the day its data is from ("from 17 Nov 2026"). Over twelve months old, it
+says **Over a year old**, and the top of Map data says how many things are ("2 things are
+over a year old") with **Review updates**, which lists each with what updating it takes.
+**Update…** in a row's menu does the same for one thing. Nothing is checked or downloaded
+until you press.
+
+- **Map to look at, hills and heights, place names (GeoNames), a country file**: **Check**
+  asks the source, which is named first, how large and how new its newest copy is; nothing
+  is downloaded. **Update** downloads the same area or list again to the same storage
+  location. What you have stays, and is used, until the new one is in place and checked;
+  then it is deleted. If the download stops or fails, what you have is left as it was. The
+  new one needs room beside the old one while it downloads.
+- **Roads for routes, places to find from a country file**: with a country file kept,
+  **Read the kept file** rebuilds them with no download, and **Download a newer file**
+  fetches a newer country file, keeps it where the old one is, and reads it. Without one
+  kept, **Update** downloads the country file again, reads it, then deletes it.
+- **Place names for Great Britain** are updated with **Check for a newer edition**, other
+  places to find with **Check for an update** from their own source, and satellite pictures
+  under Maps, Offline. A map imported from a file of your own cannot be fetched again:
+  import a newer file.
+
+### Removing map data
+
+**Remove** says first what stops working, how much it frees and where. A file on a storage
+location asks whether to delete it or keep it where it is. Removing roads for routes asks,
+unticked, whether to delete the kept country file too ("Also delete the kept country file
+(2.20 GB on NAS)?"); places to find made from it keep working.
 
 ## Downloading a region
 

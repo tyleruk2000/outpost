@@ -16,7 +16,10 @@ const link = "text-primary underline decoration-1 underline-offset-2";
 
 export function MapDataSection() {
   const data = useMapData();
-  const rows = data.data ? storageRows(data.data) : [];
+  const all = data.data ? storageRows(data.data) : [];
+  // Kinds with something are compared in the table; the rest are named on one line, not as rows of dashes.
+  const rows = all.filter((row) => row.count > 0);
+  const none = all.filter((row) => row.count === 0).map((row) => row.name);
   const stale = data.data ? staleItems(data.data).length : 0;
   return (
     <Section
@@ -37,6 +40,13 @@ export function MapDataSection() {
             <Skeleton key={index} className="h-9" />
           ))}
         </div>
+      ) : rows.length === 0 ? (
+        <p className="text-small text-ink-muted">
+          No map data yet: the map draws coastlines and borders until some is added.{" "}
+          <Link to="/maps/data" className={link}>
+            Add map data
+          </Link>
+        </p>
       ) : (
         <div className="grid max-w-3xl gap-3">
           <Table label="Map data by kind" stack>
@@ -57,18 +67,23 @@ export function MapDataSection() {
                     </Link>
                   </Td>
                   <Td label="Where" className="text-ink-muted">
-                    {row.where.length > 0 ? row.where.join(", ") : "None yet"}
+                    {row.where.join(", ")}
                   </Td>
-                  <Td label="Items" numeric className={row.count === 0 ? "text-ink-muted" : undefined}>
-                    {row.count === 0 ? "—" : plural(row.count, "item")}
+                  <Td label="Items" numeric>
+                    {plural(row.count, "item")}
                   </Td>
-                  <Td label="Size" numeric className={row.count === 0 ? "text-ink-muted" : "font-medium whitespace-nowrap"}>
-                    {row.count === 0 ? "—" : formatBytes(row.bytes)}
+                  <Td label="Size" numeric className="font-medium whitespace-nowrap">
+                    {formatBytes(row.bytes)}
                   </Td>
                 </Tr>
               ))}
             </tbody>
           </Table>
+          {none.length > 0 ? (
+            <p className="text-small text-ink-muted">
+              None yet: {none.map((name, index) => (index === 0 ? name : name.charAt(0).toLowerCase() + name.slice(1))).join(", ")}.
+            </p>
+          ) : null}
           {stale > 0 ? (
             <p className="text-small text-ink-muted">
               {staleLine(stale)}{" "}

@@ -17,6 +17,7 @@ import { gzipSync } from "node:zlib";
 import { buildPbf } from "../../apps/server/test/fixtures/layers/builders.ts";
 import { createGeofabrikStandIn } from "../../apps/server/test/fixtures/layers/geofabrik-stand-in.ts";
 import { serveOurAirportsStandIn } from "../../apps/server/test/fixtures/layers/ourairports-stand-in.ts";
+import { buildArchive, fakeTile, worldTiles } from "../../apps/server/test/fixtures/maps/archive.ts";
 import { createImageryStandIn } from "../../apps/server/test/fixtures/maps/imagery-stand-in.ts";
 import { createOsNamesStandIn } from "../../apps/server/test/fixtures/maps/os-names-sample.ts";
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
@@ -81,6 +82,32 @@ const geofabrik = createGeofabrikStandIn();
     dated: ["261121"],
   });
 }
+// A map source for Map data's update (map-data.spec.ts): one made-up planet to zoom 6, served by
+// byte range under any daily build's name (/maps/20261122.pmtiles), as the Protomaps builds are.
+const planet = buildArchive({
+  tiles: worldTiles(6, () => false).map((tile) => ({ ...tile, data: fakeTile(`stand-in:${tile.z}/${tile.x}/${tile.y}`) })),
+  metadata: { name: "Stand-in planet", attribution: "Made up for the tests" },
+  rootBudget: 300,
+  minLeafSize: 64,
+}).bytes;
+function servePlanet(request, response) {
+  const match = /^bytes=(\d+)-(\d+)$/.exec(request.headers.range ?? "");
+  const headers = { "content-type": "application/octet-stream", etag: '"stand-in"' };
+  if (!match) {
+    response.writeHead(200, { ...headers, "content-length": String(planet.length) });
+    return response.end(request.method === "HEAD" ? undefined : planet);
+  }
+  const start = Number(match[1]);
+  const end = Math.min(Number(match[2]), planet.length - 1);
+  if (start >= planet.length) return response.writeHead(416, { "content-range": `bytes */${planet.length}` }).end();
+  const slice = planet.subarray(start, end + 1);
+  response.writeHead(206, {
+    ...headers,
+    "content-range": `bytes ${start}-${end}/${planet.length}`,
+    "content-length": String(slice.length),
+  });
+  response.end(slice);
+}
 const voacapHome = path.resolve(import.meta.dirname, "../../engines/voacap");
 const voacapFiles = new Set(JSON.parse(fs.readFileSync(path.join(voacapHome, "coefficients.json"), "utf8")).files.map((file) => file.path));
 const repeaterSource = createRepeaterSourceStandIn();
@@ -111,6 +138,7 @@ http
     // OurAirports' airports.csv and airport-frequencies.csv (apps/server/test/fixtures/layers).
     if (request.url?.startsWith("/ourairports/")) return serveOurAirportsStandIn(request, response);
     if (request.url?.startsWith("/geofabrik/")) return geofabrik.handle(request, response, "/geofabrik");
+    if (/^\/maps\/\d{8}\.pmtiles$/.test(request.url ?? "")) return servePlanet(request, response);
     if (request.url?.startsWith("/os-downloads/") || request.url?.startsWith("/os-files/")) return osNames.handle(request, response);
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);

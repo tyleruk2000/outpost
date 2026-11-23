@@ -29,7 +29,6 @@ import { MoveItemsDialog } from "@/features/manage/item-dialogs";
 import { detailLabel } from "../panels/add-region";
 import { useUpdateRoadNetwork } from "../road-route/data";
 import { RemoveDialog, removable } from "./remove-dialog";
-import { UpdatesDialog } from "./update-dialog";
 import { dayText, isHere, KIND_NAMES, overAYearOld, readyFacts, stateLine, WHILE_AWAY } from "./words";
 
 /** What the rows need beside the item itself, read once for the whole screen. */
@@ -43,6 +42,11 @@ export interface RowContext {
   data?: MapDataResponse;
   /** Kept country files with a newer one for the same region, by key, with that newer one. */
   older?: Map<string, MapDataItem>;
+  /**
+   * Opens Update for one thing. The dialog is the screen's, not the row's: an update that
+   * finishes while it is open replaces the row, and the dialog must stay to say so.
+   */
+  onUpdate?: (item: MapDataItem) => void;
 }
 
 /** The camera that shows a box: its middle, at a zoom where it fills the view. */
@@ -87,7 +91,7 @@ export const movable = (item: MapDataItem) =>
 const updatableHere = (item: MapDataItem) => isHere(item) && Boolean(item.update) && item.update?.how !== "elsewhere";
 
 function ItemMenu({ item, context }: { item: MapDataItem; context: RowContext }) {
-  const [open, setOpen] = useState<"remove" | "move" | "update" | null>(null);
+  const [open, setOpen] = useState<"remove" | "move" | null>(null);
   const reread = useUpdateRoadNetwork();
   const packs = usePacks(item.kind === "places" && item.packId !== null);
   const pack = packs.data?.find((each) => each.id === item.packId);
@@ -95,7 +99,7 @@ function ItemMenu({ item, context }: { item: MapDataItem; context: RowContext })
   const details = item.downloadId ? `/downloads/${item.downloadId}` : item.taskId ? `/downloads/tasks/${item.taskId}` : null;
   const canRemove = removable(item);
   const canMove = movable(item);
-  const canUpdate = updatableHere(item) && context.data !== undefined;
+  const canUpdate = updatableHere(item) && context.onUpdate !== undefined;
   // A network built from a file of the person's own: read that file again.
   const canReread = item.kind === "roads" && item.networkId !== null && item.regionId === null && item.state !== "processing";
   const canUpdatePlaces =
@@ -131,7 +135,7 @@ function ItemMenu({ item, context }: { item: MapDataItem; context: RowContext })
             </MenuItem>
           ) : null}
           {canUpdate ? (
-            <MenuItem onSelect={() => setOpen("update")}>
+            <MenuItem onSelect={() => context.onUpdate?.(item)}>
               <RefreshCw /> Update…
             </MenuItem>
           ) : null}
@@ -163,15 +167,6 @@ function ItemMenu({ item, context }: { item: MapDataItem; context: RowContext })
       {canRemove ? <RemoveDialog item={item} open={open === "remove"} onOpenChange={(next) => setOpen(next ? "remove" : null)} /> : null}
       {canMove ? (
         <MoveItemsDialog items={[asManaged(item)]} open={open === "move"} onOpenChange={(next) => setOpen(next ? "move" : null)} />
-      ) : null}
-      {canUpdate && context.data ? (
-        <UpdatesDialog
-          items={[item]}
-          data={context.data}
-          open={open === "update"}
-          onOpenChange={(next) => setOpen(next ? "update" : null)}
-          onUpdatePlaces={context.onUpdatePlaces}
-        />
       ) : null}
     </>
   );

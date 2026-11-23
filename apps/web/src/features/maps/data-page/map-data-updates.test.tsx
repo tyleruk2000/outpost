@@ -120,7 +120,7 @@ describe("Storage › Map data", () => {
     expect(row("Maps to look at")).toHaveTextContent(/Internal storage.*1 item.*3\.00 GB/);
     expect(row("Roads for routes")).toHaveTextContent(/Outpost's own data.*1 item.*30\.0 MB/);
     expect(row("Country files")).toHaveTextContent(/NAS.*1 item.*2\.20 GB/);
-    expect(row("Hills and heights")).toHaveTextContent(/None yet/);
+    expect(screen.getByText(/None yet: Hills and heights, place names, places to find, satellite pictures\./)).toBeInTheDocument();
     expect(within(table).getByRole("link", { name: "Country files" })).toHaveAttribute("href", "/maps/data#country-files");
     expect(screen.getByRole("link", { name: "Manage map data" })).toHaveAttribute("href", "/maps/data");
     expect(screen.getByText(/2 things are over a year old\./)).toBeInTheDocument();

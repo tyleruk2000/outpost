@@ -91,7 +91,7 @@ function DownloadAgain({ item }: { item: MapDataItem }) {
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
-          variant={found ? "secondary" : "primary"}
+          variant={found ? undefined : "primary"}
           className={small}
           loading={check.isPending}
           onClick={() => item.collectionId && check.mutate(item.collectionId)}
@@ -258,7 +258,7 @@ export function UpdatesDialog({
         size="lg"
       >
         <DialogBody>
-          <Rows aria-label={one ? "What updating it takes" : "What is over a year old"}>
+          <Rows aria-label={one ? "What updating it takes" : "What is over a year old"} className="border-y-0">
             {shown.map((item) => (
               <UpdateEntry key={item.key} item={item} data={data} onUpdatePlaces={onUpdatePlaces} />
             ))}

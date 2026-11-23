@@ -162,6 +162,16 @@ runs as a task under **Downloads and tasks**. It never overwrites. Each file is 
 before the original is deleted; anything stopped part-way leaves the original as it
 was. What cannot be moved is listed with the reason.
 
+## Map data
+
+The **Map data** section lists what the maps keep by what it is for: maps to look at, hills
+and heights, place names, places to find, roads for routes, country files and satellite
+pictures, each with where it is, how many and how large. Each kind leads to its part of
+**Maps → Map data**, where it is moved, updated and removed; **Manage map data** goes there
+too. Roads for routes are kept with Outpost's own data, not on a storage location, and do not
+move. When something is over a year old, the section says so. See
+[updating map data](maps.md#updating-map-data).
+
 ## Checking files
 
 **Check files** on a collection's page compares it with the checksum recorded at

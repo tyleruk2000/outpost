@@ -255,7 +255,8 @@ export default function MapDataPage() {
   const [getting, setGetting] = useState<{ initial: ReferenceEstimateRequest | null } | null>(null);
   const [importing, setImporting] = useState(false);
   const [names, setNames] = useState(false);
-  const [reviewing, setReviewing] = useState(false);
+  // Review updates ("review"), or Update for one thing from its row's menu.
+  const [reviewing, setReviewing] = useState<"review" | MapDataItem | null>(null);
 
   // Arriving to do something: /maps/data?add=1&country=GB&kinds=roads, ?get=places, ?names=1.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival
@@ -277,6 +278,7 @@ export default function MapDataPage() {
       onUpdatePlaces: (initial) => setGetting({ initial }),
       data: data.data,
       older: olderFiles(data.data?.countryFiles ?? []),
+      onUpdate: (item) => setReviewing(item),
     }),
     [downloads.data, jobs.data, overview.data, data.data],
   );
@@ -373,7 +375,7 @@ export default function MapDataPage() {
           <p className="text-small text-ink">
             {staleLine(stale.length)} <span className="text-ink-muted">Nothing is checked or downloaded until you ask.</span>
           </p>
-          <Button size="sm" onClick={() => setReviewing(true)} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
+          <Button size="sm" onClick={() => setReviewing("review")} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
             Review updates
           </Button>
         </div>
@@ -457,13 +459,13 @@ export default function MapDataPage() {
       <ImportDialog open={importing} onOpenChange={setImporting} />
       {answer ? (
         <UpdatesDialog
-          review
-          items={stale}
+          review={reviewing === "review"}
+          items={reviewing === "review" || reviewing === null ? stale : [reviewing]}
           data={answer}
-          open={reviewing}
-          onOpenChange={setReviewing}
+          open={reviewing !== null}
+          onOpenChange={(open) => !open && setReviewing(null)}
           onUpdatePlaces={(initial) => {
-            setReviewing(false);
+            setReviewing(null);
             setGetting({ initial });
           }}
         />
