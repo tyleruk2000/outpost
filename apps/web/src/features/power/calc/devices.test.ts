@@ -11,12 +11,24 @@ import {
   type CommonDevice,
   convertedValue,
   DEVICE_GROUPS,
+  newPowerPlan,
   type PublishedFigure,
   USB_CHARGING,
   USB_CONVERTER,
 } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
-import { changedSince, figureKind, loadFromEntry, type MixSetting, withLowerOutput, withState, withTransmit, workOutMix } from "./devices";
+import {
+  BANK_ENTRIES,
+  batteryFromEntry,
+  changedSince,
+  figureKind,
+  loadFromEntry,
+  type MixSetting,
+  withLowerOutput,
+  withState,
+  withTransmit,
+  workOutMix,
+} from "./devices";
 import { loadDailyWh } from "./plan";
 
 function figuresOf(entry: CommonDevice): PublishedFigure[] {
@@ -126,6 +138,36 @@ describe("the library of common devices", () => {
     expect(USB_CONVERTER.basis).toMatch(/MEAN WELL, SD-25A-5/);
     for (const item of CHARGING_SAFETY)
       expect(item.url).toMatch(/^https:\/\/www\.(gov\.uk|london-fire\.gov\.uk|electricalsafetyfirst\.org\.uk)\//);
+  });
+
+  it("gives a battery bank only to batteries and power stations, whose pack figures agree with their watt-hours", () => {
+    expect(BANK_ENTRIES.length).toBeGreaterThan(5);
+    for (const item of BANK_ENTRIES) {
+      expect(item.group, item.id).toBe("batteries");
+      if (item.bank.volts && item.bank.ampHours) expect(item.bank.volts * item.bank.ampHours, item.id).toBeCloseTo(item.battery.value, 6);
+    }
+  });
+});
+
+describe("a battery or power station as a plan's battery bank", () => {
+  const start = newPowerPlan("x").battery;
+  const station = (id: string) => BANK_ENTRIES.find((item) => item.id === id)!;
+
+  it("takes the maker's pack volts and amp-hours where given", () => {
+    const battery = batteryFromEntry(station("anker-solix-c2000-gen2"), { ...start, series: 2, parallel: 3, maxDischargeA: 50 });
+    expect(battery).toMatchObject({ chemistry: "lifepo4", volts: 51.2, ampHours: 40, series: 1, parallel: 1, maxDischargeA: 50 });
+  });
+
+  it("otherwise keeps the chemistry's volts and works the amp-hours out from the maker's watt-hours", () => {
+    const battery = batteryFromEntry(station("ecoflow-river-2"), start);
+    expect(battery.volts).toBe(12.8);
+    expect(battery.volts * battery.ampHours).toBeCloseTo(256, 1);
+  });
+
+  it("keeps the plan's chemistry where the maker names none", () => {
+    const battery = batteryFromEntry(station("anker-solix-c1000-gen2"), { ...start, chemistry: "agm", volts: 12, usableDod: 0.5 });
+    expect(battery).toMatchObject({ chemistry: "agm", volts: 12, usableDod: 0.5 });
+    expect(battery.volts * battery.ampHours).toBeCloseTo(1024, 1);
   });
 });
 

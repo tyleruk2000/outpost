@@ -45,7 +45,7 @@ acid is rated at its 20-hour rate) and devices drawing less as they fill.
 
 ### Solar output and charging
 
-A day's output = panel watts × peak sun hours × (1 − losses) × temperature factor ×
+It starts with no panels: give the watts of yours. A day's output = panel watts × peak sun hours × (1 − losses) × temperature factor ×
 controller. The losses are PVWatts' ten, each changeable, 14.08% combined to start
 (soiling 2%, shading 3%, mismatch 2%, wiring 2%, connections 0.5%, light-induced
 degradation 1.5%, nameplate 1%, availability 3%, snow and age 0%). Temperature costs 0.47%
@@ -65,7 +65,11 @@ BS 7671.
 
 ### Batteries, generators and electronics
 
-- **Series and parallel**: series adds volts, parallel adds amp-hours. Use batteries of the
+- **Series and parallel**: series adds volts, parallel adds amp-hours. A plan's battery
+  bank is drawn as it is joined (each battery's + to the next one's − along a string, the
+  strings + to + and − to −), with the bank's volts, amp-hours and watt-hours; a bank wider
+  than four or more than four strings is drawn as one box, such as "8S3P". The PDF has the
+  same drawing. Use batteries of the
   same model, capacity, age and charge; lithium needs a BMS and the maker's permission;
   fuse each battery or string as the maker says.
 - **Generator fuel**: from your data sheet's tank size and run times. With only one run
@@ -79,6 +83,9 @@ present, don't overload extension leads, and keep a generator outdoors, at least
 away.
 
 ## Power plans
+
+A new plan starts with one 100 Ah LiFePO4 battery and nothing else: no loads, no solar, no
+generator. The Charging section says so until you add what you have.
 
 A plan holds a battery bank, loads, an inverter, solar, an optional generator or charger,
 and the cable's rated current. It saves itself as you go. If another tab or device saved it
@@ -157,10 +164,27 @@ screen, and erased with everything else.
 
 ## Common devices
 
-The library comes with Outpost: Raspberry Pis, phones and things you charge, radios and
-receivers, network equipment, and lights, a cool box, a kettle and a microwave. Every figure
-is from the maker's own documents or an official body, read on 16 November 2026, never a
-retailer or review.
+The library comes with Outpost, in these groups. Every figure is from the maker's own
+documents or an official body, read on 16 or 23 November 2026, never a retailer or review.
+
+| Group | What is in it |
+| --- | --- |
+| Raspberry Pi and computers | Pi 5, 500, 4, 400, 3B+, 3B, Zero 2 W; the camera, case fan and displays |
+| Phones and things you charge | iPhones, Pixel 10, 9a, 9 and 8, Galaxy S25, iPads, MacBook Airs; Anker power banks (25K, 737, Nano 10K); head torches (Petzl CORE and SWIFT RL, Fenix HM65R); eneloop AA and AAA; a BioLite lantern; handheld radios' batteries (Yaesu, Icom, Kenwood, Baofeng, AnyTone, Elecraft, Xiegu); Garmin inReach Mini 2; emergency radios |
+| Cells, batteries and power stations | 18650 and 21700 cells (Murata VTC6, Molicel P28A and P42A); two vapes with built-in batteries (VOOPOO ARGUS G3, GeekVape Aegis Hero 5); a Victron 12,8 V 100 Ah LiFePO4 battery; power stations (Anker SOLIX C2000 Gen 2, C1000 Gen 2, C1000, C800, C300, C300 DC; Jackery Explorer 1000 v2, 2000 Plus, 300 Plus; EcoFlow RIVER 2; Goal Zero Yeti 500); a Victron MPPT controller's own draw |
+| Radios | HF: Yaesu FT-891, FT-710, FT-991A, FT-818ND; Icom IC-705, IC-7300, IC-7100, IC-7610, IC-9700; Elecraft KX2, KX3; Xiegu X6100, G90S; (tr)uSDX. VHF/UHF: Yaesu FT-60, FT-65, FT-70D, FT5DR, FT-2980, FTM-6000; Icom ID-52; Kenwood TH-D75; Baofeng UV-5R. Meshtastic nodes (Heltec V3, RAK4631), SDR dongles, a shortwave receiver, a CB set |
+| Internet, network and screens | Routers, mesh, switches, NAS boxes, a monitor; Starlink Mini and Standard |
+| Light, warmth, food and health | A LED bulb, a cool box, a kettle, a microwave, a USB fan, a diesel air heater (its electricity), CPAP guides |
+
+Search by a common name as well as a model: "G90", "vape", "18650", "power station",
+"head torch", "starlink".
+
+**A battery or power station as a plan's battery.** In a plan's **Battery bank**, **Start
+from** sets one battery from the library: its maker's watt-hours, and its volts and
+amp-hours where the maker gives them (otherwise the chemistry's volts, with the amp-hours
+that make the watt-hours). A power station's own inverter limits, charging and solar
+input are given with its entry; they are the maker's, for the model sold in the US unless
+it says otherwise.
 
 - A figure that is only a maximum or a supply's rating is "at most", and answers using it
   "at least".
@@ -170,10 +194,16 @@ retailer or review.
   says that it and your clinician govern.
 - A kettle and a microwave are there to show what an inverter must supply.
 
-Left out for want of a maker's figure, among others: Yaesu FT-817ND and FT-818ND, Baofeng
-UV-5R, Quansheng UV-K5, PMR446 handhelds, most CB sets, Airspy receivers, Raspberry Pi
-accessories beyond the camera and fan, Apple Watch, Kindle, and most broadband hubs. Add
-any of these from its label as your own device.
+- The first Xiegu G90 has no manual from Xiegu; searching "G90" finds the G90S, the
+  nearest figure. The Kenwood TH-D75's transmit table is hard to read, so the higher
+  current is taken. Jackery's 1000 v2 page gives two capacities; the lower is used.
+- A vape's entry is a battery to charge, nothing more.
+
+Left out for want of a maker's figure, among others: Yaesu FT-817ND, Quansheng UV-K5
+(only its transmit current is published), AnyTone radios' current (only their batteries),
+PMR446 handhelds, most CB sets, Airspy receivers, Samsung and LG cells (their makers
+publish no datasheets), CR123A cells (not recharged, so not a charge), Apple Watch, Kindle,
+iPhone 15, and most broadband hubs. Add any of these from its label as your own device.
 
 Product names are their owners' trade marks, used only to say which device a figure is
 for. Outpost is not connected with or endorsed by any of them.

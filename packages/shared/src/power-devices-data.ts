@@ -812,7 +812,7 @@ const RADIOS: CommonDevice[] = [
     aliases: ["xiegu", "g90", "hf", "transceiver"],
     mode: "ssb",
     hoursPerDay: 2,
-    note: "For the G90S. Xiegu publishes no manual for the first G90.",
+    note: "For the G90S. Xiegu publishes no manual for the first G90 (its download page has the G90S and G90N manuals only); the G90S is the nearest figure for it.",
     receive: amps(
       0.7,
       16.5,
@@ -1638,6 +1638,801 @@ const HOME: CommonDevice[] = [
   },
 ];
 
+// ── Cells, batteries and power stations (read 23 November 2026) ─────────────
+
+const READ_2 = "2026-11-23";
+const sourceRead = (publisher: string, document: string, url: string): DeviceSource => ({ publisher, document, url, read: READ_2 });
+/** A wattage as published. */
+const watts = (w: number, basis: Basis, quote: string, from = 0, note?: string): PublishedFigure => ({
+  value: w,
+  as: { watts: w },
+  basis,
+  quote,
+  source: from,
+  ...(note ? { note } : {}),
+});
+const BU_303_LATER = sourceRead(
+  "Battery University (Cadex Electronics)",
+  "BU-303: Confusion with Voltages",
+  "https://batteryuniversity.com/article/bu-303-confusion-with-voltages",
+);
+
+function cellOrPack(
+  id: string,
+  name: string,
+  battery: PublishedFigure,
+  sources: DeviceSource[],
+  aliases: string[],
+  note: string,
+  bank?: ChargeEntry["bank"],
+  supply: ChargeEntry["supply"] = "usb",
+): ChargeEntry {
+  return { id, name, group: "batteries", aliases, kind: "charge", supply, battery, sources, note, ...(bank ? { bank } : {}) };
+}
+
+const CELL_ALIASES = ["vape", "vape battery", "e-cigarette", "torch", "li-ion", "lithium", "cell", "rechargeable"];
+const ONE_CELL = "One cell, charged in a charger or in the device it powers: give how many.";
+const STATION_ALIASES = ["power station", "solar generator", "portable battery", "battery", "inverter"];
+const STATION_NOTE = (words: string) =>
+  `${words} To run a plan on it, choose it as the plan's battery bank; the limits of its own inverter and outputs are the maker's, given here.`;
+
+const BATTERIES: CommonDevice[] = [
+  // Lithium-ion cells: the 18650 and 21700 sizes used in vapes, torches and battery packs.
+  cellOrPack(
+    "cell-murata-vtc6",
+    "18650 cell: Sony/Murata US18650VTC6",
+    mah(
+      3120,
+      3.6,
+      "Nominal Capacity* 3120 mAh; Nominal Voltage 3.6 V",
+      0,
+      "Murata also gives “Rated (minimum) Capacity* 3000 mAh”, discharged at 0.2 ItA (600 mA) to 2.0 V at 23 °C.",
+    ),
+    [
+      sourceRead(
+        "Murata Manufacturing Co., Ltd.",
+        "Cylindrical Type Lithium Ion Secondary Battery US18650VTC6, datasheet, Version 001",
+        "https://www.murata.com/-/media/webrenewal/products/batteries/cylindrical/datasheet/us18650vtc6-product-datasheet.ashx",
+      ),
+    ],
+    ["18650", "vtc6", "sony", "murata", ...CELL_ALIASES],
+    ONE_CELL,
+  ),
+  cellOrPack(
+    "cell-molicel-p28a",
+    "18650 cell: Molicel INR-18650-P28A",
+    mah(2800, 3.6, "Capacity Typical 2800 mAh; Cell Voltage Nominal 3.6 V", 0, "Molicel also gives “Minimum 2600 mAh”."),
+    [
+      sourceRead(
+        "E-One Moli Energy (Molicel)",
+        "Product data sheet, model INR-18650-P28A, lithium-ion rechargeable battery (V1)",
+        "https://www.molicel.com/wp-content/uploads/INR18650P28A-V1-80093.pdf",
+      ),
+    ],
+    ["18650", "p28a", "molicel", ...CELL_ALIASES],
+    ONE_CELL,
+  ),
+  cellOrPack(
+    "cell-molicel-p42a",
+    "21700 cell: Molicel INR-21700-P42A",
+    mah(4200, 3.6, "Nominal Voltage 3.6 V Typical Capacity 4.2 Ah"),
+    [sourceRead("E-One Moli Energy (Molicel)", "INR-21700-P42A, product page", "https://www.molicel.com/product/inr-21700-p42a/")],
+    ["21700", "p42a", "molicel", ...CELL_ALIASES],
+    ONE_CELL,
+  ),
+  // Vapes with a built-in battery, charged over USB-C.
+  cellOrPack(
+    "vape-voopoo-argus-g3",
+    "Vape with a built-in battery: VOOPOO ARGUS G3",
+    mah(1500, 3.6, "Battery Capacity: 1500 mAh", 0, NOMINAL_LI_ION),
+    [sourceRead("VOOPOO", "ARGUS G3, product page", "https://www.voopoo.com/argus-series/argus-g3"), BU_303_LATER],
+    ["vape", "e-cigarette", "ecig", "pod", "mod", "voopoo", "argus"],
+    "A battery to charge. VOOPOO gives “Charging: Type-C 5V/2A”: up to 10 W from a USB supply.",
+  ),
+  cellOrPack(
+    "vape-geekvape-aegis-hero-5",
+    "Vape with a built-in battery: GeekVape Aegis Hero 5",
+    mah(2000, 3.6, "the battery capacity has increased by more than 40% , reaching 2000mAh.", 0, NOMINAL_LI_ION),
+    [sourceRead("Geekvape", "Aegis Hero 5 Pod Kit, product page", "https://www.geekvape.com/product/aegis-hero-5/"), BU_303_LATER],
+    ["vape", "e-cigarette", "ecig", "pod", "mod", "geekvape", "aegis"],
+    "A battery to charge. GeekVape speaks of “the 5V/2A fast charging function”: up to 10 W from a USB supply.",
+  ),
+  // A battery and power stations a plan can start from.
+  cellOrPack(
+    "victron-lifepo4-smart-12v-100ah",
+    "Victron Lithium Battery Smart 12,8 V 100 Ah (LiFePO4)",
+    wh(
+      1280,
+      "Nominal voltage 12,8 V; Nominal capacity @ 25 °C* 100 Ah; Nominal energy @ 25 °C* 1280 Wh",
+      0,
+      "At 0 °C Victron gives 80 Ah, at −20 °C 50 Ah.",
+    ),
+    [
+      sourceRead(
+        "Victron Energy",
+        "12,8 & 25,6 Volt Lithium-Iron-Phosphate Batteries Smart, datasheet",
+        "https://www.victronenergy.com/upload/documents/Datasheet-12,8-&-25,6-Volt-lithium-iron-phosphate-batteries-Smart-EN.pdf",
+      ),
+    ],
+    ["victron", "lifepo4", "lithium", "leisure battery", "12v", "battery"],
+    "A 12 V battery for a system of your own: choose it as a plan's battery bank.",
+    { chemistry: "lifepo4", volts: 12.8, ampHours: 100 },
+    "dc",
+  ),
+  cellOrPack(
+    "anker-solix-c2000-gen2",
+    "Anker SOLIX C2000 Gen 2 power station",
+    wh(2048, "Cell Capacity: 51.2V / 40000mAh / 2,048Wh; Battery Type: LFP"),
+    [
+      sourceRead(
+        "Anker Innovations (Anker SOLIX)",
+        "Anker SOLIX C2000 Gen 2 Portable Power Station, product page (US)",
+        "https://www.ankersolix.com/products/c2000-gen2",
+      ),
+    ],
+    ["anker", "solix", "c2000", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Anker: “The AC output delivers 2,400W continuous power and can handle peak power up to 4,000W”; AC charging 1,800 W, “100% in 88 Min”; solar 11–60 V, 800 W; two USB-C at 140 W. US model, 120 V.",
+    ),
+    { chemistry: "lifepo4", volts: 51.2, ampHours: 40 },
+    "ac",
+  ),
+  cellOrPack(
+    "anker-solix-c1000-gen2",
+    "Anker SOLIX C1000 Gen 2 power station",
+    wh(1024, "Capacity: 1,024Wh"),
+    [
+      sourceRead(
+        "Anker Innovations (Anker SOLIX)",
+        "Anker SOLIX C1000 Gen 2 Portable Power Station, product page (US)",
+        "https://www.ankersolix.com/products/c1000-gen2",
+      ),
+    ],
+    ["anker", "solix", "c1000", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Anker: “2,000W continuous power, 3,000W peak output”; AC charging 1,200 W (1,600 W in UltraFast mode, “100% ultrafast recharging in 49 min”); solar up to 600 W, 11–60 V; USB-C up to 140 W. The page does not name the chemistry. US model, 120 V.",
+    ),
+    { chemistry: null, volts: null, ampHours: null },
+    "ac",
+  ),
+  cellOrPack(
+    "anker-solix-c1000",
+    "Anker SOLIX C1000 power station",
+    wh(1056, "Capacity: 1056Wh; Battery Type: LiFePO4 (Lithium Iron Phosphate)"),
+    [
+      sourceRead(
+        "Anker Innovations (Anker SOLIX)",
+        "Anker SOLIX C1000X Portable Power Station, product page (US), its specification for the “C1000 Portable Power Station”",
+        "https://www.ankersolix.com/products/a1761111",
+      ),
+    ],
+    ["anker", "solix", "c1000", "c1000x", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Anker: “AC Continuous Output: 1800W Pure Sine Wave; AC Surge Output: 2400W”; AC charging up to 1,300 W, “0-100% in 58 mins”; solar up to 600 W, 11–60 V; USB-C 100 W and 30 W. US model, 120 V.",
+    ),
+    { chemistry: "lifepo4", volts: null, ampHours: null },
+    "ac",
+  ),
+  cellOrPack(
+    "anker-solix-c800",
+    "Anker SOLIX C800 power station",
+    wh(768, "Capacity: 768Wh; Battery Chemistry: LiFePO4"),
+    [
+      sourceRead(
+        "Anker Innovations (Anker SOLIX)",
+        "Anker SOLIX C800 Portable Power Station, product page (US, refurbished listing; the new model's page has gone)",
+        "https://www.ankersolix.com/products/c800-refurbished",
+      ),
+    ],
+    ["anker", "solix", "c800", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Anker: “AC Rated Output: 1,200W; AC Surge Output: 1,920W”; AC charging 1,100 W, “a full recharge in 58 minutes” in UltraFast mode; solar up to 300 W, 11–60 V; USB-C 100 W and 30 W. US model, 120 V.",
+    ),
+    { chemistry: "lifepo4", volts: null, ampHours: null },
+    "ac",
+  ),
+  cellOrPack(
+    "anker-solix-c300",
+    "Anker SOLIX C300 power station",
+    wh(288, "Cell Capacity 288Wh"),
+    [
+      sourceRead(
+        "Anker Innovations (Anker SOLIX)",
+        "Anker SOLIX C300 (A1722) user manual",
+        "https://cdn.shopify.com/s/files/1/0493/9834/9974/files/A1722_V1_US_EN_UM_Web_20240814.pdf",
+      ),
+      sourceRead(
+        "Anker Innovations (Anker SOLIX)",
+        "Anker SOLIX C300 Portable Power Station, product page (US)",
+        "https://www.ankersolix.com/products/c300",
+      ),
+    ],
+    ["anker", "solix", "c300", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Anker: AC “300W Max”, 600 W surge (product page); AC charging “330W Max”; solar 11–28 V, 100 W; USB-C up to 140 W, and it charges over USB-C at 140 W. LiFePO4 (product page). US model, 120 V.",
+    ),
+    { chemistry: "lifepo4", volts: null, ampHours: null },
+    "ac",
+  ),
+  cellOrPack(
+    "anker-solix-c300-dc",
+    "Anker SOLIX C300 DC power station (no mains sockets)",
+    wh(288, "Cell Capacity 288Wh"),
+    [
+      sourceRead(
+        "Anker Innovations (Anker SOLIX)",
+        "Anker SOLIX C300 DC (A1726) user manual",
+        "https://cdn.shopify.com/s/files/1/0493/9834/9974/files/TEM_A1726_V1_EN_UM_Web_20240913.pdf",
+      ),
+    ],
+    ["anker", "solix", "c300", "power bank", ...STATION_ALIASES],
+    "No AC sockets: “Total Output 300W” over USB and a car socket. Charged over two 140 W USB-C ports, or solar at 11–28 V, 100 W.",
+    { chemistry: "lifepo4", volts: null, ampHours: null },
+    "usb",
+  ),
+  cellOrPack(
+    "jackery-explorer-1000-v2",
+    "Jackery Explorer 1000 v2 power station",
+    wh(
+      1024,
+      "1024 Wh Capacity; Capacity 1024 Wh (20Ah/51.2V DC); Cell Chemistry LiFePO4",
+      0,
+      "Jackery's page is not consistent: other specification blocks on it give “30.4Ah/35.2V DC (1070 Wh)”. The headline figure, the lower one, is used.",
+    ),
+    [sourceRead("Jackery", "Jackery Explorer 1000 v2, product page (US)", "https://www.jackery.com/products/jackery-explorer-1000-v2")],
+    ["jackery", "explorer", "1000", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Jackery: “AC Total Output 1500W Rated, 3000W Surge peak”; “Charging Time AC Adapter 1.58 Hours”; solar through two 8 mm ports, up to 400 W; USB-C 100 W and 30 W. US model, 120 V.",
+    ),
+    { chemistry: "lifepo4", volts: 51.2, ampHours: 20 },
+    "ac",
+  ),
+  cellOrPack(
+    "jackery-explorer-2000-plus",
+    "Jackery Explorer 2000 Plus power station",
+    wh(2042, "(2042Wh Capacity) … Outstanding LiFePO4 Battery with 10-Year Lifespan"),
+    [
+      sourceRead(
+        "Jackery",
+        "Jackery Explorer 2000 Plus Portable Power Station (refurbished listing, US; the new model's page has gone)",
+        "https://www.jackery.com/products/jackery-explorer-2000-plus-portable-power-station-refurbished",
+      ),
+    ],
+    ["jackery", "explorer", "2000", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Jackery: appliances “not exceeding 3000W”; two USB-C at 100 W. The page's specification table could not be read, so no charging or solar figures are given here.",
+    ),
+    { chemistry: "lifepo4", volts: null, ampHours: null },
+    "ac",
+  ),
+  cellOrPack(
+    "jackery-explorer-300-plus",
+    "Jackery Explorer 300 Plus power station",
+    wh(288, "a large 288Wh capacity and strong 300W output … Durable LFP (LiFePO4) batteries"),
+    [
+      sourceRead(
+        "Jackery",
+        "Jackery Explorer 300 Plus, product page (Canada; discontinued)",
+        "https://ca.jackery.com/products/jackery-explorer-300-plus-portable-power-station",
+      ),
+      sourceRead(
+        "Jackery",
+        "Explorer 300 Plus, product page (UK)",
+        "https://uk.jackery.com/products/explorer-300-plus-portable-power-station",
+      ),
+    ],
+    ["jackery", "explorer", "300", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Jackery: “300W AC Pure Sine Wave Inverter (600W Surge Peak)” (UK page); “Wall Charging(80%) : 1.35 Hrs”; solar up to 100 W; “100W USB-C Input & Output”.",
+    ),
+    { chemistry: "lifepo4", volts: null, ampHours: null },
+    "ac",
+  ),
+  cellOrPack(
+    "ecoflow-river-2",
+    "EcoFlow RIVER 2 power station",
+    wh(256, "256Wh Capacity … LFP Battery Chemistry"),
+    [
+      sourceRead(
+        "EcoFlow",
+        "EcoFlow RIVER 2 Portable Power Station, product page (US)",
+        "https://www.ecoflow.com/us/river-2-portable-power-station",
+      ),
+    ],
+    ["ecoflow", "river", ...STATION_ALIASES],
+    STATION_NOTE(
+      "EcoFlow: “RIVER 2 has a rated power of 300W, X-Boost 600W” (X-Boost is not a surge rating); “AC Charging in 60 min”. US model, 120 V.",
+    ),
+    { chemistry: "lifepo4", volts: null, ampHours: null },
+    "ac",
+  ),
+  cellOrPack(
+    "goal-zero-yeti-500",
+    "Goal Zero Yeti 500 power station",
+    wh(499.2, "Battery Pack Capacity: 499.2 Wh (25.6 V, 20 Ah)"),
+    [
+      sourceRead(
+        "Goal Zero",
+        "Goal Zero YETI 500 Portable Power Station 499Wh LiFePO4 Battery, product page",
+        "https://goalzero.com/products/yeti-500-portable-power-station-lfp-battery",
+      ),
+    ],
+    ["goal zero", "yeti", ...STATION_ALIASES],
+    STATION_NOTE(
+      "Goal Zero: “AC (Inverter)(pure sine wave): 500 W Continuous, 1000 W Surge, 115 V”. LiFePO4 (the page's title). US model.",
+    ),
+    { chemistry: "lifepo4", volts: 25.6, ampHours: null },
+    "ac",
+  ),
+];
+
+// ── More things to charge and run (read 23 November 2026) ──────────────────
+
+const PIXEL_HELP = sourceRead(
+  "Google",
+  "Pixel phone hardware tech specs (Pixel Phone Help)",
+  "https://support.google.com/pixelphone/answer/7158570?hl=en",
+);
+
+const MORE_CHARGED: CommonDevice[] = [
+  charged(
+    "pixel-9",
+    "Google Pixel 9",
+    mah(4700, 3.6, "Minimum: 4558 mAh Typical: 4700 mAh", 0, NOMINAL_LI_ION),
+    [PIXEL_HELP, BU_303_LATER],
+    ["google", "android", "phone"],
+  ),
+  charged(
+    "pixel-8",
+    "Google Pixel 8",
+    mah(4575, 3.6, "Minimum: 4485 mAh Typical: 4575 mAh", 0, NOMINAL_LI_ION),
+    [PIXEL_HELP, BU_303_LATER],
+    ["google", "android", "phone"],
+  ),
+  charged(
+    "anker-737-24k",
+    "Anker 737 Power Bank (PowerCore 24K)",
+    mah(24000, 3.6, "Total Capacity: 24,000mAh", 0, NOMINAL_LI_ION),
+    [
+      sourceRead("Anker", "Anker 737 Power Bank (PowerCore 24K), A1289, product page", "https://www.anker.com/products/a1289"),
+      BU_303_LATER,
+    ],
+    ["power bank", "battery pack", "anker", "powercore"],
+    "What it holds; Anker does not say how much of it reaches the phones it charges.",
+  ),
+  charged(
+    "anker-nano-10k",
+    "Anker Nano Power Bank (10K, 30W)",
+    mah(10000, 3.6, "Total Capacity: 10,000mAh", 0, NOMINAL_LI_ION),
+    [
+      sourceRead(
+        "Anker",
+        "Anker Nano Power Bank (30W, Built-In USB-C Cable), A1259, product page",
+        "https://www.anker.com/products/a1259-built-in-cable-power-bank-10000mah",
+      ),
+      BU_303_LATER,
+    ],
+    ["power bank", "battery pack", "anker", "nano"],
+    "What it holds; Anker does not say how much of it reaches the phones it charges.",
+  ),
+  charged(
+    "fenix-hm65r-v2",
+    "Fenix HM65R V2.0 head torch battery",
+    mah(
+      3400,
+      3.6,
+      "the included high-capacity 3400mAh battery recharges via an inner-waterproofed USB-C port",
+      0,
+      "Volts: “Fenix ARB-L18 Series 18650* 3.6 V Recommended” (the same page's battery table).",
+    ),
+    [
+      sourceRead(
+        "Fenix Lighting USA",
+        "Fenix HM65R V2.0 Rechargeable Headlamp, product page",
+        "https://www.fenixlighting.com/products/fenix-hm65r-v2-rechargeable-headlamp",
+      ),
+    ],
+    ["head torch", "headlamp", "torch", "fenix", "18650"],
+    "Its 18650 cell (ARB-L18-3400), charged in the torch over USB-C: “approximately 2.5 hours … with a 5 V/1.8 A or above charging adapter”.",
+  ),
+  charged(
+    "petzl-swift-rl",
+    "Petzl SWIFT RL head torch battery",
+    mah(2350, 3.7, "The rechargeable battery, 2350 mAh (3,7 V / 8,69 Wh)"),
+    [
+      sourceRead(
+        "Petzl",
+        "SWIFT RL rechargeable battery (E092DB00), product page",
+        "https://www.petzl.com/INT/en/Professional/Headlamps/SWIFT-RL-Rechargeable-Battery",
+      ),
+    ],
+    ["head torch", "headlamp", "torch", "petzl", "swift"],
+    "Petzl gives “Recharge time 5 h”.",
+  ),
+  charged(
+    "biolite-alpenglow-500",
+    "BioLite AlpenGlow 500 lantern",
+    wh(23.6, "Battery 6400 mAh (23.6 Wh) Li-Ion"),
+    [sourceRead("BioLite", "BioLite AlpenGlow 500, product page", "https://www.bioliteenergy.com/products/alpenglow-500")],
+    ["lantern", "lamp", "light", "biolite", "camping"],
+    "Charged over USB; it can also charge a phone (“1x USB A, 5V / 2.4A”).",
+  ),
+  {
+    id: "xiaomi-mini-fan",
+    name: "USB fan: Xiaomi Rechargeable Mini Fan",
+    group: "home",
+    aliases: ["fan", "usb fan", "xiaomi", "cooling"],
+    kind: "run",
+    supply: "usb",
+    hoursPerDay: 8,
+    note: "Its rating is the most it draws, on the highest speed or while charging; Xiaomi gives “running continuously for 18.5 hours at speed setting 1” on its 4000mAh battery.",
+    states: [{ id: "rated", label: "At most, its rating", figure: watts(10, "at-most", "Rated voltage 5V Rated power 10W") }],
+    sources: [
+      sourceRead(
+        "Xiaomi",
+        "Xiaomi Rechargeable Mini Fan, specifications",
+        "https://www.mi.com/global/product/xiaomi-rechargeable-mini-fan/specs/",
+      ),
+    ],
+  },
+  {
+    id: "starlink-mini",
+    name: "Starlink Mini",
+    group: "connected",
+    aliases: ["starlink", "satellite", "internet", "dish"],
+    kind: "run",
+    supply: "dc",
+    hoursPerDay: 24,
+    note: "Runs from 12 to 48 V DC or a USB-C PD supply of 100 W. More in snow-melt or when heating.",
+    states: [
+      {
+        id: "average",
+        label: "Average, the top of Starlink's range",
+        figure: watts(40, "typical", "Power Consumption Average: 25-40W", 0, "The top of the range is taken."),
+      },
+      { id: "rating", label: "At most, its input rating", figure: watts(60, "at-most", "Input Rating 12-48V 60W") },
+    ],
+    sources: [
+      sourceRead("Starlink (SpaceX)", "Mini specifications, Mini Kit", "https://starlink.com/public-files/specification_sheet_mini.pdf"),
+    ],
+  },
+  {
+    id: "starlink-standard",
+    name: "Starlink Standard",
+    group: "connected",
+    aliases: ["starlink", "satellite", "internet", "dish"],
+    kind: "run",
+    supply: "ac",
+    hoursPerDay: 24,
+    note: "Through its own mains power supply, so through an inverter from a battery.",
+    states: [
+      {
+        id: "average",
+        label: "Average, the top of Starlink's range",
+        figure: watts(100, "typical", "Power Consumption Average: 75 - 100 W", 0, "The top of the range is taken."),
+      },
+    ],
+    sources: [
+      sourceRead(
+        "Starlink (SpaceX)",
+        "Standard 4 X Kit specifications, February 2026",
+        "https://starlink.com/public-files/specification_sheet_standard.pdf",
+      ),
+    ],
+  },
+  {
+    id: "victron-smartsolar-75-15",
+    name: "Solar charge controller: Victron SmartSolar MPPT 75/15",
+    group: "batteries",
+    aliases: ["victron", "mppt", "charge controller", "solar", "regulator"],
+    kind: "run",
+    supply: "dc",
+    hoursPerDay: 24,
+    note: "Its own draw, night and day: small, but always there.",
+    states: [
+      { id: "load-on", label: "Load output on, 12 V", figure: amps(0.019, 12, "typical", "Self-consumption – load on 12 V: 19 mA") },
+      { id: "load-off", label: "Load output off, 12 V", figure: amps(0.01, 12, "typical", "Self-consumption – load off 12 V: 10 mA") },
+    ],
+    sources: [
+      sourceRead(
+        "Victron Energy",
+        "SmartSolar Charge Controllers with load output, MPPT 75/10, 75/15, 100/15, 100/20-48 V, datasheet",
+        "https://www.victronenergy.com/upload/documents/Datasheet-SmartSolar-charge-controller-MPPT-75-10,-75-15,-100-15,-100-20_48V-EN.pdf",
+      ),
+    ],
+  },
+  {
+    id: "webasto-air-top-2000-stc",
+    name: "Diesel air heater: Webasto Air Top 2000 STC",
+    group: "home",
+    aliases: ["heater", "diesel heater", "night heater", "webasto", "warmth", "van"],
+    kind: "run",
+    supply: "dc",
+    hoursPerDay: 8,
+    note: "The electricity it takes to run (its fan, pump and controls), not the heat it gives; more while it starts. Webasto has stopped making it.",
+    states: [
+      {
+        id: "high",
+        label: "Full heat",
+        figure: watts(29, "typical", "Power consumption: 1.25 – 2.45 Amps (14 – 29 Watts)", 0, "The top of the range."),
+      },
+      {
+        id: "low",
+        label: "Lowest heat",
+        figure: watts(14, "typical", "Power consumption: 1.25 – 2.45 Amps (14 – 29 Watts)", 0, "The bottom of the range."),
+      },
+    ],
+    sources: [
+      sourceRead(
+        "Webasto",
+        "Webasto Air Top 2000 STC, product page (US)",
+        "https://www.webasto.com/en-us/heating/air-heaters/air-top-2000-stc.html",
+      ),
+    ],
+  },
+];
+
+// ── More radios (read 23 November 2026) ─────────────────────────────────────
+
+const FT818ND = sourceRead(
+  "Yaesu Musen",
+  "FT-818ND Operating Manual (2003u-ES)",
+  "https://www.yaesu.com/Files/4CB893D7-1018-01AF-FA97E9E9AD48B50C/FT-818ND_OM_ENG_E13772004_2003u-ES-1.pdf",
+);
+const FT5DR = sourceRead(
+  "Yaesu Musen",
+  "FT5DR/FT5DE Operating Manual (EH082M201, 2406d-KS-1)",
+  "https://www.yaesu.com/Files/DFDF4D53-1B78-7375-E6C7A6E4B192BE13/FT5DR_DE_OM_ENG_EH082M201_2406d-KS-1.pdf",
+);
+const THD75 = sourceRead(
+  "JVCKENWOOD Corporation",
+  "TH-D75A/E Operating Tips, 17 May 2024",
+  "https://www.kenwood.com/i/products/info/amateur/pdf/TH-D75AE_IDM.pdf",
+);
+const ICOM_7610 = sourceRead("Icom Inc.", "IC-7610, specifications", "https://www.icomjapan.com/lineup/products/IC-7610/specifications/");
+const ICOM_9700 = sourceRead("Icom Inc.", "IC-9700, specifications", "https://www.icomjapan.com/lineup/products/IC-9700/specifications/");
+const UV5R = sourceRead(
+  "Baofeng (the manual on its own site, baofengradio.com)",
+  "UV-5R & GT-3 Series User Manual V1.0, October 2020",
+  "https://baofeng.s3.amazonaws.com/Baofeng%20UV-5R%20%26%20GT-3%20Series%20User%20Manual_Digital%20Version_20201023.pdf",
+);
+const UV5R_BATTERY = sourceRead(
+  "Baofeng (baofengradio.com)",
+  "Battery 1800mAh for UV-5R, product page",
+  "https://www.baofengradio.com/products/battery-1800mah-for-uv-5r",
+);
+const FT818_VOLTS = "Volts: “Supply Voltage: Nominal: 13.8 VDC ± 15 %” (same table).";
+const FT5_VOLTS = "Volts: the manual gives none beside the receive current; its transmit figures are at 7.4 V DC.";
+const D75_VOLTS = "Volts: “BATT DC 6.0 - 9.6 V (STD: DC 7.4 V)” (same table).";
+
+const MORE_RADIOS: CommonDevice[] = [
+  radio({
+    id: "yaesu-ft-818nd",
+    name: "Yaesu FT-818ND",
+    aliases: ["yaesu", "ft-818", "ft818", "hf", "vhf", "uhf", "qrp", "portable", "transceiver"],
+    mode: "ssb",
+    hoursPerDay: 2,
+    receive: amps(0.45, 13.8, "typical", "Receive: 450 mA", 0, FT818_VOLTS),
+    standby: amps(0.3, 13.8, "typical", "Squelched: 300 mA (Approx.)", 0, FT818_VOLTS),
+    transmit: [
+      tx(
+        "430-6w",
+        "430 MHz, 6 W out",
+        6,
+        amps(2.7, 13.8, "typical", "Transmit: 2.7 A (430 MHz)", 0, `${FT818_VOLTS} Output “6 W (SSB/CW/FM) … @13.8 V”.`),
+      ),
+      tx(
+        "hf-6w",
+        "HF, 50 and 144 MHz, 6 W out",
+        6,
+        amps(2.4, 13.8, "typical", "Transmit: 2.4 A (HF/50 MHz/144 MHz)", 0, `${FT818_VOLTS} Output “6 W (SSB/CW/FM) … @13.8 V”.`),
+      ),
+    ],
+    fullPowerOnly: true,
+    sources: [FT818ND],
+  }),
+  radio({
+    id: "icom-ic-7610",
+    name: "Icom IC-7610",
+    aliases: ["icom", "hf", "sdr", "transceiver", "base"],
+    mode: "ssb",
+    hoursPerDay: 2,
+    receive: amps(3.5, 13.8, "typical", "Rx 3.0 A (Standby), 3.5 A (Maximum audio)", 0, "Volts: “Power supply requirement 13.8V DC ±15%”."),
+    standby: amps(3, 13.8, "typical", "Rx 3.0 A (Standby)", 0, "Volts: “Power supply requirement 13.8V DC ±15%”."),
+    transmit: [
+      tx(
+        "100w",
+        "100 W out",
+        100,
+        amps(
+          23,
+          13.8,
+          "typical",
+          "Power consumption Tx 23 A (at 100 W output power)",
+          0,
+          "Volts: “Power supply requirement 13.8V DC ±15%”.",
+        ),
+      ),
+    ],
+    fullPowerOnly: true,
+    sources: [ICOM_7610],
+  }),
+  radio({
+    id: "icom-ic-9700",
+    name: "Icom IC-9700",
+    aliases: ["icom", "vhf", "uhf", "23cm", "satellite", "transceiver", "base"],
+    mode: "fm",
+    hoursPerDay: 2,
+    receive: amps(1.8, 13.8, "at-most", "Less than 1.8 A (Maximum audio)", 0, "Volts: “13.8 V DC ±15% (Negative ground)”."),
+    standby: amps(1.2, 13.8, "typical", "Rx 1.2 A typical (Standby)", 0, "Volts: “13.8 V DC ±15% (Negative ground)”."),
+    transmit: [
+      tx(
+        "high",
+        "High power: 100 W on 144 MHz, 75 W on 430, 10 W on 1200",
+        100,
+        amps(18, 13.8, "at-most", "Tx Less than 18 A (High power)", 0, "Volts: “13.8 V DC ±15% (Negative ground)”."),
+      ),
+    ],
+    fullPowerOnly: true,
+    sources: [ICOM_9700],
+  }),
+  radio({
+    id: "yaesu-ft5dr",
+    name: "Yaesu FT5DR",
+    aliases: ["yaesu", "ft5d", "ft-5dr", "handheld", "vhf", "uhf", "c4fm", "fusion"],
+    mode: "fm",
+    hoursPerDay: 4,
+    receive: amps(0.18, 7.4, "typical", "Current Consumption (Approx.) 180 mA (Mono Band Receive)", 0, FT5_VOLTS),
+    standby: amps(0.11, 7.4, "typical", "110 mA (Mono Band Receive, Standby)", 0, FT5_VOLTS),
+    transmit: [
+      tx("430-5w", "430 MHz, 5 W out", 5, amps(1.9, 7.4, "typical", "1.9 A (5 W TX, 430 MHz 7.4 V DC)")),
+      tx("144-5w", "144 MHz, 5 W out", 5, amps(1.6, 7.4, "typical", "1.6 A (5 W TX, 144 MHz 7.4 V DC)")),
+    ],
+    fullPowerOnly: true,
+    sources: [FT5DR],
+  }),
+  radio({
+    id: "kenwood-th-d75",
+    name: "Kenwood TH-D75",
+    aliases: ["kenwood", "th-d75", "d75", "handheld", "vhf", "uhf", "d-star", "aprs"],
+    mode: "fm",
+    hoursPerDay: 4,
+    receive: amps(0.26, 7.4, "typical", "Current Consumption (TYP.) RX SINGLE 260 mA (Rated Power)", 0, D75_VOLTS),
+    standby: amps(0.155, 7.4, "typical", "155 mA (SQ Close)", 0, D75_VOLTS),
+    transmit: [
+      tx(
+        "5w",
+        "High, 5 W out",
+        5,
+        amps(
+          2,
+          7.4,
+          "at-most",
+          "Current Consumption (TYP.) TX EXT.PS 13.8 V / Battery:7.4 V … H 1.4 A … 2.0 A",
+          0,
+          "The table gives 1.4 A and 2.0 A for high power, one at 13.8 V and one on the 7.4 V battery, in rows that are hard to tell apart; the higher current is taken at 7.4 V, so the figure is the most it could be. Output “H 5W”.",
+        ),
+      ),
+    ],
+    fullPowerOnly: true,
+    sources: [THD75],
+  }),
+  radio({
+    id: "baofeng-uv-5r",
+    name: "Baofeng UV-5R",
+    aliases: ["baofeng", "uv5r", "uv-5r", "handheld", "vhf", "uhf", "2m", "70cm", "walkie talkie"],
+    mode: "fm",
+    hoursPerDay: 4,
+    note: "From the manual on Baofeng's own site (baofengradio.com); UV-5R models sold by others may differ.",
+    receive: amps(0.38, 7.4, "typical", "Consumption 380mA (reception)", 0, "Volts: “Supply voltage 7.4V” (same table)."),
+    standby: amps(0.075, 7.4, "at-most", "≤75mA (standby)", 0, "Volts: “Supply voltage 7.4V”."),
+    transmit: [
+      tx(
+        "5w",
+        "5 W out",
+        5,
+        amps(
+          1.4,
+          7.4,
+          "at-most",
+          "≤1.4A(transmission)",
+          0,
+          "Volts: “Supply voltage 7.4V”; output “UV-5R/UV-5R+Plus/UV-5R EX/GT-3: 5W/1W”.",
+        ),
+      ),
+    ],
+    fullPowerOnly: true,
+    sources: [UV5R],
+  }),
+  runner({
+    id: "rak-wisblock-rak4631",
+    name: "RAK WisBlock RAK4631 (Meshtastic)",
+    group: "radios",
+    aliases: ["lora", "meshtastic", "node", "rak", "wisblock", "rak4631"],
+    supply: "dc",
+    hoursPerDay: 24,
+    note: "The core module alone: the base board, a display and sensors add more. A node spends nearly all its time listening.",
+    states: [
+      {
+        id: "rx",
+        label: "Listening (LoRa)",
+        figure: amps(
+          0.017,
+          3.3,
+          "typical",
+          "Rx mode LoRa @37.5 Kbps 17 mA",
+          0,
+          "Volts: the module's typical supply, “VBAT_SX SX1262 supply voltage 2.0 3.3 3.7 V” (min, typical, max), same page.",
+        ),
+      },
+      {
+        id: "tx",
+        label: "Transmitting at 20 dBm",
+        figure: amps(
+          0.125,
+          3.3,
+          "typical",
+          "Tx mode LoRa @20 dBm 125 mA",
+          0,
+          "Printed “12 5mA” on the page. Volts: typical 3.3 V, as above.",
+        ),
+      },
+    ],
+    sources: [
+      sourceRead(
+        "RAKwireless",
+        "RAK4631 WisBlock LoRaWAN Module Datasheet",
+        "https://docs.rakwireless.com/product-categories/wisblock/rak4631/datasheet/",
+      ),
+    ],
+  }),
+  // Their batteries.
+  charged(
+    "pack-yaesu-sbr-14li",
+    "Yaesu FT5DR battery (SBR-14LI)",
+    mah(2200, 7.2, "Rechargeable Li-Ion Battery Pack (7.2V, 2,200mAh) SBR-14LI"),
+    [FT5DR],
+    ["yaesu", "ft5d", "handheld", "radio", "battery pack"],
+  ),
+  charged(
+    "pack-kenwood-knb-75la",
+    "Kenwood TH-D75 battery (KNB-75LA)",
+    mah(1820, 7.4, "KNB-75LA (1,820 mAh)", 0, D75_VOLTS),
+    [THD75],
+    ["kenwood", "th-d75", "handheld", "radio", "battery pack"],
+  ),
+  charged(
+    "pack-baofeng-uv-5r",
+    "Baofeng UV-5R battery (1,800 mAh)",
+    mah(1800, 7.4, "1 x 1800mAh Li-ion Battery", 0, "Volts: “Type: Li-ion | Voltage: 7.4V” (Baofeng's page for the battery)."),
+    [UV5R, UV5R_BATTERY],
+    ["baofeng", "uv-5r", "uv5r", "handheld", "radio", "battery pack"],
+  ),
+  charged(
+    "pack-anytone-d878uvii",
+    "AnyTone AT-D878UVII PLUS battery",
+    mah(3100, 7.4, "Operating Voltage 7.4V DC ±20% (3100mAh)"),
+    [sourceRead("Qixiang Electron (AnyTone)", "AT-D878UVII PLUS, product page", "https://www.anytone.net/pro_info102.html")],
+    ["anytone", "d878", "dmr", "handheld", "radio", "battery pack"],
+    "AnyTone publishes no current drawn, so only its battery is here.",
+  ),
+  charged(
+    "garmin-inreach-mini-2",
+    "Garmin inReach Mini 2 (satellite messenger)",
+    mah(1250, 3.6, "Battery capacity 1,250 mAh", 0, NOMINAL_LI_ION),
+    [
+      sourceRead(
+        "Garmin",
+        "inReach Mini 2 Owner's Manual, October 2026",
+        "https://www8.garmin.com/manuals/webhelp/GUID-802DEF62-EBB2-463C-8C51-C58FB29F89E3/EN-US/inReach_Mini_2_OM_EN-US.pdf",
+      ),
+      BU_303_LATER,
+    ],
+    ["garmin", "inreach", "satellite", "sos", "messenger", "gps"],
+    "“Rechargeable, built-in lithium-ion battery”, charged over USB-C.",
+  ),
+];
+
 // ── Type it from the label ──────────────────────────────────────────────────
 
 function label(
@@ -1739,8 +2534,11 @@ export const COMMON_DEVICES: readonly CommonDevice[] = [
   ...COMPUTERS,
   ...PI_EXTRAS,
   ...CHARGED,
+  ...MORE_CHARGED,
+  ...BATTERIES,
   ...RADIOS,
   ...RECEIVERS,
+  ...MORE_RADIOS,
   ...CONNECTED,
   ...HOME,
   ...LABELS,

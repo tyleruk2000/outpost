@@ -221,7 +221,8 @@ export interface CarriedEnergy {
 }
 
 export function SolarCalculator({ carried }: { carried?: CarriedEnergy | null } = {}) {
-  const [watts, setWatts] = useState<number | null>(100);
+  // No panels to start with: the person gives what they have.
+  const [watts, setWatts] = useState<number | null>(null);
   const [sun, setSun] = useState<number | null>(null);
   const [losses, setLosses] = useState<SolarLosses>({ ...PVWATTS_LOSSES });
   const [cell, setCell] = useState<number | null>(25);

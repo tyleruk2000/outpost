@@ -14,7 +14,7 @@
  * devices, which the server keeps (apps/server/src/modules/power/devices.ts).
  */
 
-import type { RadioModeId } from "./power.ts";
+import type { BatteryChemistry, RadioModeId } from "./power.ts";
 
 // ── Where a figure came from ────────────────────────────────────────────────
 
@@ -55,11 +55,12 @@ export interface PublishedFigure {
 
 // ── The library ─────────────────────────────────────────────────────────────
 
-export type DeviceGroupId = "computers" | "charged" | "radios" | "connected" | "home";
+export type DeviceGroupId = "computers" | "charged" | "batteries" | "radios" | "connected" | "home";
 
 export const DEVICE_GROUPS: ReadonlyArray<{ id: DeviceGroupId; label: string }> = [
   { id: "computers", label: "Raspberry Pi and computers" },
   { id: "charged", label: "Phones and things you charge" },
+  { id: "batteries", label: "Cells, batteries and power stations" },
   { id: "radios", label: "Radios" },
   { id: "connected", label: "Internet, network and screens" },
   { id: "home", label: "Light, warmth, food and health" },
@@ -109,6 +110,12 @@ export interface RunEntry extends EntryBase {
 export interface ChargeEntry extends EntryBase {
   kind: "charge";
   battery: PublishedFigure;
+  /**
+   * A battery or power station a plan can start from as its battery bank: the chemistry
+   * and the pack's volts and amp-hours where the maker gives them (null where not; the
+   * plan then keeps its own and works the amp-hours out from the watt-hours).
+   */
+  bank?: { chemistry: BatteryChemistry | null; volts: number | null; ampHours: number | null };
 }
 
 /** A transceiver: receive, standby where published, and transmit at each stated output. */

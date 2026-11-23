@@ -25,6 +25,7 @@ import {
 } from "@/features/print-kit";
 import type { Block } from "@/features/propagation/plans/document";
 import { appLocale } from "@/lib/region";
+import { bankDrawing } from "./bank-diagram";
 import { assumptions, loadDailyWh, type PlanAnswers, radioDuty, simulate } from "./calc/plan";
 import { MAKER_SENTENCE, originSentence } from "./device-text";
 import { dayBalanceChart, monthsChart, socChart, wiringDiagram } from "./diagrams";
@@ -259,6 +260,7 @@ export function planDocument({ plan, answers, written, paper }: PlanDocumentInpu
       : null,
   ].filter((line): line is string => line !== null);
   const wiring = wiringDiagram(plan, measure);
+  const bankSvg = bankDrawing(plan.battery.volts, plan.battery.ampHours, plan.battery.series, plan.battery.parallel);
   const cable = plan.cableRatingA;
   const system: Content[] = [
     sectionHeader({ number: 1, title, subtitle: `The system and what it comes to. Written out on ${date}.`, id: "power-system" }, measure),
@@ -323,6 +325,11 @@ export function planDocument({ plan, answers, written, paper }: PlanDocumentInpu
       ],
       { bold: [0], widths: [150, "*"] },
     ),
+    kitFigure(bankSvg.svg, {
+      title: "The battery bank",
+      width: Math.min(measure, bankSvg.width),
+      caption: `${bankSvg.layout.alt}${bankSvg.layout.note ? ` ${bankSvg.layout.note}` : ""}`,
+    }),
     kitFigure(wiring.svg, {
       title: "How it is wired",
       width: measure,
