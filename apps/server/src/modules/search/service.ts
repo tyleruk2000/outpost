@@ -1011,6 +1011,28 @@ export function createSearchService(ctx: AppContext): SearchService {
       }
 
       const { parsed, also } = understand(q, params.exact);
+      const active = sources.filter((source) => {
+        if (!source.isAvailable()) return false;
+        if (source.layer === "semantic") return mode !== "keyword";
+        // A module answering from its own table is one of Outpost's own results: it does not wait with the archives.
+        if (source.layer === "local") {
+          return mode !== "semantic" && !params.tag && (!params.kinds?.length || params.kinds.includes(source.kind ?? source.id));
+        }
+        if (params.reference === "later") return false;
+        if (params.kinds?.length && !params.kinds.includes("reference")) return false;
+        return mode !== "semantic" && ctx.services.settings.get("search.includeReference");
+      });
+      // Meaning and the modules' own tables are asked first: the query's vector is worked out in another
+      // thread while the words are searched here, instead of after.
+      const early = new Map(
+        active
+          .filter((source) => !source.searchInParts)
+          .map((source) => {
+            const asked = source.search({ q, kinds: params.kinds, limit: window, signal: params.signal });
+            asked.catch(() => undefined);
+            return [source, asked] as const;
+          }),
+      );
       const keyword =
         mode === "semantic"
           ? {
@@ -1027,20 +1049,10 @@ export function createSearchService(ctx: AppContext): SearchService {
       const places: SearchResult[] = [];
       let meaning: SearchResult[] = [];
 
-      const active = sources.filter((source) => {
-        if (!source.isAvailable()) return false;
-        if (source.layer === "semantic") return mode !== "keyword";
-        // A module answering from its own table is one of Outpost's own results: it does not wait with the archives.
-        if (source.layer === "local") {
-          return mode !== "semantic" && !params.tag && (!params.kinds?.length || params.kinds.includes(source.kind ?? source.id));
-        }
-        if (params.reference === "later") return false;
-        if (params.kinds?.length && !params.kinds.includes("reference")) return false;
-        return mode !== "semantic" && ctx.services.settings.get("search.includeReference");
-      });
       const answers = await Promise.allSettled(
         active.map(async (source) => {
-          if (!source.searchInParts) return source.search({ q, kinds: params.kinds, limit: window, signal: params.signal });
+          const asked = early.get(source);
+          if (asked) return asked;
           // Every collection's best matches, however far down the list this page is, so
           // that the count and the pages do not change from one page to the next.
           const nouns = titleWords(parsed);
