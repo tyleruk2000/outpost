@@ -415,7 +415,7 @@
   height: 100%;
   border-radius: 999px;
   background: var(--lamp);
-  transition: width 200ms var(--ease-out);
+  transition: width var(--duration-slow) var(--ease-out);
 }
 
 /* ── Links to pages ── */

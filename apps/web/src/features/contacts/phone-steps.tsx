@@ -10,7 +10,7 @@ function Steps({ title, children, note }: { title: string; children: ReactNode; 
   return (
     <details className="group border-b border-border">
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-2 text-body font-medium text-ink [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+        <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-90" />
         {title}
       </summary>
       <ol className="mb-3 ml-11 grid max-w-[65ch] list-decimal gap-1.5 text-small text-ink marker:text-ink-muted">{children}</ol>

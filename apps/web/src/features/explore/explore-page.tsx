@@ -290,7 +290,7 @@ export default function ExplorePage() {
     <Page>
       <PageHeader
         title="Explore"
-        description="Reference collections you can keep on this server and read without a connection. Choose them one at a time; each shows its real size before anything is fetched. A few reference sheets are included with Outpost and need no download."
+        description="Encyclopedias, manuals and books to keep on this server and read without a connection. Each shows its real size before anything is fetched; a few come with Outpost and need no download."
         actions={
           catalog.data ? (
             <div className="flex flex-col items-start gap-1.5">
@@ -304,7 +304,7 @@ export default function ExplorePage() {
               </p>
               <Link
                 to={manageLink("installed")}
-                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11"
+                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11 md:pointer-coarse:min-h-11"
               >
                 Manage what is downloaded
               </Link>
@@ -360,6 +360,8 @@ export default function ExplorePage() {
                     type="search"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
+                    enterKeyHint="search"
+                    autoCapitalize="none"
                     placeholder="Filter by name, publisher or topic"
                     aria-label="Filter collections"
                     className="pl-9 [&::-webkit-search-cancel-button]:hidden"

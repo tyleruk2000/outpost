@@ -43,7 +43,7 @@ import { birthdayWords, exportHref, labelOr, mailHref, safeWebHref, useContact, 
 import { usePaneHeading } from "./pane-heading";
 
 const action =
-  "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-control px-2.5 text-small font-medium text-primary transition-colors duration-150 hover:bg-primary-soft max-md:size-11 max-md:px-0 [&_svg]:size-[18px]";
+  "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-control px-2.5 text-small font-medium text-primary transition-colors duration-(--duration-fast) hover:bg-primary-soft max-md:size-11 max-md:px-0 md:pointer-coarse:h-11 [&_svg]:size-[18px]";
 
 async function copy(text: string, what: string) {
   if (await copyText(text)) toast.success(`Copied ${what}.`);
@@ -124,7 +124,7 @@ function FindOnMap({ address }: { address: ContactAddress }) {
                   <li key={place.id}>
                     <Link
                       to={`/maps?lat=${place.lat.toFixed(5)}&lon=${place.lon.toFixed(5)}&z=13`}
-                      className="flex min-h-9 items-center gap-2 rounded-control text-primary underline-offset-2 hover:underline max-md:min-h-11"
+                      className="flex min-h-9 items-center gap-2 rounded-control text-primary underline-offset-2 hover:underline max-md:min-h-11 md:pointer-coarse:min-h-11"
                     >
                       <MapPin aria-hidden className="size-4 shrink-0" />
                       <span>
@@ -357,7 +357,7 @@ function Details({ contact }: { contact: ContactDto }) {
             <Line label="saved place on the map">
               <Link
                 to={`/maps?marker=${contact.place.id}`}
-                className="inline-flex min-h-9 items-center gap-2 text-body text-primary underline-offset-2 hover:underline max-md:min-h-11"
+                className="inline-flex min-h-9 items-center gap-2 text-body text-primary underline-offset-2 hover:underline max-md:min-h-11 md:pointer-coarse:min-h-11"
               >
                 <MapPin aria-hidden className="size-4 shrink-0" />
                 {contact.place.name}
@@ -395,7 +395,7 @@ function Details({ contact }: { contact: ContactDto }) {
             <Line key={page.id}>
               <Link
                 to={`/notes/${page.id}`}
-                className="inline-flex min-h-9 items-center gap-2 text-body text-primary underline-offset-2 hover:underline max-md:min-h-11"
+                className="inline-flex min-h-9 items-center gap-2 text-body text-primary underline-offset-2 hover:underline max-md:min-h-11 md:pointer-coarse:min-h-11"
               >
                 {page.icon ? <span aria-hidden>{page.icon}</span> : <NotebookText aria-hidden className="size-4 shrink-0" />}
                 {page.title}
@@ -463,7 +463,7 @@ function Details({ contact }: { contact: ContactDto }) {
 
       {contact.otherFields.length > 0 ? (
         <details className="mt-7 text-small text-ink-muted">
-          <summary className="min-h-9 cursor-pointer py-1.5 text-ink-muted hover:text-ink max-md:min-h-11">
+          <summary className="min-h-9 cursor-pointer py-1.5 text-ink-muted hover:text-ink max-md:min-h-11 md:pointer-coarse:min-h-11">
             {contact.otherFields.length === 1 ? "1 more field" : `${contact.otherFields.length} more fields`} came with this contact
           </summary>
           <ul className="mt-1 grid gap-1">

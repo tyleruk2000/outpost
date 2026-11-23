@@ -156,6 +156,8 @@ desktop at 1280 px.
 | See downloads and tasks | 2 (More, Downloads and tasks) | 2, and the lamp on More while one runs | 1 | 1 | |
 | Change a setting | 2 (More, Settings) | 2 | 1 | 1 | |
 | Open Help | 2 (More, Help at the foot of the sheet) | 1 (on the first visit) | 1 | 1 | A line under Start here |
+| Find something to read, from an empty Library | 2 (More, Explore), nothing on Library saying where | 1 | 1 (the sidebar) | 1 | A link in Library's empty state, before the list of formats |
+| Start a page, on an empty Notes | 1, with New page offered twice | 1, offered once | 1 | 1 | The empty state's button, beside Import pages |
 
 On a tablet at 768 px every screen gained 196 px of width; the full sidebar is one press
 away (the button at the top of the rail, or Ctrl \\).

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { isInAppHref, normaliseHref, setLink, unsetLink } from "./link";
 
 export const toolButton =
-  "grid size-8 shrink-0 place-content-center rounded-[4px] text-ink-muted transition-colors duration-100 hover:bg-surface-strong hover:text-ink aria-pressed:bg-primary-soft aria-pressed:text-primary-soft-ink disabled:opacity-40 max-md:size-10 [&_svg]:size-4";
+  "grid size-8 shrink-0 place-content-center rounded-[4px] text-ink-muted transition-colors duration-(--duration-fast) hover:bg-surface-strong hover:text-ink aria-pressed:bg-primary-soft aria-pressed:text-primary-soft-ink disabled:opacity-40 max-md:size-10 md:pointer-coarse:size-10 [&_svg]:size-4";
 
 export const LINK_HELP = "Use a web address, an e-mail address, or a path inside Outpost such as /library.";
 
@@ -72,7 +72,7 @@ export function LinkField({
             }
           }}
           placeholder="Paste or type an address"
-          className="h-8 min-w-0 flex-1 rounded-[4px] bg-transparent px-2 text-small text-ink placeholder:text-ink-faint focus-visible:outline-offset-0 max-md:h-10 max-md:text-body"
+          className="h-8 min-w-0 flex-1 rounded-[4px] bg-transparent px-2 text-small text-ink placeholder:text-ink-faint focus-visible:outline-offset-0 max-md:h-10 md:pointer-coarse:h-10 max-md:text-body md:pointer-coarse:text-body"
         />
         <Tooltip label="Apply link">
           <button type="submit" aria-label="Apply link" className={toolButton}>

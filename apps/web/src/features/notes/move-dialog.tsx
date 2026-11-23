@@ -52,6 +52,8 @@ export function MoveDialog({ page, index, onClose }: { page: NoteRef; index: Tre
               autoFocus={!touch}
               value={query}
               onValueChange={setQuery}
+              enterKeyHint="search"
+              autoCapitalize="none"
               placeholder="Find a page"
               className="h-11 flex-1 bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none"
             />

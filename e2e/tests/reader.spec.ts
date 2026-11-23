@@ -261,9 +261,14 @@ test.describe("a collection that is a list of documents", () => {
       const errors = watchForErrors(page);
       await removeAdded(page.request, id);
       await api(page, "POST", `/api/kiwix/books/${id}/files/save`, { path: "files/grain.pdf", title: "Storing grain for a year" });
+      // The collection is looked at once while every file is there, so Outpost knows how large each one is
+      // (it keeps what it learnt). Without this the answer depends on which tests ran first: a file it has never
+      // seen and cannot reach makes the size "at least" so much, which is right but not what is checked here.
+      await page.goto(`/library/read/${id}/`);
+      await expect(page.getByText(/so adding the other 7 uses [\d.]+ kB more/)).toBeVisible();
       // Each file takes a while to arrive, and one of them is not in the collection after all.
       await archiveAs("?delay=1200&missing=north.pdf");
-      await page.goto(`/library/read/${id}/`);
+      await page.reload();
 
       // What "Add to library" does is said where the choice is made: a copy, where to, nothing from the internet, how much room.
       const words = page.getByText(/copies a document out of this collection into your library/);
@@ -297,7 +302,7 @@ test.describe("a collection that is a list of documents", () => {
       await page.goto("/downloads");
       const row = page.getByRole("listitem").filter({ hasText: "Adding documents from “Field library” to your library" });
       await expect(row).toContainText(/[1-6] of 7/);
-      await expect(row.getByRole("button", { name: /^Cancel: Adding documents/ })).toBeVisible();
+      await expect(row.getByRole("button", { name: /^Cancel Adding documents from “Field library”/ })).toBeVisible();
 
       await page.goto(`/library/read/${id}/`);
       // How it turned out: how many were added, and which one was not, and why.
@@ -416,10 +421,16 @@ test.describe("a collection that is a list of documents", () => {
         await all.tap();
         const dialog = page.getByRole("dialog", { name: "Add 8 documents to your library?" });
         await expect(dialog).toContainText("Nothing is downloaded from the internet.");
+        // On a phone the dialog is a sheet that rises from the foot of the screen; it is measured once it has risen.
+        await expect
+          .poll(async () => {
+            const box = (await dialog.boundingBox())!;
+            return box.y + box.height;
+          })
+          .toBeLessThanOrEqual(780);
         const frame = (await dialog.boundingBox())!;
         expect(frame.x).toBeGreaterThanOrEqual(0);
         expect(frame.x + frame.width).toBeLessThanOrEqual(390);
-        expect(frame.y + frame.height).toBeLessThanOrEqual(780);
         for (const name of ["Cancel", "Add 8 documents"]) {
           // The dialog grows to its size as it opens; measured once it has.
           await expect

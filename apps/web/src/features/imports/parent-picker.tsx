@@ -54,7 +54,7 @@ export function ParentPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         id={id}
-        className="flex min-h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 py-1.5 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:min-h-11"
+        className="flex min-h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 py-1.5 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:min-h-11 md:pointer-coarse:min-h-11"
       >
         <span className="min-w-0">
           <span className="block truncate">{value ? titleOf(value.title) : "Top level of your notes"}</span>
@@ -71,8 +71,10 @@ export function ParentPicker({
               autoFocus
               value={query}
               onValueChange={setQuery}
+              enterKeyHint="search"
+              autoCapitalize="none"
               placeholder="Find a page"
-              className="h-10 min-w-0 flex-1 bg-transparent text-small text-ink placeholder:text-ink-faint focus:outline-none max-md:h-11 max-md:text-body"
+              className="h-10 min-w-0 flex-1 bg-transparent text-small text-ink placeholder:text-ink-faint focus:outline-none max-md:h-11 max-md:text-body md:pointer-coarse:h-11 md:pointer-coarse:text-body"
             />
           </div>
           <Command.List className="scroll-quiet max-h-[min(45dvh,18rem)] overflow-y-auto p-1.5">

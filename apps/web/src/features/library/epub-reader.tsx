@@ -89,7 +89,7 @@ function ContentsLine({ entry, documentId }: { entry: EpubContentsEntry; documen
       <Link
         to={to}
         className={cn(
-          "group -mx-3 flex items-center rounded-control px-3 transition-colors duration-150 hover:bg-surface max-md:min-h-11",
+          "group -mx-3 flex items-center rounded-control px-3 transition-colors duration-(--duration-fast) hover:bg-surface max-md:min-h-11 md:pointer-coarse:min-h-11",
           nested ? "py-1.5" : "py-2.5",
         )}
       >

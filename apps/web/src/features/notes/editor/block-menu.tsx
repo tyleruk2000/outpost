@@ -28,7 +28,7 @@ export function TurnIntoItems({ active, onPick }: { active: string | undefined; 
 type Scope = "item" | "block";
 
 const scopeItem =
-  "flex min-h-8 flex-1 cursor-default items-center justify-center rounded-[4px] px-3 whitespace-nowrap text-ink-muted outline-none select-none data-highlighted:bg-surface-strong data-[state=checked]:bg-primary-soft data-[state=checked]:font-medium data-[state=checked]:text-primary-soft-ink max-md:min-h-11";
+  "flex min-h-8 flex-1 cursor-default items-center justify-center rounded-[4px] px-3 whitespace-nowrap text-ink-muted outline-none select-none data-highlighted:bg-surface-strong data-[state=checked]:bg-primary-soft data-[state=checked]:font-medium data-[state=checked]:text-primary-soft-ink max-md:min-h-11 md:pointer-coarse:min-h-11";
 
 /** In a list: whether the menu acts on the one item or on the whole block it is in. Choosing does not close the menu. */
 function ScopeSwitch({ scope, onChange, whole }: { scope: Scope; onChange(scope: Scope): void; whole: string }) {

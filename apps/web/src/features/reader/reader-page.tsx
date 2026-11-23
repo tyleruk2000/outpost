@@ -337,8 +337,10 @@ export default function ReaderPage() {
             }}
             placeholder={listMode ? "Search these documents" : searchLabel}
             aria-label={searchLabel}
+            enterKeyHint="search"
+            autoCapitalize="none"
             disabled={!ready}
-            className="h-9 w-full rounded-control border border-border-strong bg-page pr-3 pl-9 text-small text-ink placeholder:text-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11 [&::-webkit-search-cancel-button]:hidden"
+            className="h-9 w-full rounded-control border border-border-strong bg-page pr-3 pl-9 text-small text-ink placeholder:text-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11 max-md:text-body md:pointer-coarse:h-11 md:pointer-coarse:text-body [&::-webkit-search-cancel-button]:hidden"
           />
           {showSuggestions ? (
             <ul

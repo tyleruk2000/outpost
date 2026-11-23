@@ -260,7 +260,10 @@ function WhereItGoes({ made }: { made: MadePdfHandle }) {
           <button
             type="button"
             // Set in the line like a link, at least 24 px tall (44 px on a phone, where the negative margin keeps the lines from moving apart).
-            className={cn(linkClass, "inline-flex min-h-6 items-center rounded-control align-baseline max-md:-my-2.5 max-md:min-h-11")}
+            className={cn(
+              linkClass,
+              "inline-flex min-h-6 items-center rounded-control align-baseline max-md:-my-2.5 md:pointer-coarse:-my-2.5 max-md:min-h-11 md:pointer-coarse:min-h-11",
+            )}
             onClick={() => {
               setDraft(made.category);
               setEditing(true);

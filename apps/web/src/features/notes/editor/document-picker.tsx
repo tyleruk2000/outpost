@@ -41,10 +41,12 @@ export function DocumentPicker({ onPick, onClose }: { onPick(document: DocumentD
               autoFocus
               value={query}
               onValueChange={setQuery}
+              enterKeyHint="search"
+              autoCapitalize="none"
               placeholder="Find a document by title"
               className="h-11 flex-1 bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none"
             />
-            {documents.isFetching ? <Spinner /> : null}
+            {documents.isFetching ? <Spinner delay /> : null}
           </div>
           <Command.List className="scroll-quiet max-h-[min(50dvh,22rem)] overflow-y-auto p-1.5">
             {found.map((document) => (

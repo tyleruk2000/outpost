@@ -10,7 +10,7 @@ export function Disclosure({ summary, children }: { summary: string; children: R
   return (
     <details className="group border-y border-border">
       <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+        <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform group-open:rotate-90" />
         {summary}
       </summary>
       <div className="pb-3">{children}</div>

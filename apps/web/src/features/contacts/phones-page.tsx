@@ -158,7 +158,7 @@ export default function PhonesPage() {
                                     : notify.error("This browser would not copy it. Select the text and copy it by hand."),
                                 )
                               }
-                              className="inline-flex h-9 items-center gap-1.5 rounded-control px-2 text-small text-ink-muted hover:bg-surface-strong hover:text-ink max-md:h-11"
+                              className="inline-flex h-9 items-center gap-1.5 rounded-control px-2 text-small text-ink-muted hover:bg-surface-strong hover:text-ink max-md:h-11 md:pointer-coarse:h-11"
                             >
                               <Copy aria-hidden className="size-4" /> Copy
                             </button>

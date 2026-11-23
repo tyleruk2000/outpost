@@ -152,6 +152,8 @@ describe("documents panel", () => {
     expect(await screen.findByRole("heading", { name: "No documents yet" })).toBeInTheDocument();
     expect(screen.getByText(/PDF, EPUB, Markdown, plain text, HTML, CSV, JSON, images .*, and audio/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add documents" })).toBeInTheDocument();
+    // A person with no files of their own is shown where to find something to read.
+    expect(screen.getByRole("link", { name: "Find something to read in Explore" })).toHaveAttribute("href", "/explore");
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
   });
 

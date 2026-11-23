@@ -86,7 +86,7 @@ export default function AudiobookList({ q, sort }: { q: string; sort: "added" | 
             const started = readPlace(book.id);
             return (
               <li key={book.id}>
-                <Link to={book.url} className="group flex items-start gap-3 py-3.5 max-md:min-h-11">
+                <Link to={book.url} className="group flex items-start gap-3 py-3.5 max-md:min-h-11 md:pointer-coarse:min-h-11">
                   <Headphones aria-hidden className="mt-1 size-4 shrink-0 text-ink-muted" />
                   <span className="min-w-0 flex-1">
                     <span className="block font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">

@@ -35,7 +35,7 @@ export function CategoryNav({
                   aria-current={current ? "true" : undefined}
                   onClick={() => onChange(item.slug)}
                   className={cn(
-                    "-ml-2.5 flex w-[calc(100%+0.625rem)] items-baseline justify-between gap-3 rounded-control px-2.5 py-1.5 text-left text-small transition-colors duration-150",
+                    "-ml-2.5 flex w-[calc(100%+0.625rem)] items-baseline justify-between gap-3 rounded-control px-2.5 py-1.5 text-left text-small transition-colors duration-(--duration-fast) pointer-coarse:min-h-11 pointer-coarse:items-center",
                     current ? "bg-primary-soft font-medium text-primary-soft-ink" : "text-ink-muted hover:bg-surface hover:text-ink",
                     !current && item.count === 0 && "text-ink-faint",
                   )}

@@ -352,7 +352,7 @@ describe("bringing contacts in", () => {
     expect(screen.getByText("It has no name, number or address.")).toBeInTheDocument();
 
     // Side by side, with what the file would add marked, and Outpost's own kept unless chosen otherwise.
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("table", { name: /: in Outpost and in the file$/ });
     expect(within(table).getByRole("columnheader", { name: "In Outpost" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "In the file" })).toBeInTheDocument();
     expect(within(table).getByRole("rowheader", { name: /Phone\s*differs/ })).toBeInTheDocument();

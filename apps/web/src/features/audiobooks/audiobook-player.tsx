@@ -184,7 +184,7 @@ export function AudiobookPlayer({
                     disabled={away}
                     aria-current={current ? "true" : undefined}
                     className={cn(
-                      "group -mx-3 flex min-h-11 w-[calc(100%+1.5rem)] items-baseline gap-3 rounded-control px-3 py-2.5 text-left transition-colors duration-150 hover:bg-surface disabled:cursor-not-allowed",
+                      "group -mx-3 flex min-h-11 w-[calc(100%+1.5rem)] items-baseline gap-3 rounded-control px-3 py-2.5 text-left transition-colors duration-(--duration-fast) hover:bg-surface disabled:cursor-not-allowed",
                       current && "bg-primary-soft hover:bg-primary-soft",
                     )}
                   >

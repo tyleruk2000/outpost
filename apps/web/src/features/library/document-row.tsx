@@ -73,7 +73,7 @@ export function DocumentRow({ document, locationName }: { document: DocumentDto;
       <Link
         to={`/library/documents/${document.id}`}
         state={{ fromLibrary: true }}
-        className="group -mx-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 rounded-control px-3 py-3.5 transition-colors duration-150 hover:bg-surface md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-x-4"
+        className="group -mx-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 rounded-control px-3 py-3.5 transition-colors duration-(--duration-fast) hover:bg-surface md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-x-4"
       >
         <kind.icon aria-hidden className={cn("mt-1 size-5 shrink-0", away ? "text-ink-faint" : "text-ink-muted")} strokeWidth={1.6} />
         <div className="min-w-0">

@@ -123,6 +123,8 @@ export function HighlightsPanel({ document }: { document: DocumentDto }) {
           <Input
             type="search"
             aria-label="Find in these highlights"
+            enterKeyHint="search"
+            autoCapitalize="none"
             placeholder="Find in these highlights"
             value={words}
             onChange={(event) => setWords(event.target.value)}

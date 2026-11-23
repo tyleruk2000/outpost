@@ -50,7 +50,7 @@ function Row({ contact, inEmergencyGroup }: { contact: ContactSummary; inEmergen
     <li className="flex items-stretch">
       <NavLink
         to={`/contacts/${contact.id}`}
-        className="group flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-control px-2.5 py-2 transition-colors duration-150 hover:bg-surface aria-[current=page]:bg-primary-soft"
+        className="group flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-control px-2.5 py-2 transition-colors duration-(--duration-fast) hover:bg-surface aria-[current=page]:bg-primary-soft"
       >
         <span className="min-w-0 flex-1">
           {/* A name is what the row is for: it takes a second line rather than lose its end. */}
@@ -65,7 +65,7 @@ function Row({ contact, inEmergencyGroup }: { contact: ContactSummary; inEmergen
         <a
           href={`tel:${number}`}
           aria-label={`Call ${contact.displayName} on ${first.value}`}
-          className="grid w-11 shrink-0 place-content-center rounded-control text-primary transition-colors duration-150 hover:bg-surface-strong"
+          className="grid w-11 shrink-0 place-content-center rounded-control text-primary transition-colors duration-(--duration-fast) hover:bg-surface-strong"
         >
           <Phone aria-hidden className="size-[18px]" strokeWidth={1.8} />
         </a>
@@ -146,7 +146,9 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
           type="search"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="Find by name, number, place or callsign"
+          enterKeyHint="search"
+          autoCapitalize="none"
+          placeholder="Name, number, place or callsign"
           aria-label="Find a contact"
           className="pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden"
         />
@@ -173,7 +175,7 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
                   aria-pressed={on}
                   onClick={() => setFilter({ ...filter, tag: on ? "" : tag.name, limit: LIST_STEP })}
                   className={cn(
-                    "flex h-8 max-w-full items-center gap-1.5 rounded-full border px-3 text-small transition-colors duration-150 max-md:h-11",
+                    "flex h-8 max-w-full items-center gap-1.5 rounded-full border px-3 text-small transition-colors duration-(--duration-fast) max-md:h-11 md:pointer-coarse:h-11",
                     on
                       ? "border-primary bg-primary-soft font-medium text-primary-soft-ink"
                       : "border-border-strong text-ink-muted hover:bg-surface hover:text-ink",
@@ -220,7 +222,7 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
                 {group.emergency ? (
                   <Link
                     to="/contacts/emergency"
-                    className="-my-2 inline-flex min-h-9 items-center gap-1.5 font-medium text-primary max-md:min-h-11"
+                    className="-my-2 inline-flex min-h-9 items-center gap-1.5 font-medium text-primary max-md:min-h-11 md:pointer-coarse:min-h-11"
                   >
                     <Printer aria-hidden className="size-4" /> Print the sheet
                   </Link>

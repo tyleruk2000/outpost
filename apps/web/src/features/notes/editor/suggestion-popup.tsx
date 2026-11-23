@@ -81,7 +81,7 @@ function SuggestionList<I>({ ref, items, query, loading, command, label, describ
     >
       {all.length === 0 ? (
         <div className="flex items-center gap-2.5 px-2.5 py-2 text-ink-muted">
-          {loading ? <Spinner /> : null} {loading ? "Looking…" : empty(query)}
+          {loading ? <Spinner delay /> : null} {loading ? "Looking…" : empty(query)}
         </div>
       ) : (
         all.map((item, at) => {
