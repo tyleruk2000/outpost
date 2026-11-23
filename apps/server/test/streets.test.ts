@@ -228,7 +228,8 @@ describe("without the streets service", () => {
   it("draws a drive's reach over Outpost's own main roads, labelled so", async () => {
     const none = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [15] });
     expect(none.status).toBe(400);
-    expect(none.body.error.message).toMatch(/No road network/);
+    expect(none.body.error.message).toMatch(/United Kingdom has no roads yet/);
+    expect(none.body.error.details).toMatchObject({ missing: [{ code: "GB" }] });
 
     await installGreatBritainRoads(app);
     expect(((await app.api("GET", "/api/streets/status")).body as StreetsStatusResponse).modes.reach.drive).toBe("main-roads");

@@ -5,7 +5,7 @@
  * door, a walk's short list, the plain text and the printed card; reachable areas' legend
  * and words; and building streets, said plainly before it starts.
  */
-import type { StreetsEstimate, StreetsStatusResponse } from "@outpost/shared";
+import type { RoadCoverageCountry, RoadCoverageResponse, StreetsEstimate, StreetsStatusResponse } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -39,6 +39,21 @@ afterEach(() => {
   setReachShown(null);
 });
 
+const country = (code: string, name: string, state: RoadCoverageCountry["state"]): RoadCoverageCountry => ({
+  code,
+  name,
+  state,
+  regionId: null,
+  parts: [],
+  dataDate: null,
+  progress: null,
+});
+const COVERAGE_GB: RoadCoverageResponse = {
+  points: [{ country: "GB" }],
+  countries: [country("GB", "United Kingdom", "ready")],
+  seaCrossing: false,
+};
+
 let sent: Array<{ path: string; body: unknown }> = [];
 const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
@@ -55,6 +70,7 @@ function serve(status: StreetsStatusResponse, answers: Record<string, unknown> =
       if (path === "/api/streets/status") return json(status);
       if (path === "/api/roads/networks") return json({ networks: [{ id: "n1", name: "Great Britain", country: "GB" }], building: [] });
       if (path === "/api/roads/crossings") return json({ crossings: [] });
+      if (path === "/api/roads/coverage") return json(COVERAGE_GB);
       if (path === "/api/roads/routes") return json({ routes: [] });
       if (path === "/api/storage/locations")
         return json({
@@ -123,9 +139,9 @@ describe("ways of travelling", () => {
     const ways = await screen.findByRole("radiogroup", { name: "Way of travelling" });
     for (const name of ["Drive", "Door to door", "Walk", "Cycle"]) expect(within(ways).getByRole("radio", { name })).toBeInTheDocument();
     await userEvent.click(within(ways).getByRole("radio", { name: "Walk" }));
-    expect(screen.getByText(/This needs streets for routes, built once on this device from a kept country file/)).toBeInTheDocument();
+    expect(screen.getByText("Walking routes need street detail, built once on this device.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Plan route" })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Add streets for routes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add walking and cycling" }));
     expect(onOpenStreets).toHaveBeenCalled();
     // Drive still plans on the main roads, as before.
     await userEvent.click(within(ways).getByRole("radio", { name: "Drive" }));
@@ -150,7 +166,7 @@ describe("ways of travelling", () => {
     await userEvent.click(
       within(await screen.findByRole("radiogroup", { name: "Way of travelling" })).getByRole("radio", { name: "Cycle" }),
     );
-    expect(screen.getByText(/Streets are being built on this device, step 3 of 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Street detail is being built on this device, step 3 of 5/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "See its progress" })).toBeInTheDocument();
   });
 });
@@ -246,6 +262,19 @@ describe("a walk", () => {
 
 const reachEngine = { setOverlay: vi.fn(), fitBounds: vi.fn(), getCenter: () => ({ lat: 51.296, lon: -0.33 }) };
 
+/** Reachable from Paris, to see what is offered for France. */
+function AtParis({ onOpenNetworks }: { onOpenNetworks: (countries?: readonly string[]) => void }) {
+  const tool = useReach({ engine: reachEngine as never, where: () => "Paris", onOpenStreets: () => {}, onOpenNetworks });
+  return (
+    <>
+      <button type="button" onClick={() => tool.start({ lat: 48.85, lon: 2.35 }, "Paris")}>
+        Start
+      </button>
+      {tool.card}
+    </>
+  );
+}
+
 function Harness() {
   const tool = useReach({
     engine: reachEngine as never,
@@ -289,14 +318,30 @@ describe("reachable areas", () => {
     await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ minutes: [15, 30, 60] }));
   });
 
+  it("offers roads for the point's own country where it has none, never another", async () => {
+    serve(NOT_INSTALLED, {
+      "/api/streets/reach": REACH_MAIN_ROADS,
+      "/api/roads/coverage": { points: [{ country: "FR" }], countries: [country("FR", "France", "missing")], seaCrossing: false },
+    });
+    const onOpenNetworks = vi.fn();
+    show(<AtParis onOpenNetworks={onOpenNetworks} />);
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    expect(await screen.findByText("France has no roads yet.")).toBeInTheDocument();
+    expect(screen.queryByText(/United Kingdom/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Add roads for France" }));
+    expect(onOpenNetworks).toHaveBeenCalledWith(["FR"]);
+    // Nothing is asked of the server for a country with no roads.
+    expect(sent.some((each) => each.path === "/api/streets/reach")).toBe(false);
+  });
+
   it("offers cycling and walking with streets, and says what they need without", async () => {
     serve(NO_STREETS, { "/api/streets/reach": REACH_MAIN_ROADS });
     show(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: "Start" }));
     const ways = await screen.findByRole("radiogroup", { name: "Way of travelling" });
     await userEvent.click(within(ways).getByRole("radio", { name: "Walk" }));
-    expect(screen.getByText(/This needs streets for routes/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add streets for routes" })).toBeInTheDocument();
+    expect(await screen.findByText("Walking areas in United Kingdom need street detail, built once on this device.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add walking and cycling for United Kingdom" })).toBeInTheDocument();
   });
 
   it("puts the largest area under, and prints with the map", () => {

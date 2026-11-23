@@ -28,7 +28,6 @@ import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { useCelnavOnMap } from "@/features/celestial-navigation/on-map";
 import { CentreLines } from "@/features/compass/magnetic-glance";
 import { useDownloads } from "@/features/downloads/use-downloads";
-import { useHomeCountry } from "@/features/frequencies/home-country";
 import type { HeardTools } from "@/features/heard/card";
 import { HeardGroup } from "@/features/heard/heard";
 import { useHeardOnMap } from "@/features/heard/use-heard-on-map";
@@ -139,6 +138,7 @@ import { useResection } from "./resection/resection-card";
 import { ROAD_ROUTE_SOURCE, shownRouteData } from "./road-route/layers";
 import { pointName } from "./road-route/point-field";
 import { type RoadRouteIntent, RoadRoutePanel, type ShownRoute } from "./road-route/road-route-panel";
+import { addRoadsLink } from "./road-route/route-needs";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 import { PanelLoading } from "./ui";
@@ -1139,13 +1139,11 @@ export default function MapsPage() {
     onOpenOffline: () => openOffline({ type: "add" }),
   });
   // "Reachable from here", from the same menu and the quick search (/maps?reach=1, from the middle of the map).
-  const homeCountry = useHomeCountry();
   const reachable = useReach({
     engine,
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
-    home: homeCountry,
     onOpenStreets: (country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`),
-    onOpenNetworks: (country) => navigate(`/maps/data?add=1&kinds=roads${country ? `&country=${country}` : ""}`),
+    onOpenNetworks: (countries) => navigate(addRoadsLink(countries)),
   });
   const handledReach = useRef<string | undefined>(undefined);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival, when the map is there
@@ -1466,7 +1464,7 @@ export default function MapsPage() {
             onClose={() => setRoadRouting(false)}
             onShow={showRoadRoute}
             onNeedMap={() => setDetent((current) => (current === "full" ? "half" : current))}
-            onOpenNetworks={(country) => navigate(`/maps/data?add=1&kinds=roads${country ? `&country=${country}` : ""}`)}
+            onOpenNetworks={(countries) => navigate(addRoadsLink(countries))}
             onOpenStreets={(country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`)}
           />
         ) : finding ? (

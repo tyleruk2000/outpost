@@ -34,7 +34,7 @@ export function RouteTotals({ route }: { route: RoadRouteResult }) {
   );
 }
 
-/** The route's own warnings, each in plain words; one about a missing network leads to installing it. */
+/** The route's own warnings, each in plain words; one about old road data leads to Map data. */
 export function RouteWarnings({ route, onOpenNetworks }: { route: RoadRouteResult; onOpenNetworks?: () => void }) {
   if (route.warnings.length === 0) return null;
   return (
@@ -42,10 +42,10 @@ export function RouteWarnings({ route, onOpenNetworks }: { route: RoadRouteResul
       {route.warnings.map((warning) => (
         <Notice key={warning} tone="warning" icon={<CircleAlert />}>
           {warning}
-          {onOpenNetworks && /network/i.test(warning) && /install|old|not/i.test(warning) ? (
+          {onOpenNetworks && /in Map data|from Road networks/.test(warning) ? (
             <span className="mt-2 block">
               <Button size="sm" onClick={onOpenNetworks}>
-                Road networks
+                Open Map data
               </Button>
             </span>
           ) : null}

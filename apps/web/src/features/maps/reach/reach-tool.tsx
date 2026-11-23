@@ -10,7 +10,7 @@
  * built, else over Outpost's own main roads for a drive, which every installation with a
  * road network can do.
  */
-import type { StreetsReachMode, StreetsReachRequest, StreetsStatusResponse } from "@outpost/shared";
+import type { RoadCoverageCountry, StreetsReachMode, StreetsReachRequest, StreetsStatusResponse } from "@outpost/shared";
 import { CircleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
@@ -22,7 +22,9 @@ import type { LatLon } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
 import { EMPTY } from "../map/overlays";
 import { MapCard } from "../map-chrome";
-import { addStreetsLabel, reachTimeText, unavailableLine } from "../road-route/street-words";
+import { useRoadCoverage } from "../road-route/data";
+import { AddRoadsButton, CountryProgress, progressText } from "../road-route/route-needs";
+import { addStreetsLabel, reachTimeText, streetsMissFor, unavailableLine } from "../road-route/street-words";
 import { useStreetsReach, useStreetsStatus } from "../road-route/streets-data";
 import { REACH_DASHES, REACH_FILL_OPACITY, REACH_SOURCE, reachBounds, reachData, setReachShown } from "./reach-map";
 
@@ -80,6 +82,32 @@ export function ReachSwatch({ minutes, steps }: { minutes: number; steps: number
   );
 }
 
+/** "France has no roads yet. [Add roads for France]", for the point's own country. */
+function NoRoadsHere({ country, onAdd }: { country: RoadCoverageCountry | null; onAdd: (countries?: readonly string[]) => void }) {
+  const text = !country
+    ? "A drive's reach is worked out from the roads kept for routes, and none are kept for here yet."
+    : country.state === "part"
+      ? `Only part of ${country.name} has roads, and this point is outside it.`
+      : `${country.name} has no roads yet.`;
+  return (
+    <div className="grid justify-items-start gap-2">
+      <p className="text-small text-ink">{text}</p>
+      {country?.progress?.phase === "failed" ? (
+        <p className="text-small text-ink-muted">
+          {country.name}: {progressText(country.progress)}.
+        </p>
+      ) : null}
+      {country ? (
+        <AddRoadsButton countries={[country]} onAdd={(codes) => onAdd(codes)} size="sm" all={country.state === "part"} />
+      ) : (
+        <Button size="sm" variant="primary" onClick={() => onAdd([])}>
+          Add roads for routes
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export interface ReachTool {
   start(position: LatLon, name?: string | null): void;
   stop(): void;
@@ -89,16 +117,15 @@ export interface ReachTool {
 export function useReach({
   engine,
   where,
-  home,
   onOpenStreets,
   onOpenNetworks,
 }: {
   engine: MapEngine | null;
   /** The point's coordinates in the readout's format, for the card. */
   where: (position: LatLon) => string;
-  home?: { code: string; name: string } | null;
   onOpenStreets: (country?: string | null) => void;
-  onOpenNetworks: (country?: string | null) => void;
+  /** Opens Map data's add flow with roads for routes for these countries (two letters each). */
+  onOpenNetworks: (countries?: readonly string[]) => void;
 }): ReachTool {
   const [at, setAt] = useState<{ position: LatLon; name: string | null } | null>(null);
   const [prefs, setPrefs] = useStoredState<ReachPrefs>(PREFS_KEY, isPrefs, { mode: "drive", minutes: 30 });
@@ -106,7 +133,26 @@ export function useReach({
   const installed = status.data?.installed ?? false;
   // Without the streets service only a drive can be drawn, whatever was chosen elsewhere.
   const mode: StreetsReachMode = installed ? prefs.mode : "drive";
-  const available = reachAvailable(status.data, mode);
+  // The point's country and where its roads stand, worked out on this device: what to offer is for there, never home.
+  const coverage = useRoadCoverage(at ? [at.position] : []);
+  const here = at ? (coverage.data?.countries[0] ?? null) : null;
+  const country = here ? { code: here.code, name: here.name } : null;
+  const roadsHere =
+    mode === "drive" && here && here.state !== "ready" ? (
+      here.state === "downloading" ? (
+        <div className="grid gap-2" role="status">
+          <CountryProgress country={here} />
+          <p className="text-small text-ink-muted">You can leave this screen.</p>
+        </div>
+      ) : (
+        <NoRoadsHere country={here} onAdd={onOpenNetworks} />
+      )
+    ) : null;
+  const available =
+    !(at && coverage.isPending) &&
+    reachAvailable(status.data, mode) &&
+    roadsHere === null &&
+    !(mode !== "drive" && streetsMissFor(status.data, country));
   const request = useMemo<StreetsReachRequest | null>(
     () =>
       at && available
@@ -151,15 +197,15 @@ export function useReach({
 
   const notHere = () => {
     if (!status.data) return null;
-    // Cycling and walking need streets; a drive needs streets or a road network.
+    // Cycling and walking need streets; a drive needs streets or roads for the point's country.
     if (mode !== "drive") {
-      const { text, action } = unavailableLine(status.data);
+      const { text, action } = unavailableLine(status.data, { way: mode === "walk" ? "reach-walk" : "reach-cycle", country });
       return (
         <div className="grid justify-items-start gap-2">
           <p className="text-small text-ink">{text}</p>
           {action === "add" ? (
-            <Button size="sm" variant="primary" onClick={() => onOpenStreets(home?.code)}>
-              {addStreetsLabel(home)}
+            <Button size="sm" variant="primary" onClick={() => onOpenStreets(country?.code)}>
+              {addStreetsLabel(country)}
             </Button>
           ) : action === "progress" ? (
             <Button size="sm" onClick={() => onOpenStreets()}>
@@ -169,16 +215,7 @@ export function useReach({
         </div>
       );
     }
-    return (
-      <div className="grid justify-items-start gap-2">
-        <p className="text-small text-ink">
-          A drive's reach is worked out from the roads for routes kept on this device, and none are added yet.
-        </p>
-        <Button size="sm" variant="primary" onClick={() => onOpenNetworks(home?.code)}>
-          {home ? `Add roads for ${home.name}` : "Add roads for routes"}
-        </Button>
-      </div>
-    );
+    return roadsHere ?? <NoRoadsHere country={null} onAdd={onOpenNetworks} />;
   };
 
   const content = at ? (
@@ -200,7 +237,7 @@ export function useReach({
           options={TIME_OPTIONS}
         />
         <div aria-live="polite">
-          {status.isPending || (request && reach.isPending) ? (
+          {status.isPending || (at && coverage.isPending) || (request && reach.isPending) ? (
             <p className="flex items-center gap-2 text-small text-ink-muted">
               <Spinner label="Working out the areas" delay /> Working out what is reachable
             </p>

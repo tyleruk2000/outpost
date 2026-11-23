@@ -9,7 +9,10 @@
  */
 import fs from "node:fs";
 import type {
+  RoadBuildingPhase,
+  RoadCoverageResponse,
   RoadCrossingDto,
+  RoadNetworkBuilding,
   RoadNetworkDto,
   RoadNetworksResponse,
   RoadRouteRequest,
@@ -21,11 +24,14 @@ import { desc, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
+import { createHttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
 import { markers, roadNetworks, roadRoutes } from "../../db/schema.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
+import { createRegionIndex } from "../layers/adapters/geofabrik-regions.ts";
 import { buildNetwork } from "./build.ts";
+import { coverageOf } from "./coverage.ts";
 import { buildGraph, type Graph } from "./graph.ts";
 import { readNetworkFile, writeNetworkFile } from "./network-file.ts";
 import { type PlanPoint, planRoute, roadCredit } from "./plan.ts";
@@ -74,6 +80,8 @@ export interface CountryFileBuild {
 
 export interface RoadsService {
   list(): RoadNetworksResponse;
+  /** Which countries a route needs, and where their roads stand: local, quick, no graph read. */
+  coverage(points: Array<{ lat: number; lon: number }>): RoadCoverageResponse;
   /** Reads the region's country file: a kept one if there is one, otherwise downloads it (on a press). */
   installRegion(input: {
     regionId: string;
@@ -103,6 +111,12 @@ export interface RoadsService {
   /** For tests and measurements: the graph as loaded now. */
   loadGraph(): Promise<Graph>;
   close(): void;
+}
+
+/** A point's name as given, unless it is only a word for its role ("via", "Via 1", "start"): then none, so its place is named instead. */
+export function ownName(name: string | null | undefined): string | null {
+  const text = name?.trim() ?? "";
+  return !text || /^(via|via point|point|start|end|from|to|stop)( ?\d+)?$/i.test(text) ? null : text;
 }
 
 export function toNetworkDto(row: NetworkRow, available: boolean): RoadNetworkDto {
@@ -364,15 +378,89 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     return { roadNetworkId: row.id, nodes: row.nodes, edges: row.edges };
   }
 
+  // ── What is on its way ─────────────────────────────────────────────────────
+  /** Geofabrik's id for a whole country, from its list as kept on this device (read on a person's press); null before. */
+  const regions = createRegionIndex(ctx, createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads }));
+  const regionOf = (code: string) => regions.kept()?.regions.find((r) => r.country === code && r.depth === 0)?.id ?? null;
+
+  const phaseOf = (state: string, downloading: boolean): RoadBuildingPhase =>
+    state === "failed" ? "failed" : state === "queued" || state === "paused" ? "waiting" : downloading ? "downloading" : "building";
+
+  function list(): RoadNetworksResponse {
+    const jobs = ctx.jobs.list({ states: ["queued", "running", "paused"], types: [BUILD_JOB] });
+    const downloads = ctx.services.downloads.unfinished().filter(isRoadsDownload);
+    const fromCountryFiles = ctx.services.countryFiles.pending().filter((entry) => entry.roads);
+    const credit = roadCredit(rows().map((r) => ({ id: r.id, name: r.name, country: r.country, dataDate: r.dataDate })));
+    const progressOf = (id: string) => {
+      const row = ctx.services.downloads.get(id);
+      if (!row) return { receivedBytes: null, totalBytes: null, etaSeconds: null };
+      const dto = ctx.services.downloads.toDto(row);
+      return { receivedBytes: dto.receivedBytes, totalBytes: dto.totalBytes, etaSeconds: dto.etaSeconds };
+    };
+    const all: RoadNetworkBuilding[] = [
+      ...jobs.map((job) => {
+        const payload = job.payload as { name?: string; country?: string | null };
+        return {
+          jobId: job.id,
+          name: payload.name ?? job.title,
+          state: job.state,
+          message: job.progressMessage ?? null,
+          country: payload.country ?? null,
+          regionId: null,
+          phase: phaseOf(job.state, false),
+          error: null,
+        };
+      }),
+      ...downloads.map((d) => {
+        const meta = (d.meta as { roads: RoadsDownloadMeta }).roads;
+        return {
+          jobId: d.id,
+          name: meta.name,
+          state: d.state,
+          message: null,
+          country: meta.country,
+          regionId: meta.regionId,
+          phase: phaseOf(d.state, d.state === "running" || d.state === "verifying"),
+          ...progressOf(d.id),
+          error: d.error ?? null,
+        };
+      }),
+      ...fromCountryFiles.map((entry) => ({
+        jobId: entry.downloadId ?? entry.taskId ?? "",
+        name: entry.name,
+        state: entry.state,
+        message: entry.message,
+        country: entry.country,
+        regionId: entry.regionId,
+        phase: phaseOf(entry.state, entry.downloadId !== null && entry.state !== "queued"),
+        ...(entry.downloadId ? progressOf(entry.downloadId) : {}),
+        error: entry.error,
+      })),
+    ];
+    // One entry a region: a download and the read after it, or a failed try beside a new one, are one thing on its way.
+    const building: RoadNetworkBuilding[] = [];
+    for (const entry of all) {
+      const key = entry.regionId ?? entry.jobId;
+      const at = building.findIndex((other) => (other.regionId ?? other.jobId) === key);
+      if (at < 0) building.push(entry);
+      else if (building[at]!.phase === "failed" && entry.phase !== "failed") building[at] = entry;
+    }
+    return {
+      networks: rows().map((row) => toNetworkDto(row, fs.existsSync(resolveInside(ctx.config.dataDir, row.relPath)))),
+      building,
+      credit,
+    };
+  }
+
   // ── Planning ───────────────────────────────────────────────────────────────
   async function resolvePoints(request: RoadRouteRequest): Promise<PlanPoint[]> {
     return request.points.map((point, index) => {
       if ("placeId" in point) {
         const marker = ctx.db.select().from(markers).where(eq(markers.id, point.placeId)).get();
         if (!marker) throw badRequest(`Point ${index + 1} is a saved place that is no longer there.`);
-        return { lat: marker.lat, lon: marker.lon, name: point.name ?? marker.name };
+        return { lat: marker.lat, lon: marker.lon, name: ownName(point.name) ?? marker.name };
       }
-      return { lat: point.lat, lon: point.lon, name: point.name?.trim() || null };
+      return { lat: point.lat, lon: point.lon, name: ownName(point.name) };
     });
   }
 
@@ -387,35 +475,10 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     installer,
     runBuildJob,
     loadGraph,
-    list() {
-      const jobs = ctx.jobs.list({ states: ["queued", "running", "paused"], types: [BUILD_JOB] });
-      const downloads = ctx.services.downloads.unfinished().filter(isRoadsDownload);
-      const fromCountryFiles = ctx.services.countryFiles.pending().filter((entry) => entry.roads);
-      const credit = roadCredit(rows().map((r) => ({ id: r.id, name: r.name, country: r.country, dataDate: r.dataDate })));
-      return {
-        networks: rows().map((row) => toNetworkDto(row, fs.existsSync(resolveInside(ctx.config.dataDir, row.relPath)))),
-        building: [
-          ...jobs.map((job) => ({
-            jobId: job.id,
-            name: (job.payload as { name?: string }).name ?? job.title,
-            state: job.state,
-            message: job.progressMessage ?? null,
-          })),
-          ...downloads.map((d) => ({
-            jobId: d.id,
-            name: (d.meta as { roads: RoadsDownloadMeta }).roads.name,
-            state: d.state,
-            message: null,
-          })),
-          ...fromCountryFiles.map((entry) => ({
-            jobId: entry.downloadId ?? entry.taskId ?? "",
-            name: entry.name,
-            state: entry.state,
-            message: entry.message,
-          })),
-        ],
-        credit,
-      };
+    list,
+    coverage(points) {
+      const { networks, building } = list();
+      return coverageOf(points, networks, building, regionOf);
     },
     installRegion,
     buildFromCountryFile,
@@ -475,9 +538,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     async plan(request) {
       const points = await resolvePoints(request);
       const g = await loadGraph();
-      if (g.networks.length === 0)
-        throw badRequest("No road network is installed. Install the countries or regions you will drive through from Road networks.");
-      const result = planRoute(g, points, { crossing: request.crossing ?? "any", units: request.units ?? "km", request });
+      const result = planRoute(g, points, { crossing: request.crossing ?? "any", units: request.units ?? "km", request, regionOf });
       touch();
       return result;
     },

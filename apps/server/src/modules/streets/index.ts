@@ -308,17 +308,25 @@ export function createStreetsService(ctx: AppContext): StreetsService {
         `Areas reachable ${request.mode === "walk" ? "on foot" : "by bicycle"} need streets for routes${connection.installed() ? ": build them from a kept country file in Map data." : ", an optional add-on this installation does not have."} The walking reach on the map works over open ground without them.`,
       );
     const graph = await ctx.services.roads.loadGraph();
+    const code = countryLookup(point!.lat, point!.lon, null);
+    const missing = code ? [{ code, name: countryName(code), regionId: null }] : [];
     if (graph.networks.length === 0)
-      throw badRequest("No road network is installed. Install the country you are in from Road networks to see how far a drive reaches.");
+      throw badRequest(
+        code
+          ? `${countryName(code)} has no roads yet. Add roads for ${countryName(code)} to see how far a drive reaches.`
+          : "No roads for routes are kept on this device yet. Add roads for the country to see how far a drive reaches.",
+        { missing, far: [], reason: "empty" },
+      );
     const found = mainRoadsReach(graph, point!, minutes);
     if (!found) {
-      const code = countryLookup(point!.lat, point!.lon, null);
       const installed = new Set(graph.networks.map((n) => n.country));
-      throw badRequest(
-        code && !installed.has(code)
-          ? `No road network is installed for ${countryName(code)}. Install it from Road networks.`
-          : "There is no main road within 40 km of that point in the networks installed.",
-      );
+      throw code && !installed.has(code)
+        ? badRequest(`${countryName(code)} has no roads yet. Add roads for ${countryName(code)} to see how far a drive reaches.`, {
+            missing,
+            far: [],
+            reason: "point",
+          })
+        : badRequest(`There is no main road within 40 km of that point in the roads kept${code ? ` for ${countryName(code)}` : ""}.`);
     }
     const note =
       found.join.distanceM > 5_000

@@ -6,6 +6,7 @@
 import type {
   Bbox,
   RoadCountriesResponse,
+  RoadCoverageResponse,
   RoadCrossingsResponse,
   RoadNetworkInstallRequest,
   RoadNetworkInstallResponse,
@@ -26,6 +27,7 @@ export const roadsKeys = {
   routes: ["roads", "routes"] as const,
   route: (id: string) => ["roads", "routes", id] as const,
   countries: (boxes: string) => ["roads", "countries", boxes] as const,
+  coverage: (points: string) => ["roads", "coverage", points] as const,
 };
 
 export const useRoadNetworks = () =>
@@ -48,6 +50,22 @@ export function useRoadCountries(boxes: Bbox[]) {
     select: (data) => data.countries,
     enabled: boxes.length > 0,
     staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+/**
+ * Which countries these points need and where their roads stand, worked out on this Outpost
+ * (nothing is asked of anyone). Asked again every few seconds while a country's roads are on
+ * their way, so the progress moves and Plan route enables when they are ready.
+ */
+export function useRoadCoverage(points: ReadonlyArray<{ lat: number; lon: number }>) {
+  const key = points.map((point) => `${point.lat.toFixed(4)},${point.lon.toFixed(4)}`).join(";");
+  return useQuery({
+    queryKey: roadsKeys.coverage(key),
+    queryFn: () =>
+      api.post<RoadCoverageResponse>("/api/roads/coverage", { points: points.map((point) => ({ lat: point.lat, lon: point.lon })) }),
+    enabled: points.length > 0,
+    refetchInterval: (query) => (query.state.data?.countries.some((country) => country.state === "downloading") ? 2_000 : false),
   });
 }
 

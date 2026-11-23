@@ -22,6 +22,11 @@ Each line is a road, the European route numbers it carries in brackets, and the 
 signed to follow, spelt as the sign spells it. Under it, smaller: which way, the junction
 to join and to leave at ("leave at J10 (Ardley) for Bicester", "exit 21" outside Britain
 and Ireland), the distance and the time. A long trip comes out at fifteen to thirty lines.
+A new line starts where the road or the place to follow changes; a road signed again for a
+place its signs gave before stays one line, with its European routes together ("M6 (E05 -
+E22 - E18) - Preston"). An A road with no sign of its own takes the place the next road is
+signed for ("A501 - Preston"); with none, it is its number alone. A via point reads by its
+name ("Via Oxford").
 
 Everything is worked out on this device from road data you have installed. Once the
 countries you need are installed, nothing goes on the internet.
@@ -44,8 +49,9 @@ countries you need are installed, nothing goes on the internet.
 ## Installing road networks
 
 Roads are listed on **Maps → Map data**, as **Roads for routes** under each country, with
-the day their data is from and their size. With none installed, Road route's own button
-(**Add roads for** your home country) opens the same steps.
+the day their data is from and their size. You need not choose countries before you plan:
+**Plan a route** says which countries a route needs and adds exactly those (see
+[Which countries a route needs](#which-countries-a-route-needs)).
 
 Road data comes by country, or by part of a country, from Geofabrik's OpenStreetMap
 extracts. Install every country you will drive through: a trip from England to Austria
@@ -94,13 +100,36 @@ local roads"). Choose a line to see that part on the map; **Whole route on the m
 all of it again. Each is joined to the nearest main road; the result
 says how far that is, and warns when it is more than 5 km.
 
-**Crossing the Channel**: choose **Any** (the quickest), **Eurotunnel**,
-or a particular ferry from the list of crossings in your installed networks. A crossing
-reaches both sides only when the networks on both sides are installed.
+**Sea crossing** appears only when the route crosses the sea. Choose **Any** (the
+quickest), or a particular crossing from those in the roads kept: a ferry by name, or
+**Eurotunnel** where the roads kept include the Channel Tunnel. A crossing reaches both
+sides only when the roads on both sides are kept.
 
-If a point is in a country with no network installed, you are told which country to
-install. If two points cannot be joined, you are told which country between them is
-missing.
+### Which countries a route needs
+
+The form is always there, with or without roads kept. Until From and To are chosen it says
+so: "Choose where from and where to. Outpost then says which countries' roads it needs."
+
+Once they are, Outpost works out on this device, from the country outlines it holds, which
+countries the route touches: each point's own, and those the straight line between points
+crosses for more than a corner. Before you press anything it says what is missing:
+
+- **France has no roads yet**: "This route runs through France. United Kingdom is
+  ready." **Add roads for France** opens Map data's add steps for France alone, which ask
+  the size first; it needs a connection once. Several are named together ("France and
+  Switzerland have no roads yet") and added with one press. **Plan route** waits, saying
+  "Add France first".
+- **Only part of France has roads**: roads are kept for a part of the country and a point
+  of the route is outside it. **Add roads for all of France**.
+- **On their way**: while a country's roads download and are built, the panel shows it in
+  Map data's words with a bar: "France: Downloading 1.20 of 4.90 GB, 18 minutes left",
+  then "Building". You can leave the screen. When they are ready it says "France is
+  ready." and **Plan route** is enabled.
+
+The line between points is only a guide: a road may go round a country the line crosses.
+If a route still cannot be planned, the message names the countries, with the same button,
+or the point that is too far from any main road kept ("more than 40 km from any main road
+kept for France: only Nord-Pas-de-Calais is kept").
 
 Distances are in kilometres or miles, as you choose.
 
@@ -160,6 +189,11 @@ legend says which is which and where the areas come from:
 - **Main roads only**: by car over the road networks installed, on every installation
   with one. The point is joined to the nearest main road; streets off the main roads are
   not counted, so the true area is a little larger near towns.
+
+Where the point's own country has no roads kept, the card says so ("France has no roads
+yet.") with **Add roads for France**; walking and cycling where streets are not built
+for it name that country too ("Add walking and cycling for France"). Outpost never offers
+your home country in place of where the point is.
 
 Both are for **free-flowing traffic, no stops**. Tick **Reachable areas** in **Print or
 save as PDF** to put them on a paper map, with the legend in words under it.

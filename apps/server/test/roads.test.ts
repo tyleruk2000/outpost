@@ -12,20 +12,26 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import {
   directionsAsPlainText,
+  type RoadCoverageResponse,
   type RoadCrossingDto,
   type RoadNetworksResponse,
+  type RoadRouteProblem,
   type RoadRouteResult,
   roadAsciiText,
   type SavedRoadRouteDto,
   wrapRoadText,
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { AppError } from "../src/core/errors.ts";
 import { buildNetwork, CLASS, parseDuration, parseMaxspeed, SIGN_SEPARATOR } from "../src/modules/roads/build.ts";
+import { coverageOf } from "../src/modules/roads/coverage.ts";
 import { placeQuality, samePlace } from "../src/modules/roads/directions.ts";
 import { buildGraph } from "../src/modules/roads/graph.ts";
 import { readNetworkFile, writeNetworkFile } from "../src/modules/roads/network-file.ts";
 import { planRoute } from "../src/modules/roads/plan.ts";
+import { ownName } from "../src/modules/roads/service.ts";
 import { waitFor } from "./fixtures/downloads/file-server.ts";
+import { buildPbf, type PbfWay } from "./fixtures/layers/builders.ts";
 import { createGeofabrikStandIn } from "./fixtures/layers/geofabrik-stand-in.ts";
 import {
   CHAMONIX,
@@ -123,6 +129,69 @@ describe("reading an extract", () => {
   });
 });
 
+describe("directions as the owner writes them, on British roads", () => {
+  // Made up, shaped like real routes planned on the Pi: an A road with no sign of its own onto
+  // the M6, whose signs name the next city as its European routes change, then the A6.
+  const N: Record<number, [number, number]> = {
+    1: [52.4, -1.9],
+    2: [52.5, -1.9],
+    3: [52.55, -1.9],
+    4: [52.552, -1.9],
+    5: [52.95, -1.9],
+    6: [53.35, -1.9],
+    7: [53.75, -1.9],
+    8: [53.752, -1.9],
+    9: [53.95, -1.9],
+  };
+  const ways: PbfWay[] = [
+    { id: 1, refs: [1, 2, 3], tags: { highway: "primary", ref: "A501" } },
+    { id: 2, refs: [3, 4], tags: { highway: "motorway_link" } },
+    { id: 3, refs: [4, 5], tags: { highway: "motorway", ref: "M6", int_ref: "E05", destination: "Birmingham (C & N);Preston" } },
+    { id: 4, refs: [5, 6], tags: { highway: "motorway", ref: "M6", int_ref: "E05;E22", destination: "Birmingham (C & N)" } },
+    { id: 5, refs: [6, 7], tags: { highway: "motorway", ref: "M6", int_ref: "E05;E18", destination: "Preston" } },
+    { id: 6, refs: [7, 8], tags: { highway: "motorway_link" } },
+    { id: 7, refs: [8, 9], tags: { highway: "trunk", ref: "A6" } },
+  ];
+  const at = (id: number, name: string | null) => ({ lat: N[id]![0], lon: N[id]![1], name });
+  let graph: ReturnType<typeof buildGraph>;
+  beforeAll(async () => {
+    const body = buildPbf({
+      nodes: Object.entries(N).map(([id, [lat, lon]]) => ({ id: Number(id), lat, lon })),
+      ways,
+      relations: [],
+      timestamp: Date.parse("2026-11-20T21:00:00Z") / 1000,
+    });
+    const data = await buildNetwork(write("north-west.osm.pbf", body));
+    const file = path.join(dir, "north-west.roads");
+    await writeNetworkFile(file, data, { country: "GB", name: "north-west" });
+    graph = buildGraph([
+      { network: { id: "nw", name: "north-west", country: "GB", dataDate: "2026-11-20" }, data: await readNetworkFile(file) },
+    ]);
+  });
+  const lines = (points: Array<{ lat: number; lon: number; name: string | null }>) =>
+    planRoute(graph, points, { crossing: "any", units: "km", request: { points: [] }, now: Date.parse("2026-11-22") }).legs.map(
+      (leg) => leg.title,
+    );
+
+  it("keeps one line for one motorway signed again for a place its signs gave before, its European routes together", () => {
+    // "Birmingham (C & N);Preston", then "Birmingham (C & N)", then "Preston": one line, not three.
+    // The A501 has no sign of its own: it takes the place the next road is signed for. The A6 has none to take.
+    expect(lines([at(1, "Start"), at(9, "End")])).toEqual(["A501 - Preston", "M6 (E05 - E22 - E18) - Preston", "A6"]);
+  });
+
+  it("names a via point with no name of its own by the place its road was signed for", () => {
+    expect(lines([at(1, "Start"), at(7, null), at(9, "End")])).toEqual([
+      "A501 - Preston",
+      "M6 (E05 - E22 - E18) - Preston",
+      "Via Preston",
+      "A6",
+    ]);
+    expect(ownName("via")).toBeNull();
+    expect(ownName("Via 2")).toBeNull();
+    expect(ownName(" Oxford ")).toBe("Oxford");
+  });
+});
+
 describe("joining networks and routing", () => {
   let gb: Awaited<ReturnType<typeof network>>;
   let north: Awaited<ReturnType<typeof network>>;
@@ -192,13 +261,53 @@ describe("joining networks and routing", () => {
     expect(route.credit.line).toMatch(/© OpenStreetMap contributors, Open Database Licence/);
   });
 
-  it("says plainly which country is missing", () => {
-    expect(() => plan([gb, north], [LEATHERHEAD, { lat: 47.37, lon: 8.54, name: "Zürich" }])).toThrow(
-      /No road network is installed for Switzerland, where “Zürich” is/,
+  const problem = (run: () => unknown) => {
+    try {
+      run();
+    } catch (error) {
+      return error as AppError;
+    }
+    throw new Error("It planned");
+  };
+
+  it("says plainly which country is missing, and gives each as data", () => {
+    const zurich = problem(() => plan([gb, north], [LEATHERHEAD, { lat: 47.37, lon: 8.54, name: "Zürich" }]));
+    // The line to Zürich crosses a corner of Germany for more than 40 km: both are named.
+    expect(zurich.message).toMatch(/^Germany and Switzerland have no roads yet\. Add roads for Germany and Switzerland, then plan again\./);
+    expect(zurich.details).toMatchObject({
+      missing: [{ code: "DE" }, { code: "CH", name: "Switzerland", regionId: null }],
+      far: [],
+      reason: "point",
+    });
+    const reims = problem(() => plan([gb], [LEATHERHEAD, REIMS]));
+    expect(reims.message).toMatch(/France has no roads yet/);
+    expect((reims.details as unknown as RoadRouteProblem).missing.map((m) => m.code)).toEqual(["FR"]);
+    // Several, named together.
+    const both = problem(() => plan([gb], [LEATHERHEAD, { lat: 47.37, lon: 8.54, name: "Zürich" }]));
+    expect(both.message).toMatch(/^France, Germany and Switzerland have no roads yet/);
+    expect((both.details as unknown as RoadRouteProblem).missing.map((m) => m.code)).toEqual(["FR", "DE", "CH"]);
+    // Nothing kept at all: the countries the route needs, still.
+    const empty = problem(() => plan([], [LEATHERHEAD, CHAMONIX]));
+    expect(empty.message).toMatch(/^United Kingdom and France have no roads yet/);
+    expect(empty.details).toMatchObject({ reason: "empty", missing: [{ code: "GB" }, { code: "FR" }] });
+    // France is there in part: the point is too far from what is, said with the country named.
+    const far = problem(() => plan([gb, north], [LEATHERHEAD, CHAMONIX]));
+    expect(far.message).toMatch(
+      /“Chamonix” is more than 40 km from any main road kept for France: only north is kept\. Add roads for all of France/,
     );
-    expect(() => plan([gb], [LEATHERHEAD, REIMS])).toThrow(/No road network is installed for France/);
-    // France is there in part: the point is too far from what is.
-    expect(() => plan([gb, north], [LEATHERHEAD, CHAMONIX])).toThrow(/“Chamonix” is more than 40 km from a main road/);
+    expect(far.details).toMatchObject({ missing: [], far: [{ index: 1, name: "Chamonix", country: { code: "FR" }, distanceM: 40_000 }] });
+  });
+
+  it("says which countries a route needs before it is planned, without reading a network", () => {
+    const none = coverageOf([LEATHERHEAD, CHAMONIX], [], [], () => null);
+    expect(none.points).toEqual([{ country: "GB" }, { country: "FR" }]);
+    expect(none.countries.map((c) => [c.code, c.state])).toEqual([
+      ["GB", "missing"],
+      ["FR", "missing"],
+    ]);
+    // The Channel is in the way.
+    expect(none.seaCrossing).toBe(true);
+    expect(coverageOf([REIMS, CHAMONIX], [], [], () => null).seaCrossing).toBe(false);
   });
 
   it("reads like the owner's own list, junctions and times beside each line", () => {
@@ -324,6 +433,30 @@ describe("the road routes API", () => {
     const { status, body } = await app.api("POST", "/api/roads/route", { points: [LEATHERHEAD, CHAMONIX] });
     expect(status).toBe(400);
     expect(body.error.message).toMatch(/Chamonix/);
+    // France is kept in part (its north): the point is named, with its country, as data too.
+    expect(body.error.details).toMatchObject({ missing: [], far: [{ index: 1, country: { code: "FR", name: "France" } }] });
+  });
+
+  it("says which countries a route needs and where their roads stand, from what is kept here alone", async () => {
+    const { status, body } = await app.api("POST", "/api/roads/coverage", { points: [LEATHERHEAD, CHAMONIX] });
+    expect(status).toBe(200);
+    const coverage = body as RoadCoverageResponse;
+    expect(coverage.points).toEqual([{ country: "GB" }, { country: "FR" }]);
+    expect(coverage.countries.map((c) => [c.code, c.name, c.state, c.parts])).toEqual([
+      ["GB", "United Kingdom", "ready", []],
+      ["FR", "France", "part", ["france-north"]],
+    ]);
+    expect(coverage.seaCrossing).toBe(true);
+    // Through France to Zürich: Switzerland has none.
+    const zurich = (await app.api("POST", "/api/roads/coverage", { points: [REIMS, { lat: 47.37, lon: 8.54 }] }))
+      .body as RoadCoverageResponse;
+    expect(zurich.countries.find((c) => c.code === "CH")).toMatchObject({ state: "missing", name: "Switzerland", progress: null });
+    expect(zurich.seaCrossing).toBe(false);
+    // One point is enough (Reachable from here); none, or too many, is refused.
+    expect((await app.api("POST", "/api/roads/coverage", { points: [REIMS] })).body.points).toEqual([{ country: "FR" }]);
+    expect((await app.api("POST", "/api/roads/coverage", { points: [] })).status).toBe(400);
+    expect((await app.api("POST", "/api/roads/coverage", { points: Array(13).fill(REIMS) })).status).toBe(400);
+    expect((await app.api("POST", "/api/roads/coverage", { points: [{ lat: 91, lon: 0 }] })).status).toBe(400);
   });
 
   it("installs a region from Geofabrik, deleting the extract once read", async () => {
@@ -392,7 +525,7 @@ describe("the road routes API", () => {
       (await app.api("POST", "/api/roads/networks", { locationId: location().id, relPath: "../../etc/passwd", name: "x" })).status,
     ).toBe(400);
     expect((await app.api("POST", "/api/roads/route", { points: [LEATHERHEAD, CHAMONIX] })).body.error.message).toMatch(
-      /No road network is installed/,
+      /^United Kingdom and France have no roads yet/,
     );
   });
 });
