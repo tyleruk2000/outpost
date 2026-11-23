@@ -61,7 +61,8 @@ export const GUIDES: Guide[] = [
     file: "deployment.md",
     group: "running",
     about: "Installing Outpost with Docker or without it, moving it to a Raspberry Pi, letting phones on your network use it, and HTTPS.",
-    keywords: "install deploy deployment raspberry pi docker compose set up setup move nas hotspot update",
+    keywords:
+      "install deploy deployment raspberry pi docker compose set up setup move nas hotspot update walking cycling street routes valhalla",
     opens: { to: "/settings#access", label: "Open Who can use it in Settings" },
   },
   {
@@ -232,8 +233,9 @@ export const GUIDES: Guide[] = [
     file: "road-routes.md",
     group: "using",
     about:
-      "Planned road directions offline: main roads, junctions and signs, via points and sea crossings, from the routes you add for each place.",
-    keywords: "road route drive directions motorway junction ferry eurotunnel channel crossing sat nav",
+      "Plan a route offline: a drive on main roads with junctions, signs and sea crossings; door to door, walking and cycling where added; and what is reachable from a point.",
+    keywords:
+      "plan a route road drive directions motorway junction ferry eurotunnel sea crossing sat nav walk cycle door to door reachable from here",
     opens: { to: "/maps", label: "Open Maps" },
   },
   {

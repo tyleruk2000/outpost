@@ -12,9 +12,11 @@
  * Which model; Households, with a portable household; search results with their reasons and
  * "Also searched"; How search by meaning works (switched on, the library read by the built-in
  * model); a power plan's battery bank; the household book's page of repeaters (a page of its
- * PDF, drawn by pdf.js); a road route with its directions, its route card (also a PDF page)
- * and the page of the task that built a road network; the allotment. On a phone: the water calculator, the map, frequencies to listen
- * to, the compass, Messages and Help.
+ * PDF, drawn by pdf.js); Plan a route saying a country has no roads yet, then a drive with its
+ * directions, its route card (also a PDF page) and the page of the task that read a country's
+ * roads; Preparedness's Getting ready; Settings; the Radio hub; the allotment; Offline maps with
+ * its places and the Add a place sheet; Reachable from here, 30 minutes' drive. On a phone: the
+ * water calculator, the map, frequencies to listen to, the compass, Messages and Help.
  *
  * Everything shown is demonstration data written here for the purpose: made-up notes,
  * places on the test suite's made-up map (tests/map-fixture.ts, a hill and a lake with
@@ -26,9 +28,11 @@
  * water taps around the test map's villages for the food and supplies layer, which the spec
  * serves itself as a stand-in Overpass server. The households are Tŷ Prawf, at home on the test
  * map, and a caravan that has been to two made-up places there; the repeaters have callsigns
- * with the QZ prefix, which no country holds. The road networks are the server tests' made-up
- * extracts (apps/server/test/fixtures/roads/channel-trip.ts), shaped like the main roads from
- * London to the Alps, and the README says they are not OpenStreetMap's. The HF prediction is VOACAP's real answer on the
+ * with the QZ prefix, which no country holds. The routes are read from the server tests' made-up
+ * source files (apps/server/test/fixtures/roads/channel-trip.ts), shaped like the main roads from
+ * London to the Alps, and the README says they are not OpenStreetMap's. Reachable from here is
+ * the streets stand-in's recorded answer from a real Valhalla (see readme-screenshots.config.ts),
+ * drawn on a real map of the United Kingdom when OUTPOST_README_MAPS names one. The HF prediction is VOACAP's real answer on the
  * suite's copy of its data. The network list is the made-up network the suite stands in with.
  * River and sea levels are the suite's recorded answers from the Environment Agency (the
  * stations near a place in Norfolk), served by its stand-in file server. Answers and chat are
@@ -48,7 +52,7 @@ import { type Browser, type BrowserContext, expect, type Locator, type Page, tes
 import { franceNorth, franceSouth, greatBritain } from "../../apps/server/test/fixtures/roads/channel-trip.ts";
 import { newPowerPlan, type PowerLoad } from "../../packages/shared/src/power.ts";
 import { api } from "../tests/fixtures";
-import { CENTRE, installTestMaps } from "../tests/map-fixture";
+import { CENTRE, installTestMaps, removeTestMaps } from "../tests/map-fixture";
 import { pdfPages } from "../tests/pdf";
 import { choosePlace } from "../tests/road-routes";
 
@@ -495,7 +499,7 @@ async function writeBoard(page: Page) {
  * the main roads from London to the Alps), put in storage as a person's own files; and the trip's ends as
  * saved places. Nothing is downloaded.
  */
-async function installRoadNetworks(page: Page) {
+async function installRoadNetworks(page: Page, countries: readonly string[]) {
   const { locations } = await api<{ locations: Array<{ id: string; path: string; isDefault: boolean }> }>(
     page,
     "GET",
@@ -503,22 +507,60 @@ async function installRoadNetworks(page: Page) {
   );
   const location = locations.find((each) => each.isDefault) ?? locations[0]!;
   fs.mkdirSync(path.join(location.path, "roads"), { recursive: true });
-  for (const [name, body, country, file] of [
-    ["Great Britain", greatBritain(), "GB", "great-britain"],
-    ["France, north", franceNorth(), "FR", "france-north"],
-    ["France, south", franceSouth(), "FR", "france-south"],
-  ] as const) {
+  const chosen = (
+    [
+      ["Great Britain", greatBritain(), "GB", "great-britain"],
+      ["France, north", franceNorth(), "FR", "france-north"],
+      ["France, south", franceSouth(), "FR", "france-south"],
+    ] as const
+  ).filter(([, , country]) => countries.includes(country));
+  const before = (await api<{ networks: unknown[] }>(page, "GET", "/api/roads/networks")).networks.length;
+  for (const [name, body, country, file] of chosen) {
     fs.writeFileSync(path.join(location.path, "roads", `${file}.osm.pbf`), body);
     await api(page, "POST", "/api/roads/networks", { locationId: location.id, relPath: `roads/${file}.osm.pbf`, name, country });
   }
   await expect
     .poll(async () => (await api<{ networks: unknown[] }>(page, "GET", "/api/roads/networks")).networks.length, { timeout: 60_000 })
-    .toBe(3);
+    .toBe(before + chosen.length);
+}
+
+/** The trip's ends and the town it goes by, as saved places. */
+async function writeTripPlaces(page: Page) {
   for (const place of [
     { name: "Leatherhead", lat: 51.296, lon: -0.33 },
+    { name: "Reims", lat: 49.27, lon: 4.06 },
     { name: "Chamonix", lat: 45.9237, lon: 6.8694 },
   ])
     await api(page, "POST", "/api/maps/markers", place);
+}
+
+/**
+ * A real map and terrain of the United Kingdom, when OUTPOST_README_MAPS names a folder holding
+ * them: linked into storage (not copied: they are large) and imported as a person's own files.
+ */
+async function installRealMaps(page: Page): Promise<boolean> {
+  const folder = process.env.OUTPOST_README_MAPS;
+  if (!folder) return false;
+  const { locations } = await api<{ locations: Array<{ id: string; path: string; isDefault: boolean }> }>(
+    page,
+    "GET",
+    "/api/storage/locations",
+  );
+  const location = locations.find((each) => each.isDefault) ?? locations[0]!;
+  fs.mkdirSync(path.join(location.path, "imports"), { recursive: true });
+  for (const [file, name, tileType] of [
+    ["uk-map.pmtiles", "United Kingdom", undefined],
+    ["uk-terrain.pmtiles", "United Kingdom, hills", "terrain"],
+  ] as const) {
+    fs.linkSync(path.join(folder, file), path.join(location.path, "imports", file));
+    await api(page, "POST", "/api/maps/import", {
+      locationId: location.id,
+      relPath: `imports/${file}`,
+      name,
+      ...(tileType ? { tileType } : {}),
+    });
+  }
+  return true;
 }
 
 /** The first household named and given its home on the test map; answers its id. */
@@ -679,7 +721,7 @@ test("the README's pictures", async ({ browser }) => {
   }
   const kitId = await writeNotes(page);
   await writeContacts(page);
-  await installTestMaps(page);
+  const testMaps = await installTestMaps(page, { map: "Bryn Prawf and around", terrain: "Bryn Prawf, hills" });
   const placeIds = await writePlaces(page);
   const homeHouseholdId = await nameHome(page, placeIds.Home!);
   await writeSupplies(page);
@@ -770,6 +812,26 @@ test("the README's pictures", async ({ browser }) => {
     page.getByRole("heading", { name: /7\.10 MHz at \d\d:00 UTC/ }),
   );
 
+  // ── The Radio hub, its groups in order: listen, learn, plan ──
+  await page.goto("/radio");
+  await settle(page);
+  await shotBetween(
+    page,
+    "radio-hub",
+    page.getByRole("heading", { level: 1, name: "Radio" }),
+    page
+      .getByRole("main")
+      .getByRole("link", { name: /^HF propagation/ })
+      .first(),
+    8,
+  );
+
+  // ── Settings, in groups ──
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+  await settle(page);
+  await shot(page, "settings", { clip: { x: 256, y: 0, width: DESKTOP.width - 256, height: DESKTOP.height } });
+
   // ── Tools ──
   await page.goto(`/tools/power/plans/${powerId}`);
   await settle(page, 1000);
@@ -785,7 +847,17 @@ test("the README's pictures", async ({ browser }) => {
   await settle(page);
   await shot(page, "network-stand-in");
 
-  // ── Preparedness ──
+  // ── Preparedness: Getting ready, three of five done (people, home, supplies), the plan next ──
+  await page.goto("/prepare");
+  await expect(page.getByText("3 of 5 done")).toBeVisible();
+  await settle(page);
+  await shotBetween(
+    page,
+    "getting-ready",
+    page.getByRole("heading", { name: "Getting ready" }),
+    page.getByRole("link", { name: /The household book/ }).first(),
+  );
+
   await page.goto("/prepare/supplies?view=days");
   await settle(page);
   await shot(page, "supplies");
@@ -971,16 +1043,41 @@ test("the README's pictures", async ({ browser }) => {
     await pdfPageShot(context, bytes, repeaterPages.at(-1)!, "book-repeaters", 0.56);
   }
 
-  // ── Road routes: networks built from the suite's made-up extracts, and a drive planned on them ──
+  // ── Plan a route: Great Britain's roads only at first, so France is said to be missing; then France's added ──
   {
-    await installRoadNetworks(page);
+    await installRoadNetworks(page, ["GB"]);
+    await writeTripPlaces(page);
     await page.setViewportSize({ width: DESKTOP.width, height: 1100 });
     await page.goto("/maps?lat=48.6&lon=3.2&z=5.4");
     await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
     await page.getByRole("tab", { name: /Routes/ }).click();
-    await page.getByRole("button", { name: "Road route" }).first().click();
+    await page.getByRole("button", { name: "Plan a route" }).first().click();
     await choosePlace(page, "From", "Leatherhead");
     await choosePlace(page, "To", "Chamonix");
+    await expect(page.getByText("France has no roads yet")).toBeVisible();
+    await settle(page, 1500);
+    // The panel only, from its heading to Plan route, held back until France is added.
+    {
+      const top = (await page.getByRole("heading", { name: "Plan a route", exact: true }).boundingBox())!;
+      const bottom = (await page.getByRole("button", { name: "Plan route" }).boundingBox())!;
+      // The side panel lies between the sidebar (256 px) and the map, 352 px wide at this size.
+      const panel = { x: 256, width: 352 };
+      await shot(page, "route-needs-france", {
+        clip: { x: panel.x, y: top.y - 20, width: panel.width, height: bottom.y + bottom.height - top.y + 40 },
+      });
+    }
+
+    await installRoadNetworks(page, ["FR"]);
+    await page.goto("/maps?lat=48.6&lon=3.2&z=5.4");
+    await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
+    await page.getByRole("tab", { name: /Routes/ }).click();
+    await page.getByRole("button", { name: "Plan a route" }).first().click();
+    await choosePlace(page, "From", "Leatherhead");
+    await page.getByRole("button", { name: "Add a via point" }).click();
+    await choosePlace(page, "Via 1", "Reims");
+    await choosePlace(page, "To", "Chamonix");
+    await page.getByLabel("Sea crossing").click();
+    await page.getByRole("option", { name: /Dover \(UK\) - Calais \(F\)/ }).click();
     await page.getByRole("button", { name: "Plan route" }).click();
     await expect(page.getByRole("heading", { name: "Leatherhead to Chamonix" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("list", { name: "Directions" })).toBeVisible();
@@ -1004,7 +1101,7 @@ test("the README's pictures", async ({ browser }) => {
       "GET",
       "/api/jobs?types=roads.build&limit=10",
     );
-    const built = jobs.find((job) => job.state === "succeeded" && job.title.includes("Great Britain"))!;
+    const built = jobs.find((job) => job.state === "succeeded" && /Great Britain|United Kingdom/.test(job.title))!;
     await page.goto(`/downloads/tasks/${built.id}`);
     await expect(page.getByRole("heading", { name: "What happened" })).toBeVisible();
     await settle(page);
@@ -1091,6 +1188,46 @@ test("the README's pictures", async ({ browser }) => {
     await settle(p);
     await shot(p, "phone-help");
     await phone.close();
+  }
+
+  // ── Offline maps: the places held, the made-up test map put away first; and Add a place, at What for ──
+  {
+    const { context: maps, page: m } = await open(browser);
+    await m.goto("/");
+    await removeTestMaps(m, testMaps);
+    const real = await installRealMaps(m);
+    await m.goto("/maps/data");
+    await expect(m.locator('[data-place="country:GB"]')).toBeVisible();
+    await settle(m);
+    await shot(m, "offline-maps", { clip: { x: 256, y: 24, width: DESKTOP.width - 256, height: 520 } });
+    // Tall enough that the sheet shows all of What for without scrolling.
+    await m.setViewportSize({ width: DESKTOP.width, height: 1100 });
+    await m.getByRole("button", { name: "Add a place" }).first().click();
+    const add = m.getByRole("dialog", { name: "Add a place" });
+    await add.getByLabel("Country, region or town").fill("Ireland");
+    await add
+      .getByRole("list", { name: "Places found" })
+      .getByRole("button", { name: /^Ireland/ })
+      .first()
+      .click();
+    await expect(add.getByRole("heading", { name: "What for Ireland?" })).toBeVisible();
+    // The sheet is held to 46rem and scrolls; for the picture it is let run to its full height, so that nothing is cut.
+    await add.evaluate((element) => {
+      (element as HTMLElement).style.maxHeight = "none";
+    });
+    await settle(m);
+    await shot(m, "add-a-place", { clip: (await add.boundingBox())! });
+    await m.keyboard.press("Escape");
+    await m.setViewportSize(DESKTOP);
+
+    // ── Reachable from here: 30 minutes' drive from Leatherhead, over the streets ──
+    await m.goto(`/maps?lat=51.296&lon=-0.33&z=${real ? 9.7 : 8}&reach=1`);
+    const card = m.getByTestId("reach-card");
+    await expect(card.getByRole("list", { name: "Legend" })).toContainText("Within 30 min", { timeout: 30_000 });
+    await m.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
+    await settle(m, 2500);
+    await shot(m, "reachable", { clip: { x: 256, y: 0, width: DESKTOP.width - 256, height: DESKTOP.height } });
+    await maps.close();
   }
 
   // ── Dark ──

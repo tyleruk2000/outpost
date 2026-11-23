@@ -1,7 +1,7 @@
 # Offline maps
 
-Outpost draws the map in the browser from tiles it serves itself. Once a region is
-installed, the map needs no internet. OpenStreetMap's public tile servers are never used.
+Outpost draws the map in the browser from tiles it serves itself. Once a place is added
+under **Offline maps**, its map needs no internet. OpenStreetMap's public tile servers are never used.
 
 More on the map: [Routes and tracks](map-routes.md), [Road routes](road-routes.md), [Printing a map](map-printing.md),
 [Satellite imagery](map-imagery.md), and the [map quick start](map-quick-start.md).
@@ -74,7 +74,7 @@ each thing a place can have stands:
 | **Map** | The map to look at, its hills and heights, and its towns found by name |
 | **Routes** | Planning a drive |
 | **Nearby places** | Hospitals, shelters, food and supplies, on the map and in the lists of what is nearest |
-| **Walk/cycle** | Walking, cycling and door-to-door routes, where the streets add-on is installed |
+| **Walk/cycle** | Walking, cycling and door-to-door routes, where the optional Walking and cycling add-on is installed |
 
 On a phone the row is the place's name, its size and **…**, then one line ("Map, Routes 43%,
 Nearby places: Add"); on a wider screen the same rows line up as a table. **Add** in a row
@@ -223,7 +223,7 @@ Planned directions for a drive, written the way you would write them down: "M20 
 Folkestone", "A26 (E17) - Reims (A4)". Open **Routes**, then **Plan a route**; or press and
 hold (right-click) a point on the map and choose **Plan a route from here** or **Plan a route
 to here**. The roads are added by country on **Offline maps**, as **Routes**. With
-the optional streets add-on, the same panel also plans door to door, walking and cycling.
+the optional Walking and cycling add-on, the same panel also plans door to door, walking and cycling.
 See [road-routes.md](road-routes.md).
 
 ## Reachable from here
@@ -236,7 +236,7 @@ no stops. See [road-routes.md](road-routes.md#reachable-from-here).
 
 ## Walking and cycling
 
-Only where the optional streets add-on is installed, each country on **Offline maps** has a
+Only where the optional Walking and cycling add-on is installed, each country on **Offline maps** has a
 **Walk/cycle** column, and **Walking and cycling** ("Walking, cycling and door-to-door
 routes") is one of the choices in **Add a place**. It is built on this device from the
 country's source file; nothing more is downloaded once that file is kept.

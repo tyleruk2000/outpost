@@ -364,8 +364,11 @@ export interface InstalledTestMaps {
   ids: string[];
 }
 
-/** Writes both archives into the default storage location and registers them, as a person importing their own files would. */
-export async function installTestMaps(page: Page): Promise<InstalledTestMaps> {
+/**
+ * Writes both archives into the default storage location and registers them, as a person importing their own files
+ * would, under the names given (the README's pictures give them names a person might).
+ */
+export async function installTestMaps(page: Page, names = { map: "Test map", terrain: "Test terrain" }): Promise<InstalledTestMaps> {
   const { locations } = await api<{ locations: Array<{ id: string; path: string; isDefault: boolean }> }>(
     page,
     "GET",
@@ -379,12 +382,12 @@ export async function installTestMaps(page: Page): Promise<InstalledTestMaps> {
   const map = await api(page, "POST", "/api/maps/import", {
     locationId: location.id,
     relPath: "imports/test-map.pmtiles",
-    name: "Test map",
+    name: names.map,
   });
   const terrain = await api(page, "POST", "/api/maps/import", {
     locationId: location.id,
     relPath: "imports/test-terrain.pmtiles",
-    name: "Test terrain",
+    name: names.terrain,
     tileType: "terrain",
   });
   return { ids: [map.collection.id, terrain.collection.id] };

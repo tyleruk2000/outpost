@@ -10,11 +10,18 @@
  * from any other Outpost: every note, place, contact and plan in the pictures is written
  * by the spec for the purpose.
  *
- * Ports: OUTPOST_README_PORT (default 9081) for Outpost, and the three after it for the file
- * server, the model stand-in and the spec's own Overpass stand-in (made-up shops for the food
- * and supplies layer; the shipped Overpass servers are left out of this Outpost's list).
+ * Ports: OUTPOST_README_PORT (default 9081) for Outpost, and the four after it for the file
+ * server, the model stand-in, the spec's own Overpass stand-in (made-up shops for the food
+ * and supplies layer; the shipped Overpass servers are left out of this Outpost's list) and the
+ * suite's stand-in for the optional streets service (replies recorded from a real Valhalla
+ * serving Great Britain, apps/server/test/fixtures/streets), which counts as installed here.
  * OUTPOST_README_WORK names a folder for the data directory (made empty first); without it
  * one is made in the system's temporary folder and removed at the end.
+ *
+ * OUTPOST_README_MAPS may name a folder holding a real map and terrain of the United Kingdom
+ * (uk-map.pmtiles and uk-terrain.pmtiles, as Offline maps or `pmtiles extract` writes them, on
+ * the same disk as the data directory): the pictures of Offline maps and of Reachable from here
+ * are then drawn on them. Without it they are drawn on the world's outlines. Never committed.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -22,6 +29,7 @@ import os from "node:os";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { standInWorld as standInNetwork } from "../apps/server/test/fixtures/network/stand-in.ts";
+import { sidecarStatus, writeSidecarStatus } from "../apps/server/test/fixtures/streets/valhalla-stand-in.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const entry = path.join(root, "dist/app/server/outpost.mjs");
@@ -34,6 +42,8 @@ process.env.OUTPOST_README_MODEL_URL = `http://127.0.0.1:${modelPort}`;
 // The spec answers here as an Overpass server for the food and supplies layer, with made-up shops.
 const overpassPort = port + 3;
 process.env.OUTPOST_README_OVERPASS_URL = `http://127.0.0.1:${overpassPort}/api/interpreter`;
+// The streets service's stand-in: walking, cycling, door to door and Reachable from here, for Great Britain.
+const streetsPort = port + 4;
 
 // The runner reads this file, and so does each worker it starts: only the runner makes the folder.
 const inherited = process.env.OUTPOST_README_INHERITED;
@@ -65,6 +75,8 @@ if (inherited && fs.existsSync(inherited)) {
       stdio: "ignore",
     },
   );
+  // The streets service says it is ready, with Great Britain's streets built, as the real one writes it.
+  writeSidecarStatus(path.join(work, "valhalla"), sidecarStatus());
   // The only Overpass server this Outpost knows is the spec's stand-in: the shipped ones are left out.
   const routes = path.join(work, "data", "catalog", "routes");
   fs.mkdirSync(routes, { recursive: true });
@@ -143,6 +155,11 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
+      command: `node "${path.join(root, "apps/server/test/fixtures/streets/stand-in-server.ts")}" ${streetsPort}`,
+      url: `http://127.0.0.1:${streetsPort}/health`,
+      reuseExistingServer: false,
+    },
+    {
       command: `node "${entry}"`,
       url: `http://127.0.0.1:${port}/api/health`,
       reuseExistingServer: false,
@@ -159,6 +176,8 @@ export default defineConfig({
         OUTPOST_WEATHER_STAND_IN: `http://127.0.0.1:${filesPort}/weather`,
         // The spec's Overpass stand-in is on 127.0.0.1, which the server otherwise refuses to fetch from.
         OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true",
+        OUTPOST_VALHALLA_URL: `http://127.0.0.1:${streetsPort}`,
+        OUTPOST_VALHALLA_DIR: path.join(work, "valhalla"),
       },
     },
   ],
