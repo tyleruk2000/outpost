@@ -28,8 +28,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Progress, Select, Skeleton } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { LicenceLine } from "@/features/radio/licence";
-import { ScrollBox } from "@/features/radio/scroll-box";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
 import { AntennaPicker, antennaChoices } from "../antenna-picker";
@@ -321,40 +321,35 @@ function LevelsTable({ levels, caption, shares }: { levels: Levels; caption: str
   const cell = (count: number, of: number) =>
     shares && of > 0 ? `${formatNumber(count)} (${Math.round((count / of) * 100)}%)` : formatNumber(count);
   return (
-    // With large text on a phone the three columns are wider than the screen: the table scrolls in its own box,
-    // and the page does not scroll sideways (WCAG 1.4.10).
-    <ScrollBox label={caption} className="scroll-quiet mt-3 max-w-2xl overflow-x-auto">
-      <table className="tabular w-full text-small">
-        <caption className="mb-1 text-left text-ink-muted">{caption}</caption>
-        <thead>
-          <tr className="border-b border-border-strong text-left text-ink-muted">
-            <th scope="col" className="py-1.5 pr-3 font-medium">
-              The engine's reliability
-            </th>
-            <th scope="col" className="px-3 py-1.5 text-right font-medium">
-              Contacts made or stations heard
-            </th>
-            <th scope="col" className="py-1.5 pl-3 text-right font-medium">
-              Calls not heard
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {COMPARISON_LEVELS.map((level) => {
-            const counts = levels.find((item) => item.id === level.id) ?? { contact: 0, heard: 0, failed: 0 };
-            return (
-              <tr key={level.id} className="border-b border-border">
-                <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink">
-                  {level.label}
-                </th>
-                <td className="px-3 py-1.5 text-right text-ink">{cell(counts.contact + counts.heard, made)}</td>
-                <td className="py-1.5 pl-3 text-right text-ink">{cell(counts.failed, failed)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </ScrollBox>
+    // On a phone each level is a block of its own, so large text never makes the page scroll sideways (WCAG 1.4.10).
+    <Table label={caption} stack className="mt-3 max-w-2xl">
+      <caption className="mb-1 text-left text-ink-muted">{caption}</caption>
+      <TableHead>
+        <Tr>
+          <Th>The engine's reliability</Th>
+          <Th numeric>Contacts made or stations heard</Th>
+          <Th numeric>Calls not heard</Th>
+        </Tr>
+      </TableHead>
+      <tbody>
+        {COMPARISON_LEVELS.map((level) => {
+          const counts = levels.find((item) => item.id === level.id) ?? { contact: 0, heard: 0, failed: 0 };
+          return (
+            <Tr key={level.id}>
+              <th scope="row" className="py-2.5 pr-3 text-left align-top font-medium text-ink">
+                {level.label}
+              </th>
+              <Td label="Made or heard" numeric>
+                {cell(counts.contact + counts.heard, made)}
+              </Td>
+              <Td label="Not heard" numeric>
+                {cell(counts.failed, failed)}
+              </Td>
+            </Tr>
+          );
+        })}
+      </tbody>
+    </Table>
   );
 }
 
@@ -422,48 +417,34 @@ function Comparison({ result }: { result: ComparisonResult }) {
         </ul>
       </div>
       {result.rows.length > 0 ? (
-        <ScrollBox
-          label="Each entry compared, with the engine's figures for it"
-          className="scroll-quiet mt-5 max-h-96 overflow-auto border-y border-border"
-        >
-          <table className="tabular w-full min-w-[40rem] text-small">
-            <caption className="sr-only">Each entry compared, with the engine's figures for it</caption>
-            <thead className="sticky top-0 bg-page">
-              <tr className="border-b border-border-strong text-left text-ink-muted">
-                <th scope="col" className="py-1.5 pr-3 font-medium">
-                  When
-                </th>
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  From, to
-                </th>
-                <th scope="col" className="px-3 py-1.5 text-right font-medium">
-                  MHz
-                </th>
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  As
-                </th>
-                <th scope="col" className="px-3 py-1.5 text-right font-medium">
-                  km
-                </th>
-                <th scope="col" className="px-3 py-1.5 text-right font-medium">
-                  Engine's reliability
-                </th>
-                <th scope="col" className="py-1.5 pl-3 font-medium">
-                  Logged as
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.rows.slice(0, 200).map((row) => (
-                <tr key={row.id} className="border-b border-border">
-                  <td className="whitespace-nowrap py-1.5 pr-3 text-ink">{utcStamp(row.at)}</td>
-                  <td className="px-3 py-1.5 font-mono text-ink">
-                    {row.txCall || "?"} to {row.rxCall || "?"}
-                  </td>
-                  <td className="px-3 py-1.5 text-right text-ink">{row.frequencyMhz.toFixed(2)}</td>
-                  <td className="px-3 py-1.5 text-ink">{modeById(row.mode).label}</td>
-                  <td className="px-3 py-1.5 text-right text-ink">{Math.round(row.distanceKm)}</td>
-                  <td className="px-3 py-1.5 text-right text-ink">
+        <Table label="Each entry compared, with the engine's figures for it" stack sticky className="mt-5">
+          <TableHead>
+            <Tr>
+              <Th>When</Th>
+              <Th>From, to</Th>
+              <Th numeric>MHz</Th>
+              <Th>As</Th>
+              <Th numeric>km</Th>
+              <Th numeric>Engine's reliability</Th>
+              <Th>Logged as</Th>
+            </Tr>
+          </TableHead>
+          <tbody>
+            {result.rows.slice(0, 200).map((row) => (
+              <Tr key={row.id}>
+                <Td className="whitespace-nowrap tabular">{utcStamp(row.at)}</Td>
+                <Td label="From, to" className="font-mono">
+                  {row.txCall || "?"} to {row.rxCall || "?"}
+                </Td>
+                <Td label="MHz" numeric>
+                  {row.frequencyMhz.toFixed(2)}
+                </Td>
+                <Td label="As">{modeById(row.mode).label}</Td>
+                <Td label="km" numeric>
+                  {Math.round(row.distanceKm)}
+                </Td>
+                <Td label="Engine's reliability" numeric>
+                  <span>
                     {row.approximate ? (
                       <>
                         <span className="sr-only">approximately </span>
@@ -471,13 +452,13 @@ function Comparison({ result }: { result: ComparisonResult }) {
                       </>
                     ) : null}
                     {Math.round(row.reliability * 100)}% at {String(row.utcHour).padStart(2, "0")}:00, SSN {row.ssn}
-                  </td>
-                  <td className="py-1.5 pl-3 text-ink">{OUTCOME_WORDS[row.outcome]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ScrollBox>
+                  </span>
+                </Td>
+                <Td label="Logged as">{OUTCOME_WORDS[row.outcome]}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
       ) : null}
       {result.rows.length > 200 ? (
         <p className="mt-1 text-small text-ink-muted">The first 200 of {formatNumber(result.rows.length)} compared are listed.</p>

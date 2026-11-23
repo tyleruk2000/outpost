@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { PdfButtons } from "@/features/library/made/pdf-actions";
 import { pdfFileName } from "@/features/maps/print/pdf";
 import { ScrollBox } from "@/features/radio/scroll-box";
@@ -190,46 +191,40 @@ export function Pair({ pair, plan, result }: { pair: PlanPair; plan: Communicati
             All 24 hours are shown; the plan's window is {utcLabel(plan.fromUtc)} to {utcLabel(plan.toUtc)} UTC. Press an hour to read each
             direction.
           </p>
-          <ScrollBox label={`At ${utcLabel(hour)} UTC, share of days`} className="scroll-quiet mt-3 max-w-xl overflow-x-auto">
-            <table className="tabular w-full text-small">
-              <caption className="mb-1 text-left font-medium text-ink">At {utcLabel(hour)} UTC, share of days</caption>
-              <thead>
-                <tr className="border-b border-border text-ink-muted">
-                  <th scope="col" className="py-1 pr-3 text-left font-medium">
-                    Band
+          <Table label={`At ${utcLabel(hour)} UTC, share of days`} stack className="mt-3 max-w-xl">
+            <caption className="mb-1 text-left font-medium text-ink">At {utcLabel(hour)} UTC, share of days</caption>
+            <TableHead>
+              <Tr>
+                <Th>Band</Th>
+                <Th numeric>
+                  {name(pair.a)} heard at {name(pair.b)}
+                </Th>
+                <Th numeric>
+                  {name(pair.b)} heard at {name(pair.a)}
+                </Th>
+                <Th numeric>Both ways</Th>
+              </Tr>
+            </TableHead>
+            <tbody>
+              {pair.bands.map((band) => (
+                <Tr key={band.bandId}>
+                  <th scope="row" className="whitespace-nowrap py-2.5 pr-3 text-left align-top font-medium text-ink">
+                    {planBandLabel(band.bandId)}
+                    {rough.get(band.bandId) ? ` ${APPROXIMATE_SIGN}` : ""}
                   </th>
-                  <th scope="col" className="px-2 py-1 text-right font-medium">
-                    {name(pair.a)} heard at {name(pair.b)}
-                  </th>
-                  <th scope="col" className="px-2 py-1 text-right font-medium">
-                    {name(pair.b)} heard at {name(pair.a)}
-                  </th>
-                  <th scope="col" className="py-1 pl-2 text-right font-medium">
-                    Both ways
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {pair.bands.map((band) => (
-                  <tr key={band.bandId} className="border-b border-border">
-                    <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
-                      {planBandLabel(band.bandId)}
-                      {rough.get(band.bandId) ? ` ${APPROXIMATE_SIGN}` : ""}
-                    </th>
-                    <td className="px-2 py-1 text-right text-ink">
-                      {mark(band.bandId, share(band.forward.reliability[hour - 1] ?? null, band.bandId))}
-                    </td>
-                    <td className="px-2 py-1 text-right text-ink">
-                      {mark(band.bandId, share(band.back.reliability[hour - 1] ?? null, band.bandId))}
-                    </td>
-                    <td className="py-1 pl-2 text-right text-ink">
-                      {mark(band.bandId, share(planTwoWay(band, hour, false), band.bandId))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollBox>
+                  <Td label={`${name(pair.a)} heard at ${name(pair.b)}`} numeric>
+                    {mark(band.bandId, share(band.forward.reliability[hour - 1] ?? null, band.bandId))}
+                  </Td>
+                  <Td label={`${name(pair.b)} heard at ${name(pair.a)}`} numeric>
+                    {mark(band.bandId, share(band.back.reliability[hour - 1] ?? null, band.bandId))}
+                  </Td>
+                  <Td label="Both ways" numeric>
+                    {mark(band.bandId, share(planTwoWay(band, hour, false), band.bandId))}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
         </div>
       )}
       {byRatio ? (
@@ -657,57 +652,42 @@ export default function PlanPage() {
               </ul>
             </div>
             {/* One table at every width: on a phone each pair is a block, and each figure carries its column's name. */}
-            <table className="tabular mt-5 w-full text-small">
-              <caption className="sr-only">The primary and alternate band for each pair of stations</caption>
-              <thead className="max-sm:sr-only">
-                <tr className="border-b border-border-strong text-left text-ink-muted">
-                  <th scope="col" className="py-1.5 pr-3 font-medium">
-                    Between
-                  </th>
-                  <th scope="col" className="px-3 py-1.5 text-right font-medium">
-                    Distance
-                  </th>
-                  <th scope="col" className="px-3 py-1.5 font-medium">
-                    Primary
-                  </th>
-                  <th scope="col" className="py-1.5 pl-3 font-medium">
-                    Alternate
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="max-sm:border-t max-sm:border-border-strong">
+            <Table label="The primary and alternate band for each pair of stations" stack className="mt-5">
+              <TableHead>
+                <Tr>
+                  <Th>Between</Th>
+                  <Th numeric>Distance</Th>
+                  <Th>Primary</Th>
+                  <Th>Alternate</Th>
+                </Tr>
+              </TableHead>
+              <tbody>
                 {result.pairs.map((pair) => {
                   const pick = planRecommendation(pair, hours, byRatio);
                   const cell = (choice: typeof pick.primary) =>
                     choice ? (
-                      <>
+                      <span className="tabular">
                         <span className="font-medium text-ink">{planBandLabel(choice.bandId)}</span>, {hourRanges(choice.hours)},{" "}
                         {planBest(choice.best, byRatio)}
-                      </>
+                      </span>
                     ) : (
                       "None"
                     );
-                  const labelled =
-                    "max-sm:block max-sm:px-0 max-sm:py-0.5 max-sm:text-left max-sm:before:mr-2 max-sm:before:text-ink-muted max-sm:before:content-[attr(data-label)]";
                   return (
-                    <tr key={`${pair.a}-${pair.b}`} className="border-b border-border align-top max-sm:block max-sm:py-2">
-                      <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink max-sm:block max-sm:py-0.5">
+                    <Tr key={`${pair.a}-${pair.b}`}>
+                      <th scope="row" className="py-2.5 pr-3 text-left align-top font-medium text-ink">
                         {stationName(pair.a)} and {stationName(pair.b)}
                       </th>
-                      <td data-label="Distance" className={`px-3 py-1.5 text-right text-ink ${labelled}`}>
+                      <Td label="Distance" numeric className="whitespace-nowrap">
                         {pair.problem ? "Not worked out" : `${Math.round(pair.distanceKm)} km`}
-                      </td>
-                      <td data-label="Primary" className={`px-3 py-1.5 text-ink ${labelled}`}>
-                        {cell(pick.primary)}
-                      </td>
-                      <td data-label="Alternate" className={`py-1.5 pl-3 text-ink ${labelled}`}>
-                        {cell(pick.alternate)}
-                      </td>
-                    </tr>
+                      </Td>
+                      <Td label="Primary">{cell(pick.primary)}</Td>
+                      <Td label="Alternate">{cell(pick.alternate)}</Td>
+                    </Tr>
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
             <p className="mt-2 text-small text-ink-muted">
               Hours are UTC. Mode: {result.mode.label}
               {result.mode.requiredSnrDbHz === null

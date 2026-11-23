@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress, Select, Skeleton } from "@/components/ui/misc";
-import { ScrollBox } from "@/features/radio/scroll-box";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
@@ -151,77 +151,58 @@ function HourTable({ comparison, hour }: { comparison: SecondModelComparison; ho
         At {utcLabel(hour)} UTC, each model's own figures (V: VOACAP, P: P.533). The difference is P.533's signal less VOACAP's, given only
         where both have the path open.
       </p>
-      <ScrollBox label={`At ${utcLabel(hour)} UTC, each model's own figures`} className="scroll-quiet overflow-x-auto">
-        <table className="tabular w-full min-w-max text-small">
-          <caption className="sr-only">At {utcLabel(hour)} UTC, each model's own figures</caption>
-          <thead>
-            <tr className="border-b border-border text-ink-muted">
-              <th scope="col" className="py-1 pr-3 text-left font-medium">
-                Band
+      <Table label={`At ${utcLabel(hour)} UTC, each model's own figures`} stack>
+        <TableHead>
+          <Tr>
+            <Th>Band</Th>
+            <Th>Path, V / P</Th>
+            <Th numeric>MUF, MHz, V / P</Th>
+            <Th numeric>Signal, dBW, V / P</Th>
+            <Th numeric>Difference, dB</Th>
+            <Th numeric>SNR in 1 Hz, dB, V / P</Th>
+            {required ? (
+              <>
+                <Th numeric>VOACAP reliability</Th>
+                <Th numeric>P.533 basic circuit reliability</Th>
+              </>
+            ) : null}
+          </Tr>
+        </TableHead>
+        <tbody>
+          {at.cells.map((cell: SecondModelCell, index) => (
+            <Tr key={cell.mhz}>
+              <th scope="row" className="whitespace-nowrap py-2.5 pr-3 text-left align-top font-medium text-ink">
+                {comparison.rows[index]!.label}
               </th>
-              <th scope="col" className="px-2 py-1 text-left font-medium">
-                Path, V / P
-              </th>
-              <th scope="col" className="px-2 py-1 text-right font-medium">
-                MUF, MHz, V / P
-              </th>
-              <th scope="col" className="px-2 py-1 text-right font-medium">
-                Signal, dBW, V / P
-              </th>
-              <th scope="col" className="px-2 py-1 text-right font-medium">
-                Difference, dB
-              </th>
-              <th scope="col" className="px-2 py-1 text-right font-medium">
-                SNR in 1 Hz, dB, V / P
-              </th>
+              <Td label="Path, V / P" className={cell.agreeOnOpen ? undefined : "font-semibold text-warning"}>
+                {openWord(cell.voacap.open)} / {openWord(cell.p533.open)}
+              </Td>
+              <Td label="MUF, MHz, V / P" numeric>
+                {one(cell.voacap.mufMhz)} / {one(cell.p533.mufMhz)}
+              </Td>
+              <Td label="Signal, dBW, V / P" numeric>
+                {one(cell.voacap.signalDbw)} / {one(cell.p533.signalDbw)}
+              </Td>
+              <Td label="Difference, dB" numeric>
+                {cell.voacap.open && cell.p533.open ? signed(cell.difference.signalDb) : "–"}
+              </Td>
+              <Td label="SNR in 1 Hz, dB, V / P" numeric>
+                {one(cell.voacap.snrDbHz)} / {one(cell.p533.snrDbHz)}
+              </Td>
               {required ? (
                 <>
-                  <th scope="col" className="px-2 py-1 text-right font-medium">
-                    VOACAP reliability
-                  </th>
-                  <th scope="col" className="py-1 pl-2 text-right font-medium">
-                    P.533 basic circuit reliability
-                  </th>
+                  <Td label="VOACAP reliability" numeric>
+                    {cell.voacap.reliability === null ? "–" : `${Math.round(cell.voacap.reliability * 100)}% of days`}
+                  </Td>
+                  <Td label="P.533 basic circuit reliability" numeric>
+                    {cell.p533.basicCircuitReliabilityPercent === null ? "–" : `${Math.round(cell.p533.basicCircuitReliabilityPercent)}%`}
+                  </Td>
                 </>
               ) : null}
-            </tr>
-          </thead>
-          <tbody>
-            {at.cells.map((cell: SecondModelCell, index) => (
-              <tr key={cell.mhz} className="border-b border-border">
-                <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
-                  {comparison.rows[index]!.label}
-                </th>
-                <td className={`px-2 py-1 ${cell.agreeOnOpen ? "text-ink" : "font-semibold text-warning"}`}>
-                  {openWord(cell.voacap.open)} / {openWord(cell.p533.open)}
-                </td>
-                <td className="px-2 py-1 text-right text-ink">
-                  {one(cell.voacap.mufMhz)} / {one(cell.p533.mufMhz)}
-                </td>
-                <td className="px-2 py-1 text-right text-ink">
-                  {one(cell.voacap.signalDbw)} / {one(cell.p533.signalDbw)}
-                </td>
-                <td className="px-2 py-1 text-right text-ink">
-                  {cell.voacap.open && cell.p533.open ? signed(cell.difference.signalDb) : "–"}
-                </td>
-                <td className="px-2 py-1 text-right text-ink">
-                  {one(cell.voacap.snrDbHz)} / {one(cell.p533.snrDbHz)}
-                </td>
-                {required ? (
-                  <>
-                    <td className="px-2 py-1 text-right text-ink">
-                      {cell.voacap.reliability === null ? "–" : `${Math.round(cell.voacap.reliability * 100)}% of days`}
-                    </td>
-                    <td className="py-1 pl-2 text-right text-ink">
-                      {cell.p533.basicCircuitReliabilityPercent === null ? "–" : `${Math.round(cell.p533.basicCircuitReliabilityPercent)}%`}
-                    </td>
-                  </>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </ScrollBox>
+            </Tr>
+          ))}
+        </tbody>
+      </Table>
     </div>
   );
 }

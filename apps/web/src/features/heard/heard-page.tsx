@@ -36,6 +36,14 @@ import {
 
 const link = "text-primary underline underline-offset-2";
 
+/** The empty list's title in its own words: "APRS" keeps its capitals, which lower-casing the source's name lost. */
+const NOTHING_HEARD: Record<HeardSourceId, string> = {
+  mesh: "No mesh radios heard yet",
+  aprs: "No APRS stations heard yet",
+  adsb: "No aircraft heard yet",
+  ais: "No ships heard yet",
+};
+
 function Receivers() {
   const receivers = useReceivers();
   if (receivers.isPending)
@@ -172,7 +180,7 @@ function StationList({ source, home }: { source: ReceiverKind; home: Home | null
   if (stations.isError) return <ErrorState error={stations.error} onRetry={() => void stations.refetch()} />;
   if (stations.data.length === 0)
     return (
-      <EmptyState compact level={3} title={`No ${sourceName(source).toLowerCase()} heard yet`}>
+      <EmptyState compact level={3} title={NOTHING_HEARD[source]}>
         What a {KIND_NAMES[source]} receiver hears is listed here and put on the map, and kept until you clear it.
       </EmptyState>
     );

@@ -10,11 +10,12 @@ import {
   type Settings,
 } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { LicenceLine } from "./licence";
 import LicencesPage from "./licences-page";
+import RadioPage from "./radio-page";
 
 function withSettings(settings: Partial<Settings> | null, children: React.ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } } });
@@ -86,5 +87,29 @@ describe("licences and band plans", () => {
     withSettings({ "radio.licensed": false }, <LicencesPage />);
     expect(screen.getByRole("heading", { name: "Licences and band plans" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Choose a country" })).toBeInTheDocument();
+  });
+
+  it("offers every country read as one press, before the drop-down is opened", () => {
+    withSettings({ "radio.licensed": false }, <LicencesPage />);
+    const picks = within(screen.getByRole("list", { name: "Countries read" })).getAllByRole("link");
+    expect(picks).toHaveLength(RADIO_RULES.length);
+    expect(picks[0]).toHaveAttribute("href", `/?country=${RADIO_RULES[0]!.country}`);
+  });
+});
+
+describe("the radio screen", () => {
+  it("puts listening, which needs no licence, first, and says which tools need one", () => {
+    withSettings({ "radio.licensed": false }, <RadioPage />);
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(headings).toEqual(["Listen", "Learn", "Plan and transmit", "On the map"]);
+    expect(screen.getByText("No licence needed. The place to start: tune in to what is on the air near you.")).toBeInTheDocument();
+    expect(screen.getByText("Planning is free; transmitting on these needs an amateur licence.")).toBeInTheDocument();
+    const listen = screen.getByRole("heading", { level: 2, name: "Listen" }).closest("section")!;
+    expect(
+      within(listen)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/radio/frequencies", "/radio/heard", "/radio/satellites"]);
+    expect(screen.getAllByRole("link").filter((link) => link.getAttribute("href")?.startsWith("/radio/")).length).toBe(10);
   });
 });

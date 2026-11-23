@@ -108,16 +108,17 @@ test.describe("the radio screens on a phone", () => {
     await page.getByLabel("ADIF file to import").setInputFiles({ name: "november.adi", mimeType: "text/plain", buffer: adifLog("G4DSK") });
     await expect(page.getByText("november.adi: 4 entries brought in")).toBeVisible();
     await page.getByRole("button", { name: "Compare", exact: true }).click();
-    const compared = page.getByRole("region", { name: "Each entry compared, with the engine's figures for it" });
+    // The comparison is a block per entry on a phone, so it never needs a box of its own to scroll sideways.
+    const compared = page.getByRole("table", { name: "Each entry compared, with the engine's figures for it" });
     await expect(compared).toBeVisible({ timeout: 30_000 });
-    await compared.focus();
-    await expect(compared).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
     expect(await accessibilityInBothThemes(page, "/radio/log")).toEqual([]);
 
     await oneSatellite(page);
     await page.goto("/radio/satellites");
     await page.getByRole("tab", { name: "One satellite" }).click();
-    await expect(page.getByRole("region", { name: "Transmitters" })).toBeVisible();
+    await expect(page.getByRole("table", { name: "Transmitters, with the frequencies corrected for Doppler now" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
     expect(await accessibilityInBothThemes(page, "/radio/satellites")).toEqual([]);
     expect(errors).toEqual([]);
   });

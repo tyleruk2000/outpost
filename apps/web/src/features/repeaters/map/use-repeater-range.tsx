@@ -445,7 +445,7 @@ function RangeControl({
 
           <details className="group">
             <summary className="flex min-h-11 cursor-default items-center gap-2 py-1 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-              <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+              <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform group-open:rotate-90" />
               What this is, and is not
             </summary>
             {/* The long account scrolls inside the card rather than growing it over the map. */}
@@ -480,7 +480,7 @@ function RangeControl({
           {range.data && range.data.coverage !== "none" ? (
             <details className="group/why">
               <summary className="flex min-h-11 cursor-default items-center gap-2 py-1 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-                <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open/why:rotate-90" />
+                <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform group-open/why:rotate-90" />
                 Why this shape: look along one direction
               </summary>
               <div className="pb-1">

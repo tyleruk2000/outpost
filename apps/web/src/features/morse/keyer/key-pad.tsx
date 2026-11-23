@@ -39,10 +39,7 @@ const holdable = "touch-none select-none [-webkit-touch-callout:none] [-webkit-u
 function Lamp({ keyDown }: { keyDown: boolean }) {
   return (
     <div className="flex items-center gap-2 text-small" role="status" aria-live="off">
-      <span
-        aria-hidden
-        className={cn("size-3 rounded-full transition-colors duration-75", keyDown ? "bg-lamp" : "border border-border-strong bg-page")}
-      />
+      <span aria-hidden className={cn("size-3 rounded-full", keyDown ? "bg-lamp" : "border border-border-strong bg-page")} />
       <span className={keyDown ? "font-medium text-ink" : "text-ink-muted"}>{keyDown ? "Key down" : "Key up"}</span>
     </div>
   );
@@ -54,7 +51,7 @@ function Lever({ side, label, keyLabel, held }: { side: "dit" | "dah"; label: st
       data-side={side}
       aria-hidden
       className={cn(
-        "flex min-h-40 min-w-0 flex-1 flex-col items-center justify-between rounded-panel border px-1.5 py-4 sm:px-3 transition-[transform,background-color,border-color] duration-75",
+        "flex min-h-40 min-w-0 flex-1 flex-col items-center justify-between rounded-panel border px-1.5 py-4 sm:px-3",
         held ? "translate-y-1 border-primary bg-primary-soft" : "border-border-strong bg-page",
       )}
     >
@@ -182,7 +179,7 @@ export function KeyPad({ keyType, keyDown, bindings, swapPaddles, onPress, onRel
             aria-label={instructions}
             className={cn(
               holdable,
-              "flex size-44 cursor-pointer flex-col items-center justify-center gap-1 rounded-full border-4 transition-[transform,background-color,border-color] duration-75",
+              "flex size-44 cursor-pointer flex-col items-center justify-center gap-1 rounded-full border-4",
               held.straight || keyDown ? "translate-y-1.5 border-primary bg-primary-soft" : "border-border-strong bg-page",
             )}
             data-testid="morse-straight-key"

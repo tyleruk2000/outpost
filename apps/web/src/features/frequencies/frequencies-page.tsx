@@ -37,7 +37,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, FileDown, Info } from "lucide-react";
 import { memo, type ReactNode, useDeferredValue, useId, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
+import { Disclosure, EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -118,10 +118,7 @@ const FrequencyRow = memo(function FrequencyRow({ entry, today }: { entry: Frequ
           className="group -mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-3 rounded-control px-2 py-2.5 text-left hover:bg-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
         >
           <span className="min-w-0 flex-1 text-body font-semibold text-ink group-hover:text-primary">{entry.name}</span>
-          <ChevronRight
-            aria-hidden
-            className={cn("size-4 shrink-0 text-ink-faint transition-transform duration-150", open && "rotate-90")}
-          />
+          <ChevronRight aria-hidden className={cn("size-4 shrink-0 text-ink-faint transition-transform", open && "rotate-90")} />
         </button>
       </h3>
       <p className="text-small text-ink-muted">
@@ -239,7 +236,7 @@ function Guide({ guide }: { guide: FrequencyGuide }) {
     <li>
       <details className="group" data-guide={guide.id}>
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&::-webkit-details-marker]:hidden">
-          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint transition-transform duration-150 group-open:rotate-90" />
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint transition-transform group-open:rotate-90" />
           <span className="text-body text-ink group-hover:text-primary">{guide.title}</span>
         </summary>
         <div className="grid max-w-[70ch] gap-2 pb-3 pl-7 text-small text-ink">
@@ -405,12 +402,22 @@ export default function FrequenciesPage() {
         <ErrorState error={data.error} onRetry={() => void data.refetch()} />
       ) : (
         <>
-          <Notice icon={<Info />} title={checked.to ? `Last checked ${checkedOn(checked.to)}` : undefined} className="mb-6">
-            Each entry was checked against the page it names, on the day it gives
-            {checked.from && checked.from !== checked.to ? ` (the oldest on ${checkedOn(checked.from)})` : ""}. Stations close and schedules
-            change, and shortwave schedules change twice a year, at the end of March and the end of October: a frequency here is somewhere
-            to try. Times are UTC unless an entry says otherwise.
-          </Notice>
+          <div className="mb-6 max-w-[70ch] text-small text-ink-muted">
+            <p className="flex items-start gap-2">
+              <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {checked.to ? <span className="font-semibold text-ink">{`Last checked ${checkedOn(checked.to)}`}</span> : null}
+                {checked.to ? ". " : ""}Times are UTC unless an entry says otherwise.
+              </span>
+            </p>
+            <Disclosure summary="A frequency here is somewhere to try" className="ml-6">
+              <p className="text-ink-muted">
+                Each entry was checked against the page it names, on the day it gives
+                {checked.from && checked.from !== checked.to ? ` (the oldest on ${checkedOn(checked.from)})` : ""}. Stations close and
+                schedules change, and shortwave schedules change twice a year, at the end of March and the end of October.
+              </p>
+            </Disclosure>
+          </div>
 
           <section aria-label="Find and filter" className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-6">
             <Field label="Find" className="col-span-2">

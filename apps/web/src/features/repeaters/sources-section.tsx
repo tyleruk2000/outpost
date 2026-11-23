@@ -195,7 +195,7 @@ function SourceRow({
 
       <details className="group">
         <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-small text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
-          <ChevronRight aria-hidden className="size-4 shrink-0 transition-transform duration-150 group-open:rotate-90" />
+          <ChevronRight aria-hidden className="size-4 shrink-0 transition-transform group-open:rotate-90" />
           Why, and its terms as read
         </summary>
         <div className="mt-1 ml-5.5 grid max-w-[68ch] gap-1.5 text-small text-ink">
@@ -256,7 +256,7 @@ export function SourcesSection({ lists, getList, className }: { lists: RepeaterL
         <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-baseline gap-x-3 py-2 [&::-webkit-details-marker]:hidden">
           <ChevronRight
             aria-hidden
-            className="size-4 shrink-0 self-center text-ink-muted transition-transform duration-150 group-open/region:rotate-90"
+            className="size-4 shrink-0 self-center text-ink-muted transition-transform group-open/region:rotate-90"
           />
           <span className="text-body font-semibold text-ink">{region.name}</span>
           <span className="tabular text-small text-ink-muted">{kindsLine(mine)}</span>

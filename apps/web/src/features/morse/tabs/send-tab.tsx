@@ -223,7 +223,7 @@ export function SendTab() {
             >
               <ChevronRight
                 className={cn(
-                  "size-4 shrink-0 text-ink-muted transition-transform duration-150 motion-reduce:transition-none",
+                  "size-4 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none",
                   realKeyOpen && "rotate-90",
                 )}
                 aria-hidden

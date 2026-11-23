@@ -406,6 +406,28 @@ export default function CoveragePage() {
       <EngineNotReady engine={engine} title="The propagation engine cannot run, so no coverage can be worked out" className="mb-6">
         Outpost does not estimate coverage any other way.
       </EngineNotReady>
+      {/* New here: one press shows what a coverage map looks like, before the long form. */}
+      {!result && !working ? (
+        <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-border px-4 py-3">
+          <p className="min-w-0 flex-1 basis-60 text-small text-ink-muted">
+            <span className="font-medium text-ink">New to this?</span> See what a coverage map looks like before filling in the form.
+          </p>
+          <Button
+            variant="soft"
+            // Its words wrap on a narrow phone with large text, where on one line they were wider than the screen.
+            className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
+            disabled={engine ? !engine.ready : false}
+            onClick={() => {
+              const example = exampleCoverageForm();
+              setForm(example);
+              setFit(areaBox(EXAMPLE_AREA));
+              run(example, EXAMPLE_AREA);
+            }}
+          >
+            Try London on 40 m, over Britain and Ireland
+          </Button>
+        </div>
+      ) : null}
 
       {/* One column that may be narrower than what is in it: the two fields side by side would otherwise hold the
           form at their own widths, which on a phone with large text is wider than the screen. */}
@@ -799,28 +821,9 @@ export default function CoveragePage() {
               </Section>
             </>
           ) : working ? null : (
-            <EmptyState
-              title="No coverage map yet"
-              className="mt-6"
-              action={
-                <Button
-                  variant="primary"
-                  // Its words wrap on a narrow phone with large text, where on one line they were wider than the screen.
-                  className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
-                  disabled={engine ? !engine.ready : false}
-                  onClick={() => {
-                    const example = exampleCoverageForm();
-                    setForm(example);
-                    setFit(areaBox(EXAMPLE_AREA));
-                    run(example, EXAMPLE_AREA);
-                  }}
-                >
-                  Try London on 40 m, over Britain and Ireland
-                </Button>
-              }
-            >
+            <EmptyState title="No coverage map yet" className="mt-6">
               Say where the transmitter is, move the map to the area you care about, and press Work out coverage. The grid is laid over
-              whatever the map shows.
+              whatever the map shows. The example at the top does it for you.
             </EmptyState>
           )}
         </div>
