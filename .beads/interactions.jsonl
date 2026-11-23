@@ -470,3 +470,4 @@
 {"id":"int-a013e730","kind":"field_change","created_at":"2026-11-23T02:16:50.42963Z","actor":"Tyler Allen","issue_id":"outpost-baw8","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Merged"}}
 {"id":"int-fd75235b","kind":"field_change","created_at":"2026-11-23T02:16:50.556189Z","actor":"Tyler Allen","issue_id":"outpost-sqao","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Merged"}}
 {"id":"int-2080eb84","kind":"field_change","created_at":"2026-11-23T02:50:17.887144Z","actor":"Tyler Allen","issue_id":"outpost-0vri.2","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Merged: prefix fallback, ~250 synonyms with 'Also searched', did-you-mean word index (migration 0044)"}}
+{"id":"int-fb593fca","kind":"field_change","created_at":"2026-11-23T02:53:32.93837Z","actor":"Tyler Allen","issue_id":"outpost-0vri.3","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
