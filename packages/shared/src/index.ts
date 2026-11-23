@@ -104,6 +104,8 @@ export * from "./semantic.ts";
 export * from "./setup-guide.ts";
 export * from "./shares.ts";
 export * from "./storage.ts";
+// Streets for routes (the optional Valhalla add-on), on a line of its own.
+export * from "./streets.ts";
 // The sun's day and position, on a line of its own so that other additions merge cleanly.
 export * from "./sun.ts";
 export * from "./supplies.ts";

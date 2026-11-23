@@ -212,7 +212,11 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
     const put = (country: string | null | undefined, item: MapDataItem, globalItem = false) => {
       const code = country?.toUpperCase();
       if (globalItem) world.push(item);
-      else if (code && countryOf(code) && MAP_DATA_COUNTRY_KINDS.includes(item.kind as (typeof MAP_DATA_COUNTRY_KINDS)[number])) {
+      else if (
+        code &&
+        countryOf(code) &&
+        (item.kind === "streets" || MAP_DATA_COUNTRY_KINDS.includes(item.kind as (typeof MAP_DATA_COUNTRY_KINDS)[number]))
+      ) {
         const rows = countryRows.get(code) ?? new Map<MapDataKind, MapDataItem[]>();
         rows.set(item.kind, [...(rows.get(item.kind) ?? []), item]);
         countryRows.set(code, rows);
@@ -305,6 +309,11 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       });
     }
 
+    // ── Streets for routes (the optional add-on): only where it is installed ──
+    const streets = ctx.services.streets?.mapDataItems() ?? [];
+    for (const { country, item } of streets) put(country, item);
+    const streetsInstalled = ctx.services.streets?.connection.installed() ?? false;
+
     // ── Country files: kept, on their way, and what was read ──
     const countryFiles: MapDataItem[] = [];
     for (const { row, meta } of ctx.services.countryFiles.keptFiles()) {
@@ -352,7 +361,11 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
           country: code,
           name: countryOf(code)?.name ?? code,
           regionId: regions?.regions.find((region) => region.depth === 0 && region.country === code)?.id ?? null,
-          rows: MAP_DATA_COUNTRY_KINDS.map((kind) => ({ kind, items: rows.get(kind) ?? [] })),
+          rows: [
+            ...MAP_DATA_COUNTRY_KINDS.map((kind) => ({ kind, items: rows.get(kind) ?? [] })),
+            // Streets for routes, a seventh row, only where the add-on is installed.
+            ...(streetsInstalled ? [{ kind: "streets" as const, items: rows.get("streets") ?? [] }] : []),
+          ],
           lastRead: latest
             ? {
                 regionId: latest.regionId,
@@ -370,7 +383,10 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
 
     // ── The status line ──
     const everything = [...countryRows.values()].flatMap((rows) => [...rows.values()].flat()).concat(world, other);
-    const onDisk = everything.filter((item) => !item.downloadId && item.sizeBytes);
+    // One set of streets can cover several countries: count it once.
+    const onDisk = everything.filter(
+      (item, index) => !item.downloadId && item.sizeBytes && everything.findIndex((other) => other.key === item.key) === index,
+    );
     const byLocation = new Map<string | null, number>();
     for (const item of onDisk) byLocation.set(item.locationId, (byLocation.get(item.locationId) ?? 0) + (item.sizeBytes ?? 0));
     const choice = settings.get("maps.countryFileKeep");

@@ -44,6 +44,9 @@ const envSchema = z.object({
   OUTPOST_KIWIX_URL: z.string().optional(),
   OUTPOST_KIWIX_BIN: z.string().optional(),
   OUTPOST_KIWIX_LIBRARY_PATH: z.string().optional(),
+  // Streets for routes (the optional Valhalla service): its address, and the folder it shares with Outpost (docs/development/street-routes.md).
+  OUTPOST_VALHALLA_URL: z.string().default("http://valhalla:8002"),
+  OUTPOST_VALHALLA_DIR: z.string().optional(),
   OUTPOST_CATALOG_DIR: z.string().optional(),
   OUTPOST_WEB_DIR: z.string().optional(),
   OUTPOST_MAX_UPLOAD_MB: z.coerce.number().int().min(1).default(2048),
@@ -126,6 +129,11 @@ export interface Config {
     /** Path to a kiwix-serve binary that Outpost starts itself. */
     bin?: string;
     libraryPath: string;
+  };
+  /** Streets for routes: the Valhalla service and the folder it shares (request.json, status.json, current/). */
+  valhalla: {
+    url: string;
+    dir: string;
   };
   catalogDir: string;
   webDir: string;
@@ -284,6 +292,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       libraryPath: parsed.OUTPOST_KIWIX_LIBRARY_PATH
         ? path.resolve(parsed.OUTPOST_KIWIX_LIBRARY_PATH)
         : path.join(dataDir, "kiwix", "library.xml"),
+    },
+    valhalla: {
+      url: parsed.OUTPOST_VALHALLA_URL.replace(/\/+$/, ""),
+      dir: parsed.OUTPOST_VALHALLA_DIR ? path.resolve(parsed.OUTPOST_VALHALLA_DIR) : path.join(dataDir, "valhalla"),
     },
     catalogDir: parsed.OUTPOST_CATALOG_DIR ? path.resolve(parsed.OUTPOST_CATALOG_DIR) : defaultCatalogDir,
     webDir: parsed.OUTPOST_WEB_DIR ? path.resolve(parsed.OUTPOST_WEB_DIR) : defaultWebDir,

@@ -615,7 +615,7 @@ Types: `maps.ts` and the files named below. See [maps.md](maps.md).
 | `GET /api/maps/regions` | Ready-made regions, with installed and downloading state. |
 | `POST /api/maps/estimate` | `{ bbox [w,s,e,n], maxZoom, minZoom?, tileType? }` → `MapEstimate` (exact size). Needs a connection. |
 | `POST /api/maps/regions` | `{ name, bbox, maxZoom, minZoom?, regionId?, locationId?, includeTerrain? }` → `{ downloads }`. |
-| `GET /api/maps/data` | Everything kept for the map, by country (six rows: map, terrain, names, roads, places, country file), world, other areas and kept country files, each with size, location, data date, state and its download or task (`MapDataResponse`). Asks nothing outside. |
+| `GET /api/maps/data` | Everything kept for the map, by country (six rows: map, terrain, names, roads, places, country file; a seventh, streets for routes, where the streets service is installed), world, other areas and kept country files, each with size, location, data date, state and its download or task (`MapDataResponse`). Asks nothing outside. |
 | `POST /api/maps/data/add` | `{ regionId?, kinds, keep?, locationId?, layers?, newerThan?, map?, country? }` → `{ countryFile, downloadIds, taskIds }`. `keep` is required whenever roads, places or the country file are asked. Remembers `keep` as `maps.countryFileKeep`. `409` while that region's country file is already coming. |
 | `POST /api/maps/import` | `{ locationId, relPath, name, tileType? }`: registers a `.pmtiles` file. |
 | `GET /api/maps/overview` | `MapOverview`: regions, place-name datasets, counts. |
@@ -717,6 +717,23 @@ source on the internet; the rest is local.
 
 A found track carries `source` (`TrackSource`): credit, licence, OSM element, when and
 from where.
+
+### Streets for routes
+
+Types: `streets.ts`. The optional streets service (Valhalla, the Compose profile
+"routes"): door-to-door drives, walking and cycling, reachable areas. Without it, every
+route here answers `415` with what to do, and a drive's reachable area comes from the
+installed road networks ("Main roads only"). Shapes and behaviour:
+[development/street-routes.md](development/street-routes.md).
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/streets/status` | `state`, `installed`, `message`, the streets in use, a build under way, the modes available, kept country files to build from. |
+| `POST /api/streets/route` | `{ points, mode: drive-door \| walk \| cycle, units?, crossing? }` → Outpost's road route with streets at each end, or streets all the way, as turn-by-turn lines. `400` "Streets are not installed for France". |
+| `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: [15, 30, 60], source? }` → GeoJSON areas, smallest time first, labelled "Streets" or "Main roads only". |
+| `POST /api/streets/tiles/estimate` | `{ regions }` → time, memory, disk writes and space a build takes, with the warnings to show. |
+| `POST /api/streets/tiles` | `{ regions, workLocationId? }` or `{ import: { locationId, relPath } }` → `{ jobId, estimate }` (task `streets.build`). `409` while one runs. |
+| `DELETE /api/streets/tiles` | Deletes the streets in use. |
 
 ## Contacts
 

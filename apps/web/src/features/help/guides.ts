@@ -608,6 +608,19 @@ export const GUIDES: Guide[] = [
       "How road networks are built and joined, how routes and directions are worked out, the speed table, measurements and the API shapes.",
   },
   {
+    slug: "development-street-routes",
+    file: "development/street-routes.md",
+    group: "developers",
+    about:
+      "The optional streets service for door-to-door, walking and cycling routes and reachable areas: how Outpost asks it, builds its streets, and the API shapes.",
+  },
+  {
+    slug: "development-street-routes-measurements",
+    file: "development/street-routes-measurements.md",
+    group: "developers",
+    about: "Valhalla against Outpost's own router on a Raspberry Pi: build time, memory, disk writes, speed and the quality of directions.",
+  },
+  {
     slug: "radio-development",
     file: "development/radio.md",
     group: "developers",

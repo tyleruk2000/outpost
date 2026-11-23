@@ -128,7 +128,9 @@ services:
     volumes:
       - valhalla-tiles:/tiles
       - outpost-library:/storage/internal:ro
-      # Repeat every extra /storage mount from the outpost service here, read-only:
+      # Repeat every extra /storage mount from the outpost service here, read-only, at the
+      # same path. To build on a USB SSD (a work folder on another storage location),
+      # mount that one read-write instead: the build works in its outpost-streets-work folder.
       # - /mnt/usb-ssd:/storage/usb-ssd:ro
       # - nas-library:/storage/nas:ro
     deploy:
