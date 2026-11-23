@@ -590,6 +590,20 @@ describe("what is taking the space", () => {
     expect(screen.getByText(/Measured 2 minutes ago\./)).toBeVisible();
   });
 
+  it("says plainly that nothing has been added yet, rather than counting 0 bytes of content", async () => {
+    const empty = usage();
+    empty.locations = [{ ...empty.locations[0]!, recorded: { count: 0, bytes: 0 }, byKind: [] }];
+    fakeApi({ "GET /api/manage/usage": empty });
+    renderScreen(
+      <TooltipProvider>
+        <SpaceView />
+      </TooltipProvider>,
+    );
+    expect(await screen.findByText(/Outpost is storing/)).toHaveTextContent(
+      /Outpost is storing [\d.]+ \w+, all of it in its own folder: nothing has been downloaded or added yet\./,
+    );
+  });
+
   it("says a figure is still being counted rather than showing nothing or a guess", async () => {
     const counting = usage({ measuring: true, measuredAt: null });
     counting.rows = counting.rows.map((row) => (row.basis === "disk" && row.id !== "database" ? { ...row, bytes: null } : row));

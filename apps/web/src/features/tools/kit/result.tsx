@@ -56,7 +56,7 @@ export function Result({ label, figure, children, keep, refusal, className }: Re
  * saying what to correct. The box keeps the height the last answer had, so the page under it does not jump up and
  * back down with each key.
  */
-function useHeldHeight(answered: boolean) {
+export function useHeldHeight(answered: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   const last = useRef<number | null>(null);
   const [minHeight, setMinHeight] = useState<number | undefined>(undefined);

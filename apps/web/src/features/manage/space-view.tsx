@@ -201,7 +201,9 @@ export default function SpaceView() {
             {total.counting ? "at least " : ""}
             {formatBytes(total.bytes)}
           </span>
-          : {formatBytes(content)} of content on {plural(data.locations.length, "storage location")}, and the rest in its own folder.
+          {content > 0
+            ? `: ${formatBytes(content)} of content on ${plural(data.locations.length, "storage location")}, and the rest in its own folder.`
+            : ", all of it in its own folder: nothing has been downloaded or added yet."}
           {leftover > 0 ? (
             <>
               {" "}

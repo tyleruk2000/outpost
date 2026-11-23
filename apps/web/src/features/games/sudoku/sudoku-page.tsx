@@ -182,7 +182,7 @@ export default function SudokuPage() {
         </>
       }
     >
-      <div className={cn("lg:grid lg:grid-cols-[minmax(0,32rem)_minmax(15rem,19rem)] lg:items-start lg:gap-8", boardSurface)}>
+      <div className={cn("lg:grid lg:grid-cols-[minmax(0,32rem)_minmax(min(15rem,40%),19rem)] lg:items-start lg:gap-8", boardSurface)}>
         <SudokuGrid
           game={game}
           selected={selected}

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
+import { useHeldHeight } from "../tools/kit";
 
 /** Reads a number as people type it: "1,5" and "1.5" are both one and a half; anything else is nothing. */
 export function readNumber(text: string): number | null {
@@ -163,8 +164,10 @@ export function Answer({ label, children, detail }: { label: ReactNode; children
 
 /** The answers of a calculator, or a line saying what is missing for there to be any. */
 export function Answers({ children, missing }: { children: ReactNode; missing?: string | null }) {
+  // While a figure is retyped the answers give way to what is missing; the box keeps their height meanwhile.
+  const held = useHeldHeight(!missing);
   return (
-    <div aria-live="polite" className="mt-4 rounded-panel bg-surface px-4 py-2">
+    <div ref={held.ref} style={held.style} aria-live="polite" className="mt-4 rounded-panel bg-surface px-4 py-2">
       {missing ? <p className="py-2 text-small text-ink-muted">{missing}</p> : <dl className="divide-y divide-border">{children}</dl>}
     </div>
   );
