@@ -216,6 +216,22 @@ export function placeQuality(place: string): number {
   return 2;
 }
 
+/** A place's first word, folded: "Chamonix-Mont Blanc" and "Chamonix-Mᵗ Blanc" are one place to follow. */
+const placeKey = (place: string) =>
+  place
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .find((word) => word.length >= 3) ?? place.toLowerCase();
+
+/** Whether two signed places are the same place, however each sign spells it. */
+export function samePlace(a: string | null, b: string | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return placeKey(a) === placeKey(b);
+}
+
 /** Splits a road leg where the place followed changes (step 3 above). */
 function splitBySigns(draft: Draft, hint: string[]): Draft[] {
   // Signs along the leg, in order, with how far along each is.
@@ -270,7 +286,7 @@ function splitBySigns(draft: Draft, hint: string[]): Draft[] {
     if (toIndex <= fromIndex) return;
     const steps = draft.steps.slice(fromIndex, toIndex);
     const last = pieces.at(-1);
-    if (last && (last.towards === run.place || sumLength(steps) < MIN_SIGN_STRETCH_M)) {
+    if (last && (samePlace(last.towards, run.place) || sumLength(steps) < MIN_SIGN_STRETCH_M)) {
       last.steps.push(...steps);
       return;
     }
@@ -320,6 +336,8 @@ export interface DirectionsInput {
   segments: DrivenSegment[];
   /** Names of the via points, in order (segments.length - 1 of them). */
   viaNames: Array<string | null>;
+  /** Where each segment ends (a via point or the end), by name: a sign naming it is the one to follow. */
+  targetNames?: Array<string | null>;
   units: RoadDistanceUnit;
   country: CountryLookup;
   /** Straight-line distances from each point asked to where it joined the network. */
@@ -453,7 +471,10 @@ export function buildDirections(input: DirectionsInput): RoadLeg[] {
       });
     }
     // Places to follow, then folding.
-    const split = legs.flatMap((leg, index) => (leg.kind === "road" ? splitBySigns(leg, crossingHint(graph, legs[index + 1])) : [leg]));
+    const target = input.targetNames?.[segmentIndex];
+    const split = legs.flatMap((leg, index) =>
+      leg.kind === "road" ? splitBySigns(leg, [...crossingHint(graph, legs[index + 1]), ...(target ? [target] : [])]) : [leg],
+    );
     drafts.push(...fold(split));
   });
   // Too many lines still: the shortest road lines join the one before.
@@ -496,7 +517,7 @@ function fold(legs: Draft[]): Draft[] {
   for (const leg of legs) {
     const prev = out.at(-1);
     if (prev && leg.kind === "road" && prev.kind === "road") {
-      const sameLine = prev.road === leg.road && (prev.towards === leg.towards || !leg.towards);
+      const sameLine = prev.road === leg.road && (samePlace(prev.towards, leg.towards) || !leg.towards);
       if (sameLine) {
         merge(prev, leg);
         continue;
@@ -536,7 +557,7 @@ function fold(legs: Draft[]): Draft[] {
         continue;
       }
     }
-    if (prev && prev.kind === "road" && leg.kind === "road" && prev.road === leg.road && prev.towards === leg.towards) {
+    if (prev && prev.kind === "road" && leg.kind === "road" && prev.road === leg.road && samePlace(prev.towards, leg.towards)) {
       merge(prev, leg);
       continue;
     }

@@ -93,7 +93,8 @@ const TABLES: Record<string, Decision> = {
   tracks: { group: "maps", drive: true },
   road_networks: {
     group: "maps",
-    drive: "Road networks are files in the data folder of the computer that built them: installed again where the drive is used (docs/portable.md).",
+    drive:
+      "Road networks are files in the data folder of the computer that built them: installed again where the drive is used (docs/portable.md).",
   },
   road_routes: { group: "maps", drive: true },
   contacts: { group: "other", drive: true },

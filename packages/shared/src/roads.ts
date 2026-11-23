@@ -317,7 +317,7 @@ const LIGATURES: Record<string, string> = {
 export function roadAsciiText(text: string): string {
   return plainMarks(text)
     .replace(/[ßæÆøØœŒłŁđĐþð]/g, (c) => LIGATURES[c] ?? c)
-    .normalize("NFD")
+    .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^\x20-\x7e]/g, "?");
 }

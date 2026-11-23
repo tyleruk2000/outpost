@@ -21,6 +21,7 @@ import {
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildNetwork, CLASS, parseDuration, parseMaxspeed, SIGN_SEPARATOR } from "../src/modules/roads/build.ts";
+import { placeQuality, samePlace } from "../src/modules/roads/directions.ts";
 import { buildGraph } from "../src/modules/roads/graph.ts";
 import { readNetworkFile, writeNetworkFile } from "../src/modules/roads/network-file.ts";
 import { planRoute } from "../src/modules/roads/plan.ts";
@@ -103,6 +104,16 @@ describe("reading an extract", () => {
     expect(parseDuration("PT1H35M")).toBe(5700);
     expect(parseDuration("35")).toBe(2100);
     expect(parseDuration("soon")).toBeNull();
+  });
+
+  it("takes one place spelt two ways on the signs as one place, and road numbers as no place", () => {
+    expect(samePlace("Chamonix-Mont Blanc", "Chamonix-Mᵗ Blanc")).toBe(true);
+    expect(samePlace("Genève", "Geneve")).toBe(true);
+    expect(samePlace("Reims", "Troyes")).toBe(false);
+    expect(placeQuality("M6(N)")).toBe(0);
+    expect(placeQuality("(M20, M23)")).toBe(0);
+    expect(placeQuality("The SOUTH")).toBe(1);
+    expect(placeQuality("Folkestone")).toBe(2);
   });
 
   it("refuses a file that is not an extract", async () => {

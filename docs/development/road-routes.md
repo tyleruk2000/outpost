@@ -93,8 +93,31 @@ How the path becomes lines:
    crossing); an A–B–A dog-leg folds into A. More than 28 road lines left: the shortest
    fold until 28.
 
-Measured on the real data below, Leatherhead → Manchester → Amiens (998 km, two
-countries, Eurotunnel) came out at 22 lines.
+On the real Great Britain and France networks, the owner's own trip (Leatherhead to
+Chamonix, 1,075 km) comes out at 15 lines, against the owner's 10:
+
+```
+M25 - Gatwick
+M25 - Dartford Crossing
+M26 - Maidstone
+M20 (E15) - Folkestone
+Eurotunnel, Folkestone – Calais
+A16 (E402 - E15) - Lille
+A26 (E15 - E17 - E44) - Reims
+A4 (E17 E46 E50) - Lyon
+A26 (E17) - Troyes
+A5 (E17 E54) - Besançon
+A31 (E17 E21) - Lyon
+A39 - Grenoble
+A40 (E21 E62) - Milan
+A40 (E21 - E25 - E712) - Chamonix-Mᵗ Blanc
+N205 (E25) - Chamonix-Mont Blanc
+```
+
+The differences are the data's: the M25's signs change at the Dartford Crossing, the A4
+shares the Reims bypass with the A26, and the A40's signs name Milan (by the Mont Blanc
+tunnel) where the owner read Geneve. Leatherhead → Manchester → Amiens (998 km) is 22
+lines.
 
 ## Speeds
 
@@ -145,14 +168,16 @@ On a Mac with Apple silicon, Node 26 run from TypeScript source:
 | Luxembourg | 48 MB | 1.5 s | 1.0 MB | 14,674, 16,572 | 360 MB |
 | Nord-Pas-de-Calais | 242 MB | 7.8 s | 3.0 MB | 40,675, 48,587 | 410 MB |
 | Great Britain | 2.21 GB | 72 s | 30 MB | 391,362, 456,949 | 690 MB |
+| France | 5.12 GB | 224 s | 62 MB | 809,801, 956,160 | 852 MB |
 
 The idle process run from source is 266 MB of that (type stripping); the build's own
 arrays for Great Britain are 3.5 million node references (28 MB as `Float64Array`) and
 3.0 million unique ids; the rest is the garbage of decompressed blocks, which the
-collector takes back. Joining Great Britain, Nord-Pas-de-Calais and Picardie: 458,272
-nodes and 536,605 edges, 51 MB of arrays, joined in 0.2 s; the 998 km route above in
-0.12 s. Not measured: a Raspberry Pi (none in this work; expect three to four times
-these times), and France, Germany and Austria together.
+collector takes back; France's are 7.9 million references and 6.9 million unique ids.
+Joining Great Britain and France: 1,201,133 nodes and 1,413,245 edges, 134 MB of
+arrays, joined in 0.5 s, the process at 540 MB afterwards; Leatherhead to Chamonix
+planned in 0.18 s. Not measured: a Raspberry Pi (none in this work; expect three to four
+times these times), and Germany and Austria (Germany is downloaded by Land).
 
 ## API
 

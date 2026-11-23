@@ -170,6 +170,7 @@ export function planRoute(
     graph,
     segments,
     viaNames: points.slice(1, -1).map((p) => p.name),
+    targetNames: points.slice(1).map((p) => p.name),
     units,
     country: countryLookup,
     snapDistances: joins.map((j) => Math.round(j!.distanceM)),
