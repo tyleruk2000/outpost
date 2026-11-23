@@ -16,7 +16,7 @@ export const floating =
   "z-(--z-popover) min-w-44 rounded-panel border border-border bg-raised p-1 text-small text-ink shadow-float data-[state=open]:animate-enter focus:outline-none";
 
 const item =
-  "flex cursor-default items-center gap-2.5 rounded-[4px] px-2.5 py-1.5 outline-none select-none data-highlighted:bg-surface-strong data-disabled:opacity-45 max-md:min-h-11 max-md:py-2.5 pointer-coarse:min-h-11 pointer-coarse:py-2.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted";
+  "flex cursor-default items-center gap-2.5 rounded-[4px] px-2.5 py-1.5 outline-none select-none data-highlighted:bg-surface-strong data-disabled:opacity-45 max-md:min-h-11 max-md:py-2.5 md:pointer-coarse:min-h-11 md:pointer-coarse:py-2.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted";
 
 export function MenuContent({ className, sideOffset = 6, align = "end", ...props }: ComponentProps<typeof Primitive.Content>) {
   return (

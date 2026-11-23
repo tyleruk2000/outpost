@@ -101,7 +101,7 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "-mb-px flex items-center justify-center gap-2 border-b-2 border-transparent pt-1 pb-2.5 text-small max-md:min-h-11 max-md:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11 font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-ink data-[state=active]:border-primary data-[state=active]:text-ink",
+        "-mb-px flex items-center justify-center gap-2 border-b-2 border-transparent pt-1 pb-2.5 text-small max-md:min-h-11 max-md:min-w-11 md:pointer-coarse:min-h-11 md:pointer-coarse:min-w-11 font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-ink data-[state=active]:border-primary data-[state=active]:text-ink",
         className,
       )}
       {...props}
@@ -138,7 +138,7 @@ export function Segmented<T extends string>({
           key={option.value}
           value={option.value}
           // Grows to fill its line once the choices wrap, so a choice left alone on a line is not a stray box.
-          className="flex h-8 grow items-center justify-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 max-md:min-w-11 pointer-coarse:h-11 pointer-coarse:min-w-11 [&_svg]:size-4"
+          className="flex h-8 grow items-center justify-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 max-md:min-w-11 md:pointer-coarse:h-11 md:pointer-coarse:min-w-11 [&_svg]:size-4"
         >
           {option.icon}
           {option.label}
@@ -198,7 +198,7 @@ export function Select<T extends string>({
         aria-label={props["aria-label"]}
         aria-describedby={props["aria-describedby"]}
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors max-md:text-body pointer-coarse:text-body hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60 data-placeholder:text-ink-faint max-md:h-11 pointer-coarse:h-11",
+          "flex h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60 data-placeholder:text-ink-faint max-md:h-11 md:pointer-coarse:h-11",
           className,
         )}
       >
@@ -225,13 +225,13 @@ export function Select<T extends string>({
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
-                className="relative flex cursor-default items-start gap-2 rounded-[4px] py-1.5 pr-8 pl-2.5 outline-none select-none data-highlighted:bg-surface-strong data-disabled:opacity-45 max-md:min-h-11 max-md:py-2.5 pointer-coarse:min-h-11 pointer-coarse:py-2.5"
+                className="relative flex cursor-default items-start gap-2 rounded-[4px] py-1.5 pr-8 pl-2.5 outline-none select-none data-highlighted:bg-surface-strong data-disabled:opacity-45 max-md:min-h-11 max-md:py-2.5 md:pointer-coarse:min-h-11 md:pointer-coarse:py-2.5"
               >
                 <div className="min-w-0">
                   <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                   {option.description ? <div className="text-micro text-ink-muted">{option.description}</div> : null}
                 </div>
-                <SelectPrimitive.ItemIndicator className="absolute top-2 right-2.5 max-md:top-3 pointer-coarse:top-3">
+                <SelectPrimitive.ItemIndicator className="absolute top-2 right-2.5 max-md:top-3 md:pointer-coarse:top-3">
                   <Check className="size-4 text-primary" />
                 </SelectPrimitive.ItemIndicator>
               </SelectPrimitive.Item>

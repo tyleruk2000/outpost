@@ -52,7 +52,9 @@ and at 200% text, before calling it done. Screenshot it and look.
 
 **Touch and small screens**
 - 44 px for every primary control where the pointer is a finger: `max-md:` alone is not
-  enough, add `pointer-coarse:` (a tablet is wider than 768 px). 24 px is the floor
+  enough, add `md:pointer-coarse:` (a tablet is wider than 768 px; under 768 px `max-md:`
+  already holds, and a screen that sizes its own controls in pixels, as Maps does, keeps
+  them). 24 px is the floor
   everywhere, including dense desktop lists.
 - Nothing runs off the side at 320 px or at 200% text; a row of names wraps.
 - A table wider than a phone is `stack`ed, or scrolls in its `Table` frame; it never
@@ -129,8 +131,8 @@ Most harm first, and what was done about each.
     tokens; screens still set by hand are for their areas to move over.
 12. **Tables were drawn fifteen ways in fifty files**, two with a sticky head, none
     stacked on a phone. `Table` gives one way; screens move to it in their own passes.
-13. **A drop-down's text was smaller than a field's** in the same form on a phone. Both
-    are 16 px on touch.
+13. **A drop-down's text is smaller than a field's** (14 px against 16) in the same form. Left
+    to the area passes: it changes the height of the words in every drop-down, in cards and bars too.
 14. **A running download could not be seen on a phone** without opening More. More
     carries the lamp while one runs.
 

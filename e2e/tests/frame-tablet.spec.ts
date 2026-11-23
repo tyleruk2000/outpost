@@ -46,7 +46,8 @@ test.describe("the frame on a tablet held upright", () => {
 test.describe("on any screen", () => {
   test("quick search offers what people come to do first, with nothing typed", async ({ page }) => {
     await page.goto("/library");
-    await page.keyboard.press("Control+k");
+    await expect(page.getByRole("heading", { level: 1, name: "Library" })).toBeVisible();
+    await page.getByRole("complementary", { name: "Main" }).getByRole("button", { name: "Quick search" }).click();
     const options = page.getByRole("dialog", { name: "Search and go to" }).getByRole("option");
     await expect(options.first()).toHaveText("Add documents");
     await page.keyboard.press("Enter");

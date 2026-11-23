@@ -220,7 +220,7 @@ secret (a one-time pad) gets none of these buttons.
   menus, lists and dialogs; a screen's own keys follow the same rule.
 - Mobile-first from 320 px. Leave `Page`'s bottom padding. Touch targets ≥44 px: the shared
   controls grow to 44 px under 768 px (`max-md:`) and wherever the pointer is a finger
-  (`pointer-coarse:`, a tablet at any width); a control of a screen's own does the same.
+  on a tablet (`md:pointer-coarse:`); a control of a screen's own does the same.
 - From 768 to 1023 px the sidebar is a rail of icons (`TABLET` in `lib/use-media-query.ts`):
   a screen there has the width less 60 px.
 - On a phone a `DialogContent` or `ConfirmDialog` is a sheet from the foot of the screen;

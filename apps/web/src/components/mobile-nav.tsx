@@ -172,7 +172,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
         ))}
         <Sheet.Root open={moreOpen} onOpenChange={setMoreOpen}>
           <Sheet.Trigger className={cn(tab, inMore && "text-primary")} aria-current={inMore ? "true" : undefined}>
-            <span className="relative">
+            <span className="relative block">
               <Ellipsis aria-hidden className="size-[22px]" strokeWidth={1.6} />
               {downloads > 0 ? (
                 <span aria-hidden data-lamp className="absolute -top-0.5 -right-1.5 size-2 rounded-full bg-lamp ring-2 ring-page" />
