@@ -38,6 +38,7 @@ import { Link } from "react-router";
 import { BackLink, Disclosure, Joined, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { errorMessage } from "@/lib/api";
 import { formatTimeOfDay } from "@/lib/clock";
 import { formatDate, formatDateTime, plural } from "@/lib/utils";
@@ -494,28 +495,24 @@ function StationView({
                 </ul>
                 <Disclosure summary="The readings as a table">
                   <div className="max-h-96 overflow-y-auto">
-                    <table className="tabular w-full max-w-md text-left">
-                      <thead>
-                        <tr className="border-b border-border text-ink-muted">
-                          <th scope="col" className="py-1 pr-4 font-medium">
-                            Measured
-                          </th>
-                          <th scope="col" className="py-1 font-medium">
-                            Level, {station.unit}
-                          </th>
-                        </tr>
-                      </thead>
+                    <Table label={`Readings at ${station.label}`} className="max-w-md">
+                      <TableHead>
+                        <Tr>
+                          <Th>Measured</Th>
+                          <Th numeric>Level, {station.unit}</Th>
+                        </Tr>
+                      </TableHead>
                       <tbody>
                         {[...held.readings].reverse().map((reading) => (
-                          <tr key={reading.t} className="border-b border-border">
-                            <th scope="row" className="py-1 pr-4 font-normal text-ink">
+                          <Tr key={reading.t}>
+                            <Th scope="row" className="font-normal text-ink">
                               {formatDateTime(reading.t)}
-                            </th>
-                            <td className="py-1 text-ink">{reading.v}</td>
-                          </tr>
+                            </Th>
+                            <Td numeric>{reading.v}</Td>
+                          </Tr>
                         ))}
                       </tbody>
-                    </table>
+                    </Table>
                   </div>
                 </Disclosure>
               </>

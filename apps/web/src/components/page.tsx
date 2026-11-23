@@ -114,8 +114,11 @@ export function Section({
   actions,
   className,
   level = 2,
+  id,
   children,
 }: {
+  /** For a link to this part of the screen (`#id`). */
+  id?: string;
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
@@ -126,7 +129,7 @@ export function Section({
 }) {
   const Heading = level === 3 ? "h3" : "h2";
   return (
-    <section className={cn("mt-10 first:mt-0", className)}>
+    <section id={id} className={cn("mt-10 first:mt-0", className)}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <Heading className="text-lead font-semibold text-ink">{title}</Heading>

@@ -4,10 +4,10 @@
  */
 import { type ClimateData, type KeptCopy, MONTH_NAMES, type SolarData, type WeatherSourceInfo } from "@outpost/shared";
 import { Button } from "@/components/ui/button";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { AgeLine, Credit } from "./age-line";
 import { type TempUnit, tempText } from "./words";
 
-const cell = "py-1.5 pr-3";
 const one = (value: number | null, digits = 1) => (value === null ? "–" : value.toFixed(digits));
 
 export function ClimateView({
@@ -57,43 +57,30 @@ export function ClimateView({
             times the days in the month. Sunshine is on level ground.
           </p>
           <AgeLine copy={climate} source={sources.find((source) => source.id === "nasa-power")} now={now} />
-          <div className="overflow-x-auto">
-            <table className="tabular w-full text-small">
-              <caption className="sr-only">Monthly climate averages</caption>
-              <thead className="text-left text-ink-muted">
-                <tr>
-                  <th scope="col" className={`${cell} font-normal`}>
-                    Month
-                  </th>
-                  <th scope="col" className={`${cell} font-normal`}>
-                    Mean temp.
-                  </th>
-                  <th scope="col" className={`${cell} font-normal`}>
-                    Rain, mm
-                  </th>
-                  <th scope="col" className={`${cell} font-normal`}>
-                    Wind, m/s
-                  </th>
-                  <th scope="col" className="py-1.5 font-normal">
-                    Sun, kWh/m² a day
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {climateData.months.map((month, index) => (
-                  <tr key={MONTH_NAMES[index]}>
-                    <th scope="row" className={`${cell} text-left font-normal text-ink`}>
-                      {MONTH_NAMES[index]}
-                    </th>
-                    <td className={`${cell} text-ink`}>{tempText(month.meanC, temp)}</td>
-                    <td className={`${cell} text-ink`}>{one(month.precipMmMonth, 0)}</td>
-                    <td className={`${cell} text-ink`}>{one(month.windMs)}</td>
-                    <td className="py-1.5 text-ink">{one(month.sunKwhLevel)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table label="Monthly climate averages">
+            <TableHead>
+              <Tr>
+                <Th>Month</Th>
+                <Th numeric>Mean temp.</Th>
+                <Th numeric>Rain, mm</Th>
+                <Th numeric>Wind, m/s</Th>
+                <Th numeric>Sun, kWh/m² a day</Th>
+              </Tr>
+            </TableHead>
+            <tbody>
+              {climateData.months.map((month, index) => (
+                <Tr key={MONTH_NAMES[index]}>
+                  <Th scope="row" className="font-normal text-ink">
+                    {MONTH_NAMES[index]}
+                  </Th>
+                  <Td numeric>{tempText(month.meanC, temp)}</Td>
+                  <Td numeric>{one(month.precipMmMonth, 0)}</Td>
+                  <Td numeric>{one(month.windMs)}</Td>
+                  <Td numeric>{one(month.sunKwhLevel)}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
           <Credit source={sources.find((source) => source.id === "nasa-power")} />
         </section>
       ) : null}
@@ -108,35 +95,26 @@ export function ClimateView({
             year; shading by buildings and trees nearby is not counted. These are the figures Tools → Power and batteries asks for.
           </p>
           <AgeLine copy={solar} source={sources.find((source) => source.id === "pvgis")} now={now} />
-          <div className="overflow-x-auto">
-            <table className="tabular w-full text-small">
-              <caption className="sr-only">Peak sun hours by month</caption>
-              <thead className="text-left text-ink-muted">
-                <tr>
-                  <th scope="col" className={`${cell} font-normal`}>
-                    Month
-                  </th>
-                  <th scope="col" className={`${cell} font-normal`}>
-                    Best tilt
-                  </th>
-                  <th scope="col" className="py-1.5 font-normal">
-                    Level
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {solarData.optimal.map((value, index) => (
-                  <tr key={MONTH_NAMES[index]}>
-                    <th scope="row" className={`${cell} text-left font-normal text-ink`}>
-                      {MONTH_NAMES[index]}
-                    </th>
-                    <td className={`${cell} text-ink`}>{one(value, 2)}</td>
-                    <td className="py-1.5 text-ink">{one(solarData.level[index] ?? null, 2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table label="Peak sun hours by month" className="max-w-md">
+            <TableHead>
+              <Tr>
+                <Th>Month</Th>
+                <Th numeric>Best tilt</Th>
+                <Th numeric>Level</Th>
+              </Tr>
+            </TableHead>
+            <tbody>
+              {solarData.optimal.map((value, index) => (
+                <Tr key={MONTH_NAMES[index]}>
+                  <Th scope="row" className="font-normal text-ink">
+                    {MONTH_NAMES[index]}
+                  </Th>
+                  <Td numeric>{one(value, 2)}</Td>
+                  <Td numeric>{one(solarData.level[index] ?? null, 2)}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
           <Credit source={sources.find((source) => source.id === "pvgis")} />
         </section>
       ) : null}

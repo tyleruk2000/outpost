@@ -88,7 +88,17 @@ function RepeaterChoice({ value, label, onChange }: { value: string | null; labe
   return (
     <div className="grid gap-1.5">
       <Field label="Find a repeater" hint="By call sign or place, among the repeaters kept under Radio.">
-        {(ids) => <Input {...ids} value={q} onChange={(event) => setQ(event.target.value)} placeholder="GB3" />}
+        {(ids) => (
+          <Input
+            {...ids}
+            value={q}
+            type="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            onChange={(event) => setQ(event.target.value)}
+            placeholder="GB3"
+          />
+        )}
       </Field>
       {found.data && found.data.repeaters.length > 0 ? (
         <ul className="divide-y divide-border border-y border-border" aria-label="Repeaters found">

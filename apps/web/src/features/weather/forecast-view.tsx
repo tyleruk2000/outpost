@@ -1,5 +1,6 @@
 /** The forecast for one place: the days ahead in words and a table, and the temperature through the hours. */
 import { type ForecastData, freshness, type KeptCopy, type WeatherSourceInfo, weatherWords } from "@outpost/shared";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { ChartFrame } from "@/features/propagation/charts";
 import { formatTimeOfDay } from "@/lib/clock";
 import { appLocale } from "@/lib/region";
@@ -56,48 +57,37 @@ export function ForecastView({
           </ChartFrame>
           <details className="mt-6">
             <summary className="min-h-11 cursor-pointer py-2 text-small font-medium text-primary">Every hour, as a table</summary>
-            <div className="overflow-x-auto">
-              <table className="tabular w-full text-small">
-                <caption className="sr-only">The forecast hour by hour</caption>
-                <thead className="text-left text-ink-muted">
-                  <tr>
-                    <th scope="col" className="py-1.5 pr-3 font-normal">
-                      Hour
-                    </th>
-                    <th scope="col" className="py-1.5 pr-3 font-normal">
-                      Weather
-                    </th>
-                    <th scope="col" className="py-1.5 pr-3 font-normal">
-                      Temp.
-                    </th>
-                    <th scope="col" className="py-1.5 pr-3 font-normal">
-                      Rain
-                    </th>
-                    <th scope="col" className="py-1.5 font-normal">
-                      Wind, gusts
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {hours.map((hour) => (
-                    <tr key={hour.t}>
-                      <th scope="row" className="py-1.5 pr-3 text-left font-normal whitespace-nowrap text-ink">
-                        {new Intl.DateTimeFormat(appLocale(), { weekday: "short" }).format(hour.t)} {formatTimeOfDay(hour.t)}
-                      </th>
-                      <td className="py-1.5 pr-3 text-ink">{weatherWords(hour.code)}</td>
-                      <td className="py-1.5 pr-3 whitespace-nowrap text-ink">{tempText(hour.tempC, temp)}</td>
-                      <td className="py-1.5 pr-3 whitespace-nowrap text-ink">
-                        {hour.precipMm === null ? "–" : `${hour.precipMm.toFixed(1)} mm`}
-                        {hour.precipChance !== null ? `, ${Math.round(hour.precipChance)}%` : ""}
-                      </td>
-                      <td className="py-1.5 whitespace-nowrap text-ink">
-                        {windText(hour.windKmh, wind)}, {windText(hour.gustKmh, wind)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table label="The forecast hour by hour" className="mt-1">
+              <TableHead>
+                <Tr>
+                  <Th>Hour</Th>
+                  <Th>Weather</Th>
+                  <Th numeric>Temp.</Th>
+                  <Th numeric>Rain</Th>
+                  <Th numeric>Wind, gusts</Th>
+                </Tr>
+              </TableHead>
+              <tbody>
+                {hours.map((hour) => (
+                  <Tr key={hour.t}>
+                    <Th scope="row" className="font-normal whitespace-nowrap text-ink">
+                      {new Intl.DateTimeFormat(appLocale(), { weekday: "short" }).format(hour.t)} {formatTimeOfDay(hour.t)}
+                    </Th>
+                    <Td>{weatherWords(hour.code)}</Td>
+                    <Td numeric className="whitespace-nowrap">
+                      {tempText(hour.tempC, temp)}
+                    </Td>
+                    <Td numeric className="whitespace-nowrap">
+                      {hour.precipMm === null ? "–" : `${hour.precipMm.toFixed(1)} mm`}
+                      {hour.precipChance !== null ? `, ${Math.round(hour.precipChance)}%` : ""}
+                    </Td>
+                    <Td numeric className="whitespace-nowrap">
+                      {windText(hour.windKmh, wind)}, {windText(hour.gustKmh, wind)}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
           </details>
         </>
       )}

@@ -5,9 +5,9 @@
  * supplies and papers, and removing it.
  */
 import { DEFAULT_HOUSEHOLD, type EnergyTable, type HouseholdDto, type HouseholdHolds, type HouseholdKind } from "@outpost/shared";
-import { ChevronRight, LocateFixed, Trash2, UserRoundPlus } from "lucide-react";
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { ChevronRight, LocateFixed, MapPin, Trash2, UserRoundPlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { LeaveGuard } from "@/components/leave-guard";
 import { EmptyState, ErrorState, Joined, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Segmented, Select, Skeleton } from "@/components/ui/misc";
+import { SAVE_BAR_ROOM, SaveBar } from "@/features/household-papers/save-bar";
 import { useCatalogue } from "@/features/layers/data";
 import { countryName } from "@/features/maps/lib/search";
 import { errorMessage } from "@/lib/api";
@@ -34,6 +35,7 @@ import {
 } from "./data";
 import { HOUSEHOLDS_PATH } from "./for-household";
 import { HereDialog } from "./here";
+import { HomePlaceDialog } from "./home-place";
 import { PlaceSelect } from "./households-page";
 import { draftToPerson, type MemberDraft, PeopleEditor, toDraft } from "./people-editor";
 import { alsoInWords, holdsWords, KIND_ABOUT, KIND_LABEL, listWords, positionName, whereWords } from "./words";
@@ -58,6 +60,7 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
   const [country, setCountry] = useState(household.countryOverride ?? WORKED_OUT);
   const [problem, setProblem] = useState<string | null>(null);
   const [hereOpen, setHereOpen] = useState(false);
+  const [homeOpen, setHomeOpen] = useState(false);
   const catalogue = useCatalogue();
   const save = useUpdateHousehold(household.id);
   const countries = [...(catalogue.data?.countries ?? [])].sort((a, b) => a.name.localeCompare(b.name));
@@ -83,7 +86,7 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
   };
 
   return (
-    <Section title="Name and place">
+    <Section title="Name and place" className="scroll-mt-20" id="place">
       <form
         className="grid gap-5"
         onSubmit={(event) => {
@@ -109,7 +112,12 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
           <p className="text-small text-ink-muted">{KIND_ABOUT[kind]}</p>
         </div>
         {kind === "fixed" ? (
-          <PlaceSelect label="Home place" value={homePlaceId} onChange={setHomePlaceId} />
+          <div className="grid gap-2">
+            <PlaceSelect label="Home place" value={homePlaceId} onChange={setHomePlaceId} />
+            <Button className="justify-self-start" onClick={() => setHomeOpen(true)}>
+              <MapPin /> {household.home ? "Mark a new home on the map" : "Mark home on the map"}
+            </Button>
+          </div>
         ) : (
           <>
             <div className="grid gap-2">
@@ -173,6 +181,7 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
       </form>
       <LeaveGuard when={dirty && !save.isPending} what={`the changes to ${household.name}`} />
       {household.kind === "portable" ? <HereDialog household={household} open={hereOpen} onOpenChange={setHereOpen} /> : null}
+      {kind === "fixed" ? <HomePlaceDialog household={household} open={homeOpen} onOpenChange={setHomeOpen} /> : null}
     </Section>
   );
 }
@@ -215,7 +224,8 @@ function PeopleForm({ household, households }: { household: HouseholdDto; househ
 
   return (
     <form
-      className="mt-10"
+      id="people"
+      className={`mt-10 scroll-mt-20 ${SAVE_BAR_ROOM}`}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -267,7 +277,7 @@ function PeopleForm({ household, households }: { household: HouseholdDto; househ
           ) : null
         }
       />
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <SaveBar>
         <Button type="submit" variant="primary" loading={save.isPending}>
           Save people
         </Button>
@@ -277,7 +287,7 @@ function PeopleForm({ household, households }: { household: HouseholdDto; househ
             {problem}
           </p>
         ) : null}
-      </div>
+      </SaveBar>
       <LeaveGuard when={dirty && !save.isPending} what={`the people of ${household.name}`} />
     </form>
   );
@@ -424,6 +434,13 @@ export default function HouseholdPage() {
   const households = useHouseholds();
   const people = usePeople();
   const setCurrent = useSetCurrentHousehold();
+  const { hash } = useLocation();
+  const ready = households.isSuccess && people.isSuccess;
+  // Arriving from a step of Getting ready (#people, #place): the part it names, once it is drawn.
+  useEffect(() => {
+    if (!ready || !hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
+  }, [ready, hash]);
   const back = { to: HOUSEHOLDS_PATH, label: "Households" };
   if (households.isPending || people.isPending)
     return (

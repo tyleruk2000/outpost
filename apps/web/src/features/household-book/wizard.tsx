@@ -35,6 +35,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Segmented, Select } from "@/components/ui/misc";
 import { usePlans } from "@/features/emergency-plans/data";
 import { ageWords, usePaperHousehold, whereWasWords } from "@/features/household-papers/paper-household";
+import { SAVE_BAR_ROOM, SaveBar } from "@/features/household-papers/save-bar";
 import { usePlans as useRadioPlans } from "@/features/propagation/plans/data";
 import { useSetHousehold } from "@/features/supplies/data";
 import { api, errorMessage } from "@/lib/api";
@@ -94,7 +95,7 @@ export function BookWizard({ answers: initial, household, markers, country, shee
   };
 
   return (
-    <div className="grid gap-6">
+    <div className={`grid gap-6 ${SAVE_BAR_ROOM}`}>
       <nav aria-label="The questions">
         <ol className="flex flex-wrap gap-x-4 gap-y-1 text-small">
           {BOOK_STEPS.map((each, at) => (
@@ -134,7 +135,7 @@ export function BookWizard({ answers: initial, household, markers, country, shee
       )}
 
       <LeaveGuard when={dirty && !saving} what="the answers on this step" />
-      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+      <SaveBar>
         {index < BOOK_STEPS.length - 1 ? (
           <Button variant="primary" loading={saving} onClick={() => void go(index + 1)}>
             Save and go on <ArrowRight />
@@ -152,7 +153,7 @@ export function BookWizard({ answers: initial, household, markers, country, shee
         <Button variant="ghost" onClick={() => void go("done")}>
           Save and stop here
         </Button>
-      </div>
+      </SaveBar>
     </div>
   );
 }
