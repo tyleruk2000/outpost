@@ -49,6 +49,8 @@ export interface IntentAdjustment {
   factor: number;
   /** Said beside the result: "favoured: first aid source", "another meaning of “cpr”". Empty when nothing applies. */
   notes: string[];
+  /** A first aid or medical source, for a question about first aid or medicine. */
+  trusted?: boolean;
 }
 
 const stems = (text: string) => new Set(text.split(" ").map((word) => stem(word)));
@@ -148,7 +150,7 @@ export function plainIntent(intent: Intent): boolean {
 
 /** How a result's score is adjusted for the kind of question, and why. */
 export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustment {
-  if (plainIntent(intent)) return { factor: 1, notes: [] };
+  if (plainIntent(intent)) return { factor: 1, notes: [], trusted: false };
   // What kind of source it is: a reference article by its collection; one of the person's own by that, its tags, and
   // the words of its title that are not the question's ("First aid manual" for "rescue breaths" is a first aid source;
   // "Electric car battery chemistry" for "car battery" is not a vehicle source by saying "car").
@@ -161,7 +163,8 @@ export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustmen
   const kind = [source.collection ?? "", ...source.tags, ownTitle].join(" \n ");
   let favour = 1;
   const kinds: string[] = [];
-  if (intent.medical && MEDICAL_SOURCE.test(kind)) {
+  const trusted = intent.medical && MEDICAL_SOURCE.test(kind);
+  if (trusted) {
     favour *= 1.25;
     kinds.push(FIRST_AID_SOURCE.test(kind) ? "first aid source" : "medical source");
   }
@@ -187,7 +190,7 @@ export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustmen
       notes.push(`another meaning of “${sense.word}”`);
     }
   }
-  return { factor, notes };
+  return { factor, notes, trusted };
 }
 
 /**

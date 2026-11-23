@@ -9,13 +9,16 @@
  *
  * Reading every vector out of SQLite for each search took over 100 ms for 60,000
  * passages on a laptop, five times that on a Raspberry Pi. So the vectors of the model in
- * use are kept in memory as one matrix (1.5 KB a passage: about 90 MB for 60,000), filled
- * on the first search, kept up to date by `upsert`, read again when the number stored
- * differs from the number held (vectors removed with their passages), and let go after
- * `MATRIX_IDLE_MS` without a search. A search narrowed to some kinds, or to one item,
- * still reads from SQLite, which can join to them.
+ * use are kept in memory as one matrix of 8-bit numbers (`int8-matrix.ts`: 400 bytes a
+ * passage, about 23 MB for 60,000), filled on the first search, kept up to date by
+ * `upsert`, read again when the number stored differs from the number held (vectors
+ * removed with their passages), and let go after `MATRIX_IDLE_MS` without a search. The
+ * matrix finds candidates, a few more than wanted; their exact similarity is then worked
+ * out from the stored vectors, so the scores given are those of the full vectors. A search
+ * narrowed to some kinds, or to one item, still reads from SQLite, which can join to them.
  */
 import type { Sqlite } from "../../db/client.ts";
+import { createInt8Matrix, type Int8Matrix } from "./int8-matrix.ts";
 
 export interface VectorHit {
   chunkId: number;
@@ -47,33 +50,15 @@ export function blobToVector(blob: Buffer): Float32Array {
 /** A matrix not searched for this long is let go, as the model is. */
 export const MATRIX_IDLE_MS = 5 * 60_000;
 
-interface Matrix {
-  modelId: string;
-  dimensions: number;
-  rows: number;
-  ids: Int32Array;
-  values: Float32Array;
-  /** Row of each chunk. */
-  rowOf: Map<number, number>;
-}
+/**
+ * How many candidates the 8-bit matrix gives for each result wanted: their exact
+ * similarity is then worked out from the stored vectors, and the best kept.
+ */
+const CANDIDATES = (limit: number) => limit * 2 + 16;
 
-/** The `limit` best rows of `matrix` for `vector`, best first. */
-function nearestRows(matrix: Matrix, vector: Float32Array, limit: number): VectorHit[] {
-  const best: VectorHit[] = [];
-  let floor = Number.NEGATIVE_INFINITY;
-  const { values, dimensions, rows, ids } = matrix;
-  for (let row = 0; row < rows; row += 1) {
-    const offset = row * dimensions;
-    let dot = 0;
-    for (let index = 0; index < dimensions; index += 1) dot += values[offset + index]! * vector[index]!;
-    if (best.length === limit && dot <= floor) continue;
-    let position = best.length;
-    while (position > 0 && best[position - 1]!.score < dot) position -= 1;
-    best.splice(position, 0, { chunkId: ids[row]!, score: dot });
-    if (best.length > limit) best.pop();
-    floor = best.length === limit ? best[best.length - 1]!.score : Number.NEGATIVE_INFINITY;
-  }
-  return best;
+interface Held {
+  modelId: string;
+  matrix: Int8Matrix;
 }
 
 export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
@@ -89,10 +74,10 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
     for (const item of items) insert.run(item.chunkId, modelId, vectorToBlob(item.vector), item.contentHash, now);
   });
 
-  let matrix: Matrix | null = null;
+  let held: Held | null = null;
   let idle: ReturnType<typeof setTimeout> | null = null;
   const letGo = () => {
-    matrix = null;
+    held = null;
     if (idle) clearTimeout(idle);
     idle = null;
   };
@@ -101,75 +86,69 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
     idle = setTimeout(letGo, MATRIX_IDLE_MS);
     idle.unref();
   };
-  const grow = (held: Matrix, rows: number) => {
-    if (rows <= held.ids.length) return;
-    const capacity = Math.max(rows, Math.ceil(held.ids.length * 1.25) + 256);
-    const ids = new Int32Array(capacity);
-    ids.set(held.ids.subarray(0, held.rows));
-    const values = new Float32Array(capacity * held.dimensions);
-    values.set(held.values.subarray(0, held.rows * held.dimensions));
-    held.ids = ids;
-    held.values = values;
-  };
-  const load = (modelId: string, expected: number): Matrix | null => {
+  const load = (modelId: string, expected: number): Held | null => {
     const first = sqlite.prepare("SELECT vector FROM embeddings WHERE model_id = ? LIMIT 1").pluck().get(modelId) as Buffer | undefined;
     if (!first) return null;
     const dimensions = first.byteLength / 4;
-    const held: Matrix = {
-      modelId,
-      dimensions,
-      rows: 0,
-      ids: new Int32Array(expected),
-      values: new Float32Array(expected * dimensions),
-      rowOf: new Map(),
-    };
+    const matrix = createInt8Matrix(dimensions, expected);
+    const view = new Float32Array(dimensions);
+    const bytes = new Uint8Array(view.buffer);
     for (const [chunkId, blob] of sqlite
       .prepare("SELECT chunk_id, vector FROM embeddings WHERE model_id = ?")
       .raw()
       .iterate(modelId) as Iterable<[number, Buffer]>) {
       if (blob.byteLength !== dimensions * 4) continue;
-      grow(held, held.rows + 1);
-      held.ids[held.rows] = chunkId;
-      held.values.set(new Float32Array(blob.buffer, blob.byteOffset, dimensions), held.rows * dimensions);
-      held.rowOf.set(chunkId, held.rows);
-      held.rows += 1;
+      // Copied: SQLite's buffer is not guaranteed to be aligned for a Float32Array view.
+      bytes.set(blob);
+      matrix.set(chunkId, view);
     }
-    return held;
+    return { modelId, matrix };
   };
   /** The model's matrix, up to date with what is stored. */
-  const matrixFor = (modelId: string): Matrix | null => {
+  const matrixFor = (modelId: string): Int8Matrix | null => {
     const stored = (counted.get(modelId) as { n: number }).n;
-    if (!matrix || matrix.modelId !== modelId || matrix.rows !== stored) matrix = load(modelId, stored);
+    if (!held || held.modelId !== modelId || held.matrix.rows !== stored) held = load(modelId, stored);
     used();
-    return matrix;
+    return held?.matrix ?? null;
+  };
+  const exactly = sqlite.prepare(
+    "SELECT chunk_id AS chunkId, vector FROM embeddings WHERE model_id = ? AND chunk_id IN (SELECT value FROM json_each(?))",
+  );
+  /** The exact similarity of each candidate, best first, the best `limit` of them. */
+  const rescore = (modelId: string, vector: Float32Array, candidates: Array<{ chunkId: number }>, limit: number): VectorHit[] => {
+    if (candidates.length === 0) return [];
+    const rows = exactly.all(modelId, JSON.stringify(candidates.map((hit) => hit.chunkId))) as Array<{ chunkId: number; vector: Buffer }>;
+    return rows
+      .flatMap((row) => {
+        const stored = blobToVector(row.vector);
+        if (stored.length !== vector.length) return [];
+        let dot = 0;
+        for (let index = 0; index < stored.length; index += 1) dot += stored[index]! * vector[index]!;
+        return [{ chunkId: row.chunkId, score: dot }];
+      })
+      .sort((a, b) => b.score - a.score || a.chunkId - b.chunkId)
+      .slice(0, limit);
   };
 
   return {
     upsert(modelId, items) {
       upsertMany(modelId, items);
-      const held = matrix;
-      if (!held || held.modelId !== modelId) return;
+      const matrix = held?.modelId === modelId ? held.matrix : null;
+      if (!matrix) return;
       for (const item of items) {
-        if (item.vector.length !== held.dimensions) {
+        if (item.vector.length !== matrix.dimensions) {
           letGo();
           return;
         }
-        let row = held.rowOf.get(item.chunkId);
-        if (row === undefined) {
-          grow(held, held.rows + 1);
-          row = held.rows;
-          held.rows += 1;
-          held.ids[row] = item.chunkId;
-          held.rowOf.set(item.chunkId, row);
-        }
-        held.values.set(item.vector, row * held.dimensions);
+        matrix.set(item.chunkId, item.vector);
       }
     },
 
     query(modelId, vector, limit, kinds, within) {
       if (!kinds?.length && !within) {
-        const held = matrixFor(modelId);
-        return held && held.dimensions === vector.length ? nearestRows(held, vector, limit) : [];
+        const matrix = matrixFor(modelId);
+        if (!matrix || matrix.dimensions !== vector.length) return [];
+        return rescore(modelId, vector, matrix.nearest(vector, CANDIDATES(limit)), limit);
       }
       const kindFilter = kinds?.length ? `AND e.kind IN (${kinds.map(() => "?").join(",")})` : "";
       const itemFilter = within ? "AND e.kind = ? AND e.entity_id = ?" : "";
@@ -209,7 +188,7 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
     },
 
     removeModel(modelId) {
-      if (matrix?.modelId === modelId) letGo();
+      if (held?.modelId === modelId) letGo();
       const removed = sqlite.prepare("DELETE FROM embeddings WHERE model_id = ?").run(modelId).changes;
       sqlite.prepare("DELETE FROM embedding_models WHERE id = ?").run(modelId);
       return removed;

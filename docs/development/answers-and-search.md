@@ -6,7 +6,10 @@ For people changing the code. The household guides are [ai.md](../ai.md),
 ## Answers
 
 `question → Retriever (outpost-hybrid) → [Reranker: interface only] → ContextAssembler →
-ModelProvider → checkCitations`. Code: `apps/server/src/modules/answers/`,
+ModelProvider → checkCitations`. No reranker is implemented: on the answers set the hybrid
+retriever already puts the answering passage in the five given to the model for all 32
+answerable questions (first for 30), so a cross-encoder could only reorder those five, at
+the cost of a second model run per passage (seconds per question on a Raspberry Pi). Code: `apps/server/src/modules/answers/`,
 `modules/retrieval/` (prompt in `retrieval/prompt.ts`), `modules/chat/`. Recommended
 models: `packages/shared/src/recommended-models.ts`; first choice: `model-choice.ts`;
 measured results: `model-trials.ts` (writes [which-model.md](../which-model.md)).
@@ -142,21 +145,39 @@ ways, and reports it as `instead` on the `start` line.
 
 Semantic and local sources are asked before the keyword pass, so the model embeds the
 query in its worker while the words are searched; query vectors are kept (200, LRU).
-`vector-index.ts` keeps the model's vectors as one Float32 matrix, updated by `upsert`,
-reloaded when `count(*)` differs, dropped after `MATRIX_IDLE_MS`; kind- or item-narrowed
-queries still read SQLite. Local sources get the query without `STOP_WORDS`; the layers
+`vector-index.ts` keeps the model's vectors as one 8-bit matrix (`int8-matrix.ts`: a scale
+per row, rows padded to 16 bytes, about 23 MB for 60,000 passages), updated by `upsert`,
+reloaded when `count(*)` differs, dropped after `MATRIX_IDLE_MS`. A query takes
+`2 × limit + 16` candidates by an integer dot product in hand-assembled WebAssembly SIMD
+(`i16x8.extmul` + `i32x4.extadd_pairwise`; JavaScript where SIMD is missing), then reads those
+candidates' Float32 vectors from SQLite and returns their exact similarities. Kind- or
+item-narrowed queries still read SQLite. While the built-in model's worker owes passages
+(a build), a query goes to a second worker on one thread (`built-in.ts`, `quick`), so it
+does not wait for the passage the first is on. Local sources get the query without `STOP_WORDS`; the layers
 store matches only the last word as a prefix.
 
 `scripts/search-eval/speed.mjs build|run <folder>` makes a library of about 57,800
 passages from the system word list (Zipf frequencies, household words placed among them)
 and times the evaluation set's searches at the server. On an M2 Max laptop the own-results
 p95 went from 178 ms to 31 ms with these changes, and a flat vector query from 115 ms to 22 ms.
+`run <folder> 3 --meaning [--building]` gives every passage a random vector, switches the
+built-in model on (with `--building`, 3,000 passages are left for a build that runs during
+the timing) and prints the time of the question's vector and of the comparison. Measured on
+the M2 Max: comparing 57,800 vectors 21 ms as Float32, 3.2 ms as 8 bits (exact similarities
+included); own results p95 during a build 108 ms with one worker, 36 ms with the second.
 
 Other sources' results are scored by `rescore` from what they show (title, subtitle,
 snippet). Local sources (places, repeaters) go to `places`, not `results`, unless their
 kind was asked for; `placesFirst` when the query looks like a name, callsign or frequency.
-Meaning is blended by `blendMeaning` (`MEANING_CEILING` 0.6). Answers still fuse passages
-with RRF (`searchPassages`).
+Meaning is blended by `blendMeaning`: a result found both ways scores
+`1 − (1 − words)(1 − meaningScore × MEANING_LIFT)` (0.5; full weight let own items, which have
+vectors, pass better reference articles, which have none); one found by meaning alone
+(“Similar in meaning”) must be within `SIMILARITY_WINDOW` (0.2) of the nearest (no absolute
+floor: none separates nonsense from real questions on the Pi's library), scores at most `MEANING_CEILING` (0.6) and always below the lowest result holding
+every word (`WordsHeld.everyWord`, from `RankedItem.everyWord` and, for reference articles,
+`rescore`). For a medical question, a result that is a trusted source (`adjustFor(...).trusted`),
+holds every word and is at least `SAME_MEANING` (0.6) similar is put before the rest, its
+reason ending “and means the same”. Answers still fuse passages with RRF (`searchPassages`).
 
 Reference archives (`modules/kiwix`):
 
@@ -222,7 +243,11 @@ long passages was `84769597`). Build batches of 16 (`search.semantic.batchSize`)
 Export format: gzip JSON lines; header
 `{"format":"outpost-embeddings","version":1,"modelId","provider","model","dimensions","exportedAt"}`,
 then `{"h": <passage text hash>, "v": <float32 base64>}`, applied to every passage with
-that text and no vector for the model.
+that text and no vector for the model. `GET /api/semantic/passages[?model=][&all=1]` is the
+other half: header `{"format":"outpost-passages","version":1,"modelId","passages"}`, then
+`{"h", "t"}` with `t` exactly what the build embeds (`passageInput`: title, heading, text).
+`scripts/build-vectors.mjs <address>` fetches it, embeds with `floor(threads / 4)` copies of
+the built-in model, writes an export and posts it to `/api/semantic/import`.
 
 ## Stand-in and evaluations
 

@@ -286,6 +286,7 @@ like one of their names), or in `results` when their kind is asked for.
 | `POST /api/semantic/test` | `{ text }` → `{ modelId, dimensions, tookMs }`. |
 | `DELETE /api/semantic/models/:modelId` | Deletes one model's vectors. `{ removed }`. |
 | `GET /api/semantic/export` | Vectors as gzip JSON lines. `model`. |
+| `GET /api/semantic/passages` | Passages with no vector yet for `model` (default: the one in use or chosen), as the model reads them, gzip JSON lines `{h, t}` after a header; `all=1` for every passage. For `scripts/build-vectors.mjs`. |
 | `POST /api/semantic/import` | The exported file, `application/gzip`. `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`; `400` for vectors of another size. |
 
 Pause or cancel a build through `/api/jobs`. File format:

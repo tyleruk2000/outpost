@@ -93,7 +93,8 @@ added, dropped, changed or swapped (one, for a word of four letters or fewer), t
 first letter preferred, then the commoner word. It is offered as a link: "Did you mean
 **purify** water?" The search of your library stays as you typed it. Small words are never
 offered, and a word must be in at least two passages. The words come from your own library,
-as it is now, not from reference collections.
+as it is now, not from reference collections. It is offered while your words find fewer
+than five results; results found by meaning alone do not count.
 
 Reference collections know nothing of slips, so when a word you typed is in no passage of
 your library and a near word is, they are asked for both: "purifiy water" as typed, and
@@ -420,14 +421,14 @@ Measured with the built-in model on an Apple M2 Max laptop (four threads):
 | What | Measured |
 | --- | --- |
 | Building the index | 33 to 54 seconds per thousand passages (Settings quotes 45). |
-| A search | 12 to 20 ms with the index built; 40 to 140 ms during a build. |
+| A search | About 3 ms to compare a question with 57,800 passages, and about 10 ms to read the question, with the index built or during a build. |
 | Disk | About 2.2 MB per thousand passages. |
-| Memory | About 300 MB while loaded, given back after five idle minutes; and the vectors, 1.5 KB a passage (about 90 MB for 60,000), the same. |
+| Memory | About 300 MB while loaded, given back after five idle minutes, and as much again for a second copy that answers searches while a build runs; and the vectors, 400 bytes a passage (about 23 MB for 60,000), the same. |
 | The model itself | 39 MB in the app. |
 
 A Raspberry Pi 5 is about five times slower: about four minutes per thousand passages
 (measured 23 November 2026), so 60,000 passages take about four hours the first time.
-The progress line shows the real time left. Or build on a faster computer and [move the vectors](#moving-vectors-between-installations).
+The progress line shows the real time left. Or let a faster computer [do the reading](#reading-the-library-on-a-faster-computer).
 
 ### Choosing where the model runs
 
@@ -484,10 +485,29 @@ Vectors are kept per model and never mixed. Switching keeps the old ones under "
 from other models" until you delete them, and the new model builds its own. See
 [ai.md](ai.md#planning-for-a-change-of-embedding-model).
 
+### Reading the library on a faster computer
+
+A laptop can do a Raspberry Pi's reading for it, about eight times as fast (a thousand passages in about half a minute on an M2 Max). On the laptop, in
+a copy of Outpost's source with the model fetched (`node scripts/fetch-embedding-model.mjs`),
+give the Pi's address:
+
+```bash
+node scripts/build-vectors.mjs http://192.168.1.134:8080
+```
+
+It asks the Pi for the passages it has not read yet, reads them with the same built-in
+model, shows the time left, and sends the vectors back. The vectors are the ones the Pi
+would have made. A build running on the Pi carries on with whatever is still missing; run
+the command again later for passages added since. With a household PIN set, the Pi refuses
+the vectors from a device that is not unlocked: the command keeps the file and says where,
+and you import it under **Settings → Search by meaning → More options**. Every passage's
+text goes to the laptop, contacts and notes included, so use a computer of your own on your
+own network.
+
 ### Moving vectors between installations
 
 A faster computer holding the same library, with the same model and passage settings, can
-build the vectors for a small one. On the fast computer:
+also build all the vectors itself and hand them over. On the fast computer:
 
 ```bash
 curl -o vectors.jsonl.gz "http://localhost:8080/api/semantic/export"
@@ -511,9 +531,17 @@ When search by meaning is ready, the default is **Best of both**, and the count 
 results says which way they were found ("found by words and by meaning").
 
 - **The list of results.** A result's similarity to the query becomes a score: 0.2 and
-  below counts as nothing, 0.7 and above as 0.6, the most meaning alone can earn, so it
-  stays below a result holding every word. A result found both ways scores
-  1 − (1 − words) × (1 − meaning): more than either alone.
+  below counts as nothing, 0.7 and above as 0.6. A result found both ways scores
+  1 − (1 − words) × (1 − meaning ÷ 2): more than by its words alone. A result found by
+  meaning alone says **Similar in meaning**. It is left out when its similarity is more
+  than 0.2 below the nearest one's, and it always comes after every result holding
+  all your words: when the words find plenty these wait below them, and when the words find
+  little or nothing they fill the list. The model finds something near any question,
+  nonsense included, so these are only as good as it is.
+- **First aid.** For a question about first aid or medicine, a first aid or medical source
+  holding all your words whose passage means the same as the question (similarity 0.6 or
+  more) comes first, and says "means the same". A forum post whose title is the question
+  does not come before the first aid manual's page on it.
 - **Passages for an answer.** Ranked separately and combined by reciprocal rank fusion,
   each passage scoring `weight / (k + rank)` summed over the lists it is in.
 
@@ -534,10 +562,14 @@ meaning** alone leaves reference articles out, since they have no vectors.
 
 Each query is compared with every vector: exact, and comfortable to about 100,000
 passages (about 220 MB on disk); beyond that, searches slow in proportion. The vectors are
-read into memory at the first search and kept up to date as passages are read, so a search
-does not read them from the database again: about 20 ms for 57,600 passages on a laptop,
-against 115 ms reading them each time. Five minutes without a search, and the memory is
-given back. A search narrowed to one kind of result still reads them from the database.
+read into memory at the first search, rounded to whole numbers from −127 to 127 (a quarter
+of the space), and kept up to date as passages are read. A search compares the question
+with all of them that way, using the processor's vector instructions, then works out the
+exact similarity of the closest few from the stored vectors: about 3 ms for 57,800 passages
+on a laptop, against 21 ms unrounded and 115 ms reading them from the database each time.
+While the index is being built, searches are answered by a second copy of the model, so
+they do not wait for the passage being read. Five minutes without a search, and the memory
+is given back. A search narrowed to one kind of result still reads them from the database.
 The same question asked again within a while reuses its vector. Reference articles are
 found by keyword only. Results found by meaning show the passage's start, unhighlighted.
 
