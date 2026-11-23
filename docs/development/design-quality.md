@@ -170,6 +170,37 @@ desktop at 1280 px.
 
 | Plan a walk from a point on the map (streets add-on installed) | Not possible | 6 (press and hold, Plan a route from here, Walk, To, a place, Plan route); 5 once Walk is remembered | Not possible | 6 (right-click, the same) | One Plan a route with its ways of travelling; the way chosen is remembered |
 | Show 30 minutes' drive from a point | Not possible | 2 (press and hold, Reachable from here): 30 minutes is the default | Not possible | 2 (right-click, Reachable from here) | From the quick search ("reachable"), 2 for the middle of the map. Works on every installation with a road network (Main roads only) |
+| Maps and routes for France, first time, from Offline maps | 10 (Add map data, Another place (home was chosen), France, tick Roads for routes, Read the list of regions, Check sizes, Next, the country file, Next, Download) | 5 (Add a place, France, Check size, the source file, Download) | 8 (the same, with no Next) | 5 | Nothing chosen for the person; Map and Routes ticked; the list of regions read on the Check size press; the source file a two-line choice on the same view. 4 once the choice is remembered. From a route that needs France: 3 (Add roads for France, Check size, Download) |
+| See what a place has, on a phone | Scroll 21 rows for 3 countries (3,931 px) | One row a place (about 90 px each), 1 press to open it | 7 rows a country | One row a place, in a table | |
 
 On a tablet at 768 px every screen gained 196 px of width; the full sidebar is one press
 away (the button at the top of the rail, or Ctrl \\).
+
+## Map data pattern
+
+Every kind of offline map data (a map with its hills and names, routes, nearby places,
+walking and cycling, satellite pictures, a drawn area, World basics, what is kept on this
+phone) is shown, added, updated and removed one way. The parts are in
+`features/maps/data-page/`; a new kind uses them rather than drawing its own.
+
+| Part | Use | Words |
+| --- | --- | --- |
+| Row | `PlaceRow` (`place-row.tsx`): name · state line · size · ⋯; on a wide screen the same row lines up under `PlaceHeader` | The place's name; "· home", "· drawn" after it |
+| State | `StateMark` (`pattern.tsx`), words from `bundleStateText` and `bundleMark` (`words.ts`) | Not added · Waiting · Downloading 1.0 of 2.3 GB, 19 min left · Building · Ready, from 17 Nov 2026 · Over a year old · Failed: what to do · Storage not connected · Moving |
+| Menu | `MapDataMenu`: these actions in this order, one left out when it does not apply, never reordered | Update · Move… · Remove… · Details |
+| Progress | `MapDataProgress`: one bar from real figures and one line of words | As the state |
+| Add | Add a place (`add-map-data.tsx`), opened from anywhere with `/maps/data?add=1` (`&countries=FR,CH`, `&kinds=roads`, `&bbox=w,s,e,n&name=…`, `&world=1`) | Where? · What for France? · Check size · Download · 4.1 GB |
+| Remove | `RemovePlaceDialog`: ticks with sizes, the source file unticked, what stops working | Remove France? · Remove · frees 3.1 GB |
+| Update | `PlaceUpdatesDialog`: by place, Check then Update for each, and Update all | France · Map from 1 Jun 2025 |
+| Done, failed | A toast for what started ("Adding France. Progress is shown on Offline maps."); a failure in its dialog, "Failed" and what happened | |
+
+The bundle names are fixed: **Map**, **Routes**, **Nearby places**, **Walking and cycling**
+(**Walk/cycle** as a column), **Satellite pictures**. Retired words: country file, extract,
+road network, region, reference data, pack, zoom, and Geofabrik except in Sources and in the
+line that names who is asked. Sets made once and never revised are `ageless` and are never
+over a year old. `map-data-page.test.tsx` renders each kind's row and checks it is built from
+these parts, with the menu in this order.
+
+Not yet in the pattern: walking and cycling and satellite pictures are still added through
+their own dialogs (the streets build, choosing an area on the map) rather than through Add a
+place.

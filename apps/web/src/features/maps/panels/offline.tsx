@@ -106,6 +106,8 @@ function useView(engine: MapEngine | null): Bbox | null {
 function DrawArea({ engine, onDone, onNeedMap }: { engine: MapEngine | null; onDone: () => void; onNeedMap: () => void }) {
   const navigate = useNavigate();
   const [problem, setProblem] = useState<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   useEffect(() => {
     if (!engine) return;
     onNeedMap();
@@ -135,7 +137,10 @@ function DrawArea({ engine, onDone, onNeedMap }: { engine: MapEngine | null; onD
   }, [engine, navigate, onDone, onNeedMap]);
   return (
     <div className="grid gap-3 px-4 py-4">
-      <PanelHeading>Draw an area</PanelHeading>
+      {/* Takes the place of the button pressed: its heading has the keyboard (WCAG 2.4.3). */}
+      <h3 ref={heading} tabIndex={-1} className="text-body font-semibold text-ink focus:outline-none">
+        Draw an area
+      </h3>
       {engine ? (
         <p className="text-small text-ink">Drag on the map from one corner of the area to the opposite one. Press Escape to stop.</p>
       ) : (

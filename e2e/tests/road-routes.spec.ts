@@ -17,13 +17,16 @@ test.describe("road routes", () => {
     const places = await installChannelTrip(page);
 
     try {
-      // Map data lists the roads under each country, with what they are and the day their data is from.
+      // Offline maps lists the routes under each country; a row opens to what they are and the day their data is from.
       await page.goto("/maps/data");
-      const gb = page.getByRole("list", { name: "Map data for United Kingdom" });
-      const roads = gb.getByRole("heading", { name: "Roads for routes" }).locator("xpath=..");
+      const gb = page.locator('[data-place="country:GB"]');
+      await gb.getByRole("button", { name: /^United Kingdom/ }).click();
+      const roads = gb.getByRole("region", { name: "United Kingdom in detail" });
       await expect(roads).toContainText("Great Britain (test)");
       await expect(roads).toContainText(/roads from 20 Nov 2026/);
-      await expect(page.getByRole("list", { name: "Map data for France" })).toContainText("France north (test)");
+      const fr = page.locator('[data-place="country:FR"]');
+      await fr.getByRole("button", { name: /^France/ }).click();
+      await expect(fr).toContainText("France north (test)");
       await expect(page.getByText(/© OpenStreetMap contributors/).first()).toBeAttached();
 
       await page.goto("/maps?lat=49&lon=3&z=5");

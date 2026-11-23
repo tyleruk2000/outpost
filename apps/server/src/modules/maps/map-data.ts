@@ -126,6 +126,17 @@ const overlap = (a: readonly number[], b: readonly number[]) =>
   area([Math.max(a[0]!, b[0]!), Math.max(a[1]!, b[1]!), Math.min(a[2]!, b[2]!), Math.min(a[3]!, b[3]!)]);
 const isWorld = (box: readonly number[]) => box[2]! - box[0]! > 300;
 
+/**
+ * The country a map of no ready-made area (a file brought in, an older download) is of: one whose
+ * box is most of the same box (shared over joined at least 0.6), so that a map of the United
+ * Kingdom imported from a file is listed with the United Kingdom and a valley drawn by hand is not.
+ */
+export function countryLikeBox(box: Bbox): string | null {
+  const likeness = (bbox: Bbox) => overlap(box, bbox) / (area(box) + area(bbox) - overlap(box, bbox));
+  const best = COUNTRIES.map((country) => ({ code: country.code, like: likeness(country.bbox) })).sort((a, b) => b.like - a.like)[0];
+  return best && best.like >= 0.6 ? best.code : null;
+}
+
 /** The country a ready-made map area is of: the smallest whose box holds its middle and most of it. */
 export function countryOfBox(box: Bbox): string | null {
   const [west, south, east, north] = box;
@@ -315,7 +326,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       const bounds = tiles?.bounds;
       const preset = typeof row.meta.regionId === "string" ? row.meta.regionId : null;
       if (bounds && isWorld(bounds)) put(null, item, true);
-      else if (!imagery && preset && bounds) put(countryOfBox(bounds as Bbox), item);
+      else if (!imagery && bounds) put(preset ? countryOfBox(bounds as Bbox) : countryLikeBox(bounds as Bbox), item);
       else other.push(item);
     }
     for (const row of active.filter((d) => d.kind === "map" || d.kind === "terrain")) {

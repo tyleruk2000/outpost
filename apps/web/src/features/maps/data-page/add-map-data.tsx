@@ -922,7 +922,7 @@ function Flow({
             </div>
           ) : checkError ? (
             <Notice tone="danger" icon={<CircleAlert />} title="Failed">
-              {errorMessage(checkError)} Try again.
+              {errorMessage(checkError)}
             </Notice>
           ) : found ? (
             <p className="text-small text-ink">

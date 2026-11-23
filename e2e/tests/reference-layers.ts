@@ -32,12 +32,13 @@ export async function referenceLayersFlow(page: Page, testInfo: TestInfo, phone:
   const file = testInfo.outputPath("shelters.csv");
   fs.writeFileSync(file, SHELTERS);
 
-  // Imported through Map data: nothing is fetched; who published it and under what licence is kept with each row.
+  // Imported through Add a place on Offline maps: nothing is fetched; who published it and under what licence is kept with each row.
   await page.goto("/maps/data");
-  const world = page.getByRole("list", { name: "Map data for the whole world" });
-  await expect(world.getByRole("heading", { name: "Borders and airports" }).locator("xpath=..")).toContainText("Not added");
-  await page.getByRole("button", { name: "More ways to add" }).click();
-  await page.getByRole("menuitem", { name: "Import a file" }).click();
+  await page.getByRole("button", { name: "Add a place" }).first().click();
+  await page
+    .getByRole("dialog", { name: "Add a place" })
+    .getByRole("button", { name: /Import a file/ })
+    .click();
   const dialog = page.getByRole("dialog", { name: "Import a file" });
   await dialog.getByLabel("File", { exact: true }).setInputFiles(file);
   // A drop-down inside the dialog.
@@ -47,8 +48,14 @@ export async function referenceLayersFlow(page: Page, testInfo: TestInfo, phone:
   await dialog.getByRole("button", { name: "Import" }).click();
   await expect(dialog.getByText("Imported 2.")).toBeVisible({ timeout: 20_000 });
   await page.keyboard.press("Escape");
-  // Listed on Map data, where it can be updated or removed.
-  await expect(page.getByText("Rest centres (test)").first()).toBeAttached();
+  // Listed by place on Offline maps, where it can be updated or removed.
+  await expect
+    .poll(async () =>
+      (await api<{ places?: Array<{ items: Array<{ title: string }> }> }>(page, "GET", "/api/maps/data")).places?.some((place) =>
+        place.items.some((item) => item.title === "Rest centres (test)"),
+      ),
+    )
+    .toBe(true);
 
   await page.goto(`/maps?lat=${VIEW.lat}&lon=${VIEW.lon}&z=${VIEW.zoom}`);
   await idle(page);

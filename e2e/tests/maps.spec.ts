@@ -197,31 +197,23 @@ test.describe("maps", () => {
       return downloads.filter((download) => ["map", "terrain", "places"].includes(download.kind)).map((download) => download.id);
     };
     const before = await mapDownloads();
-    // The shortcut on the first-use card leads to the choices; it does not start a download.
-    await page
-      .getByRole("button", { name: /World overview/ })
-      .first()
-      .click();
-    await expect(page.getByRole("heading", { name: "World overview" })).toBeVisible();
-    const where = page.getByRole("radiogroup", { name: "Where to keep it" });
+    // The first-use card leads to Add a place on Offline maps; it does not start a download.
+    await page.getByRole("button", { name: "Add a place" }).first().click();
+    await expect(page.getByRole("heading", { name: "Offline maps", level: 1 })).toBeVisible();
+    const dialog = page.getByRole("dialog", { name: "Add a place" });
+    await expect(dialog.getByRole("heading", { name: "Where?" })).toBeVisible();
+    // Nothing is chosen for the person: the whole world is one suggestion among others.
+    await dialog.getByRole("button", { name: /The whole world/ }).click();
+    await expect(dialog.getByRole("heading", { name: "What for The whole world?" })).toBeVisible();
+    await dialog.getByText("More choices").click();
+    const where = dialog.getByRole("radiogroup", { name: "Where the map is kept" });
     await expect(where.getByRole("radio", { name: /Internal storage/ })).toBeChecked();
     await expect(where).toContainText("Default for new downloads");
     await expect(where).toContainText(/free/);
-    // The destination is repeated beside the button that would start the download.
-    await expect(page.getByText(/Will be kept on Internal storage/)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Download", exact: true })).toBeDisabled();
-
-    // Place names ask the same question, on Map data.
-    await page.getByRole("button", { name: "Choose another area" }).click();
-    await page.getByRole("button", { name: "Offline maps" }).click();
-    await page.getByRole("link", { name: /All map data/ }).click();
-    await expect(page.getByRole("heading", { name: "Map data", level: 1 })).toBeVisible();
-    await page.getByRole("button", { name: "More ways to add" }).click();
-    await page.getByRole("menuitem", { name: "Place names" }).click();
-    await page.getByRole("radio", { name: /Larger towns and cities only/ }).click();
-    await expect(
-      page.getByRole("radiogroup", { name: "Where to keep the place names" }).getByRole("radio", { name: /Internal storage/ }),
-    ).toBeChecked();
+    // One button: the size is asked first, and nothing is downloaded until a second press.
+    await expect(dialog.getByRole("button", { name: "Check size" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /^Download/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
     // Looking at the choices started nothing.
     expect(await mapDownloads()).toEqual(before);
   });

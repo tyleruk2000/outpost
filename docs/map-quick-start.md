@@ -7,11 +7,12 @@ screen and works with no internet once a map is installed.
 
 If the map shows only a plain outline of the world, none is installed.
 
-1. Open **Maps → Map data** and press **Add map data**. With a home saved, its country is chosen; press
-   **Another place** for another, or **Draw my own area** for a box round the area you want.
-2. The map, **Hills and heights** (heights, line of sight and radio range need them) and
-   place names are ticked. Tick **Roads for routes** too for road routes.
-3. Press **Check sizes**, then **Download**.
+1. Open **Maps → Offline maps** and press **Add a place**. Type a country, a region or a
+   town, tap it on the small map, or choose a suggestion (where the map is now, home, or an
+   area you draw).
+2. **Map** (with its hills and towns by name) and **Routes** are ticked. Tick **Nearby
+   places** for hospitals, shelters and food.
+3. Press **Check size**, then **Download**.
 
 This needs the internet once.
 

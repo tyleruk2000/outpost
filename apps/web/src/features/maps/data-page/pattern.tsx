@@ -92,7 +92,7 @@ export function StateMark({
 }) {
   if (!bundle) {
     return (
-      <span data-pattern="state" data-state="not-offered" className="text-small text-ink-faint">
+      <span data-pattern="state" data-state="not-offered" className="text-small text-ink-faint max-md:hidden">
         <span className="md:sr-only">{name} </span>
         <span aria-hidden>–</span>
         <span className="sr-only">not offered</span>

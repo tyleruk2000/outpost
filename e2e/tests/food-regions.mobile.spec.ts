@@ -15,17 +15,23 @@ test.describe("food and supplies for a state on a phone", () => {
 
   test("chooses a country and a state, sees the size, fetches it and finds the nearest pharmacy", async ({ page, sealed }) => {
     const errors = watchForErrors(page);
-    // Other places to find, from Map data's menu.
-    await page.goto("/maps/data");
-    await page.getByRole("button", { name: "More ways to add" }).tap();
-    await page.getByRole("menuitem", { name: "Other places to find" }).tap();
+    // Nearby places from another source: the link Layers gives, to Offline maps.
+    await page.goto("/maps/data?get=places");
     const dialog = page.getByRole("dialog", { name: "Get reference data" });
 
     // The source, from the drop-down inside the dialog.
     await dialog.getByRole("combobox", { name: "Source" }).click();
     await page.getByRole("option", { name: "OpenStreetMap, from a Geofabrik extract" }).click();
     await dialog.getByRole("radio", { name: "A state or region, by name" }).check();
-    await dialog.getByRole("button", { name: "Read the list of regions" }).click();
+    // The list of regions may have been read already, by another test on this server.
+    const read = dialog.getByRole("button", { name: "Read the list of regions" });
+    if (
+      await read.waitFor({ timeout: 3_000 }).then(
+        () => true,
+        () => false,
+      )
+    )
+      await read.click();
 
     // A country, then its state.
     await dialog
@@ -52,10 +58,13 @@ test.describe("food and supplies for a state on a phone", () => {
       })
       .toBeGreaterThan(5);
     await page.keyboard.press("Escape");
-    // Listed under its country on Map data, and the file read and then deleted, as chosen.
-    const us = page.getByRole("list", { name: /^Map data for United States/ });
-    await expect(us.getByRole("heading", { name: "Places to find" }).locator("xpath=..")).toContainText(/OpenStreetMap: Ohio/);
-    await expect(us.getByRole("heading", { name: "Country file" }).locator("xpath=..")).toContainText(/read and deleted/);
+    // Listed under its country on Offline maps; the row opens to the places and the source file, read and then deleted as chosen.
+    const us = page.locator('[data-place="country:US"]');
+    await expect(us).toContainText(/Nearby places/);
+    await us.getByRole("button", { name: /^United States/ }).tap();
+    const detail = us.getByRole("region", { name: /in detail$/ });
+    await expect(detail).toContainText(/OpenStreetMap: Ohio/);
+    await expect(detail).toContainText(/read and deleted/);
 
     await page.goto(`/maps?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}&z=14`);
     await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });

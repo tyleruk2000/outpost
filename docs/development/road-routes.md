@@ -187,7 +187,7 @@ back as `{ error: { code, message } }` with a 4xx.
 | Method and path | Body | Answer |
 | --- | --- | --- |
 | `GET /networks` | | `RoadNetworksResponse`: `networks: RoadNetworkDto[]`, `building` (jobs and downloads under way), `credit` |
-| `POST /networks` | `{ regionId, keepExtract?, locationId? }` (a Geofabrik region id, as `GET /api/reference/regions` lists them once read with `POST /api/reference/regions`) or `{ locationId, relPath, name, country? }` (a file already in storage) | `{ downloadId, jobId }`: for a region, the country file's download, or, where the region's country file is kept, a task reading it (no download); for a file in storage, a build job. See [map data](../maps.md#country-files) |
+| `POST /networks` | `{ regionId, keepExtract?, locationId? }` (a Geofabrik region id, as `GET /api/reference/regions` lists them once read with `POST /api/reference/regions`) or `{ locationId, relPath, name, country? }` (a file already in storage) | `{ downloadId, jobId }`: for a region, the country file's download, or, where the region's country file is kept, a task reading it (no download); for a file in storage, a build job. See [map data](../maps.md#the-source-file) |
 | `POST /networks/:id/update` | | as above: the region downloaded again, or the file read again; the new network replaces the old when built |
 | `DELETE /networks/:id` | | `{ ok: true }`: the network file and row go; a kept extract stays |
 | `POST /countries` | `{ boxes: [w, s, e, n][] }` (≤ 200) | `{ countries }`: ISO codes the boxes cover, most first, from the country outlines; a box over 40° by 25° is passed over. The web app sends the installed map regions' boxes, to offer their countries first |

@@ -226,7 +226,7 @@ export function PlaceRow({ place, context }: { place: MapDataPlace; context: Row
             className="group flex min-h-11 w-full min-w-0 items-center gap-1.5 rounded-control text-left md:min-h-8 md:pointer-coarse:min-h-11"
           >
             <span className="min-w-0">
-              <span className="text-body font-medium text-ink group-hover:underline group-hover:decoration-1 group-hover:underline-offset-2">
+              <span className="text-body font-medium text-ink [overflow-wrap:anywhere] group-hover:underline group-hover:decoration-1 group-hover:underline-offset-2">
                 {place.name}
               </span>
               {note ? <span className="text-small text-ink-muted"> · {note}</span> : null}
