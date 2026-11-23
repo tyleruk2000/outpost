@@ -4,8 +4,9 @@
 
 Outpost is a self-hosted, offline-first knowledge and preparedness app. One program, on a
 laptop, a home server, a NAS or a Raspberry Pi, holds an offline encyclopedia, your own
-documents and notes, offline maps, contacts, a household message board, radio planning
-tools, calculators, and a household's emergency plans and supplies, behind one search box.
+documents and notes, offline maps and road routes, contacts, a household message board,
+radio planning tools, calculators, and each household's emergency plans, supplies and
+printed book, behind one search box.
 You choose what to download while you have a connection; after that, everything you kept
 works with the network cable pulled out. Phones and other computers on your home network
 use it in their browser.
@@ -38,9 +39,13 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 | Feature | What it does |
 | --- | --- |
 | Home | What is in the library, free space, the emergency plan, how long food and water last, and anything new on the board. |
-| [One search](docs/search.md) | Full-text search across documents, notes, collections, places and contacts, ranked with highlighted passages; matching screens are offered too. |
+| [One search](docs/search.md) | One ranked list from documents, notes, reference archives, places, contacts, plans and supplies, each with the reason it was found; other spellings are searched too, and a typo gets "did you mean". |
 | [Quick search](docs/search.md) | Ctrl or Cmd + K finds screens, settings and guide sections by name or everyday words. |
-| [Search by meaning and OCR](docs/search.md) | Optional semantic search with a small built-in model, and the text of scanned pages read in English; **How search works** shows each step with your library's numbers. |
+| [Search by meaning and OCR](docs/search.md) | One switch, and the model that comes with Outpost finds passages saying the same thing in other words. Scanned pages are read in English. Two pages explain each step with diagrams. |
+
+![Search results, each with the reason it was found](docs/screenshots/search-reasons.webp)
+
+![How search by meaning works](docs/screenshots/how-meaning-works.webp)
 
 ### Library, collections and the reader
 
@@ -49,7 +54,7 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 | [Your documents](docs/library.md) | PDFs, EPUBs, Markdown, HTML, text and images, indexed by page, originals untouched. |
 | [Audiobooks](docs/library.md) | A zip of chapters becomes one book with speed control; each device keeps its place. |
 | [Save a web page](docs/notes-and-imports.md) | Keep a readable copy of an article from its address. |
-| [Explore and packs](docs/sources.md) | A catalogue of 422 entries (Kiwix archives and official handbooks) in 22 packs, browsable offline; each states its size and licence first ([format](catalog/README.md)). |
+| [Explore and packs](docs/sources.md) | A catalogue of 432 entries (Kiwix archives and official handbooks) in 24 packs, among them a survival guide and climbing and mountains, browsable offline; each states its size and licence first ([format](catalog/README.md)). |
 | [Reference collections](docs/architecture.md) | ZIM archives (Wikipedia and the like) read in the app through kiwix-serve behind a sandboxing proxy. |
 | [Learning progress](docs/learning.md) | Where each learner got to in a course archive such as Khan Academy. |
 | [Included with Outpost](docs/radio.md) | Nine radio reference sheets compiled from regulators' documents, and sixteen LogBook73 radio books. No download needed. |
@@ -63,7 +68,8 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 | [Offline maps](docs/maps.md) | Download a country, one of 188 ready-made regions or a box you draw, with the exact size shown first, and view it with no connection. |
 | [Terrain and contours](docs/maps.md) | An optional terrain download adds hill shading, contour lines and the height of the ground, in metres or feet. |
 | [Places and routes](docs/maps.md) | Saved places; routes drawn with distance, ascent and profile; GPX, KML, KMZ and GeoJSON in, GPX out. |
-| [Find and record routes](docs/maps.md) | Look a named route up in OpenStreetMap (only when you search), or record where you walk while the screen is on, over `https`. |
+| [Road routes](docs/road-routes.md) | A drive planned on this device from road networks you install by country, written as you would write it down: the road, the place on the signs, the junctions, with the ferry or tunnel. A printable route card and a short plain-text copy. |
+| [Find and record routes](docs/map-routes.md) | Look a named route up in OpenStreetMap (only when you search), or record where you walk while the screen is on, over `https`. |
 | [Coordinates and place search](docs/maps.md) | Grid references, UTM, MGRS and Maidenhead; offline place names, and every British postcode. |
 | [Sun, grey line, line of sight](docs/maps.md) | Sunrise and twilight for any place, day and night over the map, and whether two points can see each other over the terrain. |
 | [Satellite imagery](docs/maps.md) | The world from NASA's Blue Marble, 10 m Sentinel-2 for an area, and aerial photographs for New Zealand and the US. |
@@ -72,6 +78,12 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 | [Printing](docs/maps.md) | A one-page PDF map at a stated scale, made on your device. |
 
 ![The map with places and a route](docs/screenshots/maps.webp)
+
+![A road route from Leatherhead to Chamonix, with its directions](docs/screenshots/road-route.webp)
+
+<img src="docs/screenshots/route-card.webp" width="420" alt="The printable route card">
+
+*The road networks here are made-up extracts shaped like the main roads, not OpenStreetMap's.*
 
 ### Notes
 
@@ -118,7 +130,7 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 | [Coverage, plans and log](docs/hf-propagation.md) | Where one transmitter is heard as a map layer, which band serves each pair of stations at each hour, and a contact log set beside the prediction. |
 | [Repeaters](docs/radio.md) | Repeaters from a file, by hand or from publishers whose terms allow it, on the map with an estimated line-of-sight range. |
 | [Heard on the radio](docs/heard-on-the-radio.md) | APRS stations, aircraft and ships your own receivers decode, on the map and in a list; listening only. |
-| [Satellites](docs/satellites.md) | When amateur, weather and crewed satellites pass over and what to tune to through a pass, worked out on the device. |
+| [Satellites](docs/satellites.md) | When amateur, weather and crewed satellites pass over and what to tune to through a pass, worked out on the device, with what each satellite is. |
 | [Morse trainer](docs/morse-trainer.md) | Learn by ear with the Koch method, send on screen, keyboard or a real key, and practise a contact. |
 | [Frequencies to listen to](docs/radio-frequencies.md) | Time signals, broadcasters, weather, distress channels and emergency nets by country, each with its source and the day it was checked. |
 | [What needs a licence](docs/radio-licences.md) | What you may listen to and send on in the UK and the US, from the regulators' own documents. |
@@ -136,7 +148,7 @@ formula, its source with the date read, and the range it holds for.
 | [Outdoors](docs/tools.md) | Walking time by Naismith's rule, gradient, bearing, wind chill and heat index. |
 | [Radio calculators](docs/tools.md) | Antenna lengths, path loss, radio horizon, cable loss, dBm and S-units. |
 | [Building and cooking](docs/tools.md) | Concrete, roof pitch, heat loss; roasting times, safe temperatures and recipe scaling. |
-| [Power and batteries](docs/tools-power.md) | How long a battery runs your devices, from makers' published figures, plus solar, cable and generator calculators and saved power plans. |
+| [Power and batteries](docs/tools-power.md) | How long a battery bank or a power station runs your devices, from makers' published figures; the bank drawn as it is wired in series and parallel; solar, cable and generator calculators and saved power plans. |
 | [Compass](docs/tools-compass.md) | Magnetic and grid north from true north at a place (World Magnetic Model 2025), and a live compass on a phone over `https`. |
 | [Solar clock](docs/tools-solar-clock.md) | The sun's position, setting a clock from a shadow after a power cut, and a sundial and nocturnal to print. |
 | [Night sky](docs/night-sky.md) | The Moon's phase and times, a star chart for a place and time, and finding north by the stars. |
@@ -145,19 +157,26 @@ formula, its source with the date read, and the range it holds for.
 | [Garden](docs/garden.md) | What to sow, plant and harvest this month in the UK from the RHS calendar, and a record of sowings. |
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | Make QR codes on the device, and list what answers on the local network. |
 
+![A power plan's battery bank, drawn as it is wired](docs/screenshots/power-bank.webp)
+
 ### Preparedness
 
 | Feature | What it does |
 | --- | --- |
+| [Households](docs/households.md) | One household or several, fixed or on the move (a caravan says where it is now): each with its own people, supplies, plans and papers, chosen from the sidebar. |
 | [Emergency plans](docs/emergency-plans.md) | Plans for a power cut, flood, severe weather, sheltering or leaving, from templates that say whose guidance each step is; **Use now** shows them in large type, and cards print as PDF. |
 | [Household papers](docs/household-papers.md) | A medical sheet for each person, the communication plan, grab cards and one PDF binder. Records only, no medical advice. |
-| [Household book](docs/household-book.md) | A few questions, then a printable emergency book made from the answers and what Outpost holds: first minutes, people, help near home, first aid, water, journeys, checklists. |
+| [Household book](docs/household-book.md) | A few questions, then a printable emergency book made from the answers and what Outpost holds: first minutes, people, help near home, first aid, water, journeys, the radio plan and the repeaters round each place with a map of the ground each reaches. |
 | [Check-ins, log, checks, drill](docs/readiness.md) | "I'm safe" in one press with a roll call, a log of events, routine checks with what is overdue, and an offline drill. |
 | [Supplies](docs/supplies.md) | Food, water and kit at home: how many days they last for your household, what to use first, and what to buy; food energy from USDA FoodData Central, shipped. |
-| [Weather and hazards](docs/weather.md) | Forecasts, UK warnings, climate averages and England's river and sea levels, fetched on a press and kept with their age; a barometer log. |
+| [Weather and hazards](docs/weather.md) | Forecasts; national warnings (UK, MeteoAlarm in Europe, US, Canada, New Zealand, Japan); climate averages; England's river levels; all fetched on a press. A barometer log. |
 | [Nuclear preparedness](docs/nuclear-preparedness.md) | An educational workspace: an effects simulator from Glasstone and Dolan's published model, reference layers and a radiation emergency plan. Estimates for an idealised case, never targets or casualty figures. |
 
+![Two households: a home, and a caravan that moves](docs/screenshots/households.webp)
+
 ![An emergency plan's steps, each with its source](docs/screenshots/emergency-plan.webp)
+
+<img src="docs/screenshots/book-repeaters.webp" width="520" alt="The household book's page of repeaters round home">
 
 ### Games
 
@@ -172,7 +191,7 @@ formula, its source with the date read, and the range it holds for.
 
 | Feature | What it does |
 | --- | --- |
-| [Downloads and tasks](docs/downloads-and-tasks.md) | Every download and every task Outpost works on in one place: progress, rate, time left and what happened; downloads resumable, retried and checksummed. |
+| [Downloads and tasks](docs/downloads-and-tasks.md) | Every download and every task Outpost works on in one place, each with a page of its own: progress, rate, time left and what happened; downloads resumable, retried and checksummed. |
 | [Storage](docs/storage.md) | Disks, USB drives and NAS shares as storage locations; collections move between them with verification. |
 | [Manage and clean up](docs/storage.md) | Everything installed in one list; each removal says first whether it can be undone. |
 | [Backups](docs/storage.md#backing-up) | The database, attachments and text to a file, by hand or on a schedule, optionally encrypted. |
@@ -180,6 +199,8 @@ formula, its source with the date read, and the range it holds for.
 | [On this phone](docs/offline.md) | Over HTTPS the app, chosen notes, routes, map areas and plans stay on a phone to read away from the server. |
 | [HTTPS on your network](docs/deployment.md#https-on-your-network) | An `https` address with no domain and no internet, from a certificate Outpost makes or one of your own. |
 | [Server status and updates](docs/device.md) | The server's health, clock and `outpost.local`; updates from the app or a USB stick. |
+
+![The page of one task: what it was, how it ended and what happened](docs/screenshots/task-page.webp)
 
 ## Install and run
 
@@ -260,6 +281,7 @@ size first:
 | What | Size, and why it is not bundled |
 | --- | --- |
 | [Map regions and terrain](docs/maps.md) | Shown before the download (a box of up to 60 GB); OpenStreetMap data for the area you choose |
+| [Road networks](docs/road-routes.md) | About 1–2% of a Geofabrik extract (Great Britain's 2.2 GB makes 30 MB); OpenStreetMap data for the countries you drive through |
 | [Place names](docs/maps.md) | A GeoNames dataset; for Great Britain OS Open Names, 103 MB |
 | [Reference collections](docs/sources.md) | A few megabytes to many gigabytes, each under its publisher's licence |
 | [VOACAP's data](docs/hf-propagation.md) | 559 kB; the ITU has not given permission to pass it on |
@@ -303,7 +325,7 @@ Every source and its terms, in its publisher's words, are in [sources.md](docs/s
 
 | Source | Licence or terms |
 | --- | --- |
-| OpenStreetMap (maps, routes, layers, food and supplies) | ODbL |
+| OpenStreetMap (maps, routes, road networks, layers, food and supplies) | ODbL |
 | Ordnance Survey OS Open Names; Environment Agency; Food Standards Agency | OGL v3.0 |
 | Mapterhorn (terrain) | Various open licences ([attribution](https://mapterhorn.com/attribution)) |
 | GeoNames; Natural Earth | CC BY 4.0; public domain |

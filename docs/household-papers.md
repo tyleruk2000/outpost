@@ -121,12 +121,11 @@ current one, and its screen says which under the title, with **Change**.
 
 ## On paper together
 
-The household binder is part of the household book now: **Preparedness → Household
-book** prints the fridge sheets, the emergency contacts, Keeping in touch with a page for
-each person, the grab cards, the medical sheets, the frequencies, home and the meeting
-points and the supplies, with everything else the book holds, or only the parts you
-choose. The old address of the binder opens the book. A binder made before stands in for
-the book until the book is made, and Home says when it is older than what is in it.
+To print everything together, use **Preparedness → [Household book](household-book.md)**:
+it prints the fridge sheets, the emergency contacts, Keeping in touch with a page for each
+person, the grab cards, the medical sheets, the frequencies, home and the meeting points
+and the supplies, with everything else the book holds, or only the parts you choose. The
+binder's old address opens the book.
 
 Sheets, the communication plan and the record of the last book are kept in the database: in
 backups, copied to a portable drive, and removed by Erase everything. Cards and the book

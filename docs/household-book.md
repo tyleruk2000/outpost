@@ -119,8 +119,7 @@ names the repeaters whose height was assumed. Each repeater's ground has a light
 hatching at its own angle and an outline with its own dash, and the key under the map
 shows each one, so overlapping areas read apart in colour and on a black-and-white copy.
 
-Working this out takes a second or so a repeater; the book screen says how far it has
-got ("Working out repeater coverage, 3 of 6"). Where no terrain is installed under a
+The book screen says how far it has got ("Working out repeater coverage, 3 of 6"). Where no terrain is installed under a
 repeater, a circle at its radio horizon over flat ground stands in, and the caption says
 so. Either way it is line of sight only, a rough guide: buildings and trees block more,
 and a signal often reaches a little past a ridge. The map is drawn from the offline map
@@ -159,13 +158,15 @@ named, with where the radio plan is in the book.
 The book's typeface has Latin letters only. A name in Greek, Cyrillic, Arabic, Hebrew,
 Devanagari, Thai, Chinese, Japanese kana or Korean is set in a Noto Sans font, kept in
 Outpost and loaded only when a book needs it. A rare Chinese or Korean character outside
-the common set prints as an empty box. Arabic and Hebrew print in the order they were
-typed, not right to left.
+the common set prints as an empty box. Arabic and Hebrew read right to left, with Arabic's
+letters joined, in the text and in the drawings. Keep them to names and short phrases: a
+right-to-left passage long enough to wrap reads its lines in the wrong order.
 
 ## Journeys
 
-Outpost has no road routing, so each journey is the straight line from home, and the
-book says so. The time on foot is worked out along that line with Tobler's hiking
+The book does not use road routes: each journey is the straight line from home, and the
+book says so. For a drive, plan it under **Maps → Routes → Road route** and print its
+[route card](road-routes.md#saving-and-printing) to keep with the book. The time on foot is worked out along that line with Tobler's hiking
 function (5 km/h on level ground, slower up and down slopes), from the terrain installed:
 for a fit adult with no load, and at half that pace for someone hurt, tired or with small
 children. Where each day's walking ends follows from the hours a day you gave, and is
@@ -193,11 +194,7 @@ allow theirs to be reprinted, so the book points to them instead. Clearing cloud
 and catching rain are the CDC's and the US Army's survival manual's words. It holds no
 guidance on toilets without water.
 
-Each drawing shows what the words beside it say and no more. The book's own drawings
-are: making water safe in order, each person's litres a day, where to go in each case,
-the plan's day for each radio plan, how long supplies last against the days wanted, and
-the hours for the fridge and the freezer in a power cut (GOV.UK's guidance after a flood,
-listed at the back). Where the words leave
+Each drawing shows what the words beside it say and no more. Where the words leave
 something open (the US Army's filter names its materials but no order, and no bottle), the
 caption says so.
 
@@ -229,7 +226,7 @@ is near.
 ## What it does not do
 
 - It does not know whether a place listed is open, stocked or still there.
-- It does not follow roads or paths.
+- It does not follow roads or paths (a road route's card is printed separately).
 - It does not give medical advice of its own, and checks no dose.
 - It does not list power stations other than nuclear ones, chemical works or major hazard
   sites: Outpost holds no openly licensed copy of them.

@@ -68,12 +68,11 @@ the motions of the moon and sun. A station's constants are the size and timing o
 wave there, measured over years. Outpost adds up NOAA's 37 constituents for the station,
 each corrected for where the moon and sun are on the day, by the method of the US Coast and
 Geodetic Survey's *Manual of Harmonic Analysis and Prediction of Tides* (Schureman, 1958).
-Checked against NOAA's own published predictions for four stations, the times agree to
-within a minute or two and the heights to within a few millimetres. TICON-4's constants
-give a little less: checked against the Norwegian Mapping Authority's predictions for
-Bergen, Oslo and Narvik, the times agree to within a quarter of an hour and the heights to
-within a few centimetres. Where the tide is small and its turns are flat (Stavanger), the
-time of a high or low can be out by up to an hour, though the heights still agree.
+At NOAA's stations the times come within a minute or two of NOAA's own predictions and the
+heights within a few millimetres. TICON-4's constants give a little less: times within about
+a quarter of an hour and heights within a few centimetres of national predictions; where
+the tide is small and its turns are flat, the time of a high or low can be out by up to an
+hour, though the height still agrees.
 
 TICON-4 gives 50 constituents; Outpost uses the 39 whose conventions it can be sure of.
 The rest are small at almost every gauge.

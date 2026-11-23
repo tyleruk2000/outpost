@@ -173,5 +173,5 @@ Fetched copies (10 to 25 kB a place) are under Storage â†’ Manage and clean up â
 - **Wildfire risk** is linked: the Met Office's index is maps only.
 - **Scotland, Wales and Northern Ireland**: no flood data or river levels.
 - **Not used**: Met Office DataHub (needs a key), MET Norway (needs contact details sent),
-  WorldClim, ERA5 and Australia's Bureau of Meteorology (terms). Canada's, New Zealand's
-  and Japan's warning feeds are not built yet.
+  WorldClim, ERA5 and Australia's Bureau of Meteorology (terms). National warnings are
+  given only for the countries named under [Worldwide alerts](#worldwide-alerts).

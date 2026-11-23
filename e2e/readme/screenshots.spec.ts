@@ -9,7 +9,11 @@
  * emergency plan (to edit, and in use on a phone); the nuclear workspace; contacts; Explore; a
  * page of notes (dark); a receive drill in the Morse trainer; the solar clock's clock recovery;
  * food and supplies on the map; river and sea levels; a chat reply that looked things up;
- * Which model; the allotment. On a phone: the water calculator, the map, frequencies to listen
+ * Which model; Households, with a portable household; search results with their reasons and
+ * "Also searched"; How search by meaning works (switched on, the library read by the built-in
+ * model); a power plan's battery bank; the household book's page of repeaters (a page of its
+ * PDF, drawn by pdf.js); a road route with its directions, its route card (also a PDF page)
+ * and the page of the task that built a road network; the allotment. On a phone: the water calculator, the map, frequencies to listen
  * to, the compass, Messages and Help.
  *
  * Everything shown is demonstration data written here for the purpose: made-up notes,
@@ -20,7 +24,11 @@
  * the nuclear workspace, an allotment with four beds sown, the Morse trainer set to lesson 4,
  * check-ins and messages on the board from invented people, and a handful of made-up shops and
  * water taps around the test map's villages for the food and supplies layer, which the spec
- * serves itself as a stand-in Overpass server. The HF prediction is VOACAP's real answer on the
+ * serves itself as a stand-in Overpass server. The households are Tŷ Prawf, at home on the test
+ * map, and a caravan that has been to two made-up places there; the repeaters have callsigns
+ * with the QZ prefix, which no country holds. The road networks are the server tests' made-up
+ * extracts (apps/server/test/fixtures/roads/channel-trip.ts), shaped like the main roads from
+ * London to the Alps, and the README says they are not OpenStreetMap's. The HF prediction is VOACAP's real answer on the
  * suite's copy of its data. The network list is the made-up network the suite stands in with.
  * River and sea levels are the suite's recorded answers from the Environment Agency (the
  * stations near a place in Norfolk), served by its stand-in file server. Answers and chat are
@@ -37,9 +45,12 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { type Browser, type BrowserContext, expect, type Locator, type Page, test } from "@playwright/test";
+import { franceNorth, franceSouth, greatBritain } from "../../apps/server/test/fixtures/roads/channel-trip.ts";
 import { newPowerPlan, type PowerLoad } from "../../packages/shared/src/power.ts";
 import { api } from "../tests/fixtures";
 import { CENTRE, installTestMaps } from "../tests/map-fixture";
+import { pdfPages } from "../tests/pdf";
+import { choosePlace } from "../tests/road-routes";
 
 const OUT = path.resolve(import.meta.dirname, "../../docs/screenshots");
 const MODEL_URL = process.env.OUTPOST_README_MODEL_URL!;
@@ -285,15 +296,17 @@ async function writeContacts(page: Page) {
 }
 
 /** Places and a route on the made-up map. */
-async function writePlaces(page: Page) {
+async function writePlaces(page: Page): Promise<Record<string, string>> {
   const places = [
+    { name: "Home", lat: 53.0835, lon: -4.1065, icon: "home", color: "green" },
     { name: "Car park", lat: 53.058, lon: -4.112, icon: "parking", color: "blue" },
     { name: "Bothy", lat: 53.098, lon: -4.03, icon: "shelter", color: "red", isFavorite: true },
     { name: "Spring", lat: 53.093, lon: -4.04, icon: "water", color: "blue" },
     { name: "Village hall", lat: 53.091, lon: -4.112, icon: "meeting", color: "green", isFavorite: true },
     { name: "Summit cairn", lat: 53.105, lon: -4.01, icon: "summit", color: "amber" },
   ];
-  for (const place of places) await api(page, "POST", "/api/maps/markers", place);
+  const ids: Record<string, string> = {};
+  for (const place of places) ids[place.name] = (await api(page, "POST", "/api/maps/markers", place)).marker.id;
   await api(page, "POST", "/api/maps/tracks", {
     name: "Round of Bryn Prawf",
     color: "red",
@@ -311,6 +324,7 @@ async function writePlaces(page: Page) {
       { lat: 53.058, lon: -4.112 },
     ],
   });
+  return ids;
 }
 
 async function writeSupplies(page: Page) {
@@ -391,7 +405,8 @@ async function writeSupplies(page: Page) {
 async function writePowerPlan(page: Page): Promise<string> {
   const plan = newPowerPlan("Shed radio station in a power cut");
   plan.notes = "Figures typed for the demonstration; take real ones from each label.";
-  plan.battery.ampHours = 100;
+  plan.battery.ampHours = 50;
+  plan.battery.series = 2;
   plan.battery.parallel = 2;
   plan.battery.maxDischargeA = 100;
   plan.cableRatingA = 60;
@@ -476,6 +491,137 @@ async function writeBoard(page: Page) {
 }
 
 /**
+ * Road networks for Great Britain and France, built from the server tests' made-up extracts (shaped like
+ * the main roads from London to the Alps), put in storage as a person's own files; and the trip's ends as
+ * saved places. Nothing is downloaded.
+ */
+async function installRoadNetworks(page: Page) {
+  const { locations } = await api<{ locations: Array<{ id: string; path: string; isDefault: boolean }> }>(
+    page,
+    "GET",
+    "/api/storage/locations",
+  );
+  const location = locations.find((each) => each.isDefault) ?? locations[0]!;
+  fs.mkdirSync(path.join(location.path, "roads"), { recursive: true });
+  for (const [name, body, country, file] of [
+    ["Great Britain", greatBritain(), "GB", "great-britain"],
+    ["France, north", franceNorth(), "FR", "france-north"],
+    ["France, south", franceSouth(), "FR", "france-south"],
+  ] as const) {
+    fs.writeFileSync(path.join(location.path, "roads", `${file}.osm.pbf`), body);
+    await api(page, "POST", "/api/roads/networks", { locationId: location.id, relPath: `roads/${file}.osm.pbf`, name, country });
+  }
+  await expect
+    .poll(async () => (await api<{ networks: unknown[] }>(page, "GET", "/api/roads/networks")).networks.length, { timeout: 60_000 })
+    .toBe(3);
+  for (const place of [
+    { name: "Leatherhead", lat: 51.296, lon: -0.33 },
+    { name: "Chamonix", lat: 45.9237, lon: 6.8694 },
+  ])
+    await api(page, "POST", "/api/maps/markers", place);
+}
+
+/** The first household named and given its home on the test map; answers its id. */
+async function nameHome(page: Page, homeId: string): Promise<string> {
+  const { households } = await api<{ households: Array<{ id: string }> }>(page, "GET", "/api/households");
+  const id = households[0]!.id;
+  await api(page, "PUT", `/api/households/${id}`, { name: "Tŷ Prawf", homePlaceId: homeId });
+  return id;
+}
+
+/** A portable household, the caravan, with the people of the first and the places it has been. */
+async function writeCaravan(page: Page, firstId: string) {
+  const { household } = await api<{ household: { id: string } }>(page, "POST", "/api/households", {
+    name: "Caravan",
+    kind: "portable",
+    copyPeopleFrom: firstId,
+  });
+  await api(page, "PUT", `/api/households/${household.id}/here`, {
+    lat: 53.0571,
+    lon: -4.1281,
+    name: "Pont Arbrawf",
+    source: "map",
+  });
+  await api(page, "PUT", `/api/households/${household.id}/here`, {
+    lat: 53.046,
+    lon: -4.035,
+    name: "Campsite at Nant",
+    source: "map",
+  });
+}
+
+/** Two repeaters with invented callsigns (the QZ prefix is given to no country), on the hill and by the village. */
+async function writeRepeaters(page: Page) {
+  await api(page, "POST", "/api/repeaters", {
+    callsign: "QZ3BRP",
+    outputHz: 145_712_500,
+    inputHz: 145_112_500,
+    ctcssHz: 77,
+    lat: 53.103,
+    lon: -4.012,
+    place: "Bryn Prawf",
+  });
+  await api(page, "POST", "/api/repeaters", {
+    callsign: "QZ7CPR",
+    outputHz: 433_150_000,
+    inputHz: 434_750_000,
+    ctcssHz: 110.9,
+    lat: 53.0915,
+    lon: -4.1105,
+    place: "Capel Prawf",
+  });
+}
+
+/**
+ * One page of a PDF the app made, drawn by pdf.js in the browser (the suite's own copy, served
+ * from this Outpost's address so that nothing is fetched from elsewhere) and written as WebP.
+ */
+async function pdfPageShot(context: BrowserContext, bytes: Buffer, pageNumber: number, name: string, share = 1, scale = 1.6) {
+  const build = path.resolve(import.meta.dirname, "../node_modules/pdfjs-dist/build");
+  const page = await context.newPage();
+  await page.route("**/__readme/**", (route) => {
+    const file = path.join(build, path.basename(new URL(route.request().url()).pathname));
+    return route.fulfill({ body: fs.readFileSync(file), contentType: "text/javascript" });
+  });
+  await page.route("**/__readme-page", (route) => route.fulfill({ body: "<!doctype html><title>page</title>", contentType: "text/html" }));
+  await page.goto("/__readme-page");
+  const webp = await page.evaluate(
+    async ({ base64, number, scale, share }) => {
+      const module = "/__readme/pdf.min.mjs";
+      const pdfjs = await import(module);
+      pdfjs.GlobalWorkerOptions.workerSrc = "/__readme/pdf.worker.min.mjs";
+      const data = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      const document = await pdfjs.getDocument({ data }).promise;
+      const pdfPage = await document.getPage(number);
+      const viewport = pdfPage.getViewport({ scale });
+      const canvas = window.document.createElement("canvas");
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      const context = canvas.getContext("2d")!;
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await pdfPage.render({ canvas, canvasContext: context, viewport }).promise;
+      // The top of the page only, when asked: the part that matters, not the notes under it.
+      const cropped = window.document.createElement("canvas");
+      cropped.width = canvas.width;
+      cropped.height = Math.round(canvas.height * share);
+      cropped.getContext("2d")!.drawImage(canvas, 0, 0);
+      return cropped.toDataURL("image/webp", 0.86);
+    },
+    { base64: bytes.toString("base64"), number: pageNumber, scale, share },
+  );
+  await page.close();
+  const body = Buffer.from(webp.split(",")[1]!, "base64");
+  fs.writeFileSync(path.join(OUT, `${name}.webp`), body);
+  written.push({ name: `${name}.webp`, bytes: body.length });
+}
+
+/** The pages of a PDF, numbered from 1, whose words include `words`. */
+async function pagesWith(bytes: Buffer, words: RegExp): Promise<number[]> {
+  return (await pdfPages(bytes)).flatMap((page, index) => (page.items.some((item) => words.test(item)) ? [index + 1] : []));
+}
+
+/**
  * A stand-in for an Overpass server, for the food and supplies layer: it answers the layer's
  * questions with a handful of made-up shops and a water tap around the test map's villages.
  */
@@ -517,6 +663,7 @@ function startOverpassStandIn(address: string): Promise<http.Server> {
 }
 
 test("the README's pictures", async ({ browser }) => {
+  test.setTimeout(1_200_000);
   fs.mkdirSync(OUT, { recursive: true });
   const { context, page } = await open(browser);
   await page.goto("/");
@@ -533,8 +680,11 @@ test("the README's pictures", async ({ browser }) => {
   const kitId = await writeNotes(page);
   await writeContacts(page);
   await installTestMaps(page);
-  await writePlaces(page);
+  const placeIds = await writePlaces(page);
+  const homeHouseholdId = await nameHome(page, placeIds.Home!);
   await writeSupplies(page);
+  await writeCaravan(page, homeHouseholdId);
+  await writeRepeaters(page);
   const powerId = await writePowerPlan(page);
   await api(page, "POST", "/api/nuclear/scenarios", {
     name: "Educational example: 10 kilotons",
@@ -758,6 +908,109 @@ test("the README's pictures", async ({ browser }) => {
   await settle(page);
   await shot(page, "which-model");
 
+  // ── Households: Tŷ Prawf at home, and the caravan, which moves ──
+  await page.goto("/prepare/households");
+  await expect(page.getByRole("list", { name: "Households" }).getByRole("listitem")).toHaveCount(2);
+  await settle(page);
+  await shot(page, "households");
+
+  // ── Search: reasons beside each result, and the other ways of saying a word that were searched too ──
+  await page.goto("/search?q=flashlight");
+  await expect(page.getByText(/Also searched:/)).toBeVisible({ timeout: 30_000 });
+  await settle(page);
+  await shot(page, "search-reasons");
+
+  // ── How search by meaning works, with it switched on and the library read by the model that comes with Outpost ──
+  await api(page, "PATCH", "/api/settings", { "search.semantic.enabled": true });
+  await expect
+    .poll(
+      async () => {
+        const status = await api<{ ready: boolean; indexing: boolean; embeddedChunks: number; totalChunks: number }>(
+          page,
+          "GET",
+          "/api/semantic/status",
+        );
+        return status.ready && !status.indexing && status.embeddedChunks === status.totalChunks;
+      },
+      { timeout: 600_000 },
+    )
+    .toBe(true);
+  await page.goto("/search/how-meaning-works");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await settle(page, 1000);
+  await shot(page, "how-meaning-works");
+
+  // ── Power: the battery bank, drawn as it is joined ──
+  await page.goto(`/tools/power/plans/${powerId}`);
+  const bank = page.getByRole("heading", { name: "Battery bank", exact: true });
+  await expect(bank).toBeVisible();
+  await settle(page, 1000);
+  await shotBetween(page, "power-bank", bank, page.getByRole("img", { name: /^Battery bank/ }));
+
+  // ── The household book: made here, and its page of repeaters round home drawn over the terrain ──
+  {
+    const book = await api(page, "GET", "/api/household-book");
+    await api(page, "PUT", "/api/household-book", {
+      ...book.answers,
+      householdName: "Tŷ Prawf",
+      emergencyNumber: "999",
+      paper: "a4",
+      notesPages: 0,
+      meetingPoints: [{ id: "m1", markerId: placeIds["Village hall"], role: "near", note: "By the front door" }],
+      baseAnswersAt: book.answersAt,
+    });
+    await page.goto("/prepare/book");
+    await page.getByRole("button", { name: "Make the book" }).click();
+    const save = page.getByRole("link", { name: "Save as PDF" });
+    await expect(save).toBeVisible({ timeout: 240_000 });
+    const downloading = page.waitForEvent("download");
+    await save.click();
+    const bytes = fs.readFileSync(await (await downloading).path());
+    const repeaterPages = await pagesWith(bytes, /QZ3BRP/);
+    expect(repeaterPages.length, "the book has a page of repeaters").toBeGreaterThan(0);
+    await pdfPageShot(context, bytes, repeaterPages.at(-1)!, "book-repeaters", 0.56);
+  }
+
+  // ── Road routes: networks built from the suite's made-up extracts, and a drive planned on them ──
+  {
+    await installRoadNetworks(page);
+    await page.setViewportSize({ width: DESKTOP.width, height: 1100 });
+    await page.goto("/maps?lat=48.6&lon=3.2&z=5.4");
+    await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
+    await page.getByRole("tab", { name: /Routes/ }).click();
+    await page.getByRole("button", { name: "Road route" }).first().click();
+    await choosePlace(page, "From", "Leatherhead");
+    await choosePlace(page, "To", "Chamonix");
+    await page.getByRole("button", { name: "Plan route" }).click();
+    await expect(page.getByRole("heading", { name: "Leatherhead to Chamonix" })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("list", { name: "Directions" })).toBeVisible();
+    await settle(page, 2500);
+    await shot(page, "road-route");
+    await page.getByLabel("Name to save it under").fill("To the Alps");
+    await page.getByRole("button", { name: "Save route" }).click();
+    await expect(page.getByRole("heading", { name: "To the Alps" })).toBeVisible();
+    await page.getByRole("button", { name: "Printable route card (PDF)" }).click();
+    const save = page.getByTestId("road-route-card").getByRole("link", { name: "Save as PDF" });
+    await expect(save).toBeVisible({ timeout: 60_000 });
+    const downloading = page.waitForEvent("download");
+    await save.click();
+    const bytes = fs.readFileSync(await (await downloading).path());
+    await pdfPageShot(context, bytes, 1, "route-card");
+    await page.setViewportSize(DESKTOP);
+
+    // ── Downloads and tasks: the page of one task, the building of a road network ──
+    const { jobs } = await api<{ jobs: Array<{ id: string; state: string; title: string }> }>(
+      page,
+      "GET",
+      "/api/jobs?types=roads.build&limit=10",
+    );
+    const built = jobs.find((job) => job.state === "succeeded" && job.title.includes("Great Britain"))!;
+    await page.goto(`/downloads/tasks/${built.id}`);
+    await expect(page.getByRole("heading", { name: "What happened" })).toBeVisible();
+    await settle(page);
+    await shot(page, "task-page");
+  }
+
   await context.close();
 
   // ── Games: the allotment by day, the browser's clock set to late morning so that the plot is drawn in daylight ──
@@ -768,6 +1021,10 @@ test("the README's pictures", async ({ browser }) => {
     await a.clock.setFixedTime(morning);
     await a.goto("/games/allotment");
     await expect(a.getByRole("button", { name: /^Bed 1, onions, / })).toBeVisible();
+    // The browser's clock was moved on purpose, so the warning that it differs from the server's is put away.
+    await a.waitForTimeout(2000);
+    const notNow = a.getByRole("button", { name: "Not now" });
+    if (await notNow.isVisible()) await notNow.click();
     await settle(a);
     await shot(a, "allotment");
     await day.close();

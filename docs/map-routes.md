@@ -3,6 +3,7 @@
 The **Routes** tab of the Maps screen holds every route: drawn by hand, recorded as you
 walk, found by name, or imported from a file. All are drawn on the map, found by search,
 printed and exported as GPX alike. Open one for its distance, ascent and elevation profile.
+**Road route** on the same tab plans a drive on main roads: see [road-routes.md](road-routes.md).
 
 ## Drawing a route
 

@@ -91,8 +91,7 @@ A plan holds a battery bank, loads, an inverter, solar, an optional generator or
 and the cable's rated current. It saves itself as you go. If another tab or device saved it
 meanwhile, choose **Keep my version** or **Load the other version**. Plans can be copied,
 deleted, compared side by side, and saved as a PDF with **Save as PDF**, **Add to library**
-and **Share**. To link a plan from a page in Notes, put the plan's address in the page's
-link field.
+and **Share**. To link a plan from a page in Notes, paste its address into a link.
 
 **Bring in a plan** reads a plan's JSON file from **Take everything out** and adds it as a
 new plan; nothing already kept changes.
@@ -194,16 +193,14 @@ it says otherwise.
   says that it and your clinician govern.
 - A kettle and a microwave are there to show what an inverter must supply.
 
-- The first Xiegu G90 has no manual from Xiegu; searching "G90" finds the G90S, the
-  nearest figure. The Kenwood TH-D75's transmit table is hard to read, so the higher
-  current is taken. Jackery's 1000 v2 page gives two capacities; the lower is used.
-- A vape's entry is a battery to charge, nothing more.
+- Searching "G90" finds the G90S: the first G90 has no manual from Xiegu. Where a maker
+  gives two figures (the Kenwood TH-D75's transmit current, the Jackery 1000 v2's
+  capacity), the more cautious one is used. A vape's entry is a battery to charge, nothing
+  more.
 
-Left out for want of a maker's figure, among others: Yaesu FT-817ND, Quansheng UV-K5
-(only its transmit current is published), AnyTone radios' current (only their batteries),
-PMR446 handhelds, most CB sets, Airspy receivers, Samsung and LG cells (their makers
-publish no datasheets), CR123A cells (not recharged, so not a charge), Apple Watch, Kindle,
-iPhone 15, and most broadband hubs. Add any of these from its label as your own device.
+Some devices are left out because their makers publish no figure (among them the Yaesu
+FT-817ND, Quansheng UV-K5, PMR446 handhelds, most CB sets, Samsung and LG cells, Apple
+Watch and Kindle). Add one from its label as your own device.
 
 Product names are their owners' trade marks, used only to say which device a figure is
 for. Outpost is not connected with or endorsed by any of them.

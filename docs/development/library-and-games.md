@@ -49,13 +49,16 @@ Routes are in [api.md](../api.md). This page holds what the guides leave out.
 
 ## PDFs made in Outpost
 
-- Writer: `apps/web/src/features/maps/print/pdf.ts` (Helvetica and Courier, not
-  embedded). **Add to library** posts to `POST /api/documents` with `title` and
-  `source`; category choice in `outpost.library.madeCategory`.
-- A map page's words are text in rendering mode 3 (`map-words.ts`). Other scripts are
-  drawn by `lettering.ts` at 300 dpi, with the words in an invisible Type 3 font with a
-  ToUnicode map. Embedding the shipped WOFF2 fonts was rejected: it needs a Brotli
-  decoder and subsetter and still lacks most scripts.
+- Every paper but the printed map page is laid out with the print kit
+  ([printed-pages.md](printed-pages.md)): pdfmake, Atkinson Hyperlegible Next, and Noto
+  fallbacks for other scripts, Arabic and Hebrew in drawn order.
+- The map page keeps its own writer, `apps/web/src/features/maps/print/pdf.ts`
+  (Helvetica and Courier, not embedded), to place its picture at exact scale. Its words
+  are text in rendering mode 3 (`map-words.ts`); other scripts are drawn by
+  `lettering.ts` at 300 dpi, with the words in an invisible Type 3 font with a ToUnicode
+  map.
+- **Add to library** posts to `POST /api/documents` with `title` and `source`; category
+  choice in `outpost.library.madeCategory`.
 - The rule that every PDF goes through the shared actions: `apps/web/src/lib/made-pdf-rule.test.ts`.
 - Actions: `apps/web/src/features/library/made/`.
 

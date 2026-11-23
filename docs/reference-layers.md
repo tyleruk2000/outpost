@@ -29,7 +29,7 @@ mapped infrastructure and anything modelled are kept apart and never counted tog
   its scale; filters by country, source and kind; a search by name; the legend.
 - **A press on a record** opens its card: kind, class, source, dates, licence, accuracy,
   and every field the source gives.
-- **Maps → Offline maps → Reference data for the map** (also from Downloads and Manage
+- **Maps → Offline maps → Reference data for the map** (also from Downloads and tasks and Manage
   and clean up): installed packs, **Get reference data**, **Import a file**, and the
   sources that are only linked, with why.
 - **Preparedness → Nuclear preparedness** shows the same layers
@@ -186,7 +186,7 @@ The Food Standards Agency's list is fuller for UK shops but places some at the p
 A shop in both sources is shown once, the other listed under "Also recorded by".
 
 **The Layers tab**: the kinds held with counts (press one to show it alone), and the
-nearest of each, from the home place or the middle of the map, with straight-line
+nearest of each, from the current household's home or the middle of the map, with straight-line
 distance and bearing, within 100 km, worked out from what is held. Typing "supermarket",
 "pharmacy" or "drinking water" in the quick search opens it.
 

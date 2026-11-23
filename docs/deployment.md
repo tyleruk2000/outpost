@@ -386,8 +386,8 @@ NTFS need the mount options `uid=1000,gid=1000`. Mount drives at a fixed place
   cgroup_memory=1` to `/boot/firmware/cmdline.txt`. Choose 8 GB to run an embedding
   server on the board too, or to index very large PDFs.
 - Leave **Documents processed at once** at 1 and downloads at 1 or 2 at a time.
-- Build a semantic index on a faster computer and
-  [move the vectors](search.md#moving-vectors-between-installations).
+- Search by meaning reads about a thousand passages every four minutes on a Pi 5. For a
+  large library, let a laptop [do the reading](search.md#reading-the-library-on-a-faster-computer).
 
 #### A box you can carry: the install script and a Wi-Fi network of the Pi's own
 

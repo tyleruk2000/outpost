@@ -67,8 +67,9 @@ but not as JSON" means JSON output is off. If Outpost is not open to the network
 
 Use this if you already run Mosquitto. While it is chosen, Outpost's own broker is off.
 Choose **Use the household's broker** and give its address, port, the account Outpost
-signs in with, and the radio's root topic. The root topic starts on the one for Home's
-country (else your device's), from Meshtastic's table of regions by country: `msh/US` in
+signs in with, and the radio's root topic. The root topic starts on the one for the first
+household's country (the radio is the whole Outpost's, so it does not follow the household
+chosen; else your device's), from Meshtastic's table of regions by country: `msh/US` in
 the United States and Canada, `msh/ANZ` in Australia and New Zealand, `msh/EU_868` across
 Europe. The radio's own setting is the one that counts: once it is heard, the screen says
 the topic it used.

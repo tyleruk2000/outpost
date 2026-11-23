@@ -4,7 +4,7 @@ Outpost can hold course archives through Kiwix (Khan Academy, PhET, LibreTexts a
 others). Learning progress records where each learner got to, so a child can carry on
 tomorrow and a parent can see what has been covered. It relies only on which page is
 open, its links, and whether a video on it played to the end, not on any archive's own
-markup. It has not yet been tried with a real course archive.
+markup. What has not been tried is in [testing-status.md](testing-status.md#learning-progress).
 
 ## Who is learning
 

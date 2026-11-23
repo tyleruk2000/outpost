@@ -32,7 +32,8 @@ bands are better, never changes the prediction, and is marked old after three ho
 
 1. **Where.** Transmitter and receiver as coordinates (`51.5074, -0.1278`), a British grid
    reference, a locator (`IO91WM`), a saved place, or **Choose on the map**. An empty
-   transmitter starts at Home.
+   transmitter starts at the current household's home (for a portable household, where it
+   was last said to be).
 2. **Date.** The model works by month: every day of a month gives the same answer.
 3. **With what.** Power (a radio profile fills it in), an antenna at each end, a band or
    frequency, a mode.

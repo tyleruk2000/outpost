@@ -52,6 +52,18 @@ spot height. Metres or feet: **Settings → Appearance**.
 Print at 100% (not "fit to page") so the scale is right. More in
 [Printing a map](map-printing.md).
 
+## Plan a drive
+
+1. Open **Routes** beside the map and press **Road route**. The first time, press **Add road
+   networks** and add each country you will drive through (this needs the internet once).
+2. Give **From** and **To**: a saved place, a town or coordinates, or **Map centre**.
+3. Press **Plan route**. The main roads and the places on their signs are listed, as you
+   would write them down.
+4. **Save route** keeps it; **Printable route card (PDF)** makes a card for the car.
+
+It is planned once, not live: no traffic, closures or voice. More in
+[Road routes](road-routes.md).
+
 ## Check line of sight between two points
 
 For a radio on VHF or above: can two places see each other over the ground?

@@ -11,7 +11,7 @@ say so under **Settings → Radio licence**, and the reminders are left out.
 
 ## Licences and band plans
 
-**Radio → Licences and band plans** shows, for Home's country, each amateur licence class
+**Radio → Licences and band plans** shows, for the current household's country, each amateur licence class
 with its bands, power and conditions, and the licence-free radio anyone may use there
 (PMR446, CB, FRS and GMRS, UHF CB, the 868 and 915 MHz bands Meshtastic uses). Choose
 another country from the list. Every figure names its document and the day it was read.
@@ -108,7 +108,10 @@ ones. A merge sets the others aside, never deletes, and **Separate them** undoes
 
 ### Using it
 
-Filter by band, mode and distance from a place, nearest first. Find by callsign, town,
+Filter by band, mode and distance from a place, nearest first. The place starts as the
+current household's home (for a portable household, where it was last said to be, with
+its age); choose instead the middle of the map, where you are, a position or locator, or
+a saved place. Find by callsign, town,
 locator or frequency (`145.7` finds 145.700 to 145.799 MHz). One repeater's screen gives what to listen and transmit on, access, status
 with its date, and **Show on the map** ([maps.md](maps.md#repeaters-on-the-map)), **Check
 line of sight** and **Estimated range**.
@@ -162,10 +165,9 @@ lidar in Great Britain, under 4 m elsewhere). How this was checked is in
 
 ### Taking a set out
 
-**Export these** writes the repeaters shown, nearest first: **CHIRP (CSV)** for programming
-a radio (at most 2,000; tone burst, colour code and talkgroup go in the comment; an entry
-with no input is written so the radio will not transmit), or **Outpost (CSV)** with every
-field. **Check the file before you transmit.**
+**Export these** writes the repeaters shown, nearest first: **CHIRP, to program a radio (CSV)**
+(at most 2,000; tone burst, colour code and talkgroup go in the comment; an entry
+with no input is written so the radio will not transmit), or **Outpost, every field (CSV)**. **Check the file before you transmit.**
 
 ### Changing the sources
 

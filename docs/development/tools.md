@@ -7,7 +7,9 @@
   are pure functions beside each screen, tested against their sources' worked examples.
 - **Power**: formulas in `apps/web/src/features/power/calc/`, device library in
   `packages/shared/src/power-devices-data.ts` (checked by `calc/devices.test.ts`), plans in
-  `apps/server/src/modules/power/`.
+  `apps/server/src/modules/power/`. The battery bank drawing is `bank-diagram.ts`, one print-kit
+  drawing used on the screen (`bank-diagram-view.tsx`) and in the printed plan; a bank wider than four or
+  more than four strings is one box labelled like "8S3P".
 - **Compass**: WMM2025 in `packages/shared/src/wmm.ts` (report section 1.2) and
   `wmm-coefficients.ts`; replace it with `node scripts/write-wmm-coefficients.mjs WMM.COF`.
   Grid convergence in `compass.ts`. Tests: `wmm.test.ts`, `compass-norths.test.ts`.

@@ -16,7 +16,9 @@ choice is in the address (`/downloads?show=tasks`), so a bookmark keeps it.
 ## Downloads
 
 The plan at the top says how much is left, how fast it is coming and when each download
-should finish. **In progress** has each download with its bar, speed and time left;
+should finish. Beside it, **Speed limit** caps the connection Outpost uses (as fast as it
+allows, a preset, or **Other…** to type one), **At once** sets how many transfers run
+together (one to eight), and **Pause all** and **Resume all** act on every download. **In progress** has each download with its bar, speed and time left;
 **Needs attention** holds those that stopped and will not continue by themselves, with
 the reason and **Retry**; **History** lists what finished.
 

@@ -147,8 +147,9 @@ twice; places; routes and tracks as GPX would carry them (a drawn route's height
 is worked out again). **Not brought across:** contacts (export them as vCard on the
 drive and bring them in at home: [contacts.md](contacts.md#contacts-that-look-like-one-already-here)),
 settings, favourites and order of existing pages, the search index, the drive's trash,
-and catalogue books, place names and models added on the drive (add those from
-Explore).
+catalogue books, place names and models added on the drive (add those from Explore), and
+every other record written on the drive: households and people, supplies, emergency
+plans and papers, power and radio plans, the radio log and the rest stay on the drive.
 
 Changes are told apart by the record written on the drive, not by clocks. A drive from
 an older Outpost without that record is compared by content and dates; unclear items
