@@ -251,12 +251,18 @@ export function WordsSection() {
           kept, because they change the meaning.
         </p>
         <p>
-          Each word is cut back to its root, so “boil”, “boiled” and “boiling” count as one word. Then the words are joined into an{" "}
-          <strong>expression</strong>: a short line telling the index which words a passage must hold.
+          Each word is cut back to its root, so “boil”, “boiled” and “boiling” count as one word. Some words are also given the other ways
+          they are spelt or said: “tyre” is searched as “tyre” or “tire”, “power cut” as “power cut”, “power outage” or “blackout”. The
+          results name what else was searched, and you can turn it off. Then the words are joined into an <strong>expression</strong>: a
+          short line telling the index which words a passage must hold.
         </p>
         <p>
-          A passage must hold every word. If fewer than five items do, Outpost also shows items that hold most of the words. They come after
-          the others, and the results say so.
+          A passage must hold every word, or another way of saying it. If fewer than five items do, Outpost also shows items that hold most
+          of the words. They come after the others, and the results say so.
+        </p>
+        <p>
+          If a word is in no passage at all, it may be a slip. Outpost looks through the words your library does hold for the nearest one, a
+          letter or two away, and offers it: “Did you mean purify water?” It never searches for the other word unless you choose it.
         </p>
       </Prose>
 

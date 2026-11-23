@@ -17,9 +17,20 @@ import { AppError } from "../../core/errors.ts";
 import { chunks, searchEntities } from "../../db/schema.ts";
 import { type ChunkOptions, chunkSections, type Section } from "./chunker.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
-import { markPassages, RELAXED_COVERAGE, rankKeyword, weighTerms } from "./keyword.ts";
-import { parseQuery, plainQuery, type Segment, toFtsQuery, toSegments } from "./query.ts";
+import { countTerms, FEW, markPassages, RELAXED_COVERAGE, rankKeyword, weighTerms } from "./keyword.ts";
+import {
+  alternateQuery,
+  expandQuery,
+  groupExpression,
+  type ParsedQuery,
+  parseQuery,
+  plainQuery,
+  type Segment,
+  toFtsQuery,
+  toSegments,
+} from "./query.ts";
 import { holdsExcluded, reasonFor, type ScoringTerm, scoreFields } from "./score.ts";
+import { createSuggester, type Suggestion } from "./suggest.ts";
 
 /** Bumped when chunking or indexing rules change in a way that needs a rebuild. */
 export const INDEX_VERSION = 1;
@@ -75,6 +86,8 @@ export interface SearchParams {
    * them separately (`searchReference`) so that nothing waits on them.
    */
   reference?: "include" | "later";
+  /** Search only for what was typed: no other spellings or ways of saying it (synonyms.ts). */
+  exact?: boolean;
   signal?: AbortSignal;
 }
 
@@ -87,6 +100,10 @@ export interface SearchResponse {
   everyWord: number;
   /** Words typed that only shape the question ("how", "to"), left out of matching and ranking. */
   ignored: string[];
+  /** Other spellings and ways of saying the words typed that were searched as well ("tire" for "tyre"). */
+  alsoSearched: string[];
+  /** A word typed is in no passage, or almost none, and a near word is common: the query with it in place. */
+  didYouMean: Suggestion | null;
   total: number;
   results: SearchResult[];
   /** Places and repeaters whose names match, kept out of the results list. */
@@ -208,6 +225,11 @@ export interface ReferencePart {
 
 export interface ReferenceSearchParams {
   q: string;
+  /**
+   * The same question said another way ("tire pressure" for "tyre pressure"), asked of
+   * each collection as well when given. Null or absent when there is none.
+   */
+  alternate?: string | null;
   /** Fires when whoever asked has gone: nothing more is wanted. */
   signal?: AbortSignal;
   /** How long to go on waiting for collections. Those that have not answered by then are reported as missing. */
@@ -313,7 +335,7 @@ export interface SearchService {
    * Searches reference collections on their own, a collection at a time. This is the
    * second part of a search asked with `reference: "later"`.
    */
-  searchReference(params: Omit<ReferenceSearchParams, "budgetMs">): Promise<ReferenceOutcome>;
+  searchReference(params: Omit<ReferenceSearchParams, "budgetMs" | "alternate"> & { exact?: boolean }): Promise<ReferenceOutcome>;
   addSource(source: SearchSource): void;
   getChunks(chunkIds: number[]): ChunkRecord[];
   stats(): { entities: Record<string, number>; chunks: number };
@@ -520,8 +542,17 @@ export function createSearchService(ctx: AppContext): SearchService {
     return { chunks: passages.length, changed: true, rowId };
   });
 
+  const suggester = createSuggester(sqlite);
+
+  /** What was typed, ready to search: the words that matter and, unless asked not to, other ways of saying them. */
+  function understand(q: string, exact?: boolean): { parsed: ParsedQuery; also: string[] } {
+    const parsed = parseQuery(q);
+    return exact ? { parsed, also: [] } : expandQuery(parsed);
+  }
+
   function keywordSearch(
     params: SearchParams,
+    parsed: ParsedQuery,
     window: number,
   ): {
     results: SearchResult[];
@@ -530,11 +561,21 @@ export function createSearchService(ctx: AppContext): SearchService {
     facets: Record<string, number>;
     total: number;
     terms: ScoringTerm[];
+    didYouMean: Suggestion | null;
   } {
-    const parsed = parseQuery(params.q);
-    const ranking = rankKeyword(sqlite, parsed, { kinds: params.kinds, tag: params.tag, window, toDownload: TO_DOWNLOAD });
+    // Passages holding each word: for its weight, and to see whether a word is in the library at all.
+    const counts = parsed.required.length > 1 ? countTerms(sqlite, parsed) : undefined;
+    const ranking = rankKeyword(sqlite, parsed, { kinds: params.kinds, tag: params.tag, window, toDownload: TO_DOWNLOAD, counts });
+    const didYouMean =
+      ranking.total < FEW && parsed.required.length > 0
+        ? suggester.suggest(params.q, parsed, counts ?? countTerms(sqlite, parsed), ranking.everyWord === 0)
+        : counts?.some((count) => count === 0)
+          ? suggester.suggest(params.q, parsed, counts, false)
+          : null;
     const page = ranking.items.slice(0, window);
-    if (page.length === 0) return { results: [], relaxed: false, everyWord: 0, facets: ranking.facets, total: 0, terms: ranking.terms };
+    if (page.length === 0) {
+      return { results: [], relaxed: false, everyWord: 0, facets: ranking.facets, total: 0, terms: ranking.terms, didYouMean };
+    }
 
     const ids = page.map((item) => item.entityRowId);
     const entities = new Map(
@@ -599,6 +640,7 @@ export function createSearchService(ctx: AppContext): SearchService {
       facets: ranking.facets,
       total: ranking.total,
       terms: ranking.terms,
+      didYouMean,
     };
   }
 
@@ -632,7 +674,7 @@ export function createSearchService(ctx: AppContext): SearchService {
     /** With this many passages holding every word, no others are looked for. */
     enough: number,
   ): { rows: Array<{ chunkId: number; entityRowId: number; contentHash: string; coverage: number }>; relaxed: boolean } {
-    const parsed = parseQuery(params.q);
+    const { parsed } = understand(params.q);
     const all = toFtsQuery(parsed, "all");
     if (!all) return { rows: [], relaxed: false };
     const kinds = params.kinds?.length ? params.kinds : undefined;
@@ -663,12 +705,8 @@ export function createSearchService(ctx: AppContext): SearchService {
     const ids = candidates.map((row) => row.chunkId);
     const held = new Map<number, number>(ids.map((id) => [id, 0]));
     let whole = 0;
-    parsed.required.forEach((term, index) => {
-      const single = toFtsQuery({
-        required: [term],
-        excluded: [],
-        prefixLast: parsed.prefixLast && index === parsed.required.length - 1,
-      })!;
+    parsed.required.forEach((_, index) => {
+      const single = groupExpression(parsed, index, parsed.prefixLast && index === parsed.required.length - 1);
       const containing = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?").get(single) as { n: number }).n;
       // The index's own measure of how much a word says: a word in few passages says a lot. A word the
       // library does not hold at all counts as one found in a single passage: as much as a word can say,
@@ -800,8 +838,12 @@ export function createSearchService(ctx: AppContext): SearchService {
     scrubbing(work) {
       const secureDeleteWas = Number(sqlite.pragma("secure_delete", { simple: true }));
       // Written out, not bound: the index only takes this setting as a whole number, and a bound number arrives as a real.
-      const indexSecureDelete = (on: boolean) =>
-        sqlite.exec(`INSERT INTO chunks_fts(chunks_fts, rank) VALUES('secure-delete', ${on ? 1 : 0})`);
+      // Both indexes: the keyword index, and the words as written that "Did you mean" chooses from.
+      const indexSecureDelete = (on: boolean) => {
+        for (const index of ["chunks_fts", "chunks_words"]) {
+          sqlite.exec(`INSERT INTO ${index}(${index}, rank) VALUES('secure-delete', ${on ? 1 : 0})`);
+        }
+      };
       sqlite.pragma("secure_delete = ON");
       indexSecureDelete(true);
       try {
@@ -856,6 +898,8 @@ export function createSearchService(ctx: AppContext): SearchService {
           relaxed: false,
           everyWord: 0,
           ignored: [],
+          alsoSearched: [],
+          didYouMean: null,
           total: 0,
           results: [],
           places: [],
@@ -867,11 +911,19 @@ export function createSearchService(ctx: AppContext): SearchService {
         };
       }
 
-      const parsed = parseQuery(q);
+      const { parsed, also } = understand(q, params.exact);
       const keyword =
         mode === "semantic"
-          ? { results: [], relaxed: false, everyWord: 0, facets: {} as Record<string, number>, total: 0, terms: weighTerms(sqlite, parsed) }
-          : keywordSearch(params, window);
+          ? {
+              results: [],
+              relaxed: false,
+              everyWord: 0,
+              facets: {} as Record<string, number>,
+              total: 0,
+              terms: weighTerms(sqlite, parsed),
+              didYouMean: null,
+            }
+          : keywordSearch(params, parsed, window);
       const lexical: SearchResult[] = [...keyword.results];
       const places: SearchResult[] = [];
       let meaning: SearchResult[] = [];
@@ -894,6 +946,7 @@ export function createSearchService(ctx: AppContext): SearchService {
           // that the count and the pages do not change from one page to the next.
           const { results, outcome } = await gatherParts(source, {
             q: plainQuery(parsed) || q,
+            alternate: alternateQuery(parsed),
             signal: params.signal,
             budgetMs: referenceBudgets.onePartMs,
           });
@@ -955,6 +1008,9 @@ export function createSearchService(ctx: AppContext): SearchService {
         relaxed: keyword.relaxed,
         everyWord: keyword.everyWord,
         ignored: parsed.ignored ?? [],
+        alsoSearched: also,
+        // Offered only while little is found: a suggestion beside a full page would be noise.
+        didYouMean: results.length < FEW ? keyword.didYouMean : null,
         // Results found another way can only add to what the words found.
         total: Math.max(results.length, keyword.total),
         results: results.slice(offset, offset + limit),
@@ -974,12 +1030,14 @@ export function createSearchService(ctx: AppContext): SearchService {
         params.onStart?.(0);
         return { collections: 0, searched: 0, missing: [], message: null };
       }
-      // kiwix-serve is asked for the words that matter, and what it finds is put on the same scale as everything else.
-      const parsed = parseQuery(q);
+      // kiwix-serve is asked for the words that matter (and once more for them said another way), and what it
+      // finds is put on the same scale as everything else.
+      const { parsed } = understand(q, params.exact);
       const terms = weighTerms(sqlite, parsed);
       return source.searchInParts!({
         ...params,
         q: plainQuery(parsed) || q,
+        alternate: alternateQuery(parsed),
         budgetMs: referenceBudgets.inPartsMs,
         onPart: (part) => params.onPart({ ...part, results: rescore(part.results, terms, parsed.excluded) }),
       });

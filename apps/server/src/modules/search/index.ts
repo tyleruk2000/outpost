@@ -4,6 +4,12 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { createSearchService } from "./service.ts";
 
+/** "Search only for what was typed": `exact=1`. */
+const exact = z
+  .enum(["0", "1", "true", "false"])
+  .optional()
+  .transform((value) => value === "1" || value === "true");
+
 const query = z.object({
   q: z.string().max(500).default(""),
   kinds: z
@@ -20,6 +26,7 @@ const query = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
   reference: z.enum(["include", "later"]).default("include"),
+  exact,
 });
 
 export async function registerSearch(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -42,7 +49,7 @@ export async function registerSearch(app: FastifyInstance, ctx: AppContext): Pro
    * waiting, and it stops asking collections that have not been asked yet.
    */
   app.get("/api/search/reference", async (request, reply) => {
-    const { q } = z.object({ q: z.string().max(500).default("") }).parse(request.query);
+    const { q, exact: asTyped } = z.object({ q: z.string().max(500).default(""), exact }).parse(request.query);
     const started = performance.now();
     const raw = reply.raw;
     const controller = new AbortController();
@@ -63,6 +70,7 @@ export async function registerSearch(app: FastifyInstance, ctx: AppContext): Pro
     try {
       const outcome = await ctx.services.search.searchReference({
         q,
+        exact: asTyped,
         signal: controller.signal,
         onStart: (collections) => send({ type: "start", collections }),
         onPart: (part) => send({ type: "collection", ...part }),

@@ -60,16 +60,20 @@ describe("search quality on the household evaluation set", () => {
     const pool = recorded.collections.flatMap((collection) => collection.hits).map(asResult);
     for (const query of loadQueries() as Query[]) {
       const started = performance.now();
-      const { body } = await app.api("GET", `/api/search?q=${encodeURIComponent(query.q)}&limit=20`);
+      let { body } = await app.api("GET", `/api/search?q=${encodeURIComponent(query.q)}&limit=20`);
+      const ms = performance.now() - started;
+      // Nothing found and a word offered in its place: a person would take the offer, so that is what is graded.
+      const followed = body.results.length === 0 && body.didYouMean ? (body.didYouMean.query as string) : null;
+      if (followed) ({ body } = await app.api("GET", `/api/search?q=${encodeURIComponent(followed)}&limit=20`));
       const results = body.results as Array<{ kind: string; entityId: string; title: string }>;
       const ideal = [...Object.values(query.grades), ...pool.map((hit) => gradeByPattern(query, hit))].filter((value) => value > 0);
       rows.push({
-        q: query.q,
+        q: followed ? `${query.q} → ${followed}` : query.q,
         grades: results.map((result) => grade(query, result)),
         ideal,
         expects: ideal.length > 0,
         count: results.length,
-        ms: performance.now() - started,
+        ms,
         titles: results.map((result) => (result.kind === "reference" ? `[ref] ${result.title}` : result.title)),
       });
     }

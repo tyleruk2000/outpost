@@ -8,12 +8,15 @@
  *   node scripts/search-eval.mjs [base URL] [--rescore] [--json file]
  *
  * --rescore also takes the candidates the server returns for the words that matter
- * and puts them in order with the scorer of this checkout (apps/server/src/modules/search/score.ts),
- * offline: a way to see what a new ranking would do to a library before it is installed.
+ * (and, when they can be said another way, for that too: "tire pressure" for "tyre
+ * pressure") and puts them in order with the scorer of this checkout
+ * (apps/server/src/modules/search/score.ts), offline: a way to see what a new ranking
+ * would do to a library before it is installed. A server that offers "Did you mean" for
+ * a search that found nothing is taken at its word, as a person would.
  * The fixture library and its numbers are in the server's tests (search-quality.test.ts).
  */
 import { writeFileSync } from "node:fs";
-import { parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
+import { alternateQuery, expandQuery, parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
 import { inverseFrequency, reasonFor, scoreFields, scoringTerms } from "../apps/server/src/modules/search/score.ts";
 import { formatSummary, formatTable, gradeByPattern, loadQueries, resultText, summarise } from "./search-eval/metrics.mjs";
 
@@ -43,11 +46,24 @@ async function itemsHolding(term) {
 }
 
 async function rescore(q) {
-  const parsed = parseQuery(q);
+  const { parsed } = expandQuery(parseQuery(q));
   const { body, ms } = await search(plainQuery(parsed) || q, 60);
+  const alternate = alternateQuery(parsed);
+  if (alternate) {
+    // The same said the other way: its candidates join the first, once each.
+    const seen = new Set(body.results.map((result) => `${result.kind}:${result.entityId}`));
+    for (const result of (await search(alternate, 60)).body.results) {
+      if (!seen.has(`${result.kind}:${result.entityId}`)) body.results.push(result);
+    }
+  }
   const stats = (await get("/api/search/stats")).body;
   const items = Object.values(stats.entities).reduce((sum, n) => sum + n, 0);
-  const weights = await Promise.all(parsed.required.map((term) => itemsHolding(term)));
+  // A term said several ways is as common as its commonest way.
+  const weights = await Promise.all(
+    parsed.required.map(async (term, index) =>
+      Math.max(...(await Promise.all([term, ...(parsed.alternatives?.[index] ?? [])].map((form) => itemsHolding(form))))),
+    ),
+  );
   const terms = scoringTerms(parsed, (_, index) => (parsed.required.length < 2 ? 1 : inverseFrequency(items, weights[index])));
   const results = body.results
     .filter((result) => !PLACES.has(result.kind))
@@ -64,7 +80,8 @@ const queries = loadQueries().filter((query) => query.pi.length > 0);
 const before = [];
 const after = [];
 for (const query of queries) {
-  const { body, ms } = await search(query.q);
+  let { body, ms } = await search(query.q);
+  if (body.results.length === 0 && body.didYouMean) ({ body } = await search(body.didYouMean.query));
   before.push({ query, results: body.results, ms });
   if (rescoreToo) after.push({ query, ...(await rescore(query.q)) });
   process.stderr.write(".");

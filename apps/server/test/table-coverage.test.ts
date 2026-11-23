@@ -98,6 +98,7 @@ const TABLES: Record<string, Decision> = {
   search_entities: { group: "search", drive: true },
   chunks: { group: "search", drive: true },
   chunks_fts: { group: "search", drive: true },
+  chunks_words: { group: "search", drive: true },
   embedding_models: { group: "meaning", drive: true },
   embeddings: { group: "meaning", drive: true },
   places: { group: "maps", drive: true },
@@ -472,7 +473,7 @@ describe("every table", () => {
     expect(left, "tables erase everything left rows in").toEqual([]);
     // An external-content full-text index keeps a deleted row's words until its segments
     // are merged; the database file is compacted afterwards, but rows are not pages.
-    for (const index of ["chunks_fts", "reference_features_fts"]) {
+    for (const index of ["chunks_fts", "chunks_words", "reference_features_fts"]) {
       const found = app.ctx.sqlite
         .prepare(`SELECT count(*) AS n FROM ${index}_data WHERE instr(block, ?) > 0`)
         .get(Buffer.from(WORD.slice(0, 8))) as {

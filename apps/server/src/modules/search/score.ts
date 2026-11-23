@@ -8,6 +8,7 @@
  * and means the same thing for a document page, a note and a reference article:
  *
  *   coverage   0.50  how much of the query it holds, each word weighed by how rare it is
+ *                     (found only in another form, or said another way, a word counts a little less)
  *   title      0.20  how much of it is in the title (tags and headings count for less)
  *   closeness  0.15  how near together the words are
  *   phrase     0.05  the words side by side, in the order typed
@@ -18,17 +19,39 @@
  */
 import { type ParsedQuery, STOP_WORDS } from "./query.ts";
 import { stem } from "./stem.ts";
+import { BY_SPELLING_ONLY } from "./synonyms.ts";
 
 export const SCORE_WEIGHTS = { coverage: 0.5, title: 0.2, closeness: 0.15, phrase: 0.05, frequency: 0.1 } as const;
 
+/**
+ * How much a word counts when it is found in a form other than the one typed. The word
+ * as typed (or its plural) counts in full; another form of it ("boiling" for "boil")
+ * a little less; another way of saying it ("tire" for "tyre") less again; and a longer
+ * word it only begins ("battery" for "batt") least.
+ */
+export const FORM_CREDIT = { inflected: 0.92, synonym: 0.85, prefix: 0.6 } as const;
+
+export interface ScoringForm {
+  /** Its words, stemmed as the index stems them. */
+  stems: string[];
+  /** Its words as written, to tell the word typed from another form of it. */
+  raws: string[];
+  /** 1 for what was typed; less for another way of saying it. */
+  credit: number;
+  /** Its words must be near each other in any order, not side by side ("power cut": "the power was cut"). */
+  near: boolean;
+}
+
 export interface ScoringTerm {
   term: string;
-  /** Each way of writing it, as stemmed word sequences: the term itself, and any alternatives a caller adds. */
-  forms: string[][];
+  /** Each way of writing it: the term itself first, then any alternatives (synonyms.ts). */
+  forms: ScoringForm[];
   /** The term's last word is still being typed and matches as a beginning. */
   prefix: boolean;
   /** How much the word says: rare words weigh more. */
   weight: number;
+  /** How many typed words it stands for: more than one when joined ("power cut"). */
+  size: number;
 }
 
 export interface ScoreFields {
@@ -48,6 +71,10 @@ export interface ScoreParts {
   /** How many of the query's terms it holds, and of how many. */
   found: number;
   of: number;
+  /** How many of the terms are in the title. */
+  inTitle: number;
+  /** How many of the terms were found only as another way of saying them ("tire" for "tyre"). */
+  saidOtherwise: number;
 }
 
 interface Token {
@@ -68,41 +95,109 @@ export function tokenize(text: string): Token[] {
   return tokens;
 }
 
+/** How far apart, in words that matter, a joined term's words may be. */
+const NEAR_WINDOW = 4;
+
+function formOf(text: string, credit: number, near: boolean): ScoringForm {
+  const tokens = tokenize(text);
+  return { stems: tokens.map((token) => token.stem), raws: tokens.map((token) => token.raw), credit, near };
+}
+
 /** The query's terms, ready to score with. `weightOf` says how much a term says (its inverse document frequency). */
 export function scoringTerms(parsed: ParsedQuery, weightOf: (term: string, index: number) => number): ScoringTerm[] {
   return parsed.required.map((term, index) => ({
     term,
-    forms: [term].map((form) => tokenize(form).map((token) => token.stem)),
+    forms: [
+      formOf(term, 1, parsed.joined?.[index] ?? false),
+      ...(parsed.alternatives?.[index] ?? []).map((alternative) => formOf(alternative, FORM_CREDIT.synonym, false)),
+    ],
     prefix: parsed.prefixLast && index === parsed.required.length - 1,
     weight: Math.max(0.05, weightOf(term, index)),
+    size: parsed.joined?.[index] ? term.split(" ").length : 1,
   }));
 }
 
-/** Where each term occurs in `tokens` (start positions), and how long each occurrence is. */
-function occurrences(term: ScoringTerm, tokens: Token[]): Array<{ at: number; length: number }> {
-  const found: Array<{ at: number; length: number }> = [];
+/** The word as written, or its plural. */
+function sameWord(token: Token, raw: string): boolean {
+  const word = token.raw;
+  return word === raw || word === `${raw}s` || word === `${raw}es` || (raw.endsWith("y") && word === `${raw.slice(0, -1)}ies`);
+}
+
+interface Occurrence {
+  at: number;
+  length: number;
+  /** How much this occurrence counts: 1 for the word as typed (FORM_CREDIT). */
+  credit: number;
+  /** A form of the word typed, not another way of saying it. */
+  typed: boolean;
+}
+
+/** Where each term occurs in `tokens` (start positions), how long each occurrence is, and how much it counts. */
+function occurrences(term: ScoringTerm, tokens: Token[]): Occurrence[] {
+  const found: Occurrence[] = [];
   term.forms.forEach((form, formIndex) => {
-    if (form.length === 0) return;
-    const prefixForm = term.prefix && formIndex === 0;
-    for (let at = 0; at + form.length <= tokens.length; at += 1) {
-      let match = true;
-      for (let offset = 0; offset < form.length && match; offset += 1) {
-        const token = tokens[at + offset]!;
-        const wanted = form[offset]!;
-        const last = offset === form.length - 1;
-        match =
-          token.stem === wanted ||
-          (prefixForm &&
-            last &&
-            (token.raw.startsWith(wanted) ||
-              token.stem.startsWith(wanted) ||
-              token.raw.startsWith(term.term.toLowerCase().split(" ").at(-1)!)));
+    if (form.stems.length === 0) return;
+    const prefixForm = term.prefix && formIndex === 0 && !form.near;
+    if (form.near && form.stems.length > 1) {
+      // Every word within a few words of the first, in any order.
+      for (let at = 0; at < tokens.length; at += 1) {
+        if (tokens[at]!.stem !== form.stems[0]) continue;
+        let low = at;
+        let high = at;
+        let exact = sameWord(tokens[at]!, form.raws[0]!);
+        const whole = form.stems.slice(1).every((wanted, offset) => {
+          for (let near = Math.max(0, at - NEAR_WINDOW); near <= Math.min(tokens.length - 1, at + NEAR_WINDOW); near += 1) {
+            if (near !== at && tokens[near]!.stem === wanted) {
+              low = Math.min(low, near);
+              high = Math.max(high, near);
+              exact &&= sameWord(tokens[near]!, form.raws[offset + 1]!);
+              return true;
+            }
+          }
+          return false;
+        });
+        if (whole) {
+          found.push({
+            at: low,
+            length: high - low + 1,
+            credit: form.credit * (exact ? 1 : FORM_CREDIT.inflected),
+            typed: formIndex === 0,
+          });
+        }
       }
-      if (match) found.push({ at, length: form.length });
+      return;
+    }
+    for (let at = 0; at + form.stems.length <= tokens.length; at += 1) {
+      let match = true;
+      let credit = form.credit;
+      for (let offset = 0; offset < form.stems.length && match; offset += 1) {
+        const token = tokens[at + offset]!;
+        const wanted = form.stems[offset]!;
+        const last = offset === form.stems.length - 1;
+        if (token.stem === wanted) {
+          if (!sameWord(token, form.raws[offset]!)) {
+            // "tired" for "tire" is another word that happens to share the stem.
+            const other = BY_SPELLING_ONLY.has(form.raws[offset]!) ? FORM_CREDIT.prefix : FORM_CREDIT.inflected;
+            credit = Math.min(credit, form.credit * other);
+          }
+        } else if (
+          prefixForm &&
+          last &&
+          (token.raw.startsWith(wanted) || token.stem.startsWith(wanted) || token.raw.startsWith(form.raws[offset] ?? wanted))
+        ) {
+          credit = Math.min(credit, FORM_CREDIT.prefix);
+        } else {
+          match = false;
+        }
+      }
+      if (match) found.push({ at, length: form.stems.length, credit, typed: formIndex === 0 });
     }
   });
   return found;
 }
+
+/** The most any occurrence counts, or 0 when there is none. */
+const best = (list: Occurrence[]) => list.reduce((most, hit) => Math.max(most, hit.credit), 0);
 
 /** The tokens without the small words, so that "replace a car battery" has its words side by side. */
 function contentTokens(tokens: Token[]): Token[] {
@@ -110,7 +205,7 @@ function contentTokens(tokens: Token[]): Token[] {
 }
 
 /** The shortest stretch of `tokens` holding an occurrence of each present term, in tokens. */
-function shortestSpan(lists: Array<Array<{ at: number; length: number }>>): number {
+function shortestSpan(lists: Occurrence[][]): number {
   const events = lists.flatMap((list, term) => list.map((hit) => ({ ...hit, term }))).sort((a, b) => a.at - b.at);
   const need = lists.length;
   const counts = new Map<number, number>();
@@ -166,8 +261,9 @@ function nearness(terms: ScoringTerm[], tokens: Token[]): { closeness: number; p
 }
 
 export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScoreParts {
-  const of = terms.length;
-  if (of === 0) return { score: 0, coverage: 0, title: 0, closeness: 0, phrase: 0, frequency: 0, found: 0, of };
+  const of = terms.reduce((sum, term) => sum + term.size, 0);
+  if (of === 0)
+    return { score: 0, coverage: 0, title: 0, closeness: 0, phrase: 0, frequency: 0, found: 0, of, inTitle: 0, saidOtherwise: 0 };
   const title = contentTokens(tokenize(fields.title));
   const heading = contentTokens(tokenize(fields.heading ?? ""));
   const tags = contentTokens(tokenize(fields.tags ?? ""));
@@ -177,17 +273,27 @@ export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScorePar
   let titled = 0;
   let frequent = 0;
   let found = 0;
+  let wholeInTitle = 0;
+  let saidOtherwise = 0;
   for (const term of terms) {
-    const inTitle = occurrences(term, title).length > 0;
-    const inHeading = occurrences(term, heading).length > 0;
-    const inTags = occurrences(term, tags).length > 0;
-    const inBody = occurrences(term, body).length;
-    if (inTitle || inHeading || inTags || inBody > 0) {
-      covered += term.weight;
-      found += 1;
+    const titleHits = occurrences(term, title);
+    const headingHits = occurrences(term, heading);
+    const tagHits = occurrences(term, tags);
+    const bodyHits = occurrences(term, body);
+    const inTitle = best(titleHits);
+    const inHeading = best(headingHits);
+    const inTags = best(tagHits);
+    const inBody = best(bodyHits);
+    const all = [...titleHits, ...headingHits, ...tagHits, ...bodyHits];
+    if (all.length > 0 && !all.some((hit) => hit.typed)) saidOtherwise += 1;
+    const credit = Math.max(inTitle, inHeading, inTags, inBody);
+    if (credit > 0) {
+      covered += term.weight * credit;
+      found += term.size;
     }
-    titled += term.weight * Math.max(inTitle ? 1 : 0, inTags ? 0.75 : 0, inHeading ? 0.6 : 0);
-    frequent += term.weight * (inBody / (inBody + 1));
+    if (inTitle > 0) wholeInTitle += term.size;
+    titled += term.weight * Math.max(inTitle, inTags * 0.75, inHeading * 0.6);
+    frequent += term.weight * inBody * (bodyHits.length / (bodyHits.length + 1));
   }
   const near = [nearness(terms, title), nearness(terms, [...heading, ...body])];
   const parts = {
@@ -203,16 +309,24 @@ export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScorePar
     SCORE_WEIGHTS.closeness * parts.closeness +
     SCORE_WEIGHTS.phrase * parts.phrase +
     SCORE_WEIGHTS.frequency * parts.frequency;
-  return { score: Math.round(score * 1000) / 1000, ...parts, found, of };
+  return { score: Math.round(score * 1000) / 1000, ...parts, found, of, inTitle: wholeInTitle, saidOtherwise };
 }
 
 /** Why a result is where it is, in a few words for the list: "All 3 words, side by side", "2 of 3 words". */
 export function reasonFor(parts: ScoreParts): string {
+  const reason = wordsReason(parts);
+  // "Tire care" for "tyre pressure": say that a word was found as another way of saying it.
+  return reason && parts.saidOtherwise > 0
+    ? `${reason}, ${parts.of === 1 ? "said" : parts.saidOtherwise === 1 ? "one said" : "some said"} another way`
+    : reason;
+}
+
+function wordsReason(parts: ScoreParts): string {
   if (parts.of === 0 || parts.found === 0) return "";
   if (parts.found < parts.of) return `${parts.found} of ${parts.of} words`;
-  if (parts.of === 1) return parts.title >= 0.999 ? "In the title" : parts.title > 0 ? "In a heading or tag" : "In the text";
+  if (parts.of === 1) return parts.inTitle === 1 ? "In the title" : parts.title > 0 ? "In a heading or tag" : "In the text";
   const all = `All ${parts.of} words`;
-  if (parts.title >= 0.999) return `${all} in the title`;
+  if (parts.inTitle === parts.of) return `${all} in the title`;
   if (parts.phrase === 1) return `${all}, side by side`;
   if (parts.closeness >= 0.5) return `${all}, close together`;
   return all;

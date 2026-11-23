@@ -12,7 +12,7 @@ import { RankedBars } from "./ranked";
 
 /** The question broken into the words the index is asked for, and the expression actually sent. */
 export function QueryWords({ trace }: { trace: ExplainResponse }) {
-  const { words, ignored = [], excluded, prefixLast, expression, relaxed } = trace.parse;
+  const { words, ignored = [], alsoSearched = [], excluded, prefixLast, expression, relaxed } = trace.parse;
   const joiner = relaxed ? "OR" : "AND";
   const chip = "inline-flex items-center gap-1.5 rounded-full border-[1.5px] bg-page px-3 py-1 text-small text-ink";
   return (
@@ -46,6 +46,11 @@ export function QueryWords({ trace }: { trace: ExplainResponse }) {
           Left out, because they only shape the question: {ignored.map((word) => `“${word}”`).join(", ")}.
         </p>
       ) : null}
+      {alsoSearched.length > 0 ? (
+        <p className="mt-1 text-small text-ink-muted">
+          Also searched, as other ways of spelling or saying these words: {alsoSearched.map((word) => `“${word}”`).join(", ")}.
+        </p>
+      ) : null}
       <dl className="mt-4 grid gap-x-4 gap-y-1 text-small sm:grid-cols-[auto_1fr]">
         <dt className="text-ink-muted">Sent to the index</dt>
         <dd className="font-mono text-[0.8125rem] break-words text-ink">{expression ?? "nothing: there were no words to look for"}</dd>
@@ -53,8 +58,8 @@ export function QueryWords({ trace }: { trace: ExplainResponse }) {
       <ul className="mt-3 grid max-w-[68ch] gap-1 text-small text-ink-muted">
         {prefixLast && words.length > 0 ? (
           <li>
-            The star after “{words[words.length - 1]}” means “any word starting with these letters”. The last word of a question is treated
-            this way in case it is still being typed.
+            The star after “{words[words.length - 1]}” means “any word starting with these letters”, in case it is still being typed. Search
+            looks for the word itself first, and adds words it only begins when fewer than five items hold it, after them.
           </li>
         ) : null}
         {excluded.length > 0 ? <li>A word typed with a minus sign in front is left out: passages containing it are dropped.</li> : null}

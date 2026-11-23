@@ -672,6 +672,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       // its segments are merged, which compacting does not do. Built again from what is
       // left, it holds none of what was erased.
       sqlite.exec("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')");
+      sqlite.exec("INSERT INTO chunks_words(chunks_words) VALUES ('rebuild')");
     })();
     personal.settings = db.select({ n: sql<number>`count(*)` }).from(settingsTable).get()?.n ?? 0;
     settings.reset();

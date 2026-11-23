@@ -9,12 +9,14 @@
  *    `RESCORE_POOL` (or more, for a later page) go on.
  * 3. **Score.** Each candidate's best few passages are scored again on the shared scale
  *    (score.ts) and the item takes its best. Snippets are made only for what is shown.
+ *    The last word is looked for as typed; only when that finds fewer than `FEW` items
+ *    are words it begins added ("batt" while "battery" is being typed), after them.
  * 4. **Relax.** When fewer than `FEW` items hold every word, items holding at least
  *    `RELAXED_COVERAGE` of what the query is about (rare words weighing more) are added
  *    after them, and the answer says so.
  */
 import type Database from "better-sqlite3";
-import { HIT_CLOSE, HIT_OPEN, type ParsedQuery, termExpression, toFtsQuery } from "./query.ts";
+import { groupExpression, HIT_CLOSE, HIT_OPEN, type ParsedQuery, toFtsQuery } from "./query.ts";
 import { inverseFrequency, type ScoreParts, type ScoringTerm, scoreFields, scoringTerms } from "./score.ts";
 
 /** How many items, at least, are scored again: enough that BM25's order only decides what is looked at. */
@@ -60,24 +62,35 @@ interface Hit {
   rank: number;
 }
 
-/** The weight of each term: how rare it is in the index. */
-export function weighTerms(sqlite: Database.Database, parsed: ParsedQuery): ScoringTerm[] {
+/**
+ * How many passages hold each term, as the index finds it: the word itself (or any of
+ * its other ways of being said), and only when that finds nothing, a word it begins.
+ */
+export function countTerms(sqlite: Database.Database, parsed: ParsedQuery): number[] {
+  const count = sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?");
+  return parsed.required.map((_, index) => {
+    const exact = (count.get(groupExpression(parsed, index, false)) as { n: number }).n;
+    if (exact > 0 || !(parsed.prefixLast && index === parsed.required.length - 1)) return exact;
+    return (count.get(groupExpression(parsed, index, true)) as { n: number }).n;
+  });
+}
+
+/** The weight of each term: how rare it is in the index. `counts` when already known (`countTerms`). */
+export function weighTerms(sqlite: Database.Database, parsed: ParsedQuery, counts?: number[]): ScoringTerm[] {
   if (parsed.required.length < 2) return scoringTerms(parsed, () => 1);
   const rows = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
-  const count = sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?");
-  return scoringTerms(parsed, (term, index) => {
-    const expression = termExpression(term, parsed.prefixLast && index === parsed.required.length - 1);
-    return inverseFrequency(rows, (count.get(expression) as { n: number }).n);
-  });
+  const held = counts ?? countTerms(sqlite, parsed);
+  return scoringTerms(parsed, (_, index) => inverseFrequency(rows, held[index]!));
 }
 
 export function rankKeyword(
   sqlite: Database.Database,
   parsed: ParsedQuery,
-  options: { kinds?: string[]; tag?: string; window: number; toDownload: string },
+  options: { kinds?: string[]; tag?: string; window: number; toDownload: string; counts?: number[] },
 ): KeywordRanking {
-  const terms = weighTerms(sqlite, parsed);
-  const strictMatch = toFtsQuery(parsed, "all");
+  const terms = weighTerms(sqlite, parsed, options.counts);
+  // The last word as typed first; as the start of a longer word only when that finds too little.
+  const strictMatch = toFtsQuery(parsed, "all", undefined, false);
   if (!strictMatch) return { items: [], everyWord: 0, relaxed: false, facets: {}, total: 0, terms };
   const tagClause = options.tag ? ` AND {tags}: "${options.tag.replace(/"/g, '""')}"` : "";
   const wanted = (kind: string) => !options.kinds?.length || options.kinds.includes(kind);
@@ -131,10 +144,21 @@ export function rankKeyword(
       return { entityRowId: item.entityRowId, kind: item.kind, passages, parts: passages[0]!.parts, everyWord };
     });
   };
+  /** Items that hold the last word only as the start of a longer one. */
+  const begun = new Set<number>();
   const byScore = (a: RankedItem, b: RankedItem) =>
-    Number(a.kind === options.toDownload) - Number(b.kind === options.toDownload) || b.parts.score - a.parts.score;
+    Number(a.kind === options.toDownload) - Number(b.kind === options.toDownload) ||
+    Number(begun.has(a.entityRowId)) - Number(begun.has(b.entityRowId)) ||
+    b.parts.score - a.parts.score;
 
-  const strictAll = group(strictMatch + tagClause);
+  let strictAll = group(strictMatch + tagClause);
+  if (parsed.prefixLast && strictAll.filter((item) => wanted(item.kind)).length < FEW) {
+    // "batt" while it is being typed: items holding a word it begins follow those holding the word itself.
+    const held = new Set(strictAll.map((item) => item.entityRowId));
+    const more = group(toFtsQuery(parsed, "all", undefined, true)! + tagClause).filter((item) => !held.has(item.entityRowId));
+    for (const item of more) begun.add(item.entityRowId);
+    strictAll = [...strictAll, ...more];
+  }
   const strict = strictAll.filter((item) => wanted(item.kind));
   // The pool grows with the page asked for, so that every match can be paged to.
   const items = score(strict.slice(0, Math.max(RESCORE_POOL, options.window)), true).sort(byScore);

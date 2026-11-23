@@ -98,6 +98,7 @@ function explain(query: string): ExplainResponse {
     parse: {
       words: ["boil", "water"],
       ignored: ["how", "to"],
+      alsoSearched: [],
       excluded: [],
       prefixLast: true,
       expression: '("boil" AND "water"*)',

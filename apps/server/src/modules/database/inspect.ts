@@ -11,7 +11,19 @@ import Database from "better-sqlite3";
 
 /** The tables of each group. A table not listed here counts as "everything else". */
 const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
-  search: ["search_entities", "chunks", "chunks_fts", "chunks_fts_config", "chunks_fts_data", "chunks_fts_docsize", "chunks_fts_idx"],
+  search: [
+    "search_entities",
+    "chunks",
+    "chunks_fts",
+    "chunks_fts_config",
+    "chunks_fts_data",
+    "chunks_fts_docsize",
+    "chunks_fts_idx",
+    "chunks_words",
+    "chunks_words_config",
+    "chunks_words_data",
+    "chunks_words_idx",
+  ],
   meaning: ["embeddings", "embedding_models"],
   library: [
     "documents",

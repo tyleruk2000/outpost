@@ -13,7 +13,11 @@
     },
     { "q": "treat a burn", "grades": { "burns": 3, "first-aid": 3, "sunburn": 1 }, "pi": ["burn|scald", "treat|cool|first aid|dressing"] },
     { "q": "fix a puncture", "grades": { "bike-repair": 3 }, "pi": ["puncture|inner tube|flat tyre|flat tire"] },
-    { "q": "store petrol safely", "grades": { "fuel-storage": 3, "generator": 1 }, "pi": ["petrol|gasoline|fuel", "stor|container|jerry"] },
+    {
+      "q": "store petrol safely",
+      "grades": { "fuel-storage": 3, "gasoline-storage": 3, "generator": 1 },
+      "pi": ["petrol|gasoline|fuel", "stor|container|jerry"]
+    },
     {
       "q": "make bread without yeast",
       "grades": { "soda-bread": 3, "sourdough": 1, "bread-machine": 1 },
@@ -81,7 +85,25 @@
     { "q": "potato blight", "grades": { "potatoes": 3 }, "pi": ["potato", "blight"] },
     { "q": "what is pmr446", "grades": { "pmr446": 3 }, "pi": ["pmr ?446"] },
     { "q": "how to store rice long term", "grades": { "food-storage": 3 }, "pi": ["rice", "stor|keep|shelf"] },
-    { "q": "tyre pressure", "grades": { "tyre-pressure": 3 }, "pi": ["tyre|tire", "pressure"] },
+    { "q": "tyre pressure", "grades": { "tyre-pressure": 3, "tire-care": 3 }, "pi": ["tyre|tire", "pressure"] },
+    { "q": "tire pressure", "grades": { "tyre-pressure": 3, "tire-care": 3 }, "pi": ["tyre|tire", "pressure"] },
+    {
+      "q": "petrol storage",
+      "grades": { "fuel-storage": 3, "gasoline-storage": 3, "generator": 1 },
+      "pi": ["petrol|gasoline|fuel", "stor|container|can"]
+    },
+    { "q": "diarrhoea", "grades": { "diarrhea": 3 }, "pi": ["diarrh"] },
+    {
+      "q": "power cut",
+      "grades": { "power-cut": 3, "power-outage": 3, "freezer": 2, "generator": 1 },
+      "pi": ["power cut|power outage|blackout|power failure|without power"]
+    },
+    {
+      "q": "purifiy water",
+      "grades": { "water-handbook": 3, "kit-list": 1 },
+      "pi": ["water", "purif|treat|disinfect|boil|filter|drinking"]
+    },
+    { "q": "torch batteries", "grades": { "flashlight": 3, "supplies-list": 2 }, "pi": ["torch|flashlight", "batter"] },
     { "q": "winter driving kit", "grades": { "winter-driving": 3 }, "pi": ["winter", "driv|car"] },
     { "q": "how to make oral rehydration solution", "grades": { "oral-rehydration": 3 }, "pi": ["rehydrat"] },
     { "q": "how to use a generator safely", "grades": { "generator": 3 }, "pi": ["generator"] },

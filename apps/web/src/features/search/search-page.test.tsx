@@ -285,3 +285,42 @@ describe("why each result is there", () => {
     expect(titles().indexOf("Places and repeaters")).toBeLessThan(titles().indexOf("Water kit"));
   });
 });
+
+describe("what else was searched, and what might have been meant", () => {
+  it("names the other spellings searched, and searches only what was typed when asked", async () => {
+    const server = serveSearch((params) =>
+      params.get("exact") === "1"
+        ? ownAnswer([ownResult("n1", "Car tyre pressures", "note")], { referenceToCome: false })
+        : ownAnswer([ownResult("n1", "Car tyre pressures", "note"), ownResult("n2", "Tire care", "note")], {
+            referenceToCome: false,
+            alsoSearched: ["tire"],
+          }),
+    );
+    const user = userEvent.setup();
+    show("/search?q=tyre%20pressure");
+    expect(await screen.findByText(/Also searched: tire\./)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Search only for what you typed" }));
+    expect(await screen.findByText("Searched only for what you typed.")).toBeInTheDocument();
+    expect(server.asked.at(-1)?.get("exact")).toBe("1");
+    expect(screen.queryByRole("link", { name: "Tire care" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Search other spellings and words too" }));
+    expect(await screen.findByRole("link", { name: "Tire care" })).toBeInTheDocument();
+  });
+
+  it("offers a near word when nothing matches, as a link, without searching for it", async () => {
+    const server = serveSearch((params) =>
+      params.get("q") === "purify water"
+        ? ownAnswer([ownResult("d1", "Water treatment handbook")], { referenceToCome: false })
+        : ownAnswer([], { referenceToCome: false, didYouMean: { query: "purify water", words: ["purify"] } }),
+    );
+    const user = userEvent.setup();
+    show("/search?q=purifiy%20water");
+    expect(await screen.findByRole("heading", { name: "Nothing matches “purifiy water”" })).toBeInTheDocument();
+    const offer = screen.getByRole("link", { name: "purify water" });
+    expect(offer).toHaveAttribute("href", "/search?q=purify+water");
+    expect(within(offer).getByText("purify").tagName).toBe("STRONG");
+    expect(server.asked.map((asked) => asked.get("q"))).not.toContain("purify water");
+    await user.click(offer);
+    expect(await screen.findByRole("link", { name: "Water treatment handbook" })).toBeInTheDocument();
+  });
+});

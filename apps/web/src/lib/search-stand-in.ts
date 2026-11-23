@@ -49,6 +49,8 @@ export const ownAnswer = (results: SearchResult[], over: Partial<SearchResponse>
   relaxed: false,
   everyWord: results.length,
   ignored: [],
+  alsoSearched: [],
+  didYouMean: null,
   total: results.length,
   results,
   places: [],
