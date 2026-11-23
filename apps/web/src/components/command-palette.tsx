@@ -15,7 +15,7 @@ import { useNavigate } from "react-router";
 import { searchRowFocus } from "@/components/ui/input";
 import { findGuides, useGuideIndex } from "@/features/help/guide-places";
 import { api } from "@/lib/api";
-import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
+import { referenceProgress, useReferenceSearch, useSteadyOrder } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
 import { useDebounced } from "@/lib/use-debounced";
 import { modKey } from "@/lib/utils";
@@ -38,7 +38,7 @@ export { matchesWords };
 
 const itemClass =
   "flex cursor-default items-center gap-3 rounded-control px-3 py-2 text-small text-ink data-[selected=true]:bg-primary-soft data-[selected=true]:text-primary-soft-ink max-md:py-3 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted";
-/** How many reference articles the palette lists: the best match of each of the first collections to answer. */
+/** How many reference articles the palette lists: the best of all collections searched, as one list. */
 const REFERENCE_SHOWN = 5;
 
 function ResultItem({ result, onSelect }: { result: SearchResult; onSelect: () => void }) {
@@ -108,7 +108,9 @@ export function CommandPalette({
   const typed = query.trim();
   const searching = debounced.length > 1 && typed.length > 1;
   const stillSearching = searching && reference.status === "searching";
-  const referenceShown = searching ? reference.best.slice(0, REFERENCE_SHOWN) : [];
+  // In score order, but still while the pointer is over them, so that the one about to be pressed does not move.
+  const steady = useSteadyOrder(reference.results, debounced);
+  const referenceShown = searching ? steady.shown.slice(0, REFERENCE_SHOWN) : [];
   // What would have to be downloaded comes after everything on this device, the reference collections included. It is
   // added once they have answered, so that nothing above it moves when it comes.
   const matches = results.data?.results.filter((result) => result.kind !== "catalog") ?? [];
@@ -245,7 +247,12 @@ export function CommandPalette({
                   ) : null}
                   {/* Last, and only ever added to at its end, so nothing above moves under a finger or the selection. */}
                   {referenceShown.length > 0 ? (
-                    <Command.Group heading="In reference collections" className={groupClass}>
+                    <Command.Group
+                      heading="In reference collections"
+                      className={groupClass}
+                      onPointerEnter={steady.hold.onPointerEnter}
+                      onPointerLeave={steady.hold.onPointerLeave}
+                    >
                       {referenceShown.map((result) => (
                         <ResultItem key={`${result.kind}:${result.entityId}`} result={result} onSelect={() => go(resultHref(result))} />
                       ))}

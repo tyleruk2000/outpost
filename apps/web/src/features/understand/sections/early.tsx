@@ -374,6 +374,23 @@ export function WordsSection() {
       </Figure>
 
       <Prose>
+        <h3>Reference collections</h3>
+        <p>
+          Articles in reference collections such as Wikipedia are not in this index. Each archive has its own, searched by a separate
+          program, and every archive asked costs seconds on a small computer. So Outpost asks the six likeliest to hold the answer first,
+          judged from what each says it is: a question with “burn” in it goes to the medical collections, one with “tyre” to the motor
+          mechanics, and a general encyclopaedia is nearly always asked. If those six find fewer than three good articles, the rest are
+          asked too; otherwise they wait behind “Search all reference collections”.
+        </p>
+        <p>
+          Each archive is asked twice at once: for its full text, and for titles holding the words a title would (“burn” for “treat a
+          burn”), which answer much sooner. Pages that only list other pages, such as a list of questions by tag, are left out. Every
+          article is then scored by the same rule as above, from its title and snippet, and all of them form one list across the archives.
+          An article whose title is just the thing asked about, such as “Burn”, counts as holding the whole question.
+        </p>
+      </Prose>
+
+      <Prose>
         <p>
           The weakness of keyword search is plain from how it works. It matches letters, not ideas. Ask about “making water safe” and it
           will not find a passage that only says “disinfect” or “purify”, however good that passage is. Stemming helps with endings; it does

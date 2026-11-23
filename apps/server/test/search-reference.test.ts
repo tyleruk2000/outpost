@@ -66,9 +66,9 @@ async function world(books: SlowBook[], env: Record<string, string> = {}): Promi
 // biome-ignore lint/suspicious/noExplicitAny: tests read lines loosely and assert on them
 type Line = Record<string, any>;
 /** Reads the reference part to its end, noting when each line came. */
-async function readReference(base: string, q: string, signal?: AbortSignal): Promise<Array<Line & { at: number }>> {
+async function readReference(base: string, q: string, signal?: AbortSignal, scope?: "all"): Promise<Array<Line & { at: number }>> {
   const started = performance.now();
-  const response = await fetch(`${base}/api/search/reference?q=${encodeURIComponent(q)}`, { signal });
+  const response = await fetch(`${base}/api/search/reference?q=${encodeURIComponent(q)}${scope ? `&scope=${scope}` : ""}`, { signal });
   expect(response.headers.get("content-type")).toContain("application/x-ndjson");
   const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
   const lines: Array<Line & { at: number }> = [];
@@ -84,6 +84,9 @@ async function readReference(base: string, q: string, signal?: AbortSignal): Pro
   }
   return lines;
 }
+
+/** A collection's last word, without the first looks (its titles) sent while its full text was searched. */
+const finals = (lines: Line[]) => lines.filter((line) => line.type === "collection" && line.done !== false);
 
 describe("the queue in front of kiwix-serve", () => {
   const options = { concurrency: 2, limitMs: 80, ceilingMs: 400, remember: 10, rememberMs: 60_000 };
@@ -228,14 +231,19 @@ describe("search in two parts", () => {
     expect(own.body.facets.reference).toBeUndefined();
 
     const lines = await readReference(base, "water");
-    expect(lines[0]).toMatchObject({ type: "start", collections: 3 });
-    expect(lines.slice(1, -1).map((line) => line.title)).toEqual(["Book 01", "Book 02", "Book 03"]);
-    // The slow collection held nothing back: the quick ones were sent while it was still being searched.
-    expect(lines[2]!.at).toBeLessThan(300);
-    expect(lines[3]!.at).toBeGreaterThanOrEqual(440);
-    expect(lines[1]).toMatchObject({ type: "collection", collectionId: ids[0] });
-    expect(lines[1]!.results).toHaveLength(3);
-    expect(lines[1]!.results[0]).toMatchObject({
+    expect(lines[0]).toMatchObject({ type: "start", collections: 3, more: 0, ranked: true });
+    const last = finals(lines);
+    expect(last.map((line) => line.title)).toEqual(["Book 01", "Book 02", "Book 03"]);
+    // The slow collection held nothing back: the quick ones were sent while it was still being searched, and its
+    // titles, which kiwix-serve finds at once, before its full text.
+    expect(last[1]!.at).toBeLessThan(300);
+    expect(last[2]!.at).toBeGreaterThanOrEqual(440);
+    const firstLook = lines.find((line) => line.type === "collection" && line.done === false && line.collectionId === ids[2]);
+    expect(firstLook!.at).toBeLessThan(300);
+    expect(firstLook!.results.map((result: Line) => result.title)).toEqual(["Water", "Water wheel", "Watermill"]);
+    expect(last[0]).toMatchObject({ type: "collection", collectionId: ids[0], done: true });
+    expect(last[0]!.results).toHaveLength(3);
+    expect(last[0]!.results[0]).toMatchObject({
       kind: "reference",
       entityId: `${ids[0]}:Water`,
       title: "Water",
@@ -259,7 +267,9 @@ describe("search in two parts", () => {
   it("does not wait for a collection past its limit, and names it as missing", async () => {
     const { app, base, kiwix } = await world([book(1, 20), book(2, 1000), book(3, 20)]);
     const lines = await readReference(base, "water");
-    expect(lines.slice(1, -1).map((line) => line.title)).toEqual(["Book 01", "Book 03"]);
+    // The slow one's titles still came, found by its title search; its full text is what is missing.
+    expect(finals(lines).map((line) => line.title)).toEqual(["Book 01", "Book 03", "Book 02"]);
+    expect(finals(lines)[2]!.results.map((result: Line) => result.title)).toEqual(["Water", "Water wheel", "Watermill"]);
     const end = lines.at(-1)!;
     expect(end).toMatchObject({ type: "end", searched: 2, missing: [{ title: "Book 02", reason: "slow" }], message: null });
     expect(end.at).toBeGreaterThanOrEqual(590);
@@ -268,7 +278,8 @@ describe("search in two parts", () => {
     // The whole answer in one part says the same in its warnings, and still has everything else.
     const whole = (await app.api("GET", "/api/search?q=wave")).body;
     expect(whole.warnings).toEqual([{ source: "reference", message: "Not searched in time, so missing from these results: “Book 02”." }]);
-    expect(whole.facets).toMatchObject({ reference: 2 });
+    // Two articles found by their full text, and the slow one's found by its title.
+    expect(whole.facets).toMatchObject({ reference: 3 });
 
     // The slow search was let finish, and its answer kept: asked again, nothing is missing and kiwix-serve is not asked.
     await kiwix.idle();
@@ -337,8 +348,8 @@ describe("search in two parts", () => {
   it("has nothing to send when searching inside collections is turned off, kiwix-serve is down, or nothing was typed", async () => {
     const { app, base, kiwix } = await world([book(1, 5)]);
     expect((await readReference(base, "  ")).map(({ at: _at, tookMs: _took, ...line }) => line)).toEqual([
-      { type: "start", collections: 0 },
-      { type: "end", searched: 0, missing: [], message: null },
+      { type: "start", collections: 0, more: 0, ranked: true },
+      { type: "end", searched: 0, missing: [], message: null, more: 0 },
     ]);
     await app.api("PATCH", "/api/settings", { "search.includeReference": false });
     expect((await readReference(base, "water"))[0]).toMatchObject({ type: "start", collections: 0 });
@@ -398,7 +409,7 @@ describe("a search that is dropped", () => {
       gone.abort();
       await reading;
     }
-    const lines = await readReference(base, "wat");
+    const lines = await readReference(base, "wat", undefined, "all");
     expect(lines.at(-1)).toMatchObject({ type: "end", searched: 24, missing: [] });
     await kiwix.idle();
     // Never more than three at kiwix-serve, none waiting inside it, and at most three begun for each search that was dropped.

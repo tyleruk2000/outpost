@@ -1,7 +1,8 @@
 /**
  * The search evaluation set (scripts/search-eval) against its fixture library and the
- * recorded answers of 36 reference collections. Writes the table to the file named by
- * SEARCH_EVAL_OUT; fails if the measures fall below what they are.
+ * recorded answers of 37 reference collections. Writes the tables to the file named by
+ * SEARCH_EVAL_OUT: the whole search, and the reference collections on their own as the
+ * search screen gets them. Fails if the measures fall below what they are.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -9,6 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { library } from "../../../scripts/search-eval/library.mjs";
 // @ts-expect-error: as above
 import { formatSummary, formatTable, gradeById, gradeByPattern, loadQueries, summarise } from "../../../scripts/search-eval/metrics.mjs";
+// @ts-expect-error: as above
+import { formatReference, measureReference, readReference, summariseReference } from "../../../scripts/search-eval/reference-stream.mjs";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { type SlowKiwix, startSlowKiwix, uuidFor, writeArchives } from "./slow-kiwix.ts";
 
@@ -27,7 +30,14 @@ interface Row {
   titles: string[];
 }
 interface Recorded {
-  collections: Array<{ title: string; hits: Array<{ title: string; path: string; snippet: string }> }>;
+  collections: Array<{
+    title: string;
+    description: string | null;
+    category: string | null;
+    tags: string | null;
+    language: string | null;
+    hits: Array<{ title: string; path: string; snippet: string }>;
+  }>;
 }
 
 const recorded = JSON.parse(readFileSync(new URL("../../../scripts/search-eval/reference.json", import.meta.url), "utf8")) as Recorded;
@@ -40,6 +50,8 @@ describe("search quality on the household evaluation set", () => {
   let app: TestApp;
   let kiwix: SlowKiwix;
   const rows: Row[] = [];
+  // biome-ignore lint/suspicious/noExplicitAny: rows of a plain JavaScript module
+  const referenceRows: any[] = [];
 
   beforeAll(async () => {
     const books = recorded.collections.map((collection, index) => ({
@@ -53,8 +65,17 @@ describe("search quality on the household evaluation set", () => {
     kiwix = await startSlowKiwix({ books, threads: 8 });
     app = await createTestApp({ OUTPOST_KIWIX_URL: kiwix.url });
     const location = app.ctx.services.storage.getDefault();
+    const { collections } = app.ctx.services;
     for (const [index, relPath] of writeArchives(location.path, books).entries()) {
-      await app.api("POST", "/api/kiwix/import", { locationId: location.id, relPath, title: books[index]!.title });
+      const { body } = await app.api("POST", "/api/kiwix/import", { locationId: location.id, relPath, title: books[index]!.title });
+      // What the archive says it is, as a real library knows it: what reference collections are searched first is chosen by it.
+      const about = recorded.collections[index]!;
+      const row = collections.get(body.collection.id)!;
+      collections.update(row.id, {
+        description: about.description,
+        category: about.category,
+        meta: { ...row.meta, kiwix: { ...(row.meta.kiwix ?? {}), tags: about.tags ?? undefined, language: about.language ?? undefined } },
+      });
     }
     for (const entity of library()) app.ctx.services.search.upsert(entity);
     const pool = recorded.collections.flatMap((collection) => collection.hits).map(asResult);
@@ -77,9 +98,18 @@ describe("search quality on the household evaluation set", () => {
         titles: results.map((result) => (result.kind === "reference" ? `[ref] ${result.title}` : result.title)),
       });
     }
+    // The reference collections on their own, as the search screen asks for them, one search after another.
+    const base = await app.app.listen({ port: 0, host: "127.0.0.1" });
+    for (const query of loadQueries() as Query[]) {
+      if (query.pi.length === 0) continue;
+      referenceRows.push(measureReference(query, await readReference(base, query.q)));
+    }
     // A file, not the console: the test runner keeps a passing test's output to itself.
     if (process.env.SEARCH_EVAL_OUT) {
-      writeFileSync(process.env.SEARCH_EVAL_OUT, `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n`);
+      writeFileSync(
+        process.env.SEARCH_EVAL_OUT,
+        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n\n${formatReference("recorded reference collections", referenceRows)}\n`,
+      );
     }
   }, 60_000);
   afterAll(async () => {
@@ -92,6 +122,14 @@ describe("search quality on the household evaluation set", () => {
     expect(summary.success3).toBeGreaterThanOrEqual(0.95);
     expect(summary.zeroResultRate).toBe(0);
     expect(summary.ndcg5).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it("puts a useful reference article in the first three for nearly every question, with no list pages", () => {
+    const summary = summariseReference(referenceRows);
+    expect(summary.success3).toBeGreaterThanOrEqual(0.8);
+    expect(
+      referenceRows.flatMap((row) => row.titles).filter((title: string) => /questions\/tagged|Highest Voted|Main Page/.test(title)),
+    ).toEqual([]);
   });
 
   it("answers the owner's question with the car battery page first", () => {

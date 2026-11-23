@@ -26,10 +26,12 @@ import {
   parseQuery,
   plainQuery,
   type Segment,
+  STOP_WORDS,
+  titleWords,
   toFtsQuery,
   toSegments,
 } from "./query.ts";
-import { holdsExcluded, reasonFor, type ScoringTerm, scoreFields } from "./score.ts";
+import { holdsExcluded, reasonFor, type ScoringTerm, scoreFields, tokenize } from "./score.ts";
 import { createSuggester, type Suggestion } from "./suggest.ts";
 
 /** Bumped when chunking or indexing rules change in a way that needs a rebuild. */
@@ -221,10 +223,36 @@ export interface ReferencePart {
   title: string;
   /** Its best matches, best first. Empty when it has none. */
   results: SearchResult[];
+  /**
+   * False for a first look (its titles, which answer quickly) while its full text is still
+   * being searched; a later part for the same collection takes its place. Absent or true
+   * for a collection's last word.
+   */
+  done?: boolean;
+}
+
+export interface RankOptions {
+  /**
+   * Whether a title that is the answer counts as one (`TITLE_MATCH_BONUS`): true for a
+   * collection about what was asked or a general encyclopaedia; false for one that is not,
+   * where "Burn" is a dictionary's word or a book of quotations' heading, not the answer.
+   */
+  titleAnswers?: boolean;
 }
 
 export interface ReferenceSearchParams {
   q: string;
+  /** The question as understood (query.ts): for choosing which collections to search, and for searching titles. */
+  parsed?: ParsedQuery;
+  /**
+   * "routed", the default: the collections most likely to hold the answer first, and the
+   * rest only when those find too little. "all": every collection.
+   */
+  scope?: "routed" | "all";
+  /** Puts a collection's results on the one scale every result has, best first, leaving out those that fall short. */
+  rank?(results: SearchResult[], options?: RankOptions): SearchResult[];
+  /** Called when the rest of the collections are searched after all, because the first found too little. */
+  onWiden?(collections: number): void;
   /**
    * The same question said another way ("tire pressure" for "tyre pressure"), asked of
    * each collection as well when given. Null or absent when there is none.
@@ -234,8 +262,8 @@ export interface ReferenceSearchParams {
   signal?: AbortSignal;
   /** How long to go on waiting for collections. Those that have not answered by then are reported as missing. */
   budgetMs: number;
-  /** Called once, first, with the number of collections that will be searched. */
-  onStart?(collections: number): void;
+  /** Called once, first, with the number of collections that will be searched, and of those left for later. */
+  onStart?(collections: number, more?: number): void;
   /** Called once for each collection that answers, in the order they answer. */
   onPart(part: ReferencePart): void;
 }
@@ -249,6 +277,8 @@ export interface ReferenceOutcome {
   missing: Array<{ collectionId: string; title: string; reason: "slow" | "failed" }>;
   /** Why none could be searched at all, in words for a person; null when they could. */
   message: string | null;
+  /** Collections left unsearched because the first found enough; "Search all reference collections" asks them. */
+  more?: number;
 }
 
 /** How long a search waits for reference collections altogether. Tests shorten these; nothing else changes them. */
@@ -258,6 +288,38 @@ export const referenceBudgets = {
   /** A search of reference collections on their own, which sends each collection's results as they come. */
   inPartsMs: 30_000,
 };
+
+/**
+ * What a reference article whose title is the answer ("Burn" for "treat a burn": every
+ * word of the title is a word of the question, and it holds every word a title would)
+ * gains on top of its score. kiwix-serve's title search finds these; its full text often
+ * ranks them below long pages that mention the words many times.
+ */
+export const TITLE_MATCH_BONUS = 0.15;
+
+/**
+ * Among results that are nearly as good, a person's own come first: where reference
+ * articles and the library's own items are one list, an article's score counts this much
+ * of itself. A reference article has to be clearly better to come above a page the person
+ * chose to keep. The reference collections' own list is not changed.
+ */
+export const OWN_FIRST = 0.95;
+
+/** True when a title is the answer by its words alone (see `TITLE_MATCH_BONUS`). */
+export function titleIsAnswer(title: string, terms: ScoringTerm[], nouns: string[]): boolean {
+  const words = tokenize(title).filter((token) => !STOP_WORDS.has(token.raw));
+  if (words.length === 0 || nouns.length === 0) return false;
+  const query = new Set(terms.flatMap((term) => term.forms.flatMap((form) => form.stems)));
+  const inTitle = new Set(words.map((token) => token.stem));
+  // Each noun, or another way of saying it ("tire" for "tyre"), in the title.
+  const held = (noun: string) => {
+    const stems = tokenize(noun).map((token) => token.stem);
+    if (stems.every((one) => inTitle.has(one))) return true;
+    const term = terms.find((candidate) => candidate.forms[0]?.stems.join(" ") === stems.join(" "));
+    return Boolean(term?.forms.some((form) => form.stems.every((one) => inTitle.has(one))));
+  };
+  return words.every((token) => query.has(token.stem)) && nouns.every(held);
+}
 
 /** Each collection ranks its own articles; take them in turn so one large collection does not crowd out the rest. */
 export function inTurn(parts: ReferencePart[]): SearchResult[] {
@@ -296,7 +358,15 @@ export async function gatherParts(
   params: Omit<ReferenceSearchParams, "onPart" | "onStart">,
 ): Promise<{ results: SearchResult[]; outcome: ReferenceOutcome }> {
   const parts: ReferencePart[] = [];
-  const outcome = await source.searchInParts!({ ...params, onPart: (part) => parts.push(part) });
+  const outcome = await source.searchInParts!({
+    ...params,
+    onPart: (part) => {
+      if (part.done === false) return;
+      const at = parts.findIndex((other) => other.collectionId === part.collectionId);
+      if (at === -1) parts.push(part);
+      else parts[at] = part;
+    },
+  });
   // The order collections answered in is chance; their names are not.
   parts.sort((a, b) => a.title.localeCompare(b.title) || a.collectionId.localeCompare(b.collectionId));
   return { results: inTurn(parts), outcome };
@@ -650,7 +720,7 @@ export function createSearchService(ctx: AppContext): SearchService {
    * and so is one showing less than `RELAXED_COVERAGE` of what the query is about: the
    * same rule as for Outpost's own items that lack a word.
    */
-  function rescore(results: SearchResult[], terms: ScoringTerm[], excluded: string[]): SearchResult[] {
+  function rescore(results: SearchResult[], terms: ScoringTerm[], excluded: string[], nouns?: string[]): SearchResult[] {
     return results
       .flatMap((result) => {
         const fields = {
@@ -662,6 +732,15 @@ export function createSearchService(ctx: AppContext): SearchService {
         if (holdsExcluded(excluded, fields)) return [];
         const parts = scoreFields(terms, fields);
         if (parts.found === 0 || parts.coverage < RELAXED_COVERAGE) return [];
+        if (nouns && titleIsAnswer(result.title, terms, nouns)) {
+          // The words it lacks only say what to do ("treat"): scored on the words a title would hold, it holds them all.
+          const held = new Set(nouns.map((noun) => noun.toLowerCase()));
+          const titled = terms.filter((term) => term.term.split(" ").every((word) => held.has(word.toLowerCase())));
+          const asTitle = titled.length > 0 && titled.length < terms.length ? scoreFields(titled, fields).score : 0;
+          const score = Math.min(1, Math.round(Math.max(parts.score + TITLE_MATCH_BONUS, asTitle) * 1000) / 1000);
+          // "All 3 words in the title" says more, when it is so.
+          return [{ ...result, score, why: parts.inTitle === parts.of ? reasonFor(parts) : "The title is what was asked" }];
+        }
         return [{ ...result, score: parts.score, why: reasonFor(parts) }];
       })
       .sort((a, b) => b.score - a.score);
@@ -944,9 +1023,12 @@ export function createSearchService(ctx: AppContext): SearchService {
           if (!source.searchInParts) return source.search({ q, kinds: params.kinds, limit: window, signal: params.signal });
           // Every collection's best matches, however far down the list this page is, so
           // that the count and the pages do not change from one page to the next.
+          const nouns = titleWords(parsed);
           const { results, outcome } = await gatherParts(source, {
             q: plainQuery(parsed) || q,
             alternate: alternateQuery(parsed),
+            parsed,
+            rank: (found, options) => rescore(found, keyword.terms, parsed.excluded, options?.titleAnswers === false ? undefined : nouns),
             signal: params.signal,
             budgetMs: referenceBudgets.onePartMs,
           });
@@ -963,7 +1045,8 @@ export function createSearchService(ctx: AppContext): SearchService {
             return;
           }
           if (source.layer === "reference") {
-            const found = rescore(answer.value, keyword.terms, parsed.excluded);
+            // Already on the one scale (`rank` above), best first; beside a person's own, a little behind (`OWN_FIRST`).
+            const found = answer.value.map((result) => ({ ...result, score: Math.round(result.score * OWN_FIRST * 1000) / 1000 }));
             lexical.push(...found);
             if (found.length > 0) keyword.facets.reference = (keyword.facets.reference ?? 0) + found.length;
             return;
@@ -1034,12 +1117,14 @@ export function createSearchService(ctx: AppContext): SearchService {
       // finds is put on the same scale as everything else.
       const { parsed } = understand(q, params.exact);
       const terms = weighTerms(sqlite, parsed);
+      const nouns = titleWords(parsed);
       return source.searchInParts!({
         ...params,
         q: plainQuery(parsed) || q,
         alternate: alternateQuery(parsed),
+        parsed,
+        rank: (results, options) => rescore(results, terms, parsed.excluded, options?.titleAnswers === false ? undefined : nouns),
         budgetMs: referenceBudgets.inPartsMs,
-        onPart: (part) => params.onPart({ ...part, results: rescore(part.results, terms, parsed.excluded) }),
       });
     },
 

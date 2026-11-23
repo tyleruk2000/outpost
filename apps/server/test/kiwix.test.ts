@@ -271,12 +271,15 @@ describe("kiwix integration", () => {
     const kinds = unified.results.map((result: { kind: string }) => result.kind);
     expect(kinds).toContain("note");
     expect(kinds).toContain("reference");
-    const reference = unified.results.find((result: { kind: string }) => result.kind === "reference");
-    expect(reference).toMatchObject({
+    // Its title search found the article whose title is the word asked, and that comes first; its full text found the rest.
+    const reference = unified.results.filter((result: { kind: string }) => result.kind === "reference");
+    expect(reference[0]).toMatchObject({
       collection: "Knots by Wikipedia",
       sources: ["reference"],
-      url: `/library/read/${id}/Portuguese_bowline`,
+      url: `/library/read/${id}/Bowline`,
+      why: "In the title",
     });
+    expect(reference.map((result: { title: string }) => result.title)).toContain("Portuguese bowline");
     // Turning the setting off leaves only the person's own material.
     await app.api("PATCH", "/api/settings", { "search.includeReference": false });
     expect(

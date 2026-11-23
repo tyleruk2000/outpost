@@ -51,6 +51,19 @@ export type ReferenceSearchEvent =
       type: "start";
       /** How many collections are being searched. 0 when there are none, or searching inside them is turned off. */
       collections: number;
+      /**
+       * Collections left for later: the search asks those most likely to hold the answer
+       * first. They are searched too if those find too little ("widen"), or when asked for
+       * with `scope=all`. Absent from an older server.
+       */
+      more?: number;
+      /** Results carry scores on one scale, to be shown as one list in score order. Absent from an older server. */
+      ranked?: boolean;
+    }
+  | {
+      /** The first collections found too little, so the rest are being searched too. */
+      type: "widen";
+      collections: number;
     }
   | {
       type: "collection";
@@ -58,6 +71,11 @@ export type ReferenceSearchEvent =
       title: string;
       /** Its best matches, best first. Empty when it has none. */
       results: SearchResult[];
+      /**
+       * False for a first look (its titles) while its full text is still being searched: a
+       * later line for the same collection replaces these results. True for its last word.
+       */
+      done?: boolean;
     }
   | {
       type: "end";
@@ -67,6 +85,8 @@ export type ReferenceSearchEvent =
       missing: ReferenceSearchMissing[];
       /** Why none could be searched at all (kiwix-serve is not running, say); null otherwise. */
       message: string | null;
+      /** Collections not searched because the first found enough; `scope=all` searches them. */
+      more?: number;
       tookMs: number;
     };
 

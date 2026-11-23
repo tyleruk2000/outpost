@@ -14,11 +14,17 @@
  * would do to a library before it is installed. A server that offers "Did you mean" for
  * a search that found nothing is taken at its word, as a person would.
  * The fixture library and its numbers are in the server's tests (search-quality.test.ts).
+ *
+ * --reference measures the reference collections instead, as the search screen gets them
+ * (scripts/search-eval/reference-stream.mjs): when the first article and the first useful
+ * one came, when the search ended, and how good the list shown is; and the time of
+ * Outpost's own results asked without them. Searches run one after another, as a person's do.
  */
 import { writeFileSync } from "node:fs";
 import { alternateQuery, expandQuery, parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
 import { inverseFrequency, reasonFor, scoreFields, scoringTerms } from "../apps/server/src/modules/search/score.ts";
-import { formatSummary, formatTable, gradeByPattern, loadQueries, resultText, summarise } from "./search-eval/metrics.mjs";
+import { formatSummary, formatTable, gradeByPattern, loadQueries, percentile, resultText, summarise } from "./search-eval/metrics.mjs";
+import { formatReference, measureReference, readReference } from "./search-eval/reference-stream.mjs";
 
 const args = process.argv.slice(2);
 const base = (args.find((arg) => /^https?:/.test(arg)) ?? "http://localhost:8080").replace(/\/$/, "");
@@ -77,6 +83,26 @@ async function rescore(q) {
 }
 
 const queries = loadQueries().filter((query) => query.pi.length > 0);
+
+if (args.includes("--reference")) {
+  const rows = [];
+  const own = [];
+  const ownServer = [];
+  for (const query of queries) {
+    const { body, ms } = await get(`/api/search?q=${encodeURIComponent(query.q)}&limit=20&reference=later`);
+    own.push(ms);
+    ownServer.push(body.tookMs);
+    rows.push(measureReference(query, await readReference(base, query.q)));
+    process.stderr.write(".");
+  }
+  process.stderr.write("\n");
+  console.log(formatReference(`${base}, reference collections`, rows));
+  console.log(
+    `${base}, own results without reference collections: p95 ${Math.round(percentile(ownServer, 0.95))} ms at the server, ${Math.round(percentile(own, 0.95))} ms here`,
+  );
+  if (jsonAt) writeFileSync(jsonAt, JSON.stringify({ reference: rows, ownMs: own, ownServerMs: ownServer }, null, 1));
+  process.exit(0);
+}
 const before = [];
 const after = [];
 for (const query of queries) {

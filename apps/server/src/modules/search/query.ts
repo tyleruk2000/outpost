@@ -185,6 +185,28 @@ export function alternateQuery(parsed: ParsedQuery): string | null {
   return alternate && alternate !== plainQuery(parsed) ? alternate : null;
 }
 
+/**
+ * Words that say what to do or how, not what about: "treat", "store", "safely". The
+ * rest of a question's words ("burn", "petrol") are what a page would be titled, so they
+ * are what a search of titles asks for (kiwix-serve's title search) and what a title
+ * that is the answer ("Burn" for "treat a burn") is made of.
+ */
+export const ACTION_WORDS: ReadonlySet<string> = new Set(
+  (
+    "treat treating treatment fix fixing make making change changing store storing stop stopping start starting purify " +
+    "filter tie tying charge charging check checking replace replacing repair repairing use using build building cook " +
+    "grow growing clean cleaning remove find get keep cure prevent read boil put last tell need want best good " +
+    "signs sign symptoms way ways much many long term without per day safely safe quickly properly easily correctly"
+  ).split(" "),
+);
+
+/** The words of a question a title would hold: those that matter, without the action words. All of them if none is left. */
+export function titleWords(parsed: ParsedQuery): string[] {
+  const words = parsed.required.flatMap((term, index) => (parsed.quoted?.[index] ? [term] : term.split(" ")));
+  const nouns = words.filter((word) => !ACTION_WORDS.has(word.toLowerCase()));
+  return nouns.length > 0 ? nouns : words;
+}
+
 export interface Segment {
   text: string;
   hit: boolean;

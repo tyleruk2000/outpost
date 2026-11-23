@@ -67,6 +67,14 @@ function Checksum({ value }: { value: string }) {
   );
 }
 
+/** How a reference collection is searched when that is not by its full text (set by the server: search-health.ts). */
+function referenceSearchMark(meta: CollectionDto["meta"]): { fullText: "none" | "failing"; since: number; message: string } | null {
+  const kiwix = typeof meta.kiwix === "object" && meta.kiwix !== null ? (meta.kiwix as Record<string, unknown>) : {};
+  const mark = typeof kiwix.search === "object" && kiwix.search !== null ? (kiwix.search as Record<string, unknown>) : null;
+  if (!mark || (mark.fullText !== "none" && mark.fullText !== "failing") || typeof mark.since !== "number") return null;
+  return { fullText: mark.fullText, since: mark.since, message: typeof mark.message === "string" ? mark.message : "" };
+}
+
 function Details({ collection }: { collection: CollectionDto }) {
   const storage = useStorage();
   const location = storage.data?.locations.find((item) => item.id === collection.locationId);
@@ -77,6 +85,7 @@ function Details({ collection }: { collection: CollectionDto }) {
   const licenceNote = text(meta.licenseNote);
   const homepage = text(meta.homepage);
   const publishedOn = Number.isFinite(published) ? formatDate(published) : null;
+  const searchMark = referenceSearchMark(meta);
 
   return (
     <dl className="border-y border-border">
@@ -102,6 +111,17 @@ function Details({ collection }: { collection: CollectionDto }) {
           <a href={homepage} target="_blank" rel="noreferrer noopener" className="break-all text-primary underline underline-offset-2">
             {homepage.replace(/^https?:\/\//, "").replace(/\/$/, "")}
           </a>
+        </Fact>
+      ) : null}
+      {searchMark ? (
+        <Fact label="Search">
+          {searchMark.fullText === "none"
+            ? "By titles only. This archive has no full-text index, so search finds its articles by their titles, not by the words inside them."
+            : "By titles only for now. Searching its full text failed several times in a row, so search uses its titles and tries the full text again every half hour."}
+          <span className="mt-0.5 block text-ink-muted">
+            Noticed {formatDateTime(searchMark.since)}
+            {searchMark.message ? `. The Kiwix server said: “${searchMark.message}”` : ""}
+          </span>
         </Fact>
       ) : null}
       <Fact label="Size">

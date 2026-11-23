@@ -41,7 +41,7 @@ describe("the palette, with reference collections answering later", () => {
     expect(screen.getByRole("status", { name: "Searching" })).toBeInTheDocument();
   });
 
-  it("adds reference articles at the end when they come, leaving the rest and the selection where they were", async () => {
+  it("adds reference articles at the end when they come, best first across collections, leaving the selection where it was", async () => {
     const user = userEvent.setup();
     const server = serveSearch(() => ownAnswer(OWN));
     show();
@@ -53,17 +53,25 @@ describe("the palette, with reference collections answering later", () => {
     const chosen = selected();
     expect(chosen?.textContent).toContain("Bowline practice");
 
-    await server.send({ type: "start", collections: 2 }, collectionLine("Knots", "Portuguese bowline", "Running bowline"));
+    await server.send(
+      { type: "start", collections: 2, ranked: true },
+      collectionLine("Knots", ["Portuguese bowline", 0.7], ["Running bowline", 0.6]),
+    );
     expect(screen.getByText("In reference collections")).toBeInTheDocument();
-    // One line for each collection, its best match, after everything that was there.
-    expect(options()).toEqual([...before, expect.stringContaining("Portuguese bowline")]);
+    // After everything that was there, best first.
+    expect(options()).toEqual([...before, expect.stringContaining("Portuguese bowline"), expect.stringContaining("Running bowline")]);
     expect(options().at(-1)).toContain("Knots");
     expect(selected()).toBe(chosen);
     expect(screen.getByText("Still searching reference collections… 1 of 2 searched.")).toBeInTheDocument();
 
-    await server.send(collectionLine("Wikivoyage", "Bowline Bay"));
+    await server.send(collectionLine("Wikivoyage", ["Bowline", 0.9]));
     await server.end({ searched: 2 });
-    expect(options()).toEqual([...before, expect.stringContaining("Portuguese bowline"), expect.stringContaining("Bowline Bay")]);
+    expect(options()).toEqual([
+      ...before,
+      expect.stringContaining("Bowline"),
+      expect.stringContaining("Portuguese bowline"),
+      expect.stringContaining("Running bowline"),
+    ]);
     expect(selected()).toBe(chosen);
     expect(screen.queryByText(/Still searching/)).not.toBeInTheDocument();
     expect(screen.queryByRole("status", { name: "Searching" })).not.toBeInTheDocument();

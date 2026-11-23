@@ -49,7 +49,11 @@ export async function registerSearch(app: FastifyInstance, ctx: AppContext): Pro
    * waiting, and it stops asking collections that have not been asked yet.
    */
   app.get("/api/search/reference", async (request, reply) => {
-    const { q, exact: asTyped } = z.object({ q: z.string().max(500).default(""), exact }).parse(request.query);
+    const {
+      q,
+      exact: asTyped,
+      scope,
+    } = z.object({ q: z.string().max(500).default(""), exact, scope: z.enum(["routed", "all"]).default("routed") }).parse(request.query);
     const started = performance.now();
     const raw = reply.raw;
     const controller = new AbortController();
@@ -71,15 +75,18 @@ export async function registerSearch(app: FastifyInstance, ctx: AppContext): Pro
       const outcome = await ctx.services.search.searchReference({
         q,
         exact: asTyped,
+        scope,
         signal: controller.signal,
-        onStart: (collections) => send({ type: "start", collections }),
-        onPart: (part) => send({ type: "collection", ...part }),
+        onStart: (collections, more) => send({ type: "start", collections, more: more ?? 0, ranked: true }),
+        onWiden: (collections) => send({ type: "widen", collections }),
+        onPart: (part) => send({ type: "collection", ...part, done: part.done !== false }),
       });
       send({
         type: "end",
         searched: outcome.searched,
         missing: outcome.missing,
         message: outcome.message,
+        more: outcome.more ?? 0,
         tookMs: Math.round(performance.now() - started),
       });
     } catch (error) {

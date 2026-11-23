@@ -21,7 +21,7 @@ export const ownResult = (entityId: string, title: string, kind = "document"): S
   sources: ["keyword"],
 });
 
-export const referenceResult = (collection: string, title: string): SearchResult => ({
+export const referenceResult = (collection: string, title: string, score = 1): SearchResult => ({
   kind: "reference",
   entityId: `${collection}:${title}`,
   title,
@@ -30,17 +30,22 @@ export const referenceResult = (collection: string, title: string): SearchResult
   collection,
   url: `/library/read/${collection}/${title}`,
   tags: [],
-  score: 1,
+  score,
   passages: [{ chunkId: null, segments: [{ text: `about ${title}`, hit: false }], page: null, heading: null }],
   sources: ["reference"],
 });
 
-/** What reference collections found, as the line the server sends for one of them. */
-export const collectionLine = (title: string, ...articles: string[]): ReferenceSearchEvent => ({
+/** What reference collections found, as the line the server sends for one of them. An article may carry its score. */
+export const collectionLine = (
+  title: string,
+  ...articles: Array<string | [string, number]>
+): Extract<ReferenceSearchEvent, { type: "collection" }> => ({
   type: "collection",
   collectionId: title,
   title,
-  results: articles.map((article) => referenceResult(title, article)),
+  results: articles.map((article) =>
+    typeof article === "string" ? referenceResult(title, article) : referenceResult(title, article[0], article[1]),
+  ),
 });
 
 export const ownAnswer = (results: SearchResult[], over: Partial<SearchResponse> = {}): SearchResponse => ({
@@ -66,6 +71,8 @@ export const ownAnswer = (results: SearchResult[], over: Partial<SearchResponse>
 
 interface Open {
   q: string;
+  /** "all" when every collection was asked for. */
+  scope: string | null;
   signal: AbortSignal | undefined;
   controller: ReadableStreamDefaultController<Uint8Array>;
 }
@@ -119,7 +126,7 @@ export function serveSearch(own: (query: URLSearchParams) => SearchResponse): Se
         const signal = init?.signal ?? undefined;
         const body = new ReadableStream<Uint8Array>({
           start(controller) {
-            standIn.reference.push({ q: url.searchParams.get("q") ?? "", signal, controller });
+            standIn.reference.push({ q: url.searchParams.get("q") ?? "", scope: url.searchParams.get("scope"), signal, controller });
             signal?.addEventListener("abort", () => {
               try {
                 controller.error(new DOMException("The operation was aborted.", "AbortError"));
