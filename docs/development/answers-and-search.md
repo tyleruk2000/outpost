@@ -117,9 +117,12 @@ Keyword ranking (`modules/search/keyword.ts`, `score.ts`, rules in
    their best BM25 passage; the best `max(60, window + 5)` then on their next three too.
    `intent.ts` priors (≤ × 1.3; × 0.75 for another sense) reorder within each part of the
    list (on device / every word / prefix only). `snippet()`/`highlight()` run only for the
-   passages shown (`markPassages`), one `rowid =` lookup each: with `rowid IN (…)` FTS5
-   walks every match of the expression first, hundreds of ms for a prefix term. The
-   prefix form is used only when the ranking needed it (`prefixUsed`).
+   passages shown (`markPassages`), one `rowid = CAST(? AS INTEGER)` lookup each. With
+   `rowid IN (?, …)` or a plain `rowid = ?` the bound numbers did not narrow the FTS5 scan
+   at all: every match came back with its snippet made (250 ms for "water" in 57,000
+   passages) and the wanted ones were picked out in JS. Items that hold the last word only
+   as a beginning are marked with the all-words prefix expression; the rest, and the
+   relaxed pass, never use a prefix.
 4. Fewer than `FEW` (5) strict items: the any-word pass adds items with rarity-weighted
    coverage ≥ `RELAXED_COVERAGE` (0.5), after the strict ones. `everyWord` and
    `relaxed` tell the page what to say.
@@ -147,7 +150,7 @@ store matches only the last word as a prefix.
 `scripts/search-eval/speed.mjs build|run <folder>` makes a library of about 57,800
 passages from the system word list (Zipf frequencies, household words placed among them)
 and times the evaluation set's searches at the server. On an M2 Max laptop the own-results
-p95 went from 178 ms to 29 ms with these changes, and a flat vector query from 115 ms to 22 ms.
+p95 went from 178 ms to 31 ms with these changes, and a flat vector query from 115 ms to 22 ms.
 
 Other sources' results are scored by `rescore` from what they show (title, subtitle,
 snippet). Local sources (places, repeaters) go to `places`, not `results`, unless their

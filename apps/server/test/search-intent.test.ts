@@ -324,6 +324,30 @@ describe("a typing slip sent to the reference collections", () => {
   });
 });
 
+describe("snippets", () => {
+  it("marks the words in every result shown, among many passages holding them", async () => {
+    const test = await app();
+    for (let index = 0; index < 40; index += 1) {
+      test.ctx.services.search.upsert({
+        kind: "note",
+        entityId: `n${index}`,
+        title: `Note ${index}`,
+        url: `/notes/n${index}`,
+        sections: [{ text: index % 3 === 0 ? `Boil water ${index} for a minute.` : `Water ${index} in the tank.` }],
+      });
+    }
+    const body = await search(test, "boil water");
+    expect(body.results.length).toBeGreaterThan(10);
+    for (const result of body.results) {
+      expect(result.passages.length, result.title).toBeGreaterThan(0);
+      const marked = result.passages[0].segments.filter((segment: Body) => segment.hit).map((segment: Body) => segment.text.toLowerCase());
+      expect(marked, result.title).toContain("water");
+      // Each result's own passage, not another's.
+      expect(result.passages[0].segments.map((segment: Body) => segment.text).join("")).toContain(result.title.replace("Note ", ""));
+    }
+  });
+});
+
 describe("what is kept in memory", () => {
   it("knows the owner of every passage, those written before it started included", async () => {
     const test = await app();

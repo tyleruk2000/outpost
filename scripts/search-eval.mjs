@@ -22,8 +22,8 @@
  * Outpost's own results asked without them. Searches run one after another, as a person's do.
  */
 import { writeFileSync } from "node:fs";
-import { alternateQuery, expandQuery, parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
 import { adjusted, adjustFor, intentOf } from "../apps/server/src/modules/search/intent.ts";
+import { alternateQuery, expandQuery, parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
 import { inverseFrequency, reasonFor, scoreFields, scoringTerms } from "../apps/server/src/modules/search/score.ts";
 import { formatSummary, formatTable, gradeByPattern, loadQueries, percentile, resultText, summarise } from "./search-eval/metrics.mjs";
 import { formatReference, measureReference, readReference } from "./search-eval/reference-stream.mjs";

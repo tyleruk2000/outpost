@@ -242,8 +242,9 @@ export function rankKeyword(
   let relaxed = false;
   let added = 0;
   if (strict.length < FEW && parsed.required.length > 1) {
-    // The last word as a beginning only where it had to be one for the items holding every word.
-    const anyMatch = toFtsQuery(parsed, "any", undefined, begun.size > 0)!;
+    // Words as typed: any one of them matched as a beginning would read every passage of every word
+    // it begins ("sand*" with "water": tens of thousands), for items that hold too little anyway.
+    const anyMatch = toFtsQuery(parsed, "any", undefined, false)!;
     const held = new Set(strictAll.map((item) => item.entityRowId));
     const others = group(anyMatch + tagClause).filter((item) => !held.has(item.entityRowId));
     const kept = score(others.slice(0, RESCORE_POOL), false).filter((item) => item.parts.coverage >= RELAXED_COVERAGE);
@@ -266,17 +267,20 @@ export function markPassages(
 ): Map<number, { snippet: string; titleMarked: string }> {
   const marked = new Map<number, { snippet: string; titleMarked: string }>();
   if (chunkIds.length === 0) return marked;
-  // One passage at a time: the index goes straight to a passage asked for by `rowid =`, where
-  // `rowid IN (…)` has it walk every passage the words match first (hundreds of milliseconds for
-  // "water" on a large library, more for a word being typed, which matches as a beginning).
+  // One passage at a time, its number cast to an integer. Given `rowid IN (?, ?…)` or `rowid = ?`
+  // with the numbers bound as they come, the full-text index does not narrow its search to them:
+  // it answers with every passage the words match, each with its snippet made, and SQLite keeps
+  // them all (250 ms for "water" in a library of 57,000 passages; the snippets of the wrong
+  // passages were then simply not used). Cast, it goes straight to the passage.
   const one = sqlite.prepare(
     `SELECT rowid AS chunkId, snippet(chunks_fts, 2, '${HIT_OPEN}', '${HIT_CLOSE}', '…', 32) AS snippet,
             highlight(chunks_fts, 0, '${HIT_OPEN}', '${HIT_CLOSE}') AS titleMarked
-     FROM chunks_fts WHERE chunks_fts MATCH ? AND rowid = ?`,
+     FROM chunks_fts WHERE chunks_fts MATCH ? AND rowid = CAST(? AS INTEGER)`,
   );
   for (const chunkId of new Set(chunkIds)) {
-    const row = one.get(match, chunkId) as { chunkId: number; snippet: string; titleMarked: string } | undefined;
-    if (row) marked.set(row.chunkId, row);
+    for (const row of one.all(match, chunkId) as Array<{ chunkId: number; snippet: string; titleMarked: string }>) {
+      if (row.chunkId === chunkId) marked.set(chunkId, row);
+    }
   }
   return marked;
 }

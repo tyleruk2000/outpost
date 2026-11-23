@@ -805,11 +805,15 @@ export function createSearchService(ctx: AppContext): SearchService {
           .map(({ item }) => item);
     const page = ordered.slice(0, window);
     // Snippets only for what is shown: every word that matters is marked, whichever of them a passage holds.
-    const marked = markPassages(
-      sqlite,
-      toFtsQuery(parsed, "any", undefined, ranking.prefixUsed)!,
-      page.flatMap((item) => item.passages.slice(0, 3).map((passage) => passage.chunkId)),
-    );
+    // The words as typed for most; the few that hold the last word only as a beginning are marked with
+    // every word, so that the beginning is matched among passages holding the rest, not across the library.
+    const shownOf = (items: RankedItem[]) => items.flatMap((item) => item.passages.slice(0, 3).map((passage) => passage.chunkId));
+    const begun = page.filter((item) => item.prefixOnly);
+    const marked = markPassages(sqlite, toFtsQuery(parsed, "any", undefined, false)!, shownOf(page.filter((item) => !item.prefixOnly)));
+    if (begun.length > 0) {
+      for (const [chunkId, mark] of markPassages(sqlite, toFtsQuery(parsed, "all", undefined, true)!, shownOf(begun)))
+        marked.set(chunkId, mark);
+    }
     const results = page.flatMap((item): SearchResult[] => {
       const entity = entities.get(item.entityRowId);
       if (!entity) return [];
