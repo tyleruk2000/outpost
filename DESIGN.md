@@ -170,6 +170,9 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
   upkeep is always in view. A screen reached from inside another is listed indented
   under it, by name only, behind a chevron that shows or hides the group. Each screen is
   named by its own title.
+- Tablet (768 to 1023 px wide): the spine is a rail of icons, and the whole of it opens
+  over the page, which dims behind it, when its button is pressed; it closes on the next
+  screen or with Escape. Beside the page at that width it left a map 160 px wide.
 - Mobile: a spine-coloured top bar and a bottom bar with Home, Library, Maps, Notes
   and More. The More sheet is the sidebar's two parts, each heading's screens folded
   under it until asked for.
@@ -179,10 +182,18 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 
 ## Motion
 
-- 120–200ms, ease-out, on state changes only: opening, selecting, confirming.
+- 120–200ms, ease-out, on state changes only: opening, selecting, confirming. Three
+  durations and one easing, as tokens: `--duration-fast` (120 ms, a colour answering the
+  pointer), `--duration` (140 ms, the default of every transition, anything opening in
+  place), `--duration-slow` (200 ms, something that travels: a sheet, the spine folding).
+- A press answers at once: a button darkens and gives a little (98%) with no transition.
+- What stands for work under way (a skeleton, a spinner given `delay`) is seen only after
+  `--reveal-delay` (300 ms), so that a quick answer shows no flash.
 - Progress bars move with real progress. No page-load choreography.
 - Under `prefers-reduced-motion`, transitions are instant.
-- A loading skeleton shimmers five times (eight seconds) and then holds still.
+- A loading skeleton holds its room at once, appears after 300 ms, shimmers five times
+  (eight seconds) and then holds still.
+- On a phone a dialog is a sheet that rises from the foot of the screen, edge to edge.
 
 ## Writing
 

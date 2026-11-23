@@ -119,10 +119,15 @@
   --text-display--line-height: 2.5rem;
 
   --ease-out: var(--ease-out);
+  /* Every `transition-*` utility without a duration of its own takes the app's (tokens.css, Motion). */
+  --default-transition-duration: var(--duration);
+  --default-transition-timing-function: var(--ease-out);
 
   --animate-enter: enter var(--duration) var(--ease-out);
   --animate-fade: fade var(--duration) var(--ease-out);
-  --animate-sheet: sheet 200ms var(--ease-out);
+  --animate-sheet: sheet var(--duration-slow) var(--ease-out);
+  /* Shows something only once the work it stands for has taken longer than --reveal-delay (a skeleton, a spinner). */
+  --animate-reveal: fade var(--duration) var(--ease-out) var(--reveal-delay) both;
 }
 
 @keyframes enter {
@@ -308,8 +313,12 @@
   border-radius: var(--radius-control);
   background: linear-gradient(90deg, var(--surface) 0%, var(--surface-strong) 50%, var(--surface) 100%);
   background-size: 200% 100%;
-  /* Five passes, then still: a screen whose answer is slow does not keep the processor busy drawing it. */
-  animation: shimmer 1.6s linear 5;
+  /* It holds its room at once, so nothing moves when the content comes, but is seen only after --reveal-delay:
+     an answer that comes sooner replaces nothing visible, with no flash of grey. Then five passes of the
+     shimmer, then still: a screen whose answer is slow does not keep the processor busy drawing it. */
+  animation:
+    fade var(--duration) var(--ease-out) var(--reveal-delay) both,
+    shimmer 1.6s linear var(--reveal-delay) 5;
 }
 
 /* Thin scrollbars that follow the theme, without replacing native behaviour. */
@@ -324,5 +333,57 @@
   }
   100% {
     left: 100%;
+  }
+}
+
+/* Tables (components/ui/table.tsx). A sticky head stays in view, under the phone's top bar where there is one. */
+.outpost-table[data-sticky] thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--page);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+@media (width < 48rem) {
+  .outpost-table[data-sticky] thead th {
+    top: 3.25rem;
+  }
+}
+/* A stacked table on a phone: each row a block, each cell a line with its column's name before it. */
+@media (width < 40rem) {
+  .outpost-table[data-stack],
+  .outpost-table[data-stack] :is(tbody, tr, td) {
+    display: block;
+  }
+  .outpost-table[data-stack] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .outpost-table[data-stack] tr {
+    padding-block: 0.5rem;
+  }
+  .outpost-table[data-stack] td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    text-align: right;
+  }
+  .outpost-table[data-stack] td:first-child {
+    font-weight: 600;
+    text-align: left;
+  }
+  .outpost-table[data-stack] td[data-label]::before {
+    content: attr(data-label);
+    color: var(--ink-muted);
+    font-weight: 400;
+    text-align: left;
+  }
+  .outpost-table[data-stack] td:first-child::before {
+    content: none;
   }
 }

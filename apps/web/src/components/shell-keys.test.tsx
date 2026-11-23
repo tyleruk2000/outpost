@@ -49,7 +49,7 @@ describe("the quick search", () => {
   it("finds screens by the words a person would type for them", async () => {
     const user = userEvent.setup();
     palette();
-    const field = screen.getByPlaceholderText(/Search your library/);
+    const field = screen.getByPlaceholderText(/Search, or go to a screen/);
     const expected: Array<[string, string]> = [
       ["backup", "Settings: Backup"],
       ["free space", "Storage: Manage and clean up"],

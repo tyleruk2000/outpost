@@ -39,7 +39,7 @@ describe("the Heights choice", () => {
         </ThemeProvider>
       </QueryClientProvider>,
     );
-    const box = screen.getByPlaceholderText(/Search your library/);
+    const box = screen.getByPlaceholderText(/Search, or go to a screen/);
     for (const word of ["feet", "metres", "meters", "height", "elevation", "units"]) {
       await userEvent.clear(box);
       await userEvent.type(box, word);

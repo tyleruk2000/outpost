@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
@@ -6,21 +6,12 @@ import { Toaster } from "sonner";
 import { App } from "./app";
 import { TooltipProvider } from "./components/ui/misc";
 import { registerServiceWorker } from "./features/kept/register";
-import { ApiError } from "./lib/api";
 import { ErrorAnnouncer } from "./lib/notify";
+import { createQueryClient } from "./lib/query-client";
 import { ThemeProvider, useTheme } from "./lib/theme";
 import "./styles/base.css";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
-      // Retrying helps when the server is restarting; it does not help a 4xx.
-      retry: (count, error) => count < 2 && (!(error instanceof ApiError) || error.isUnreachable || error.status >= 500),
-    },
-  },
-});
+const queryClient = createQueryClient();
 
 /**
  * Toasts: above the phone's bottom bar (taller by the home indicator on some phones), six

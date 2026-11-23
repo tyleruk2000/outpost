@@ -370,4 +370,5 @@ Every page is also inside Outpost, under **Help**. Besides the guides linked abo
 [What has not been tried](docs/testing-status.md), and for developers
 [Architecture](docs/architecture.md), [API](docs/api.md),
 [Server modules](docs/development/server-modules.md),
-[Web screens](docs/development/web-screens.md) and [Releases](docs/development/releases.md).
+[Web screens](docs/development/web-screens.md), [Design quality](docs/development/design-quality.md)
+and [Releases](docs/development/releases.md).

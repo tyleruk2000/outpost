@@ -14,7 +14,18 @@ import {
   type NoteTreeResponse,
 } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, BookOpen, Compass, FileText, Map as MapIcon, NotebookText, Search, Upload } from "lucide-react";
+import {
+  ArrowRight,
+  BookMarked,
+  BookOpen,
+  Compass,
+  FileText,
+  Map as MapIcon,
+  NotebookText,
+  Search,
+  ShieldCheck,
+  Upload,
+} from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Contour } from "@/components/contour";
@@ -86,6 +97,12 @@ const firstSteps = [
     icon: NotebookText,
     title: "Write a page",
     text: "Plans, kit lists, things learned. Pages link to each other and to your documents.",
+  },
+  {
+    to: "/prepare",
+    icon: ShieldCheck,
+    title: "Get your household ready",
+    text: "Supplies and how long they last, emergency plans, and a household book to print.",
   },
 ];
 
@@ -163,7 +180,15 @@ export default function HomePage() {
         />
         <div className="mx-auto w-full max-w-[70rem] px-5 pt-10 pb-9 md:px-10 md:pt-14 md:pb-11">
           <h1 className="font-title text-display text-ink">Your library</h1>
-          <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
+          {/* On the first visit, before anything is kept: what Outpost is for, in a sentence. */}
+          {empty ? (
+            <p className="mt-3 max-w-[56ch] text-lead text-ink">
+              Outpost keeps what you need to know, so that it is still here when the network is not.
+            </p>
+          ) : null}
+          <div className={empty ? "mt-1 max-w-[56ch] text-body text-ink-muted" : "mt-3 max-w-[56ch] text-lead text-ink-muted"}>
+            {summary ?? <Skeleton className="h-6 w-96 max-w-full" />}
+          </div>
           <BoardHomeLine className="mt-2" />
           <HouseholdHomeLine className="mt-2" />
           <PreparedLines className="mt-2" />
@@ -250,6 +275,16 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ol>
+                <p className="mt-4 flex items-center gap-2.5 text-small text-ink-muted">
+                  <BookMarked aria-hidden className="size-4 shrink-0" strokeWidth={1.6} />
+                  <span>
+                    New here?{" "}
+                    <Link to="/help" className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
+                      Help
+                    </Link>{" "}
+                    explains each part of Outpost, and how to set it up.
+                  </span>
+                </p>
               </Block>
             ) : (
               <>

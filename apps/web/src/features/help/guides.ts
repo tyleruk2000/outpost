@@ -523,6 +523,12 @@ export const GUIDES: Guide[] = [
   { slug: "server-modules", file: "development/server-modules.md", group: "developers", about: "Writing a module of the server." },
   { slug: "web-screens", file: "development/web-screens.md", group: "developers", about: "Building a screen of the web app." },
   {
+    slug: "design-quality",
+    file: "development/design-quality.md",
+    group: "developers",
+    about: "The checklist a screen is held to, the shared part for each need, and the audit of the app's frame.",
+  },
+  {
     slug: "households-development",
     file: "development/households.md",
     group: "developers",

@@ -32,7 +32,7 @@ describe("the palette, with reference collections answering later", () => {
     const user = userEvent.setup();
     const server = serveSearch(() => ownAnswer(OWN));
     show();
-    await user.type(screen.getByPlaceholderText(/Search your library/), "bowline");
+    await user.type(screen.getByPlaceholderText(/Search, or go to a screen/), "bowline");
 
     expect(await screen.findByRole("option", { name: /Bowline practice/ })).toBeInTheDocument();
     expect(server.asked.at(-1)!.get("reference")).toBe("later");
@@ -45,7 +45,7 @@ describe("the palette, with reference collections answering later", () => {
     const user = userEvent.setup();
     const server = serveSearch(() => ownAnswer(OWN));
     show();
-    await user.type(screen.getByPlaceholderText(/Search your library/), "bowline");
+    await user.type(screen.getByPlaceholderText(/Search, or go to a screen/), "bowline");
     await screen.findByRole("option", { name: /Bowline practice/ });
     await waitFor(() => expect(server.reference.at(-1)?.q).toBe("bowline"));
     await user.keyboard("{ArrowDown}");
@@ -81,7 +81,7 @@ describe("the palette, with reference collections answering later", () => {
     const user = userEvent.setup();
     const server = serveSearch(() => ownAnswer([]));
     show();
-    await user.type(screen.getByPlaceholderText(/Search your library/), "sheepshank");
+    await user.type(screen.getByPlaceholderText(/Search, or go to a screen/), "sheepshank");
     await waitFor(() => expect(server.reference.at(-1)?.q).toBe("sheepshank"));
     expect(screen.getByText("Still searching reference collections…")).toBeInTheDocument();
     expect(screen.queryByText(/Nothing in your library matches/)).not.toBeInTheDocument();
@@ -95,7 +95,7 @@ describe("the palette, with reference collections answering later", () => {
     const user = userEvent.setup();
     const server = serveSearch(() => ownAnswer(OWN));
     show();
-    const input = screen.getByPlaceholderText(/Search your library/);
+    const input = screen.getByPlaceholderText(/Search, or go to a screen/);
     await user.type(input, "bow");
     await waitFor(() => expect(server.reference.at(-1)?.q).toBe("bow"));
     const first = server.reference.at(-1)!;
@@ -130,7 +130,7 @@ describe("the palette's search field", () => {
   it("lights the row around it with the full focus ring, so more than the caret shows the focus", () => {
     serveSearch(() => ownAnswer(OWN));
     show();
-    const row = screen.getByPlaceholderText(/Search your library/).parentElement!;
+    const row = screen.getByPlaceholderText(/Search, or go to a screen/).parentElement!;
     expect(row.className).toContain("has-[input:focus-visible]:ring-2");
     expect(row.className).toContain("has-[input:focus-visible]:ring-focus");
   });
