@@ -33,11 +33,13 @@ import {
   createMapData,
   createMapDataAdd,
   createMapDataUpdates,
+  createMapDataWhere,
   mapDataAddSchema,
   mapDataCheckSchema,
   mapDataUpdateSchema,
+  mapDataWhereSchema,
 } from "./map-data.ts";
-import { registerOsNames } from "./os-names/index.ts";
+import { type OsNamesService, registerOsNames } from "./os-names/index.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
 import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
@@ -199,8 +201,12 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
 
   // ── Map data: everything kept for the map, in one answer, and the combined add ──
   const mapData = createMapData(ctx, client);
-  const mapDataAdd = createMapDataAdd(ctx);
+  // Place names for Great Britain (OS Open Names) are registered at the end; the add uses them once they are.
+  let osNames: OsNamesService | undefined;
+  const mapDataAdd = createMapDataAdd(ctx, () => osNames);
+  const mapDataWhere = createMapDataWhere(ctx, client);
   app.get("/api/maps/data", async (): Promise<MapDataResponse> => mapData());
+  app.get("/api/maps/data/where", async (request) => mapDataWhere(mapDataWhereSchema.parse(request.query)));
   app.post("/api/maps/data/add", async (request) => mapDataAdd(mapDataAddSchema.parse(request.body)));
   // Updating: asking the source first is a press of its own; so is the download that follows.
   const mapDataUpdates = createMapDataUpdates(ctx, client);
@@ -519,7 +525,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   // Place names for Great Britain from Ordnance Survey (os-names/).
-  registerOsNames(app, ctx, client);
+  osNames = registerOsNames(app, ctx, client);
 
   // ── Finding a known route in a route source ──
   registerRouteFinder(app, ctx, { client, annotations, elevation });

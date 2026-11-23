@@ -21,7 +21,10 @@ import {
   type MapDataState,
   type MapDataUpdateResponse,
   type MapDataUpdateWay,
+  type MapDataWhereResponse,
+  type MapDataWhereResult,
   OS_NAMES_DATASET,
+  type PlaceDto,
 } from "@outpost/shared";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -34,9 +37,21 @@ import { resolveGeofabrikFile } from "../layers/adapters/geofabrik-file.ts";
 import { createRegionIndex, GEOFABRIK_BASE } from "../layers/adapters/geofabrik-regions.ts";
 import { EXTRACT_LAYERS } from "../layers/adapters/osm-tags.ts";
 import { COUNTRIES, countryOf } from "../layers/countries.ts";
+import { foldName } from "../layers/store.ts";
+import { countryLookup } from "../roads/plan.ts";
 import { DEFAULT_PLACE_LAYERS, isCountryFileDownload } from "./country-files.ts";
+import { placesOf } from "./map-places.ts";
+import type { OsNamesService } from "./os-names/index.ts";
 import { bboxSchema, dayOfBuild } from "./regions.ts";
 import { BUILD_BASE_URL, BUILDS_URL, hostOf } from "./source.ts";
+
+/**
+ * Sets made once and never revised: Natural Earth's outlines (2022), WorldPop's census grids and
+ * the historical records behind the nuclear layers. They are never "over a year old".
+ */
+export const AGELESS_PROVIDERS = new Set(["natural-earth", "worldpop", "fas", "sipri", "nti", "iaea", "nsarchive", "napb-90", "tna", "ensi"]);
+/** Sets of the whole world, listed under World basics whatever country they were clipped to. */
+export const WORLD_PROVIDERS = new Set(["natural-earth", "ourairports", "worldpop"]);
 
 export const mapDataCheckSchema = z.object({ collectionId: z.string().min(1).max(100) }).strict();
 export const mapDataUpdateSchema = mapDataCheckSchema;
@@ -327,6 +342,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
         count: pack.records,
         layers: pack.layers,
         packId: pack.id,
+        ageless: AGELESS_PROVIDERS.has(pack.provider),
         dataDate: pack.publishedAt?.slice(0, 10) ?? dayOf(pack.retrievedAt),
         regionId: pack.request?.scope.regions?.[0] ?? null,
         update:
@@ -336,7 +352,8 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
               ? { how: "elsewhere" as const, hosts: [], note: "Checked for an update from its own source, in its menu." }
               : null,
       };
-      if (pack.countries.length === 1) put(pack.countries[0], item);
+      // Borders, airports and other world sets are World basics, even clipped to one country.
+      if (pack.countries.length === 1 && !WORLD_PROVIDERS.has(pack.provider)) put(pack.countries[0], item);
       else put(null, item, true);
     }
     for (const row of downloads.unfinished().filter((d) => d.kind === "dataset" && (d.meta as { reference?: unknown }).reference)) {
@@ -477,12 +494,31 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       onThisPhone: null,
       countryFileChoice: { keep: choice === "ask" ? null : choice === "keep", locationId: lastKept?.locationId ?? null },
       regionsListed: regions !== null,
+      places: placesOf({ countries, world, other }, { streets: streetsInstalled }),
+      streetsInstalled,
     };
   };
 }
 
 /** The combined add: the country file's reads in one download (or none, where it is kept), and the map, terrain and names beside it. */
-export function createMapDataAdd(ctx: AppContext) {
+export function createMapDataAdd(ctx: AppContext, osNames: () => OsNamesService | undefined = () => undefined) {
+  /**
+   * Place names for Great Britain come from Ordnance Survey (every road, village and postcode)
+   * rather than GeoNames, with nothing more to choose: OS is asked for its current edition on the
+   * same press. Held already: nothing. OS out of reach: GeoNames' list for the country instead.
+   */
+  async function osNamesFor(country: string, locationId: string | undefined): Promise<string | "held" | null> {
+    const os = osNames();
+    if (country !== "GB" || !os) return null;
+    try {
+      await os.check();
+      return (await os.start({ roads: true, ...(locationId ? { locationId } : {}) })).id;
+    } catch (error) {
+      if (error instanceof AppError && error.code === "conflict") return "held";
+      return null;
+    }
+  }
+
   return async function add(body: MapDataAddRequest): Promise<MapDataAddResponse> {
     const downloadIds: string[] = [];
     const taskIds: string[] = [];
@@ -517,8 +553,15 @@ export function createMapDataAdd(ctx: AppContext) {
       downloadIds.push(...started.map((row) => row.id));
     }
     if (kinds.has("names") && body.country) {
-      const row = await ctx.services.maps.places.startDownload({ dataset: "country", country: body.country } as never);
-      downloadIds.push(row.id);
+      const os = await osNamesFor(body.country, body.locationId);
+      if (os === null) {
+        const row = await ctx.services.maps.places.startDownload({
+          dataset: "country",
+          country: body.country,
+          ...(body.locationId ? { locationId: body.locationId } : {}),
+        } as never);
+        downloadIds.push(row.id);
+      } else if (os !== "held") downloadIds.push(os);
     }
     return { countryFile, downloadIds, taskIds };
   };
@@ -607,5 +650,133 @@ export function createMapDataUpdates(ctx: AppContext, client: HttpClient) {
       }
       throw badRequest("This kind of map data is not updated from here.");
     },
+  };
+}
+
+export const mapDataWhereSchema = z
+  .object({
+    q: z.string().trim().max(120).optional(),
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lon: z.coerce.number().min(-180).max(180).optional(),
+    countries: z
+      .string()
+      .regex(/^[A-Za-z]{2}(,[A-Za-z]{2}){0,19}$/, "Give countries as two letters each, such as FR,CH.")
+      .optional(),
+  })
+  .strict();
+
+const MAX_WHERE = 12;
+
+/**
+ * "Where?" for Add a place, answered from what Outpost holds and nothing else: a country by its
+ * name, a part of one from Geofabrik's list (once read), a town from the place names held, which
+ * is said with its country and the part it is in ("Chamonix is in France: Rhône-Alpes"), and the
+ * country of a point tapped on the small world map.
+ */
+export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
+  return function where(query: z.infer<typeof mapDataWhereSchema>): MapDataWhereResponse {
+    const listed = createRegionIndex(ctx, client).kept()?.regions ?? null;
+    const wholeOf = (code: string) => listed?.find((region) => region.depth === 0 && region.country === code) ?? null;
+    const results: MapDataWhereResult[] = [];
+    const push = (result: MapDataWhereResult) => {
+      const same = results.some(
+        (each) => each.type === result.type && each.country === result.country && each.name === result.name,
+      );
+      if (!same && results.length < MAX_WHERE) results.push(result);
+    };
+    const countryResult = (code: string, part: MapDataWhereResult["part"] = null): MapDataWhereResult | null => {
+      const country = countryOf(code);
+      if (!country) return null;
+      return {
+        type: "country",
+        name: country.name,
+        country: country.code,
+        countryName: country.name,
+        regionId: wholeOf(country.code)?.id ?? null,
+        part,
+        bbox: country.bbox,
+        lat: null,
+        lon: null,
+      };
+    };
+    /** The part of its country a point is in, by the regions layer where it is held. */
+    const partAt = (lat: number, lon: number, code: string): MapDataWhereResult["part"] => {
+      if (!listed) return null;
+      const suggested = ctx.services.layers?.regions({ lat, lon }).suggested ?? [];
+      const whole = wholeOf(code)?.id;
+      for (const entry of suggested) {
+        const region = listed.find((each) => each.id === entry.id);
+        if (region && region.id !== whole && region.country === code) return { regionId: region.id, name: region.name };
+      }
+      return null;
+    };
+
+    for (const code of (query.countries ?? "").split(",").filter(Boolean)) {
+      const found = countryResult(code.toUpperCase());
+      if (found) push(found);
+    }
+
+    if (query.lat !== undefined && query.lon !== undefined) {
+      const code = countryLookup(query.lat, query.lon, null);
+      const found = code ? countryResult(code, partAt(query.lat, query.lon, code)) : null;
+      if (found) push(found);
+    }
+
+    const typed = foldName(query.q ?? "");
+    if (typed.length > 0) {
+      const rank = (name: string) => (foldName(name).startsWith(typed) ? 0 : 1);
+      const countries = COUNTRIES.filter((country) => foldName(country.name).includes(typed)).sort(
+        (a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name, "en"),
+      );
+      for (const country of countries.slice(0, 6)) {
+        const found = countryResult(country.code);
+        if (found) push(found);
+      }
+      if (listed) {
+        const parts = listed
+          .filter((region) => region.depth > 0 && foldName(region.name).includes(typed))
+          .sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name, "en"));
+        for (const region of parts.slice(0, 6)) {
+          const country = countryOf(region.country ?? "");
+          if (!country) continue;
+          push({
+            type: "part",
+            name: region.name,
+            country: country.code,
+            countryName: country.name,
+            regionId: wholeOf(country.code)?.id ?? null,
+            part: { regionId: region.id, name: region.name },
+            bbox: country.bbox,
+            lat: null,
+            lon: null,
+          });
+        }
+      }
+      if (typed.length >= 3) {
+        let towns: PlaceDto[] = [];
+        try {
+          towns = ctx.services.maps.places.search(query.q ?? "", { limit: 8 }).places;
+        } catch {
+          towns = [];
+        }
+        for (const town of towns) {
+          const code = (town.country ?? countryLookup(town.lat, town.lon, null))?.toUpperCase();
+          const country = code ? countryOf(code) : undefined;
+          if (!country) continue;
+          push({
+            type: "town",
+            name: town.name,
+            country: country.code,
+            countryName: country.name,
+            regionId: wholeOf(country.code)?.id ?? null,
+            part: partAt(town.lat, town.lon, country.code),
+            bbox: country.bbox,
+            lat: town.lat,
+            lon: town.lon,
+          });
+        }
+      }
+    }
+    return { results, regionsListed: listed !== null };
   };
 }
