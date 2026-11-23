@@ -141,7 +141,7 @@ export function useWalkReach({
                 <button
                   type="button"
                   onClick={onOpenOffline}
-                  className="font-medium text-primary underline underline-offset-2 hover:no-underline max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                  className="font-medium text-primary underline underline-offset-2 hover:no-underline max-md:inline-flex md:pointer-coarse:inline-flex max-md:min-h-11 md:pointer-coarse:min-h-11 max-md:items-center md:pointer-coarse:items-center"
                 >
                   Get terrain in Offline maps
                 </button>
@@ -176,7 +176,7 @@ export function useWalkReach({
           onClick={() => setDetails((open) => !open)}
           className="flex min-h-11 items-center gap-2 text-left text-small font-medium text-ink hover:text-primary"
         >
-          <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform duration-150", details && "rotate-90")} />
+          <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform", details && "rotate-90")} />
           Pace and what this is
         </button>
         {details ? (

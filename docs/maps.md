@@ -100,7 +100,7 @@ downloaded adds no detail.
 | Road map, UK atlas colours | Motorways blue, primary routes green, A roads red, B roads orange. |
 | Walking | Paths and tracks stronger; switches on hill shading and contours. |
 | High contrast | For bright sun. |
-| Night (red) | Reds only, to keep your eyes for the dark. Satellite imagery is shown grey and dim, and an estimated range or a walk's reach in reds of their own. |
+| Night (red) | Reds only, to keep your eyes for the dark. The whole screen goes dark and red with it: the panel, the search box, the sidebar and the menus. Satellite imagery is shown grey and dim, and an estimated range or a walk's reach in reds of their own. |
 | Low ink | For printing. |
 
 **Road numbers** writes M6, A591 and the like on main roads from about zoom 7. **Magnetic

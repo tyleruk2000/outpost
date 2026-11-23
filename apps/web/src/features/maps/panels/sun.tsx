@@ -317,15 +317,12 @@ export function SunSection({
         aria-expanded={open}
         aria-controls={open ? bodyId : undefined}
         onClick={toggle}
-        className="flex min-h-9 w-full items-center gap-3 rounded-control text-left max-md:min-h-11"
+        className="flex min-h-9 w-full items-center gap-3 rounded-control text-left max-md:min-h-11 md:pointer-coarse:min-h-11"
       >
         <span className="text-small font-medium text-ink">Sun</span>
         {/* At reading size and in ink: this line is the answer for most people. Two lines on a narrow phone rather than a sunset cut off. */}
         <span className="tabular min-w-0 flex-1 text-right text-body font-medium text-balance text-ink">{open ? "" : sun.summary}</span>
-        <ChevronDown
-          aria-hidden
-          className={cn("size-4 shrink-0 text-ink-muted transition-transform duration-150 ease-out", open && "rotate-180")}
-        />
+        <ChevronDown aria-hidden className={cn("size-4 shrink-0 text-ink-muted transition-transform", open && "rotate-180")} />
       </button>
       {open ? <SunBody sun={sun} id={bodyId} place={{ name }} className={cn("pt-1", contained && CONTAINED)} /> : null}
     </section>

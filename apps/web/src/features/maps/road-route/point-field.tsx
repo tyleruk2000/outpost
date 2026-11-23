@@ -19,7 +19,7 @@ import type { RoutePointChoice } from "./words";
 const MAX_LISTED = 8;
 
 const row =
-  "flex w-full items-start gap-2.5 px-3 py-2 text-left text-small hover:bg-surface-strong focus-visible:-outline-offset-2 max-md:min-h-11";
+  "flex w-full items-start gap-2.5 px-3 py-2 text-left text-small hover:bg-surface-strong focus-visible:-outline-offset-2 max-md:min-h-11 md:pointer-coarse:min-h-11";
 
 /** "Point at 51.29600, -0.33000": the name of a point that has none of its own. */
 export const pointName = (position: LatLon) => `Point at ${formatDecimal(position.lat, position.lon, 4)}`;
@@ -102,7 +102,7 @@ export function PointField({
             size="icon-sm"
             aria-label={onRemove ? `Remove ${label.toLowerCase()}` : `Change ${label.toLowerCase()}`}
             onClick={() => (onRemove ? onRemove() : onChange(null))}
-            className="max-md:size-11"
+            className="max-md:size-11 md:pointer-coarse:size-11"
           >
             <X />
           </Button>
@@ -150,7 +150,13 @@ export function PointField({
           <Crosshair /> <span className="max-md:sr-only">Map centre</span>
         </Button>
         {onRemove ? (
-          <Button variant="ghost" size="icon" aria-label={`Remove ${label.toLowerCase()}`} onClick={onRemove} className="max-md:size-11">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Remove ${label.toLowerCase()}`}
+            onClick={onRemove}
+            className="max-md:size-11 md:pointer-coarse:size-11"
+          >
             <X />
           </Button>
         ) : null}

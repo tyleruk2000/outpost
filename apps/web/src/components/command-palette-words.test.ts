@@ -18,7 +18,10 @@ const lands: Array<[string, string | null]> = [
   ["band plan", "Radio: Licences and band plans"],
   ["first aid", null],
   ["dark mode", "Settings: Appearance"],
-  ["print", "Maps"],
+  ["print", "Maps: Print"],
+  ["directions", "Maps: Road route"],
+  ["driving directions", "Maps: Road route"],
+  ["gpx", "Maps: Routes"],
   ["sunrise", "Tools: Outdoors"],
   ["food", "Preparedness: Supplies"],
   ["password", "Tools: QR codes"],
@@ -160,6 +163,9 @@ describe("the quick search's places, for the words people use", () => {
 
   it("opens a tab of Maps by its words, at an address the Maps screen reads", () => {
     expect(findPlaces("supermarket")[0]?.to).toBe("/maps?tab=layers");
+    // Road route and printing open the tool itself, not only its tab.
+    expect(findPlaces("directions")[0]?.to).toBe("/maps?tab=routes&road=1");
+    expect(findPlaces("print")[0]?.to).toBe("/maps?print=1");
     // "maps" alone is the Maps screen, not each of its tabs as well.
     expect(findPlaces("maps").map(placeName)).not.toContain("Maps: Layers");
   });

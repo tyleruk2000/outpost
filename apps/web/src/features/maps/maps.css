@@ -161,8 +161,10 @@
  * The 44 is in pixels, not rem, here and on the controls that hold no words (the sheet's handle, the icons of
  * the tools): a finger is the same size whatever size the text is, and on a small phone with large text the
  * room those would take growing with the text is room the map does not have.
+ *
+ * A tablet is pressed with a finger too, at any width: the same rule holds wherever the pointer is coarse.
  */
-@media (max-width: 47.99rem) {
+@media (max-width: 47.99rem), (pointer: coarse) {
   .outpost-touch
     :is(button, a[role="button"], [role="tab"], [role="radio"], [role="combobox"]):not(
       [role="checkbox"],
@@ -303,7 +305,7 @@
   border-radius: 0;
 }
 .outpost-furniture-dock {
-  animation: outpost-dock-in 180ms var(--ease-out);
+  animation: outpost-dock-in var(--duration-slow) var(--ease-out);
 }
 @keyframes outpost-dock-in {
   from {
@@ -329,6 +331,70 @@
   --map-range: var(--map-range-night);
   --map-range-typical: var(--map-range-typical-night);
   --map-walk: var(--map-walk-night);
+}
+
+/*
+ * The night style is for eyes used to the dark, and a white panel, search box and sidebar beside a dim red map undid
+ * it at the first glance. While the Maps screen shows it, everything on the screen is dark and red in either theme:
+ * the panel, the controls over the map, the sidebar or the phone's bars, and what opens from them (menus, dialogs,
+ * messages, which are put at the end of the page). Set on the body, not the root: the map reads its own colours from
+ * the root, and the night map is drawn from those.
+ *
+ * Every text colour is at least 4.5:1 on every surface and border-strong at least 3:1 (worked out from the colours,
+ * 23 November 2026: ink 5.5 to 6.1, muted 4.8 to 5.3, faint 4.7 to 5.2, primary 4.8 to 5.1, border-strong 3.3 to 3.5;
+ * the spine's ink 5.2 to 6.3, its muted ink 4.9 to 5.2). Success, warning and danger are reds and oranges here: the
+ * state is said in words beside them, as it always is.
+ */
+body:has(.outpost-fill[data-map-style="night"]) {
+  color-scheme: dark;
+
+  --page: oklch(0.16 0.035 25);
+  --surface: oklch(0.185 0.04 25);
+  --surface-strong: oklch(0.22 0.05 25);
+  --raised: oklch(0.2 0.045 25);
+  --border: oklch(0.27 0.06 25);
+  --border-strong: oklch(0.53 0.13 27);
+
+  --ink: oklch(0.67 0.165 30);
+  --ink-muted: oklch(0.635 0.155 29);
+  --ink-faint: oklch(0.63 0.15 29);
+
+  --spine: oklch(0.13 0.03 25);
+  --spine-raised: oklch(0.18 0.045 25);
+  --spine-active: oklch(0.24 0.065 26);
+  --spine-ink: oklch(0.67 0.165 30);
+  --spine-ink-muted: oklch(0.62 0.15 29);
+  --spine-border: oklch(0.22 0.05 25);
+
+  --primary: oklch(0.63 0.19 29);
+  --primary-hover: oklch(0.67 0.19 30);
+  --primary-ink: oklch(0.13 0.03 25);
+  --primary-soft: oklch(0.27 0.07 27);
+  --primary-soft-ink: oklch(0.69 0.16 30);
+  --focus: oklch(0.66 0.2 30);
+
+  --lamp: oklch(0.66 0.17 40);
+  --lamp-ink: oklch(0.69 0.16 40);
+  --lamp-soft: oklch(0.25 0.06 35);
+  --success: oklch(0.66 0.15 42);
+  --success-soft: oklch(0.25 0.06 35);
+  --warning: oklch(0.68 0.16 45);
+  --warning-soft: oklch(0.25 0.06 35);
+  --danger: oklch(0.63 0.2 27);
+  --danger-hover: oklch(0.67 0.2 28);
+  --danger-soft: oklch(0.27 0.07 27);
+  --mark: oklch(0.32 0.09 30);
+
+  --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -6px oklch(0 0 0 / 0.5);
+  --shadow-dialog: 0 2px 4px oklch(0 0 0 / 0.3), 0 24px 56px -12px oklch(0 0 0 / 0.6);
+  --overlay: oklch(0.05 0.02 25 / 0.6);
+
+  background: var(--page);
+  color: var(--ink);
+}
+/* A danger button's words are white on the day's red; on the night's lighter red they are the dark page, as in the dark theme. */
+body:has(.outpost-fill[data-map-style="night"]) .bg-danger {
+  color: var(--page);
 }
 
 /*

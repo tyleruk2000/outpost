@@ -523,7 +523,7 @@ export function RoutesList({
         <button
           type="button"
           onClick={onFind}
-          className="flex h-9 w-full items-center gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink-muted transition-colors hover:border-ink-faint hover:text-ink max-md:h-11"
+          className="flex h-9 w-full items-center gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink-muted transition-colors hover:border-ink-faint hover:text-ink max-md:h-11 md:pointer-coarse:h-11"
         >
           <Search aria-hidden className="size-4 shrink-0" />
           Find a route by name or in this view
@@ -548,7 +548,7 @@ export function RoutesList({
               <button
                 type="button"
                 onClick={() => onOpen(track)}
-                className="flex min-w-0 flex-1 items-start gap-3 py-2.5 pr-4 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3"
+                className="flex min-w-0 flex-1 items-start gap-3 py-2.5 pr-4 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3 md:pointer-coarse:py-3"
               >
                 <TrackSwatch track={track} />
                 <span className="min-w-0">

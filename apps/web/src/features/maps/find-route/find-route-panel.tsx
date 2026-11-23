@@ -86,7 +86,7 @@ function ResultRow({ result, centre, onOpen }: { result: RouteSearchResult; cent
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-start justify-between gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3"
+        className="flex w-full items-start justify-between gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3 md:pointer-coarse:py-3"
       >
         <span className="min-w-0">
           <span className="block text-small font-medium text-ink">{result.name}</span>

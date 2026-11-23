@@ -25,7 +25,7 @@ const maps = knowledgeNav.find((item) => item.to === "/maps")!;
 export const everyPlace: Place[] = [
   ...everyScreen,
   ...mapSections.map((section) => ({
-    to: `/maps?tab=${section.id}`,
+    to: section.to ?? `/maps?tab=${section.id}`,
     label: section.label,
     icon: maps.icon,
     keywords: section.keywords,

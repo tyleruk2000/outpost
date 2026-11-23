@@ -36,9 +36,11 @@ test.describe("the frame on a tablet held upright", () => {
   test("gives a finger 44 px for the shared controls, though the screen is wider than a phone", async ({ page }) => {
     await page.goto("/settings");
     const theme = page.getByRole("radio", { name: "Dark" });
+    await expect(theme).toBeVisible();
     expect((await theme.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     await page.goto("/library");
     const add = page.getByRole("button", { name: "Add documents" }).first();
+    await expect(add).toBeVisible();
     expect((await add.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   });
 });

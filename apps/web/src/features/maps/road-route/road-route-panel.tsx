@@ -65,7 +65,7 @@ const isUnits = (value: unknown): value is RoadDistanceUnit => value === "km" ||
 
 const header = (label: string, onBack: () => void) => (
   <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
-    <Button variant="ghost" size="sm" onClick={onBack} className="max-md:min-h-11">
+    <Button variant="ghost" size="sm" onClick={onBack} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
       <ArrowLeft /> {label}
     </Button>
   </div>
@@ -394,7 +394,7 @@ function RouteBody({
       <div className="grid gap-1.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h4 className="text-body font-semibold text-ink">Directions</h4>
-          <Button size="sm" variant="ghost" onClick={onFit} className="max-md:min-h-11">
+          <Button size="sm" variant="ghost" onClick={onFit} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
             <Scan /> Whole route on the map
           </Button>
         </div>
@@ -634,7 +634,7 @@ function SavedRoutesList({ onOpen }: { onOpen: (id: string) => void }) {
               <button
                 type="button"
                 onClick={() => onOpen(route.id)}
-                className="flex w-full items-start justify-between gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:min-h-11"
+                className="flex w-full items-start justify-between gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:min-h-11 md:pointer-coarse:min-h-11"
               >
                 <span className="min-w-0">
                   <span className="block text-small font-medium text-ink">{route.name}</span>

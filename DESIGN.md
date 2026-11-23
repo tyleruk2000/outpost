@@ -95,6 +95,10 @@ Rules:
   told from the edge and rings by its dashes and label as well; the walk darker than the
   range (edge 2.3:1). Satellite imagery is made grey and dim there. Worked out from the
   colours (22 November 2026), not yet looked at in the dark.
+- While the Maps screen shows the night style, the rest of the screen follows it in either
+  theme: page, surfaces, ink, the spine and what opens from them become dark reds
+  (`maps.css`), every text colour still at least 4.5:1 and outlines 3:1. A white panel
+  beside a dim red map undid the style at the first glance.
 
 ## Typography
 

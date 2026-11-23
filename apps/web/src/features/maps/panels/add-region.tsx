@@ -104,7 +104,7 @@ function PresetList({ chosen, onChoose }: { chosen: string | undefined; onChoose
                     aria-pressed={chosen === region.id}
                     onClick={() => onChoose(region)}
                     className={cn(
-                      "flex w-full items-center gap-3 px-2 py-2 text-left text-small hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3",
+                      "flex w-full items-center gap-3 px-2 py-2 text-left text-small hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3 md:pointer-coarse:py-3",
                       chosen === region.id && "bg-primary-soft hover:bg-primary-soft",
                     )}
                   >

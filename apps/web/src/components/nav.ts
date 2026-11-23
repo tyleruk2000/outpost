@@ -107,7 +107,7 @@ export const knowledgeNav: NavItem[] = [
     label: "Maps",
     icon: MapIcon,
     key: "m",
-    keywords: "map offline places routes gps location directions print sun times postcode grid reference",
+    keywords: "map offline places routes gps location sun times postcode grid reference",
   },
   // Importing brings in pages (Markdown, Notion), so it is Notes'.
   {
@@ -303,10 +303,18 @@ export const settingsSections: SettingsSection[] = [
 ];
 
 /**
- * Tabs of the Maps screen that the quick search goes to by their own words, each at
- * /maps?tab=id: "supermarket" is a map layer, not a screen of its own.
+ * Tabs and tools of the Maps screen that the quick search goes to by their own words, each at
+ * /maps?tab=id unless `to` says otherwise: "supermarket" is a map layer, not a screen of its own.
  */
-export const mapSections: Array<{ id: string; label: string; keywords: string }> = [
+export const mapSections: Array<{ id: string; label: string; keywords: string; to?: string }> = [
+  { id: "routes", label: "Routes", keywords: "route track tracks gpx kml walk hike trail draw import" },
+  {
+    id: "road-route",
+    label: "Road route",
+    to: "/maps?tab=routes&road=1",
+    keywords: "drive driving directions car journey sat nav navigation plan road route",
+  },
+  { id: "print", label: "Print", to: "/maps?print=1", keywords: "printing pdf paper sheet" },
   {
     id: "layers",
     label: "Layers",

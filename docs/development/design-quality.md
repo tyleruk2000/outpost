@@ -150,7 +150,8 @@ desktop at 1280 px.
 | Add a document | 1 (Start here) | 1 | 1 | 1 | From any other screen through quick search: open it, then the first row (2), where before it was 2 and typing, or scrolling past 75 screens |
 | Search | 0 (field on Home) | 0 | 0 | 0 | |
 | Find a place on the map | 1 (Maps) | 1 | 1 | 1 | |
-| Plan a road route | 2 (Maps, Routes) | 2 | 2 | 2 | Left to the Maps pass |
+| Plan a road route | 3 (Maps, Routes, Road route) | 2 (quick search, Road route) | 3 | 2 | Quick search opens Road route itself ("road route", "directions"). To a place just found: 1 press (Road route to here, its end filled in), where it was 2 and finding the place again in To |
+| Print a map | 3 (Maps, More, Print) | 2 (quick search, Print) | 2 (Maps, Print) | 2 | Quick search takes up the page to print itself ("print") |
 | Make the household book | 3 (More, Preparedness's screens, Household book) | 2 (Get your household ready, Household book) | 2 | 2 | A fifth first step on Home |
 | Check supplies | 3 | 2 | 2 | 2 | The same step |
 | See downloads and tasks | 2 (More, Downloads and tasks) | 2, and the lamp on More while one runs | 1 | 1 | |
