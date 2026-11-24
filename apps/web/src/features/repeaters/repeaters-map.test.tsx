@@ -1,6 +1,7 @@
 /** The repeaters' map marks, the printed sheet, distances in the chosen units, and the screen's state kept in its address. */
 import type { RepeaterDto, RepeaterListDto } from "@outpost/shared";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { fakeApi, renderScreen } from "../manage/test-support";
@@ -134,5 +135,104 @@ describe("the repeaters screen", () => {
     expect(screen.getByRole("button", { name: "Clear the filters" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Measure from" })).toHaveTextContent("A point on the map (54.45, -2.95)");
     expect(screen.getByRole("searchbox", { name: "Find" })).toHaveValue("zzzz");
+  });
+
+  it("says the first list ever got is imported, though the screen behind the dialog changes from empty to the list", async () => {
+    let imported = false;
+    const overview = () => ({
+      total: imported ? 6 : 0,
+      withPosition: imported ? 6 : 0,
+      ownCount: 0,
+      lists: imported ? [{ ...list, count: 6, fetched: { sourceId: "north-list" } }] : [],
+      bands: imported ? { "2m": 6 } : {},
+      modes: imported ? { fm: 6 } : {},
+    });
+    const source = {
+      id: "north-list",
+      region: "world",
+      publisher: "A made-up society",
+      name: "North list",
+      covers: "A made-up hillside.",
+      pageUrl: "https://lists.example.org/repeaters",
+      kind: "fetch",
+      why: "It offers the file to anyone.",
+      termsUrl: "https://example.org/terms",
+      termsNote: "Read: nothing forbids it.",
+      termsRead: "2026-11-16",
+      attribution: "",
+      held: null,
+      fetch: { host: "lists.example.org", url: "https://lists.example.org/north.csv", waitSeconds: 10 },
+      steps: [],
+    };
+    const preview = {
+      fileName: "north.csv",
+      sizeBytes: 1500,
+      format: "etcc-status",
+      formatName: "RSGB ETCC list",
+      columns: ["callsign"],
+      mapping: { callsign: "callsign" },
+      rows: 6,
+      usable: 6,
+      skippedCount: 0,
+      skipped: [],
+      sample: [{ ...repeater({}), line: 2 }],
+      withPosition: 6,
+      approximatePositions: 0,
+      bands: { "2m": 6 },
+      warnings: [],
+      update: null,
+      duplicates: { held: 0, heldByHand: 0, withinFile: 0, possible: 0, examples: [] },
+    };
+    const token = "a".repeat(32);
+    fakeApi({
+      "GET /api/maps/markers": { markers: [] },
+      "GET /api/repeaters/overview": () => overview(),
+      "GET /api/repeaters": () => ({ total: imported ? 1 : 0, withoutPosition: 0, repeaters: imported ? [repeater({})] : [] }),
+      "GET /api/repeaters/sources": { regions: [{ id: "world", name: "Worldwide", bbox: null }], sources: [source], problems: [] },
+      "GET /api/repeaters/overlay": { total: 0, points: [], cells: [] },
+      "GET /api/maps/sources": { hasTiles: false, attributions: [], imagery: [] },
+      "GET /api/maps/overview": { regions: [] },
+      "POST /api/repeaters/sources/north-list/fetch": {
+        fetched: {
+          token,
+          sourceId: "north-list",
+          url: source.fetch.url,
+          fetchedAt: Date.UTC(2026, 10, 24),
+          dataDate: Date.UTC(2026, 10, 1),
+          sizeBytes: 1500,
+          fileName: "north.csv",
+          listId: null,
+          keptForMs: 1_800_000,
+        },
+        preview,
+      },
+      [`POST /api/repeaters/fetched/${token}/import`]: () => {
+        imported = true;
+        return {
+          list: { ...list, count: 6 },
+          added: 6,
+          updated: 0,
+          unchanged: 0,
+          removed: 0,
+          keptEdits: 0,
+          replacedEdits: 0,
+          skipped: 0,
+          duplicatesSetAside: 0,
+          heldSetAside: 0,
+          carriedEdits: 0,
+        };
+      },
+    });
+    const user = userEvent.setup();
+    renderScreen(<RepeatersPage />, "/radio/repeaters");
+    expect(await screen.findByRole("heading", { name: "No repeaters yet" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Get the list" }));
+    const dialog = await screen.findByRole("dialog", { name: "Import a list of repeaters" });
+    await user.click(within(dialog).getByRole("button", { name: "Import 6 repeaters" }));
+    // The list is behind the dialog now, and the dialog is the same one, saying what was kept.
+    expect(await screen.findByText("“North list” is imported")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "No repeaters yet" })).toBeNull();
+    expect(screen.queryByText(/Nothing is kept until you import it/)).toBeNull();
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Done" })).toBeInTheDocument();
   });
 });

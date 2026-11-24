@@ -78,13 +78,23 @@ export interface GetList {
   /** The fetched list waiting to be looked at. */
   waiting: { response: RepeaterFetchResponse; source: RepeaterSourceDto } | null;
   done(): void;
+  /** A source whose file is being imported by hand. */
+  fromFile: RepeaterSourceDto | null;
+  importFile(source: RepeaterSourceDto | null): void;
 }
 
-/** Fetching a source's list: one at a time, with what went wrong kept beside the source it happened to. */
+/**
+ * Fetching a source's list: one at a time, with what went wrong kept beside the source it happened to.
+ *
+ * The page holds this once, and draws the dialogs once (`GetListDialogs`), outside its choice between
+ * "no repeaters yet" and the list: the first import makes that choice flip, and a dialog drawn inside
+ * either side would start again on what was just kept.
+ */
 export function useGetList(): GetList {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [problems, setProblems] = useState<GetList["problems"]>({});
   const [waiting, setWaiting] = useState<GetList["waiting"]>(null);
+  const [fromFile, importFile] = useState<RepeaterSourceDto | null>(null);
   const start = useCallback<GetList["start"]>(
     (source, options) => {
       if (busyId) return;
@@ -101,18 +111,10 @@ export function useGetList(): GetList {
     },
     [busyId],
   );
-  return { busyId, problems, start, waiting, done: useCallback(() => setWaiting(null), []) };
+  return { busyId, problems, start, waiting, done: useCallback(() => setWaiting(null), []), fromFile, importFile };
 }
 
-function SourceRow({
-  source,
-  getList,
-  onImport,
-}: {
-  source: RepeaterSourceDto;
-  getList: GetList;
-  onImport: (source: RepeaterSourceDto) => void;
-}) {
+function SourceRow({ source, getList }: { source: RepeaterSourceDto; getList: GetList }) {
   const busy = getList.busyId === source.id;
   const problem = getList.problems[source.id];
   const host = hostOf(source.pageUrl);
@@ -120,7 +122,7 @@ function SourceRow({
     <li className="grid gap-2 py-3.5">
       <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1 basis-[18rem]">
-          <p className="text-body font-semibold text-ink">{source.name}</p>
+          <p className="text-body font-semibold break-words text-ink">{source.name}</p>
           <p className="text-small text-ink-muted">
             {source.publisher}. {source.covers}
           </p>
@@ -187,7 +189,7 @@ function SourceRow({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => onImport(source)}
+              onClick={() => getList.importFile(source)}
               className="h-auto min-h-8 max-w-full py-1.5 text-left whitespace-normal max-md:h-auto max-md:min-h-11 md:pointer-coarse:min-h-11"
             >
               <FileUp /> Import the file from {source.publisher.replace(/\s*\(.*\)$/, "")}
@@ -234,10 +236,21 @@ const kindsLine = (sources: RepeaterSourceDto[]) => {
     .join(", ");
 };
 
-export function SourcesSection({ lists, getList, className }: { lists: RepeaterListDto[]; getList: GetList; className?: string }) {
+/** The two import dialogs a source can open: drawn once by the page, whichever way it is showing. */
+export function GetListDialogs({ lists, getList }: { lists: RepeaterListDto[]; getList: GetList }) {
+  const waiting = getList.waiting;
+  const updating = waiting?.response.fetched.listId ? (lists.find((list) => list.id === waiting.response.fetched.listId) ?? null) : null;
+  return (
+    <>
+      <ImportDialog open={getList.fromFile !== null} from={getList.fromFile} onClose={() => getList.importFile(null)} />
+      <ImportDialog open={waiting !== null} fetched={waiting} list={updating} onClose={getList.done} />
+    </>
+  );
+}
+
+export function SourcesSection({ getList, className }: { getList: GetList; className?: string }) {
   const sources = useRepeaterSources();
   const markers = useMarkers();
-  const [importing, setImporting] = useState<RepeaterSourceDto | null>(null);
   const { home } = useHome();
   const homeLat = home?.lat;
   const homeLon = home?.lon;
@@ -254,9 +267,6 @@ export function SourcesSection({ lists, getList, className }: { lists: RepeaterL
       ),
     [sources.data, centre, markers.data],
   );
-  const waiting = getList.waiting;
-  const updating = waiting?.response.fetched.listId ? (lists.find((list) => list.id === waiting.response.fetched.listId) ?? null) : null;
-
   const group = (region: RepeaterSourceRegion, open: boolean) => {
     const mine = (sources.data?.sources ?? []).filter((source) => source.region === region.id);
     if (mine.length === 0) return null;
@@ -272,7 +282,7 @@ export function SourcesSection({ lists, getList, className }: { lists: RepeaterL
         </summary>
         <Rows aria-label={`Sources for ${region.name}`} className="mb-2 ml-1 border-b-0 sm:ml-6">
           {mine.map((source) => (
-            <SourceRow key={source.id} source={source} getList={getList} onImport={setImporting} />
+            <SourceRow key={source.id} source={source} getList={getList} />
           ))}
         </Rows>
       </details>
@@ -320,9 +330,6 @@ export function SourcesSection({ lists, getList, className }: { lists: RepeaterL
           </div>
         </>
       )}
-
-      <ImportDialog open={importing !== null} from={importing} onClose={() => setImporting(null)} />
-      <ImportDialog open={waiting !== null} fetched={waiting} list={updating} onClose={getList.done} />
     </Section>
   );
 }

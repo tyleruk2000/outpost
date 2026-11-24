@@ -275,7 +275,7 @@ function CuttingCalculator() {
               rows={5}
               value={piecesText}
               onChange={(event) => setPieces(event.target.value)}
-              className="font-mono text-small"
+              className="font-mono text-small pointer-coarse:text-body"
             />
           )}
         </Field>
@@ -286,7 +286,7 @@ function CuttingCalculator() {
               rows={5}
               value={stockText}
               onChange={(event) => setStock(event.target.value)}
-              className="font-mono text-small"
+              className="font-mono text-small pointer-coarse:text-body"
             />
           )}
         </Field>

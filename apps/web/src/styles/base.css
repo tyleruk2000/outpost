@@ -280,6 +280,17 @@
   color: var(--ink-muted);
 }
 /*
+ * The words keep a readable width: where they and the action (Use High contrast, Open the list) do not both fit on
+ * one line, the action goes under the words instead of squeezing them into a column a few words wide.
+ */
+[data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast]:has(> [data-button]) {
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+}
+[data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast]:has(> [data-button]) > [data-content] {
+  flex: 1 1 12rem;
+}
+/*
  * Where the pointer is a finger the close and action buttons (Undo, Open it) are 44 px and their words 16 px, drawn so:
  * the close button was a 20 px disc on the toast's corner, the action 32 px with 12 px words. The close button sits at
  * the toast's right, inside it, after the action; the toast keeps room for it.

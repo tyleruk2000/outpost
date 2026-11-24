@@ -571,11 +571,15 @@ export class MapEngine {
    * `spare` is the part of the bottom space that is kept free for a card to come up into (a phone keeps a fifth of
    * the clear map for it): a card's height, given to `flyTo` or `fitBounds` as `clearBottom`, is counted from the
    * foot of the clear map, so only what it takes beyond the spare room is added.
+   *
+   * `fitRight` is room on the right that a fit keeps clear and the camera does not: the column of map buttons on a
+   * phone or a compact wide screen, which a fitted route must not end under, though the centre stays the middle.
    */
-  setPadding(padding: { top: number; right: number; bottom: number; left: number }, hold = false, spare = 0): void {
+  setPadding(padding: { top: number; right: number; bottom: number; left: number }, hold = false, spare = 0, fitRight = 0): void {
     this.padding = padding;
     this.holdPadding = hold;
     this.spare = spare;
+    this.fitRight = fitRight;
     if (!hold) return;
     const first = !this.paddingHeld;
     const apply = () => {
@@ -604,6 +608,7 @@ export class MapEngine {
     }, 0);
   }
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
+  private fitRight = 0;
   /** How much of the bottom padding nothing lies over yet: room kept for a card, which a card's own height is not added to. */
   private spare = 0;
   private holdPadding = false;
@@ -651,7 +656,7 @@ export class MapEngine {
     const asked =
       keep.bottom !== undefined ? Math.max(this.padding.bottom, keep.bottom) : this.paddingWith(options.clearBottom ?? 0).bottom;
     const bottom = Math.max(0, Math.min(asked, canvas.clientHeight - top - 72));
-    const right = Math.max(this.padding.right, Math.min(keep.right ?? 0, canvas.clientWidth - left - 72));
+    const right = Math.max(this.padding.right, Math.min(Math.max(keep.right ?? 0, this.fitRight), canvas.clientWidth - left - 72));
     // A margin round what is fitted: 48 px where there is room, less on a small phone, where 48 px each side
     // of little room left nothing to fit into and the map did not move at all.
     const margin = (across: number) => Math.max(8, Math.min(48, across / 8));
@@ -671,6 +676,10 @@ export class MapEngine {
         absolutePadding: true,
         maxZoom: options.maxZoom ?? 15,
         animate: options.animate ?? true,
+        // A short, straight ease, not a flight: a flight's length grows with the distance (over three seconds
+        // across a country), and what is fitted sat at the edge of the screen until it landed.
+        linear: true,
+        duration: prefersReducedMotion() ? 0 : 200,
       },
     );
   }

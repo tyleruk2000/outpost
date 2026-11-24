@@ -14,7 +14,7 @@ import { ChevronDown, ChevronUp, CircleAlert, Download, Pause, Play, Square, X }
 import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { Notice } from "@/components/page";
+import { Disclosure, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -263,6 +263,9 @@ const headerButton = "-mt-1 -mr-1.5 max-w-none";
 function Intro({ recorder, state }: { recorder: Recorder; state: RecorderSnapshot }) {
   const [starting, setStarting] = useState(false);
   const able = recorder.ability();
+  const lines = beforeYouStart("wakeLock" in navigator, (navigator as { standalone?: boolean }).standalone === true);
+  // The first sentence is the one thing to know before starting; the reason for it folds away with the rest.
+  const [first = "", why = ""] = (lines[0] ?? "").split(/(?<=\.) /, 2);
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={() => setCardView("closed")} className={headerButton}>
       <X />
@@ -307,18 +310,21 @@ function Intro({ recorder, state }: { recorder: Recorder; state: RecorderSnapsho
               A recording is open in another tab of this browser. Carry on with it there, or close that tab and start again here.
             </Notice>
           ) : null}
-          <ul className="mt-1.5 grid gap-1.5 text-small text-ink-muted">
-            {beforeYouStart("wakeLock" in navigator, (navigator as { standalone?: boolean }).standalone === true).map((line, index) => (
-              <li key={line} className={index === 0 ? "text-ink" : undefined}>
-                {line}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3">
+          {/* Start first: the card is short on a phone, and what it says before starting is read once. The one thing
+              to know stays in sight; the rest folds away under it. */}
+          <div className="mt-1.5">
             <Button variant="primary" onClick={start} loading={starting} disabled={!state.ready}>
               Start recording
             </Button>
           </div>
+          <p className="mt-2 text-small text-ink">{first}</p>
+          <Disclosure summary="Why, and where the points are kept">
+            {[why, ...lines.slice(1)].map((line) => (
+              <p key={line} className="text-ink-muted">
+                {line}
+              </p>
+            ))}
+          </Disclosure>
         </>
       )}
     </section>

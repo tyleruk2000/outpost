@@ -11,7 +11,7 @@ import {
   ToggleGroup as TogglePrimitive,
   Tooltip as TooltipPrimitive,
 } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { floating } from "./menu";
 
@@ -111,6 +111,8 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
 
 // ── Segmented control ──────────────────────────────────────────────────────
 
+const ARROW_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"]);
+
 export function Segmented<T extends string>({
   value,
   onChange,
@@ -124,11 +126,17 @@ export function Segmented<T extends string>({
   label: string;
   className?: string;
 }) {
+  // It is announced as a group of radio buttons, where an arrow key chooses as it moves: the arrows move the focus
+  // (Radix's roving focus, a moment after the key), and the choice follows the focus they moved.
+  const arrowed = useRef(false);
   return (
     <TogglePrimitive.Root
       type="single"
       value={value}
       onValueChange={(next) => next && onChange(next as T)}
+      onKeyDownCapture={(event) => {
+        arrowed.current = ARROW_KEYS.has(event.key);
+      }}
       aria-label={label}
       // Its choices go on to a second line rather than past the screen, on a narrow phone with large text.
       className={cn("inline-flex max-w-full flex-wrap rounded-control border border-border-strong bg-surface p-0.5", className)}
@@ -137,6 +145,11 @@ export function Segmented<T extends string>({
         <TogglePrimitive.Item
           key={option.value}
           value={option.value}
+          onFocus={() => {
+            if (!arrowed.current) return;
+            arrowed.current = false;
+            if (option.value !== value) onChange(option.value);
+          }}
           // Grows to fill its line once the choices wrap, so a choice left alone on a line is not a stray box.
           className="flex h-8 grow items-center justify-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 max-md:min-w-11 md:pointer-coarse:h-11 md:pointer-coarse:min-w-11 [&_svg]:size-4"
         >

@@ -23,7 +23,7 @@ import { ImportDialog } from "./import-dialog";
 import { nearestHit, overlayBox, repeatersData } from "./map/layers";
 import { sightEndOf } from "./map/use-repeaters-on-map";
 import { positionReadings, readDraft } from "./repeater-form";
-import { orderRegions, SourcesSection, useGetList } from "./sources-section";
+import { GetListDialogs, orderRegions, SourcesSection, useGetList } from "./sources-section";
 import { accessParts, ageWarning, isApproximate, positionDigits, positionNote, shiftWords, sourceOf } from "./words";
 
 const DAY = 86_400_000;
@@ -551,7 +551,12 @@ describe("the same repeater twice, in an import", () => {
 /** The section as the page mounts it: with the one fetch flow the page owns. */
 function SourcesWithTheirFetch() {
   const getList = useGetList();
-  return <SourcesSection lists={[]} getList={getList} />;
+  return (
+    <>
+      <SourcesSection getList={getList} />
+      <GetListDialogs lists={[]} getList={getList} />
+    </>
+  );
 }
 
 describe("where lists can be had", () => {

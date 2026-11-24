@@ -95,7 +95,7 @@ interface Attempt {
 }
 
 const chip =
-  "inline-flex size-9 items-center justify-center rounded-control font-mono text-small transition-colors disabled:opacity-50 max-md:size-11";
+  "inline-flex size-9 items-center justify-center rounded-control font-mono text-small transition-colors disabled:opacity-50 max-md:size-11 md:pointer-coarse:size-11";
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 
