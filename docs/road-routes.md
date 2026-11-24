@@ -183,10 +183,13 @@ To turn the add-on on, see [Street routes on a Raspberry Pi](deployment.md#stree
 
 Press and hold (right-click) a point on the map and choose **Reachable from here**, or
 type "reachable" in the quick search for the middle of the map. A card shows the areas you
-could reach in **15 min**, **30 min** or **1 hour**: the time you choose and each shorter
-one, as three steps of one colour, darkest nearest, each with its own outline (solid 15,
-dashed 30, dotted 60) and its time written on it, so they read apart in grey too. The
-legend says which is which and where the areas come from:
+could reach by car or bicycle in up to **2 hours** (15 min, 30 min, 1 h, 1½ h, 2 h), or on
+foot in up to **8 hours** (30 min, 1, 2, 4, 6 or 8 h); each way keeps its own time. The time
+you choose is drawn with up to two shorter ones inside it (2 hours' drive: 30 minutes,
+1 and 2 hours; 8 hours on foot: 2, 4 and 8 hours), as steps of one colour, darkest nearest,
+each with its own outline (solid for the shortest, then dashed, then dotted) and its time
+written on it, so they read apart in grey too. The legend says which is which and where
+the areas come from:
 
 - **Streets**: over every street, by car, bicycle or on foot, where walking and cycling is
   added for the place.
@@ -198,7 +201,10 @@ yet.") with **Add roads for France**; walking and cycling, where it is not added
 names that country too ("Add walking and cycling for France"). Outpost never offers
 your home country in place of where the point is.
 
-Both are for **free-flowing traffic, no stops**. Tick **Reachable areas** in **Print or
+Both are for **free-flowing traffic, no stops**; on foot and by bicycle, a steady pace on
+the flat with no stops (the streets hold no heights, so hills are not counted). Over 2 hours
+on foot, or an hour by bicycle, the card adds that no rests are counted: a real day's walk
+reaches far less than the 8 hour area. Tick **Reachable areas** in **Print or
 save as PDF** to put them on a paper map, with the legend in words under it.
 
 ## Saving and printing

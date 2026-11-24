@@ -262,11 +262,26 @@ See [road-routes.md](road-routes.md).
 
 ## Reachable from here
 
-Press and hold a point and choose **Reachable from here**: the areas reachable in 15, 30 or
-60 minutes, drawn in three steps of one colour with a labelled outline for each time. By
-car it works over the routes added (**Main roads only**); with walking and cycling added,
-over every street, by car, bicycle or on foot (**Streets**). Free-flowing traffic,
-no stops. See [road-routes.md](road-routes.md#reachable-from-here).
+Press and hold a point and choose **Reachable from here**: the areas you could reach by car
+or bicycle in up to **2 hours**, or on foot in up to **8 hours**. Choose the way, then the
+time:
+
+| Way | Times | To begin with |
+| --- | --- | --- |
+| Drive, Cycle | 15 min, 30 min, 1 h, 1½ h, 2 h | 30 min |
+| Walk | 30 min, 1 h, 2 h, 4 h, 6 h, 8 h | 1 h |
+
+Each way keeps the time you last chose for it. A time draws up to three areas, one inside
+another, in steps of one colour with a labelled outline for each: 2 hours' drive shows
+30 minutes, 1 hour and 2 hours; 8 hours on foot shows 2, 4 and 8 hours.
+
+By car it works over the routes added (**Main roads only**); with walking and cycling added,
+over every street, by car, bicycle or on foot (**Streets**). The times are for free-flowing
+traffic with no stops, or a steady pace on the flat with no stops; over 2 hours on foot
+(and over an hour by bicycle) no rests are counted either, so a real day's walk covers
+much less. A long time takes longer to work out: a 2 hour drive or an 8 hour walk over
+every street can take tens of seconds on a Raspberry Pi. See
+[road-routes.md](road-routes.md#reachable-from-here).
 
 ## Walking and cycling
 

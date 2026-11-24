@@ -730,7 +730,7 @@ installed road networks ("Main roads only"). Shapes and behaviour:
 | --- | --- |
 | `GET /api/streets/status` | `state`, `installed`, `message`, the streets in use, a build under way, the modes available, kept country files to build from. |
 | `POST /api/streets/route` | `{ points, mode: drive-door \| walk \| cycle, units?, crossing? }` → Outpost's road route with streets at each end, or streets all the way, as turn-by-turn lines. `400` "Streets are not installed for France". |
-| `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: [15, 30, 60], source? }` → GeoJSON areas, smallest time first, labelled "Streets" or "Main roads only". |
+| `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: one to three of 15, 30, 60, 90, 120 (drive, cycle) or 30, 60, 120, 240, 360, 480 (walk), source? }` → GeoJSON areas, smallest time first, labelled "Streets" or "Main roads only". |
 | `POST /api/streets/tiles/estimate` | `{ regions }` → time, memory, disk writes and space a build takes, with the warnings to show. |
 | `POST /api/streets/tiles` | `{ regions, workLocationId? }` or `{ import: { locationId, relPath } }` → `{ jobId, estimate }` (task `streets.build`). `409` while one runs. |
 | `DELETE /api/streets/tiles` | Deletes the streets in use. |

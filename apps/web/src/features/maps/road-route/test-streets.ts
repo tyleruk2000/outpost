@@ -4,7 +4,14 @@
  * door in Chamonix), a walk, and the service installed, ready, with no streets, or absent.
  * The lines are the server's narrative's own words (apps/server/test/streets.test.ts).
  */
-import type { StreetDirections, StreetLine, StreetsReachResult, StreetsRouteResult, StreetsStatusResponse } from "@outpost/shared";
+import {
+  STREETS_REACH_MINUTES,
+  type StreetDirections,
+  type StreetLine,
+  type StreetsReachResult,
+  type StreetsRouteResult,
+  type StreetsStatusResponse,
+} from "@outpost/shared";
 import { CHANNEL_TRIP } from "./test-route";
 
 const line = (kind: StreetLine["kind"], text: string, distanceM: number, distanceText: string, at: [number, number]): StreetLine => ({
@@ -108,7 +115,7 @@ export const NOT_INSTALLED: StreetsStatusResponse = {
   build: null,
   modes: { ...NO_MODES, reach: { drive: "main-roads", walk: false, cycle: false } },
   countryFiles: [],
-  reachMinutes: [15, 30, 60],
+  reachMinutes: STREETS_REACH_MINUTES,
 };
 
 export const GB_FILE = {
@@ -147,7 +154,7 @@ export const READY: StreetsStatusResponse = {
   build: null,
   modes: { driveDoor: true, walk: true, cycle: true, reach: { drive: "streets", walk: true, cycle: true } },
   countryFiles: [GB_FILE],
-  reachMinutes: [15, 30, 60],
+  reachMinutes: STREETS_REACH_MINUTES,
 };
 
 const square = (size: number): Array<Array<[number, number]>> => [

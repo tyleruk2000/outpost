@@ -10,7 +10,7 @@ import type { MapDataResponse, StreetsReachResult, StreetsRouteResult, StreetsSt
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { RouteReply } from "../src/modules/streets/client.ts";
 import { addressProblem } from "../src/modules/streets/connection.ts";
-import { traceRings } from "../src/modules/streets/main-roads-reach.ts";
+import { MAX_CELLS_ACROSS, mainRoadsReach, traceRings } from "../src/modules/streets/main-roads-reach.ts";
 import { streetDirections, streetDistanceText, wayName } from "../src/modules/streets/narrative.ts";
 import { estimateBuild } from "../src/modules/streets/tiles.ts";
 import { waitFor } from "./fixtures/downloads/file-server.ts";
@@ -212,7 +212,7 @@ describe("without the streets service", () => {
     const build = await app.api("POST", "/api/streets/tiles", { regions: ["europe/great-britain"] });
     expect(build.status).toBe(400);
     expect(build.body.error.message).toMatch(/not installed/);
-    const walk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [15] });
+    const walk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [30] });
     expect(walk.status).toBe(415);
     expect(standIn.requests).toEqual([]);
   });
@@ -220,7 +220,19 @@ describe("without the streets service", () => {
   it("checks what is asked", async () => {
     const bad = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [20] });
     expect(bad.status).toBe(400);
-    expect(bad.body.error.message).toMatch(/15, 30 or 60/);
+    expect(bad.body.error.message).toBe("By car, choose 15, 30, 60, 90 or 120 minutes.");
+    // Each way has its own times: up to 2 hours by car or bicycle, 8 hours on foot.
+    const longDrive = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [240] });
+    expect(longDrive.body.error.message).toBe("By car, choose 15, 30, 60, 90 or 120 minutes.");
+    const longRide = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "cycle", minutes: [480] });
+    expect(longRide.body.error.message).toBe("By bicycle, choose 15, 30, 60, 90 or 120 minutes.");
+    const shortWalk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [15] });
+    expect(shortWalk.body.error.message).toBe("On foot, choose 30 minutes, or 1, 2, 4, 6 or 8 hours.");
+    const four = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [30, 60, 120, 480] });
+    expect(four.body.error.message).toMatch(/up to 3 times/);
+    // An 8 hour walk is a fair question; here it fails only for want of streets.
+    const longWalk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [120, 240, 480] });
+    expect(longWalk.body.error.message).toMatch(/need walking and cycling/);
     const one = await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD], mode: "walk" });
     expect(one.status).toBe(400);
   });
@@ -259,6 +271,30 @@ describe("without the streets service", () => {
     expect(east(reach.areas.features[0]!)).toBeLessThan(0.2);
     expect(east(reach.areas.features[1]!)).toBeGreaterThan(0.5);
     expect(standIn.requests).toEqual([]);
+  });
+
+  it("keeps a 2 hour drive over main roads bounded", async () => {
+    const graph = await app.ctx.services.roads.loadGraph();
+    const started = performance.now();
+    const both = mainRoadsReach(graph, LEATHERHEAD, [15, 60, 120])!;
+    const ms = performance.now() - started;
+    // The 15 minute cell would make a grid about 1,280 cells across for 2 hours: it is held to 1,200 across.
+    expect(both.gridM).toBeGreaterThan(375);
+    expect(Math.ceil((2 * (both.join.distanceM + 120 * 60 * (120 / 3.6))) / both.gridM)).toBeLessThanOrEqual(MAX_CELLS_ACROSS);
+    expect(ms).toBeLessThan(5_000);
+    const alone = mainRoadsReach(graph, LEATHERHEAD, [120])!;
+    expect(alone.gridM).toBe(3_000);
+    // The same 2 hours whether or not 15 minutes is asked with it: drawn at its own 3 km.
+    const extent = (reach: typeof alone) => {
+      const area = reach.areas.at(-1)!.polygons.flat();
+      return Math.max(...area.map((p) => p[0])) - Math.min(...area.map((p) => p[0]));
+    };
+    expect(Math.abs(extent(both) - extent(alone))).toBeLessThan(0.1);
+    const { status, body } = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [30, 60, 120] });
+    expect(status).toBe(200);
+    const reach = body as StreetsReachResult;
+    expect(reach.areas.features.map((f) => f.properties.minutes)).toEqual([30, 60, 120]);
+    expect(JSON.stringify(reach).length).toBeLessThan(200_000);
   });
 
   it("shows no streets row in Map data", async () => {
@@ -322,7 +358,7 @@ describe("with the streets service", () => {
     const { status, body } = await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, REIMS], mode: "cycle" });
     expect(status).toBe(400);
     expect(body.error.message).toBe("Walking and cycling is not added for France. Add it under Offline maps.");
-    const reach = await app.api("POST", "/api/streets/reach", { point: REIMS, mode: "walk", minutes: [15] });
+    const reach = await app.api("POST", "/api/streets/reach", { point: REIMS, mode: "walk", minutes: [30] });
     expect(reach.body.error.message).toMatch(/not added for France/);
   });
 
@@ -370,10 +406,42 @@ describe("with the streets service", () => {
     expect(reach.settings).toEqual({ denoise: 0.5, generalizeM: 100, gridM: null });
     const sent = standIn.requests.filter((r) => r.path === "/isochrone").at(-1)!.body!;
     expect(sent).toMatchObject({ costing: "auto", contours: [{ time: 15 }, { time: 30 }], polygons: true, denoise: 0.5, generalize: 100 });
+    expect(reach.note).toBe("Free-flowing traffic, no stops: real journeys take longer.");
     // Asked for Outpost's own instead, it gives that.
     const own = (await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [15], source: "main-roads" }))
       .body as StreetsReachResult;
     expect(own.source).toBe("main-roads");
+  });
+
+  it("asks Valhalla for long walks and rides with outlines simplified for the distance, and says what the times leave out", async () => {
+    const isochrone = () => standIn.requests.filter((r) => r.path === "/isochrone").at(-1)!.body!;
+    const walk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [480, 120, 240] });
+    expect(walk.status).toBe(200);
+    expect(isochrone()).toMatchObject({
+      costing: "pedestrian",
+      contours: [{ time: 120 }, { time: 240 }, { time: 480 }],
+      denoise: 0.5,
+      generalize: 200,
+    });
+    const walked = walk.body as StreetsReachResult;
+    expect(walked.areas.features.map((f) => f.properties.minutes)).toEqual([120, 240, 480]);
+    expect(walked.settings.generalizeM).toBe(200);
+    expect(walked.note).toMatch(/steady walking pace on the flat with no stops, and no rests counted/);
+    const short = (await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [30, 60] }))
+      .body as StreetsReachResult;
+    expect(isochrone()).toMatchObject({ contours: [{ time: 30 }, { time: 60 }], generalize: 50 });
+    expect(short.note).not.toMatch(/rests/);
+    await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "cycle", minutes: [30, 60, 120] });
+    expect(isochrone()).toMatchObject({ costing: "bicycle", contours: [{ time: 30 }, { time: 60 }, { time: 120 }], generalize: 150 });
+    await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [30, 60, 120] });
+    expect(isochrone()).toMatchObject({ costing: "auto", contours: [{ time: 30 }, { time: 60 }, { time: 120 }], generalize: 200 });
+    // A streets service from an older image refuses over 2 hours (Valhalla's own default): said plainly, with what to do.
+    standIn.override = (p) =>
+      p === "/isochrone" ? { status: 400, body: JSON.stringify({ error_code: 151, error: "Exceeded max time: 120" }) } : null;
+    const old = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [480] });
+    standIn.override = null;
+    expect(old.status).toBe(400);
+    expect(old.body.error.message).toMatch(/older than Outpost and stops at 2 hours/);
   });
 
   it("stops at a reply too large or too slow", async () => {

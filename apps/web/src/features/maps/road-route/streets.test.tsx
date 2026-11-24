@@ -20,7 +20,7 @@ import { useReach } from "../reach/reach-tool";
 import { streetsRouteData } from "./layers";
 import { RoadRoutePanel } from "./road-route-panel";
 import { routeCardDocument } from "./route-card";
-import { endTurnsTitle, streetsAsPlainText, turnsSummary } from "./street-words";
+import { endTurnsTitle, reachTimeText, streetsAsPlainText, turnsSummary } from "./street-words";
 import { DOOR_TRIP, NO_STREETS, NOT_INSTALLED, REACH_MAIN_ROADS, READY, WALK } from "./test-streets";
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
@@ -318,6 +318,45 @@ describe("reachable areas", () => {
     await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ minutes: [15, 30, 60] }));
   });
 
+  it("gives each way its own times, up to 2 hours by car or bicycle and 8 hours on foot, kept apart", async () => {
+    serve(READY, { "/api/streets/reach": REACH_MAIN_ROADS });
+    show(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    const ways = await screen.findByRole("radiogroup", { name: "Way of travelling" });
+    const times = () =>
+      within(screen.getByRole("radiogroup", { name: "Time" }))
+        .getAllByRole("radio")
+        .map((each) => each.textContent);
+    // Short on the button, in full for a screen reader.
+    expect(times()).toEqual(["15 min15 min", "30 min30 min", "1 h1 hour", "1½ h1½ hours", "2 h2 hours"]);
+    expect(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "2 hours" })).toBeInTheDocument();
+    await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ mode: "drive", minutes: [15, 30] }));
+
+    await userEvent.click(within(ways).getByRole("radio", { name: "Walk" }));
+    expect(times()).toEqual(["30 min30 min", "1 h1 hour", "2 h2 hours", "4 h4 hours", "6 h6 hours", "8 h8 hours"]);
+    // An hour on foot to begin with: half an hour inside it.
+    await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ mode: "walk", minutes: [30, 60] }));
+    await userEvent.click(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "8 hours" }));
+    // Never more than three areas: 2, 4 and 8 hours.
+    await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ mode: "walk", minutes: [120, 240, 480] }));
+
+    await userEvent.click(within(ways).getByRole("radio", { name: "Cycle" }));
+    await userEvent.click(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "2 hours" }));
+    await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ mode: "cycle", minutes: [30, 60, 120] }));
+    await userEvent.click(within(ways).getByRole("radio", { name: "Drive" }));
+    await userEvent.click(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "1½ hours" }));
+    await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ mode: "drive", minutes: [30, 60, 90] }));
+    // Back to walking: its 8 hours were kept.
+    await userEvent.click(within(ways).getByRole("radio", { name: "Walk" }));
+    expect(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "8 hours" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(reachTimeText(480)).toBe("8 hours");
+    expect(reachTimeText(90)).toBe("1½ hours");
+    expect(reachTimeText(60)).toBe("1 hour");
+  });
+
   it("offers roads for the point's own country where it has none, never another", async () => {
     serve(NOT_INSTALLED, {
       "/api/streets/reach": REACH_MAIN_ROADS,
@@ -359,6 +398,20 @@ describe("reachable areas", () => {
     overlay.apply(draft, context, new Set());
     expect(draft.data["o-reach"]?.features).toHaveLength(5);
     expect(draft.notes[0]).toMatch(/Outlines: solid, 15 min; dashed, 30 min\. Free-flowing traffic, no stops/);
+    // The outlines go by step, whatever the times: an 8 hour walk's three areas are solid, dashed and dotted too.
+    const walk = {
+      ...REACH_MAIN_ROADS,
+      mode: "walk" as const,
+      areas: {
+        ...REACH_MAIN_ROADS.areas,
+        features: [120, 240, 480].map((minutes) => ({ ...REACH_MAIN_ROADS.areas.features[0]!, properties: { minutes } })),
+      },
+    };
+    expect(reachData(walk).features.map((each) => each.properties?.step)).toEqual([2, 1, 0, undefined, undefined, undefined, undefined]);
+    setReachShown(walk);
+    const longer = { data: {}, sources: {}, layers: [], notes: [] as string[] } as never as Parameters<typeof overlay.apply>[0];
+    overlay.apply(longer, context, new Set());
+    expect(longer.notes[0]).toMatch(/within 2 hours, 4 hours and 8 hours .*Outlines: solid, 2 hours; dashed, 4 hours; dotted, 8 hours\./);
   });
 });
 
