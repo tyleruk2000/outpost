@@ -18,7 +18,27 @@ afterEach(() => {
 const HOUR = 3_600_000;
 const NOW = Date.now();
 
-const home: WeatherPlace = { id: "p1", name: "Home", lat: 52.13, lon: -0.46, markerId: "m1", isHome: true, region: "em", createdAt: 1 };
+/** A household in the UK: the Met Office and the Environment Agency are asked. */
+const UK_PLAN = {
+  home: { name: "Home", lat: 52.13, lon: -0.46 },
+  homeCountry: "GB",
+  homeCountryName: "the United Kingdom",
+  chosenCountry: null,
+  country: "GB",
+  countryName: "the United Kingdom",
+  national: "meteoalarm" as const,
+};
+const home: WeatherPlace = {
+  id: "p1",
+  name: "Home",
+  lat: 52.13,
+  lon: -0.46,
+  markerId: "m1",
+  isHome: true,
+  region: "em",
+  country: "GB",
+  createdAt: 1,
+};
 const source = (id: WeatherSourceInfo["id"], kind: WeatherSourceInfo["kind"], publisher: string): WeatherSourceInfo => ({
   id,
   kind,
@@ -34,7 +54,11 @@ const source = (id: WeatherSourceInfo["id"], kind: WeatherSourceInfo["kind"], pu
   termsUrl: "https://example.org/terms",
   termsRead: "2026-11-16",
 });
-const sources = [source("open-meteo", "forecast", "Open-Meteo"), source("met-office-warnings", "warnings", "Met Office")];
+const sources = [
+  source("open-meteo", "forecast", "Open-Meteo"),
+  source("met-office-warnings", "warnings", "Met Office"),
+  source("meteoalarm", "meteoalarm", "EUMETNET – MeteoAlarm"),
+];
 
 function forecast(fetchedAt: number, hoursAhead: number): KeptCopy {
   const start = Math.floor(fetchedAt / HOUR) * HOUR;
@@ -158,9 +182,33 @@ describe("the Weather and hazards screen", () => {
   });
 
   it("fetches once on opening when the tick is on, and only then", async () => {
-    const posted = show({ places: [home], updateOnOpen: true });
+    const posted = show({ places: [home], updateOnOpen: true, alerts: UK_PLAN });
     await waitFor(() => expect(posted.filter((call) => call.path === "POST /api/weather/update")).toHaveLength(1));
     expect(posted[0]!.body).toEqual({ kinds: ["forecast", "warnings", "flood", "rivers"] });
+  });
+
+  it("asks a home in Germany's own service, never the UK's, and says who each press asks", async () => {
+    const rosenheim: WeatherPlace = { ...home, name: "Rosenheim", lat: 47.86, lon: 12.12, region: null, country: "DE" };
+    const germany = {
+      ...UK_PLAN,
+      home: { name: "Rosenheim", lat: 47.86, lon: 12.12 },
+      homeCountry: "DE",
+      homeCountryName: "Germany",
+      country: "DE",
+      countryName: "Germany",
+    };
+    const posted = show({ places: [rosenheim], alerts: germany }, "?view=warnings");
+    // Warnings are Germany's (MeteoAlarm), not the Met Office's; flood and river levels (England) are not offered.
+    expect(await screen.findByText(/Update now and Fetch warnings ask MeteoAlarm for Germany/)).toBeInTheDocument();
+    expect(screen.queryByText(/Met Office/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Flood" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "River and sea levels" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("update-asks")).toHaveTextContent(/^Update now asks Open-Meteo .*; EUMETNET – MeteoAlarm/);
+    expect(screen.getByTestId("update-asks")).not.toHaveTextContent(/Environment Agency|environment\.data\.gov\.uk/);
+    await userEvent.click(screen.getByRole("button", { name: "Update now" }));
+    await waitFor(() =>
+      expect(posted.find((call) => call.path === "POST /api/weather/update")?.body).toEqual({ kinds: ["forecast", "meteoalarm"] }),
+    );
   });
 
   it("makes the whole 'update when I open' row the thing to press, at least 44 px tall", async () => {
@@ -203,7 +251,7 @@ describe("the Weather and hazards screen", () => {
   });
 
   it("says when warnings have never been fetched", async () => {
-    show({ places: [home] }, "?view=warnings");
+    show({ places: [home], alerts: UK_PLAN }, "?view=warnings");
     expect(await screen.findByText(/Warnings have not been fetched yet/)).toBeInTheDocument();
   });
 });
@@ -364,7 +412,8 @@ describe("alerts worldwide", () => {
       },
     };
     const tokyo = { ...plan, chosenCountry: "JP", country: "JP", countryName: "Japan", national: "jma" as const };
-    show({ alerts: tokyo, kept: [jma] }, "?view=world");
+    // Outside the UK the country's own warnings are the Warnings tab.
+    show({ alerts: tokyo, kept: [jma] }, "?view=warnings");
     expect(await screen.findByText(/〈危険警報（土砂災害）〉中越では/)).toBeInTheDocument();
     expect(screen.getByText(/National warnings are fetched for Japan, as chosen below/)).toBeInTheDocument();
     expect(screen.getByText("Lifted (1)")).toBeInTheDocument();

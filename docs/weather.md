@@ -10,10 +10,21 @@ its figures as current.
 
 ## Nothing is fetched by itself
 
-The server fetches only when you press **Update now** (UK warnings, and the forecast,
-flood warnings and river levels for every place), **Fetch river and sea levels**, **Fetch
-the last 3 days** on a station, **Fetch the averages for this place** under Climate, or
-**Fetch alerts** on the Worldwide tab.
+The server fetches only when you press **Update now**, **Fetch river and sea levels**,
+**Fetch the last 3 days** on a station, **Fetch the averages for this place** under
+Climate, **Fetch warnings** on the Warnings tab or **Fetch alerts** on the Worldwide tab.
+Under the button the screen says who Update now will ask and what goes to each.
+
+What **Update now** asks depends on the household's country (or the one chosen for
+national warnings):
+
+- **In the UK**: the forecast for every place, the Met Office's warnings (no position
+  sent), and the Environment Agency's flood warnings and river levels for each place in
+  England.
+- **Elsewhere**: the forecast for every place, and the country's own national warnings
+  (below) where Outpost knows a service. No UK service is asked. The Flood and River and
+  sea levels tabs are not shown, and a place outside England is never sent to the
+  Environment Agency: Kept and sources says it was not asked.
 
 **Also update when I open this screen** is off until you tick it; then each opening, on
 any device, does what Update now does. Nothing runs on a timer. A fetch that fails keeps
@@ -31,7 +42,10 @@ removing it removes what was fetched for it.
 
 Your device's position is offered only on a secure page (see Settings → HTTPS on your
 network). Give each UK place a **Met Office warning region**; without one, every UK warning
-is listed and none is matched to it.
+is listed and none is matched to it. A place elsewhere shows its country instead.
+
+With no places yet, the screen offers the household's home in one press (**Use Home**),
+and Places offers it again if it is not in the list.
 
 **Bring in places from a file** reads `weather-places.geojson` from **Take everything out**,
 or any GeoJSON file of named points. Each point is added beside the places already there; one
@@ -75,7 +89,9 @@ here, asking before replacing figures you typed, and fetch one if none is held. 
 
 ## Worldwide alerts
 
-On the **Worldwide** tab:
+Outside the UK, the **Warnings** tab holds the national warnings for the household's
+country, fetched by Update now; the **Worldwide** tab holds GDACS and the USGS. In the
+UK, Warnings holds the Met Office's and Worldwide all of these:
 
 - **Disasters worldwide** from GDACS (European Commission and United Nations), orange and
   red first. Its alerts are automatic and do not replace the authorities'.

@@ -51,7 +51,10 @@ export function AlertsView({
   now,
   fetching,
   onFetch,
+  part = "all",
 }: {
+  /** "national": the country's own warnings alone (the Warnings tab outside the UK); "world": GDACS and the USGS alone; "all": both. */
+  part?: "national" | "world" | "all";
   plan: AlertsPlan;
   copyOf: <K extends WeatherKind>(kind: K) => KeptCopy<K> | null;
   sources: WeatherSourceInfo[];
@@ -60,7 +63,9 @@ export function AlertsView({
   onFetch: (kinds: WeatherKind[]) => void;
 }) {
   const source = (kind: WeatherKind) => sources.find((candidate) => candidate.kind === kind);
-  const kinds: WeatherKind[] = plan.national ? [...WORLD_KINDS, plan.national] : WORLD_KINDS;
+  const national = part !== "world";
+  const world = part !== "national";
+  const kinds: WeatherKind[] = [...(world ? WORLD_KINDS : []), ...(national && plan.national ? [plan.national] : [])];
   const nationalName = plan.national ? NATIONAL_SERVICE_NAMES[plan.national] : null;
   // Whose home: "Home", or the current household's name when there are several; a moving home says how old its position is.
   const who = plan.household ?? "Home";
@@ -77,39 +82,53 @@ export function AlertsView({
               ? `${who} (${homeName}) is taken to be in ${plan.homeCountryName}, from its position on the map. `
               : `Outpost cannot tell which country ${who} (${homeName}) is in. `
             : ""}
-          {plan.chosenCountry ? `National warnings are fetched for ${plan.countryName}, as chosen below. ` : ""}
-          {nationalName
-            ? `Fetch alerts asks GDACS and the USGS for the whole world, and ${nationalName} for ${plan.countryName}.`
-            : plan.country
-              ? `Outpost knows no open national warning feed for ${plan.countryName}, so Fetch alerts asks GDACS and the USGS for the whole world.`
-              : "Fetch alerts asks GDACS and the USGS for the whole world."}
+          {national && plan.chosenCountry ? `National warnings are fetched for ${plan.countryName}, as chosen below. ` : ""}
+          {part === "national"
+            ? nationalName
+              ? `Update now and Fetch warnings ask ${nationalName} for ${plan.countryName}. Disasters and earthquakes worldwide are under Worldwide.`
+              : plan.country
+                ? `Outpost knows no open national warning feed for ${plan.countryName}. Follow your national weather service's warnings; disasters and earthquakes worldwide are under Worldwide.`
+                : "Outpost does not know which country's warnings to fetch. Mark home on the map, or choose a country below."
+            : part === "world"
+              ? "Fetch alerts asks GDACS and the USGS for the whole world. Your country's own warnings are under Warnings."
+              : nationalName
+                ? `Fetch alerts asks GDACS and the USGS for the whole world, and ${nationalName} for ${plan.countryName}.`
+                : plan.country
+                  ? `Outpost knows no open national warning feed for ${plan.countryName}, so Fetch alerts asks GDACS and the USGS for the whole world.`
+                  : "Fetch alerts asks GDACS and the USGS for the whole world."}
         </p>
         {plan.home ? null : <NoHome />}
-        {movedSince ? (
+        {national && movedSince ? (
           <p className="text-small text-ink-muted">
             The {nationalName} copy kept was fetched before {plan.household ?? "the household"} last moved, so it is for the earlier place.
             Press Fetch alerts for where it is now.
           </p>
         ) : null}
-        <CountryChoice plan={plan} />
-        <div>
-          <Button variant="secondary" loading={fetching} onClick={() => onFetch(kinds)}>
-            <RefreshCw />
-            Fetch alerts
-          </Button>
-        </div>
+        {national ? <CountryChoice plan={plan} /> : null}
+        {kinds.length > 0 ? (
+          <div>
+            <Button variant="secondary" loading={fetching} onClick={() => onFetch(kinds)}>
+              <RefreshCw />
+              {part === "national" ? "Fetch warnings" : "Fetch alerts"}
+            </Button>
+          </div>
+        ) : null}
         <p className="text-small text-ink-muted">
           These are copies, fetched when you press. Nothing here replaces the warnings of the authorities where you are.
         </p>
       </div>
 
-      {plan.national === "meteoalarm" ? <MeteoalarmSection copy={copyOf("meteoalarm")} source={source("meteoalarm")} now={now} /> : null}
-      {plan.national === "nws" ? <NwsSection copy={copyOf("nws")} source={source("nws")} now={now} /> : null}
-      {plan.national === "eccc" ? <EcccSection copy={copyOf("eccc")} source={source("eccc")} now={now} /> : null}
-      {plan.national === "metservice" ? <MetserviceSection copy={copyOf("metservice")} source={source("metservice")} now={now} /> : null}
-      {plan.national === "jma" ? <JmaSection copy={copyOf("jma")} source={source("jma")} now={now} /> : null}
-      <GdacsSection copy={copyOf("gdacs")} source={source("gdacs")} now={now} />
-      <QuakesSection copy={copyOf("quakes")} source={source("quakes")} now={now} home={plan.home} />
+      {national && plan.national === "meteoalarm" ? (
+        <MeteoalarmSection copy={copyOf("meteoalarm")} source={source("meteoalarm")} now={now} />
+      ) : null}
+      {national && plan.national === "nws" ? <NwsSection copy={copyOf("nws")} source={source("nws")} now={now} /> : null}
+      {national && plan.national === "eccc" ? <EcccSection copy={copyOf("eccc")} source={source("eccc")} now={now} /> : null}
+      {national && plan.national === "metservice" ? (
+        <MetserviceSection copy={copyOf("metservice")} source={source("metservice")} now={now} />
+      ) : null}
+      {national && plan.national === "jma" ? <JmaSection copy={copyOf("jma")} source={source("jma")} now={now} /> : null}
+      {world ? <GdacsSection copy={copyOf("gdacs")} source={source("gdacs")} now={now} /> : null}
+      {world ? <QuakesSection copy={copyOf("quakes")} source={source("quakes")} now={now} home={plan.home} /> : null}
     </div>
   );
 }
