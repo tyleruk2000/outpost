@@ -8,7 +8,7 @@ import { ArrowUp, CornerUpLeft, CornerUpRight, Flag, MapPin, RotateCw, Ship } fr
 import { Link } from "react-router";
 import { formatDate } from "@/lib/utils";
 import { DirectionsList } from "./directions";
-import { endTurnsTitle, streetsTotals, turnsSummary } from "./street-words";
+import { climbText, endTurnsTitle, steepestText, streetsTotals, turnsSummary } from "./street-words";
 
 const lineButton =
   "flex w-full items-start gap-3 px-4 py-2 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:min-h-11 md:pointer-coarse:min-h-11";
@@ -140,12 +140,27 @@ export function DoorToDoorList({
 
 export function StreetsTotals({ result }: { result: StreetsRouteResult }) {
   const [distance, time] = streetsTotals(result).split(", about ");
+  const hills = result.hills ?? null;
+  const climb = hills ? climbText(hills) : null;
+  const steepest = steepestText(result);
   return (
     <p className="tabular text-body text-ink">
       <span className="font-semibold">{distance}</span>, about <span className="font-semibold">{time}</span>.
+      {climb ? (
+        // The climb over the installed terrain, which the time allows for: "↑ 310 m ↓ 280 m".
+        <span className="block text-small text-ink">
+          <span aria-hidden>{climb.short}</span>
+          <span className="sr-only">{climb.words}</span>
+          {steepest ? <span className="text-ink-muted">. {steepest}</span> : null}
+        </span>
+      ) : null}
       <span className="block text-small text-ink-muted">
         Planned {formatDate(result.plannedAt)}.{" "}
-        {result.mode === "drive-door" ? "Free-flowing traffic with no stops." : "At an even pace, with no stops."}
+        {result.mode === "drive-door"
+          ? "Free-flowing traffic with no stops."
+          : hills
+            ? "Hills counted, no stops."
+            : "At an even pace, with no stops."}
       </span>
     </p>
   );

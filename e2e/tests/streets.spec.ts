@@ -47,7 +47,11 @@ test.describe("street routes", () => {
       await expect(card.getByRole("list", { name: "Legend" })).toContainText("Within 30 min");
       await expect(card.getByText("Main roads only")).toBeVisible();
       await expect(card.getByText(/Free-flowing traffic, no stops/)).toBeVisible();
-      await expect(card.getByRole("radiogroup", { name: "Way of travelling" })).toHaveCount(0);
+      // Walking is offered too: it works over the terrain, not the streets. Cycling says what it needs.
+      await expect(card.getByRole("radiogroup", { name: "Way of travelling" }).getByRole("radio", { name: "Drive" })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
     } finally {
       await removeChannelTrip(page, places);
     }

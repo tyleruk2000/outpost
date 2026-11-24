@@ -964,7 +964,6 @@ export function ContextMenu({
   onRoadRoute,
   onSun,
   onRange,
-  onWalk,
   onReach,
   onClose,
 }: {
@@ -985,9 +984,10 @@ export function ContextMenu({
   onSun: () => void;
   /** Shows how far a radio there could reach over the terrain (maps/radio/point-range.tsx). */
   onRange?: () => void;
-  /** Shows the ground reachable on foot from there in a set time (maps/walk/walk-reach.tsx). */
-  onWalk?: () => void;
-  /** Shows the areas reachable from there, up to 2 hours by car or bicycle and 8 on foot (maps/reach/reach-tool.tsx). */
+  /**
+   * Shows the areas reachable from there, up to 2 hours by car or bicycle and 8 on foot over the terrain
+   * (maps/reach/reach-tool.tsx).
+   */
   onReach?: () => void;
   onClose: () => void;
 }) {
@@ -1023,9 +1023,7 @@ export function ContextMenu({
   const [drawn, setDrawn] = useState<number | null>(null);
   useLayoutEffect(() => setDrawn(ref.current?.offsetHeight || null), []);
   const width = 232;
-  const height =
-    drawn ??
-    (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0) + (onReach ? 36 : 0) + (onRoadRoute ? 72 : 0);
+  const height = drawn ?? (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onReach ? 36 : 0) + (onRoadRoute ? 72 : 0);
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -1070,11 +1068,6 @@ export function ContextMenu({
       {onRange ? (
         <button type="button" role="menuitem" className={item} onClick={onRange}>
           Estimated radio range from here
-        </button>
-      ) : null}
-      {onWalk ? (
-        <button type="button" role="menuitem" className={item} onClick={onWalk}>
-          How far on foot from here
         </button>
       ) : null}
       <button

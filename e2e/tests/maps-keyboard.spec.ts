@@ -42,7 +42,7 @@ test.describe("maps from the keyboard", () => {
     await removeTestMaps(page, maps);
   });
 
-  test("Shift F10 on the map opens the menu for the centre, and its radio range and walking reach", async ({ page }) => {
+  test("Shift F10 on the map opens the menu for the centre, and its radio range and what is reachable", async ({ page }) => {
     const errors = watchForErrors(page);
     await open(page);
     const map = page.locator(".maplibregl-canvas");
@@ -59,9 +59,11 @@ test.describe("maps from the keyboard", () => {
     await expect(map).toBeFocused();
 
     await page.keyboard.press("Shift+F10");
-    await menu.getByRole("menuitem", { name: "How far on foot from here" }).press("Enter");
-    await expect(page.getByRole("heading", { name: "How far on foot", level: 2 })).toBeVisible();
-    await page.getByRole("button", { name: "Stop showing how far on foot" }).click();
+    // One entry for what is reachable, on foot over the terrain as well as by car or bicycle.
+    await expect(menu.getByRole("menuitem", { name: "How far on foot from here" })).toHaveCount(0);
+    await menu.getByRole("menuitem", { name: "Reachable from here" }).press("Enter");
+    await expect(page.getByRole("heading", { name: "Reachable from here", level: 2 })).toBeVisible();
+    await page.getByRole("button", { name: "Stop showing what is reachable" }).click();
 
     await focusOnMap(page);
     await page.keyboard.press("Shift+F10");

@@ -39,6 +39,52 @@ export function toblerKmh(slope: number): number {
   return 6 * Math.exp(-3.5 * Math.abs(slope + 0.05));
 }
 
+/** A walker's speed on a slope as a share of the speed on the flat, by Tobler's function (above 1 on a gentle descent). */
+export function walkGradeFactor(slope: number): number {
+  return toblerKmh(slope) / toblerKmh(0);
+}
+
+/**
+ * How much faster or slower a bicycle goes on a slope than on the flat: Valhalla's own table for its bicycle costing
+ * (`kGradeBasedSpeedFactor` in src/sif/bicyclecost.cc, MIT licence, read 24 November 2026), "speed adjustment factors
+ * based on weighted grade", one for each of these grades in per cent (its comments: 18 km/h on the flat, 9 km/h up
+ * 10%, 39.6 km/h down 10%). Between two grades the factor is read along the straight line between them; beyond the
+ * ends it stays at the end's.
+ */
+export const CYCLE_GRADE_FACTORS: ReadonlyArray<readonly [gradePercent: number, factor: number]> = [
+  [-10, 2.2],
+  [-8, 2.0],
+  [-6.5, 1.9],
+  [-5, 1.7],
+  [-3, 1.4],
+  [-1.5, 1.2],
+  [0, 1.0],
+  [1.5, 0.95],
+  [3, 0.85],
+  [5, 0.75],
+  [6.5, 0.65],
+  [8, 0.55],
+  [10, 0.5],
+  [11.5, 0.45],
+  [13, 0.4],
+  [15, 0.3],
+];
+
+/** A bicycle's speed on a slope (rise over run, uphill positive) as a share of its speed on the flat. */
+export function cycleGradeFactor(slope: number): number {
+  const grade = slope * 100;
+  const table = CYCLE_GRADE_FACTORS;
+  if (grade <= table[0]![0]) return table[0]![1];
+  for (let index = 1; index < table.length; index += 1) {
+    const [g1, f1] = table[index]!;
+    if (grade <= g1) {
+      const [g0, f0] = table[index - 1]!;
+      return f0 + ((grade - g0) / (g1 - g0)) * (f1 - f0);
+    }
+  }
+  return table.at(-1)![1];
+}
+
 /** A walk's grid cell is never finer than this, and is coarser for longer walks so that the grid stays a size a Pi can work. */
 export function walkCellMeters(minutes: number): number {
   return Math.max(25, Math.round((minutes / 60) * 15));

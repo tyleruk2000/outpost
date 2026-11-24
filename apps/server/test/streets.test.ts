@@ -8,12 +8,15 @@ import fs from "node:fs";
 import path from "node:path";
 import type { MapDataResponse, SavedRoadRouteDto, StreetsReachResult, StreetsRouteResult, StreetsStatusResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import type { RouteReply } from "../src/modules/streets/client.ts";
 import { addressProblem } from "../src/modules/streets/connection.ts";
 import { MAX_CELLS_ACROSS, mainRoadsReach, traceRings } from "../src/modules/streets/main-roads-reach.ts";
 import { streetDirections, streetDistanceText, wayName } from "../src/modules/streets/narrative.ts";
 import { estimateBuild } from "../src/modules/streets/tiles.ts";
 import { waitFor } from "./fixtures/downloads/file-server.ts";
+import { buildArchive } from "./fixtures/maps/archive.ts";
+import { type Ground, groundTiles, worldOf } from "./fixtures/maps/terrain.ts";
 import { greatBritain } from "./fixtures/roads/channel-trip.ts";
 import {
   createValhallaStandIn,
@@ -376,6 +379,60 @@ describe("with the streets service", () => {
     ).body as StreetsRouteResult;
     expect(ride.streets!.lines[0]!.text).toMatch(/^Cycle /);
     expect(ride.streets!.lines.some((l) => /miles|yards/.test(l.distanceText))).toBe(true);
+    // No terrain is installed: the time is the streets service's, on the flat, and the route says why.
+    expect(walk.hills).toBeNull();
+    expect(walk.warnings).toContain(
+      "No terrain on this Outpost, so hills aren't counted: the time is at a steady walking pace on the flat, with no stops.",
+    );
+  });
+
+  it("re-times a walk and a ride over installed terrain, with the climb, the descent and the steepest stretch", async () => {
+    const flat = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "walk" }))
+      .body as StreetsRouteResult;
+    // Ground rising 4% to the south of Leatherhead, towards Box Hill.
+    const [, startY] = worldOf(LEATHERHEAD.lat, LEATHERHEAD.lon);
+    const metresPerWorld = 40_075_016.7 * Math.cos((51.28 * Math.PI) / 180);
+    const ground: Ground = (_x, y) => Math.max(0, 50 + 0.04 * (y - startY) * metresPerWorld);
+    const box: [number, number, number, number] = [-0.4, 51.22, -0.26, 51.33];
+    const archive = buildArchive({
+      tiles: groundTiles(ground, { minZoom: 12, maxZoom: 12, bbox: box, size: 256 }),
+      bounds: box,
+      tileType: TileType.Png,
+      tileCompression: Compression.None,
+    });
+    const location = app.ctx.services.storage.getDefault();
+    fs.mkdirSync(path.join(location.path, "imports"), { recursive: true });
+    fs.writeFileSync(path.join(location.path, "imports/hills.pmtiles"), archive.bytes);
+    const imported = await app.api("POST", "/api/maps/import", {
+      locationId: location.id,
+      relPath: "imports/hills.pmtiles",
+      name: "Surrey hills",
+      tileType: "terrain",
+    });
+    expect(imported.status).toBe(200);
+
+    const walk = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "walk" }))
+      .body as StreetsRouteResult;
+    // The same line, the same distance; a longer time, uphill all the way.
+    expect(walk.geometry).toEqual(flat.geometry);
+    expect(walk.summary.distanceM).toBe(flat.summary.distanceM);
+    expect(walk.hills).toMatchObject({ coverage: "terrain", flatDurationS: flat.summary.durationS, terrain: "Surrey hills" });
+    // Box Hill is about 4.5 km south of the start: some 180 m up at 4%, more where the way wanders north and back.
+    expect(walk.hills!.climbM).toBeGreaterThan(150);
+    expect(walk.hills!.climbM - walk.hills!.descentM).toBeGreaterThan(150);
+    expect(walk.hills!.climbM - walk.hills!.descentM).toBeLessThan(200);
+    expect(walk.summary.durationS).toBeGreaterThan(flat.summary.durationS * 1.05);
+    expect(walk.summary.durationS).toBe(walk.streets!.durationS);
+    expect(walk.streets!.lines.reduce((sum, line) => sum + line.durationS, 0)).toBe(walk.summary.durationS);
+    expect(walk.hills!.steepest!.gradePercent).toBeGreaterThanOrEqual(3);
+    expect(walk.warnings).toContain(
+      "The time counts the hills over the installed terrain (Tobler's hiking function), but no stops or rests.",
+    );
+
+    const ride = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "cycle" }))
+      .body as StreetsRouteResult;
+    expect(ride.hills!.climbM).toBeGreaterThan(150);
+    expect(ride.warnings).toContain("The time counts the hills over the installed terrain, but no stops.");
   });
 
   it("asks for routes without ferries, and says so plainly when one still takes a ferry", async () => {

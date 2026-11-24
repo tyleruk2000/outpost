@@ -162,13 +162,33 @@ form plans a drive, as above; one line under it says the other ways exist.
 | --- | --- |
 | **Drive** | The main-road lines above, unchanged. |
 | **Door to door** | The same main-road lines, with the streets from your door to the first main road and from the last one to your door. Each end is one line, "From your door to the A24 (8 turns, 2.1 km)", which opens to its turns. Under 15 km between the doors, or with no routes added, the whole drive is turn by turn instead. |
-| **Walk** | Turn by turn on streets and paths: "Turn left onto Church Street (B2450)", each with the distance to the next. |
-| **Cycle** | The same by bicycle, on streets, lanes and cycle paths. |
+| **Walk** | Turn by turn on streets and paths: "Turn left onto Church Street (B2450)", each with the distance to the next. Timed over the hills (below). |
+| **Cycle** | The same by bicycle, on streets, lanes and cycle paths. Timed over the hills too. |
 
 Choose a road or a turn to see it on the map. The route card and the condensed plain text
 carry the turns too: on a door-to-door card each end is a band with its turns in smaller
 type and a box to tick. Routes on streets are saved like a drive (see
 [Saving and printing](#saving-and-printing)).
+
+### Hills on a walk or a ride
+
+The streets hold no heights, so the way is chosen as if the land were flat. Where terrain
+is installed (**Offline maps**), the times are then put right over it: under the totals,
+the climb and the descent ("↑ 310 m ↓ 280 m") and the steepest stretch ("Steepest: 14%
+uphill for 250 m, 1.2 km from the start"). Each turn keeps the streets' own time for its
+stretch (steps and rough paths are slower) and is slowed or sped by its slopes:
+
+- **On foot**, by Tobler's hiking function, as **Reachable from here** walks: 10% uphill
+  takes about 1.4 times as long as the flat, a gentle descent a little less.
+- **By bicycle**, by the streets service's own table of speed for each slope: half speed
+  up 10%, 2.2 times as fast down 10% or steeper.
+
+The heights are read every 25 m and smoothed over about 100 m, so the terrain's noise and a
+building are not counted as climbing; a bridge over a deep valley can still read as a dip.
+With no terrain installed the route says so ("No terrain on this Outpost, so hills aren't
+counted") and the time is for the flat. No stops or rests are counted. The route card adds
+the heights along the way as a profile, with the steepest stretch shaded, and each turn's
+time.
 
 ### Ferries
 
@@ -201,8 +221,11 @@ each with its own outline (solid for the shortest, then dashed, then dotted) and
 written on it, so they read apart in grey too. The legend says which is which and where
 the areas come from:
 
-- **Streets**: over every street, by car, bicycle or on foot, where walking and cycling is
-  added for the place.
+- **Streets**: over every street, by car or bicycle, where walking and cycling is added for
+  the place.
+- **On foot**: over the installed terrain, faster on paths, barred by water and cliffs, at
+  the pace you choose (see [maps.md](maps.md#on-foot-over-the-terrain)). It needs terrain,
+  not streets, and counts the hills.
 - **Main roads only**: by car over the routes added, on every installation with them. The point is joined to the nearest main road; streets off the main roads are
   not counted, so the true area is a little larger near towns.
 
@@ -211,11 +234,12 @@ yet.") with **Add roads for France**; walking and cycling, where it is not added
 names that country too ("Add walking and cycling for France"). Outpost never offers
 your home country in place of where the point is.
 
-Both are for **free-flowing traffic, no stops**; on foot and by bicycle, a steady pace on
-the flat with no stops (the streets hold no heights, so hills are not counted). Over 2 hours
+Drives are for **free-flowing traffic, no stops**; by bicycle, a steady pace on the flat
+with no stops (the streets hold no heights, so hills are not counted). Over 2 hours
 on foot, or an hour by bicycle, the card adds that no rests are counted: a real day's walk
-reaches far less than the 8 hour area. Tick **Reachable areas** in **Print or
-save as PDF** to put them on a paper map, with the legend in words under it.
+reaches far less than the 8 hour area. **Print or save as PDF** in the card opens the
+map's print with the areas ticked (**Reachable areas**, or **Reachable on foot** for a
+walk), with the legend in words under the map.
 
 ## Saving and printing
 

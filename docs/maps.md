@@ -28,7 +28,7 @@ screen in place of the tabs; close the card to have the tabs back. Pinch to zoom
 Right-click the map (press and hold on a touch screen) for **Save a place here**, **Measure
 from here**, **Draw a route from here**, **Plan a route from here**, **Plan a route to here**,
 **Reachable from here**,
-**Sun times here**, **Estimated radio range from here**, **How far on foot from here** and
+**Sun times here**, **Estimated radio range from here** and
 **Copy coordinates** (and **Move** on a saved place).
 
 From the keyboard, the point is the cross at the centre of the map. Tab to the map, move it
@@ -282,12 +282,33 @@ another, in steps of one colour with a labelled outline for each: 2 hours' drive
 30 minutes, 1 hour and 2 hours; 8 hours on foot shows 2, 4 and 8 hours.
 
 By car it works over the routes added (**Main roads only**); with walking and cycling added,
-over every street, by car, bicycle or on foot (**Streets**). The times are for free-flowing
-traffic with no stops, or a steady pace on the flat with no stops; over 2 hours on foot
-(and over an hour by bicycle) no rests are counted either, so a real day's walk covers
-much less. A long time takes longer to work out: a 2 hour drive or an 8 hour walk over
-every street can take tens of seconds on a Raspberry Pi. See
+over every street (**Streets**), by car or bicycle. **On foot it works over the terrain**
+(below), so it needs only terrain on **Offline maps**, not streets. Drives are for
+free-flowing traffic with no stops, rides for a steady pace on the flat; over 2 hours on
+foot (and over an hour by bicycle) no rests are counted, so a real day's walk covers much
+less. A long time takes longer to work out: a 2 hour drive can take tens of seconds on a
+Raspberry Pi, an 8 hour walk about ten, with a bar showing how far it has got. **Print or
+save as PDF** in the card opens the map's print with the areas on it. See
 [road-routes.md](road-routes.md#reachable-from-here).
+
+### On foot, over the terrain
+
+On foot the card shades the ground you could walk to, orange, darkest nearest, with a
+ring and its time at each half hour (up to an hour) or each hour. The pace is Tobler's
+hiking function on the installed terrain: about 5 km/h on a flat path, 6 km/h on a gentle
+descent, slower up and on steep descents, and three fifths of that off paths and roads.
+Paths and roads come from the installed map; water, rivers, canals and cliffs are barred
+except at bridges, and so are slopes over 45°. It is for a fit adult with no load: under
+**Pace and what this is**, choose **Slower** (three quarters: a pack, children) or **Much
+slower** (half: someone hurt or tired). **It does not know** fences, private land, bog,
+woods, snow, darkness or weather, which can halve a pace or stop it, and it can miss a
+narrow gully or footbridge. Longer walks are read in coarser squares (25 m up to an hour,
+120 m for 8 hours), so the work stays about the same.
+
+On paper the walk is **Reachable on foot** in **Print or save as PDF**: the shading, each
+ring with its time (so it reads in grey), the start as a ringed dot, and under the map the
+key in words, the pace, the terrain it was read from and what it leaves out. Add the
+**UTM grid lines** or **Latitude and longitude** for references.
 
 ## Walking and cycling
 
@@ -527,20 +548,6 @@ ground along any bearing. It counts only line of sight: power, aerials, woods an
 are not counted, and radio often reaches less. It works the same way as a repeater's
 [estimated range](radio.md#the-estimated-range). In the **Night (red)** map style the
 shading, its edge and the circles are drawn in reds, the typical-range circle the brightest.
-
-## How far on foot from a point
-
-(For walking times along streets rather than over open ground, see **Reachable from here**
-above.)
-
-
-Press and hold the map and choose **How far on foot from here**: the ground reachable on
-foot in 30 minutes to 4 hours, shaded orange with a ring each half hour or hour. The pace is
-Tobler's hiking function, about 5 km/h on a flat path and three fifths of that off paths,
-for a fit adult with no load; choose **Slower** or **Much slower** for a pack, children or
-someone hurt. Water, cliffs and slopes over 45° are barred except at bridges. **It does not
-know** fences, private land, bog, woods, snow, darkness or weather, which can halve a pace
-or stop it, and it can miss a narrow gully or footbridge.
 
 ## Repeaters on the map
 

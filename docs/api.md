@@ -626,7 +626,8 @@ Types: `maps.ts` and the files named below. See [maps.md](maps.md).
 | `GET /api/maps/height` | `at` → `PointHeight`: `heightMeters`, `cellMeters`, or `null`s. |
 | `GET /api/maps/sight-range` | `at`, `aerial`, `station` (0 to 1,000 m) → `SightRange` (`radio-range.ts`): viewshed on 720 bearings to 100 km, `seen` bits base64, `bearings`, `shares`, `typicalMeters` (median over the bearings of the furthest ground in sight, none in sight counting 0; null with no terrain), `coverage` (`terrain`, `partial`, `none`, with `horizonMeters`). About 170 kB, cached. |
 | `GET /api/maps/relay` | `a`, `b` (≤200 km), `aHeight`, `bHeight`, `relay` → `RelayPlan`: up to eight highest and eight nearest places in sight of both, and `both` as a range. |
-| `GET /api/maps/walk-reach` | `at`, `minutes` (30, 60, 90, 120, 180, 240), `pace` (`standard`, `slower`, `slowest`) → `WalkReach` (`walk-reach.ts`): Tobler's function over terrain, faster on paths, barred by water, cliffs and slopes over 45°; `minutesGrid` one byte a cell. |
+| `GET /api/maps/walk-reach` | `at`, `minutes` (30, 60, 120, 240, 360, 480; 90 and 180 still answered), `pace` (`standard`, `slower`, `slowest`) → `WalkReach` (`walk-reach.ts`): Tobler's function over terrain, faster on paths, barred by water, cliffs and slopes over 45°; `minutesGrid` one byte a cell, the cell growing with the time so the grid stays about 800 cells a side. Reachable from here on foot. |
+| `GET /api/maps/walk-reach/progress` | the same query → `{ share }`: 0 to 1 while that walk is worked out, 1 once known, null when not asked. |
 | `GET /api/maps/area-size` | `bbox`, `maxZoom`, `terrain=1` → `MapAreaSize`: tiles and bytes per layer from the archives' directories. `413` past 12,000 tiles a layer. |
 
 Bad input is `400`; nothing here downloads. `?raw=1` and `area-size` serve
@@ -729,7 +730,7 @@ installed road networks ("Main roads only"). Shapes and behaviour:
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/streets/status` | `state`, `installed`, `message`, the streets in use, a build under way, the modes available, kept country files to build from. |
-| `POST /api/streets/route` | `{ points, mode: drive-door \| walk \| cycle, units?, crossing? }` → Outpost's road route with streets at each end, or streets all the way, as turn-by-turn lines. `400` "Streets are not installed for France". |
+| `POST /api/streets/route` | `{ points, mode: drive-door \| walk \| cycle, units?, crossing? }` → Outpost's road route with streets at each end, or streets all the way, as turn-by-turn lines. A walk or a ride is re-timed over installed terrain and carries `hills` (climb, descent, highest, lowest, steepest 250 m, a profile of at most 200 points, the time on the flat); null with no terrain along it, and a warning says so. `400` "Streets are not installed for France". |
 | `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: one to three of 15, 30, 60, 90, 120 (drive, cycle) or 30, 60, 120, 240, 360, 480 (walk), source? }` → GeoJSON areas, smallest time first, labelled "Streets" or "Main roads only". |
 | `POST /api/streets/tiles/estimate` | `{ regions }` → time, memory, disk writes and space a build takes, with the warnings to show. |
 | `POST /api/streets/tiles` | `{ regions, workLocationId? }` or `{ import: { locationId, relPath } }` → `{ jobId, estimate }` (task `streets.build`). `409` while one runs. |
