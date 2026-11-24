@@ -62,7 +62,7 @@ function useGroups(groups: NavItem[], pathname: string) {
  * Whether the part that scrolls has more below what is shown, kept up to date as it scrolls and as what
  * is in it changes size. It says so with a fade at its foot, since a quiet scroll bar says nothing.
  */
-function useMoreBelow(region: RefObject<HTMLDivElement | null>, collapsed: boolean, pathname: string, tree: ReactNode): boolean {
+function useMoreBelow(region: RefObject<HTMLElement | null>, collapsed: boolean, pathname: string, tree: ReactNode): boolean {
   const [more, setMore] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: looked at again when what is in the region changes
   useEffect(() => {
@@ -80,8 +80,36 @@ function useMoreBelow(region: RefObject<HTMLDivElement | null>, collapsed: boole
       window.removeEventListener("resize", look);
       watch?.disconnect();
     };
-  }, [collapsed, pathname, tree]);
+  }, [region, collapsed, pathname, tree]);
   return more;
+}
+
+/** The root font size from which the rail names each icon and the whole sidebar scrolls as one: Larger text and up. */
+const LARGE_TEXT_PX = 20;
+
+/**
+ * Whether the text is set large (Settings → Appearance, or the browser's own size): read from the root font size,
+ * and again when it changes (the setting writes the root's style) or the window does.
+ */
+export function useLargeText(): boolean {
+  const read = () =>
+    typeof document === "undefined"
+      ? false
+      : (Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) >= LARGE_TEXT_PX;
+  const [large, setLarge] = useState(read);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read is the same sum each time
+  useEffect(() => {
+    const update = () => setLarge(read());
+    update();
+    const watch = typeof MutationObserver === "undefined" ? null : new MutationObserver(update);
+    watch?.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
+    window.addEventListener("resize", update);
+    return () => {
+      watch?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+  return large;
 }
 
 /** Room left for the page tree when every group is open, below which groups start closed. About eight pages. */
@@ -160,20 +188,46 @@ function ParentRow({
 }
 
 /** Collapsed to icons: a screen with others under it opens a short menu of them all, itself first. */
-function IconRow({ item, label, lit, pathname }: { item: NavItem; label: string; lit: boolean; pathname: string }) {
+function IconRow({
+  item,
+  label,
+  lit,
+  pathname,
+  named = false,
+}: {
+  item: NavItem;
+  label: string;
+  lit: boolean;
+  pathname: string;
+  /** At large text: the name under the icon, in words, and the icon as large as the text. */
+  named?: boolean;
+}) {
   const navigate = useNavigate();
   const children = item.children ?? [];
-  const icon = <item.icon aria-hidden className="size-[18px] shrink-0" strokeWidth={1.6} />;
+  const icon = <item.icon aria-hidden className={cn("shrink-0", named ? "size-[1.125rem]" : "size-[18px]")} strokeWidth={1.6} />;
   const inGroup = isInGroup(pathname, item);
+  const shape = named ? "flex-col gap-0.5 px-1 py-1.5 text-center" : "justify-center px-0";
+  const name = named ? (
+    <span className="max-w-full text-micro leading-tight [overflow-wrap:anywhere] hyphens-auto">{label}</span>
+  ) : (
+    <span className="sr-only">{label}</span>
+  );
   if (children.length === 0) {
+    const link = (
+      <Link to={item.to} aria-current={lit ? "page" : undefined} className={cn(rowClass, shape, lit && litClass)}>
+        {icon}
+        {name}
+      </Link>
+    );
     return (
       <li>
-        <Tooltip label={label} side="right">
-          <Link to={item.to} aria-current={lit ? "page" : undefined} className={cn(rowClass, "justify-center px-0", lit && litClass)}>
-            {icon}
-            <span className="sr-only">{label}</span>
-          </Link>
-        </Tooltip>
+        {named ? (
+          link
+        ) : (
+          <Tooltip label={label} side="right">
+            {link}
+          </Tooltip>
+        )}
       </li>
     );
   }
@@ -183,9 +237,14 @@ function IconRow({ item, label, lit, pathname }: { item: NavItem; label: string;
         <Tooltip label={label} side="right">
           <MenuTrigger
             aria-label={`${label}, and the screens under it`}
-            className={cn(rowClass, "relative w-full justify-center px-0 data-[state=open]:bg-spine-raised", inGroup && litClass)}
+            className={cn(rowClass, "relative w-full data-[state=open]:bg-spine-raised", shape, inGroup && litClass)}
           >
             {icon}
+            {named ? (
+              <span aria-hidden className="max-w-full text-micro leading-tight [overflow-wrap:anywhere] hyphens-auto">
+                {label}
+              </span>
+            ) : null}
             {/* Says, without a word, that a press opens more than one way on. */}
             <ChevronRight aria-hidden className="absolute right-0.5 size-3 opacity-70" strokeWidth={2} />
           </MenuTrigger>
@@ -267,7 +326,12 @@ export function Sidebar({
     };
   }, [pathname]);
 
-  const moreBelow = useMoreBelow(regionRef, collapsed, pathname, notesTree);
+  // At large text the rail names its icons, and the whole sidebar scrolls as one: the upkeep list kept in view below
+  // left a window of a few rows for the screens above it (at 200% on a tablet, 402 px of 1,308).
+  const large = useLargeText();
+  const named = collapsed && large;
+  const asideRef = useRef<HTMLElement>(null);
+  const moreBelow = useMoreBelow(large ? asideRef : regionRef, collapsed, pathname, notesTree);
 
   // Open over the page: Escape closes it, and the focus goes back to the button that opened it.
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -287,7 +351,7 @@ export function Sidebar({
     const label = item.label;
     const lit = isOwnScreen(pathname, item);
     return collapsed ? (
-      <IconRow key={item.to} item={item} label={label} lit={lit} pathname={pathname} />
+      <IconRow key={item.to} item={item} label={label} lit={lit} pathname={pathname} named={named} />
     ) : (
       <ParentRow
         key={item.to}
@@ -320,7 +384,10 @@ export function Sidebar({
       {over ? (
         <>
           {/* The rail's room, kept while the whole sidebar lies over the page, so that the page does not move. */}
-          <div aria-hidden className="box-content hidden w-[60px] shrink-0 pl-[env(safe-area-inset-left)] md:block" />
+          <div
+            aria-hidden
+            className={cn("box-content hidden shrink-0 pl-[env(safe-area-inset-left)] md:block", large ? "w-[6.5rem]" : "w-[60px]")}
+          />
           <button
             type="button"
             tabIndex={-1}
@@ -331,12 +398,14 @@ export function Sidebar({
         </>
       ) : null}
       <aside
+        ref={asideRef}
         aria-label="Main"
         className={cn(
+          large && "scroll-quiet overflow-y-auto [scrollbar-color:var(--spine-border)_transparent]",
           "sticky top-0 z-(--z-nav) box-content hidden h-dvh shrink-0 flex-col bg-spine pl-[env(safe-area-inset-left)] text-spine-ink transition-[width] duration-(--duration-slow) md:flex",
           // 16rem, but at larger text no more than 22% of the window (still 256 px at least): at Largest on a 1280 px
           // window it took 384 px, and 512 px at 200%, from the screen beside it.
-          collapsed ? "w-[60px]" : "w-[min(16rem,max(256px,22vw))]",
+          collapsed ? (large ? "w-[6.5rem]" : "w-[60px]") : "w-[min(16rem,max(256px,22vw))]",
           // Over the page on a tablet, at its full width whatever the window's, above the dimmed page.
           over && "fixed inset-y-0 left-0 z-(--z-dialog) w-[min(18rem,calc(100vw-4rem))] shadow-dialog",
         )}
@@ -393,11 +462,12 @@ export function Sidebar({
         </div>
 
         {/* The one part that scrolls: the screens, then the tree of pages. What looks after the library stays in view below. */}
-        <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className={cn("relative flex flex-col", large ? "flex-none" : "min-h-0 flex-1")}>
           <div
             ref={regionRef}
             className={cn(
-              "scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-2 [scrollbar-color:var(--spine-border)_transparent]",
+              "flex flex-col px-3 pb-2",
+              large ? "flex-none" : "scroll-quiet min-h-0 flex-1 overflow-y-auto [scrollbar-color:var(--spine-border)_transparent]",
               collapsed && "px-2",
             )}
           >
@@ -409,11 +479,13 @@ export function Sidebar({
             </div>
           </div>
           {/* More of the screens or the tree is below: said by a fade into the spine, over the last line shown. */}
-          <div
-            aria-hidden
-            data-more-below={moreBelow || undefined}
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-b from-transparent to-spine opacity-0 transition-opacity duration-150 data-more-below:opacity-100"
-          />
+          {large ? null : (
+            <div
+              aria-hidden
+              data-more-below={moreBelow || undefined}
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-b from-transparent to-spine opacity-0 transition-opacity duration-150 data-more-below:opacity-100"
+            />
+          )}
         </div>
 
         <div className={cn("shrink-0 border-t border-spine-border px-3 pt-2 pb-2", collapsed && "px-2")}>
@@ -422,6 +494,14 @@ export function Sidebar({
           </div>
           <Lamp collapsed={collapsed} />
         </div>
+        {/* Scrolling as one at large text: the fade sticks to the foot of the window while there is more below. */}
+        {large ? (
+          <div
+            aria-hidden
+            data-more-below={moreBelow || undefined}
+            className="pointer-events-none sticky bottom-0 -mt-8 h-8 shrink-0 bg-linear-to-b from-transparent to-spine opacity-0 transition-opacity duration-150 data-more-below:opacity-100"
+          />
+        ) : null}
       </aside>
     </>
   );

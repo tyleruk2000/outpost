@@ -26,6 +26,7 @@ export const HERE_SOURCES = ["device", "map", "place"] as const satisfies readon
 export const HOUSEHOLD_LIMITS = {
   households: 20,
   name: 80,
+  address: 300,
   /** People in one household (the same as the supplies screen has always allowed). */
   peoplePerHousehold: SUPPLY_LIMITS.members,
   /** People and pets in the whole Outpost. */
@@ -107,6 +108,8 @@ export interface HouseholdDto {
   home: HouseholdHome | null;
   /** A country the person chose in place of the one home is in. */
   countryOverride: string | null;
+  /** Home's address in the household's own words, lines separated by new lines; empty when not given. */
+  address: string;
   /** The country every country user takes: the override, else the home's, else null. */
   country: string | null;
   /** A portable household's last position, kept when it is made fixed again. */
@@ -144,6 +147,7 @@ export interface HouseholdUpdateInput {
   homePlaceId?: string | null;
   basePlaceId?: string | null;
   countryOverride?: string | null;
+  address?: string;
 }
 
 /** PUT /api/households/:id/people: everyone in it, in order. */

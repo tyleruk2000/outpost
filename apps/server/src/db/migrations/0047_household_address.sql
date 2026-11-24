@@ -1,0 +1,1 @@
+ALTER TABLE `households` ADD `address` text DEFAULT '' NOT NULL;

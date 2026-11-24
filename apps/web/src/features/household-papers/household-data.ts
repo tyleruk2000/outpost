@@ -149,7 +149,7 @@ export function commsLines(comms: CommsResponse | null): string[] {
 export function grabHousehold(
   plans: EmergencyPlanResponse[],
   emergency: ContactDto[],
-  which: Pick<PaperHousehold, "name" | "kind" | "home"> | null,
+  which: (Pick<PaperHousehold, "name" | "kind" | "home"> & { address?: string }) | null,
   comms: CommsResponse | null,
   travel: { people: string[]; kit: string | null } = { people: [], kit: null },
 ): GrabHousehold {
@@ -165,12 +165,20 @@ export function grabHousehold(
   const add = (label: string, phone: string | undefined) => {
     if (phone && !contacts.some((entry) => entry.phone === phone)) contacts.push({ label, phone });
   };
+  // The plans' contacts in the plans' own order ("who to call, in this order"), then the emergency contacts.
   for (const plan of readable)
-    for (const contact of plan.contacts.filter((each) => each.outOfArea && !each.missing))
-      add(`${contact.name} (out of area)`, contact.numbers[0]?.value);
+    for (const contact of plan.contacts.filter((each) => !each.missing))
+      add(contact.outOfArea ? `${contact.name} (out of area)` : contact.name, contact.numbers[0]?.value);
   for (const contact of emergency) add(contact.displayName, contact.phones[0]?.value);
+  // Each person's own line from the plans, by their name.
+  const remember: Record<string, string[]> = {};
   for (const plan of readable)
-    for (const contact of plan.contacts.filter((each) => !each.missing)) add(contact.name, contact.numbers[0]?.value);
+    for (const person of plan.people)
+      if (person.name && person.remember.trim()) {
+        const lines = remember[person.name] ?? [];
+        if (!lines.includes(person.remember.trim())) lines.push(person.remember.trim());
+        remember[person.name] = lines;
+      }
   const home = which?.home ?? null;
   const portable = which?.kind === "portable";
   return {
@@ -179,7 +187,8 @@ export function grabHousehold(
     contacts,
     places,
     comms: commsLines(comms),
-    home: home && !portable ? { name: home.name || "Home", lat: home.lat, lon: home.lon } : null,
+    home: home && !portable ? { name: home.name || "Home", lat: home.lat, lon: home.lon, address: which?.address ?? "" } : null,
+    remember,
     travelling: portable && which ? { household: which.name, people: travel.people, kit: travel.kit } : null,
   };
 }

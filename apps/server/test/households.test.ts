@@ -88,6 +88,10 @@ describe("home and country", () => {
     expect(changed).toMatchObject({ countryOverride: "IE", country: "IE" });
     expect(changed.home.country).toBe("GB");
     expect((await app.api("PUT", "/api/households/household", { countryOverride: "Ireland" })).status).toBe(400);
+    // The address is kept as written, tidied of blank lines and spaces at the ends of lines.
+    const addressed = (await ok("PUT", "/api/households/household", { address: " 3 Mill Lane \n\n Kirkby Stephen " })).household;
+    expect(addressed.address).toBe("3 Mill Lane\nKirkby Stephen");
+    expect((await app.api("PUT", "/api/households/household", { address: "x".repeat(301) })).status).toBe(400);
   });
 
   it("refuses a home that is not a saved place", async () => {

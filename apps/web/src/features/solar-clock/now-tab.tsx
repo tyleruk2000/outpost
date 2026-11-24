@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { formatBearing } from "@/features/maps/lib/geo";
-import { apparentSolarHours, sunAt, sunDay } from "@/features/maps/lib/sun";
+import { addDays, apparentSolarHours, sunAt, sunDay } from "@/features/maps/lib/sun";
 import { clockText, useClockStyle } from "@/lib/clock";
 import { Formula, HowWorkedOut } from "../tools/kit";
 import { type ChosenPlace, NoPlaceYet } from "./place";
@@ -73,15 +73,28 @@ export function NowTab({ place, zone }: { place: ChosenPlace | null; zone: ZoneC
     // Four minutes for each degree the place lies west of the meridian its clock keeps (15° for each hour of the offset): added to sundial time.
     const longitudeMinutes = standard - 4 * place.lon;
     const points = sunPath(now, place.lat, place.lon, zone);
-    return { sun, day, solar, offset, standard, longitudeMinutes, points, today };
+    const tomorrow = addDays(today, 1);
+    const next = sunDay(place.lat, place.lon, tomorrow);
+    return { sun, day, solar, offset, standard, longitudeMinutes, points, today, tomorrow, next };
   }, [place, zone, now]);
 
   if (!place || !figures) return <NoPlaceYet />;
-  const { sun, day, solar, offset, standard, longitudeMinutes, points, today } = figures;
+  const { sun, day, solar, offset, standard, longitudeMinutes, points, today, tomorrow, next } = figures;
+  /** "Sunrise 07:33, sunset 16:02", or what the sun does instead in the polar night and the midnight sun. */
+  const riseAndSet = (of: typeof day, date: string): string =>
+    of.sun.kind === "below"
+      ? "No sunrise: the sun stays below the horizon all day"
+      : of.sun.kind === "above"
+        ? "No sunset: the sun stays above the horizon all day"
+        : `Sunrise ${of.sun.begin === null ? "before the day began" : clockAt(of.sun.begin, zone, style, date)}, sunset ${
+            of.sun.end === null ? "after the day ends" : clockAt(of.sun.end, zone, style, date)
+          }`;
   const solarHour = Math.floor(solar);
   const solarMinute = Math.floor((solar - solarHour) * 60);
   const summer = offset !== standard;
   const rows: Array<[string, string, string?]> = [
+    ["Today", riseAndSet(day, today), "for a flat horizon"],
+    ["Tomorrow", riseAndSet(next, tomorrow)],
     [
       "Height of the sun",
       sun.apparentAltitude >= 0

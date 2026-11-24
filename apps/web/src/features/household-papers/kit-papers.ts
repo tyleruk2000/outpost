@@ -356,6 +356,7 @@ function grabPieces(person: GrabPerson, household: GrabHousehold, options: { for
       scale: 1.05,
       gap: 0.1,
     },
+    ...(household.remember?.[person.name] ?? []).map((text) => line(`Remember: ${text}`)),
   ];
   if (person.sheetLocked) front.push(small("Medical sheet kept encrypted: not on this card.", C.muted));
   else {
@@ -383,8 +384,12 @@ function grabPieces(person: GrabPerson, household: GrabHousehold, options: { for
   if (household.places.length > 0) back.push(small("Where we meet"), ...household.places.slice(0, 3).map((place) => line(place)));
   if (household.comms.length > 0) back.push(small("Keeping in touch"), ...household.comms.slice(0, 2).map((text) => line(text)));
   if (household.home) {
+    // The address first, as the household wrote it; the position after it, in the formats chosen.
+    const address = (household.home.address ?? "").split("\n").filter(Boolean);
     const grid = gridLines(household.home.lat, household.home.lon, options.formats);
-    if (grid.length > 0) back.push(small(`Home: ${printable(household.home.name)}`), line(grid.join("\n")));
+    if (address.length > 0 || grid.length > 0) back.push(small(`Home: ${printable(household.home.name)}`));
+    if (address.length > 0) back.push(line(address.join("\n"), true));
+    if (grid.length > 0) back.push(line(grid.join("\n")));
   }
   back.push({
     runs: [{ text: `${madeWords(options.made)}. Our own plan: follow official warnings.` }],

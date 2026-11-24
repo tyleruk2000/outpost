@@ -26,6 +26,7 @@ const household = (patch: Partial<HouseholdDto>): HouseholdDto => ({
   basePlaceId: null,
   home: { kind: "place", id: "m1", name: "Fell Cottage", lat: 54.6, lon: -3.1, country: "GB", at: null, source: null },
   countryOverride: null,
+  address: "",
   country: "GB",
   here: null,
   personIds: [],

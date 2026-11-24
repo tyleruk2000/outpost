@@ -89,13 +89,18 @@ apply. **Print** makes a page for each person.
 
 ## Grab cards
 
-**Grab cards** makes a card for each person to carry:
+**Grab cards** makes a card for each person to carry. **On this phone**, at the top,
+shows each person's card in large type, with numbers that call: read it there, or keep
+the page on the phone. **To print** comes after it.
 
-- **Front**: name, the emergency number (from the plans; 999 when there is none), blood
-  group, allergies, conditions and medicines.
-- **Back**: who to contact (next of kin, GP, the out-of-area contact, emergency contacts),
-  where to meet, the first steps of Keeping in touch, and where home is, in the formats
-  you choose (decimal degrees; degrees, minutes and seconds; British National Grid; the
+- **Front**: name, the emergency number (from the plans; "not given" when no plan has
+  one), the person's own line from the plans ("Remember: fetch Sam"), blood group,
+  allergies, conditions and medicines.
+- **Back**: who to contact (the plans' contacts in the plans' order, then next of kin,
+  the doctor and the emergency contacts), where to meet, the first steps of Keeping in
+  touch, and where home is: its **address** first, as you give it on the household's
+  page (**Name and place → Address**), then its position in the formats you choose
+  (decimal degrees by default; degrees, minutes and seconds; British National Grid; the
   Maidenhead locator).
 
 **Wallet** folds to bank-card size, four to a sheet; **A6** is 105 by 148 mm, two to a

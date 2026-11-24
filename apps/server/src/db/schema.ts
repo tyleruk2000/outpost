@@ -1417,6 +1417,8 @@ export const households = sqliteTable("households", {
   baseMarkerId: text("base_marker_id"),
   /** A country the person chose (ISO 3166-1 alpha-2), in place of the one home is in. */
   country: text("country"),
+  /** A fixed household's address in its own words, as a stranger would read it on a grab card; empty when not given. */
+  address: text("address").notNull().default(""),
   /** A portable household's position, as a person last set it. */
   hereLat: real("here_lat"),
   hereLon: real("here_lon"),

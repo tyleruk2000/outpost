@@ -10,7 +10,8 @@ zone is wrong. Both are remembered on this device.
 
 ## Now
 
-The sun's height and bearing, sundial time beside clock time, the equation of time,
+Today's and tomorrow's sunrise and sunset (for a flat horizon), the sun's height and
+bearing, sundial time beside clock time, the equation of time,
 today's solar noon and the sun's path. It trusts the device's clock; if that is in doubt,
 use **Clock recovery**.
 

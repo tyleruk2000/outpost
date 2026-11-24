@@ -57,6 +57,10 @@ describe("the solar clock", () => {
     expect(screen.getByText(/Not a position Outpost reads/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Coordinates"), { target: { value: "60.155, -1.145" } });
     expect(await screen.findByText("Solar noon today")).toBeInTheDocument();
+    // Today's and tomorrow's sunrise and sunset come first: what most open it for.
+    const terms = screen.getAllByRole("term").map((term) => term.textContent);
+    expect(terms.slice(0, 2)).toEqual(["Today", "Tomorrow"]);
+    expect(screen.getAllByText(/^(Sunrise \d\d:\d\d, sunset \d\d:\d\d|No sunrise|No sunset)/)).toHaveLength(2);
   });
 
   it("shows a skeleton while saved places load", () => {

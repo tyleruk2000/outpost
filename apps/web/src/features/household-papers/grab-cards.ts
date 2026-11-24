@@ -44,8 +44,13 @@ export interface GrabHousehold {
   places: string[];
   /** The first steps of the communication plan: "Phones down: phone, then mesh, then PMR446 channel 3 on the hour". */
   comms: string[];
-  /** A fixed household's home. A portable household has none on its cards: `travelling` says who and what instead. */
-  home: { name: string; lat: number; lon: number } | null;
+  /**
+   * A fixed household's home: its address as the household wrote it (printed first, as a stranger reads it), then
+   * its position. A portable household has none on its cards: `travelling` says who and what instead.
+   */
+  home: { name: string; lat: number; lon: number; address?: string } | null;
+  /** Each person's own line from the plans ("Fetch Sam from school"), by name. */
+  remember?: Record<string, string[]>;
   /** A household that moves: its name, its people and its kit, printed where a fixed household's home would be. */
   travelling?: { household: string; people: string[]; kit: string | null } | null;
 }
@@ -86,6 +91,7 @@ function write(
   front.text("In an emergency", size + 3, { bold: true });
   front.text(person.name || "Name not given", size + 1.5, { bold: true, gap: 2 });
   front.number("emergency services", household.emergencyNumber.trim() || "not given", size + 2);
+  for (const line of household.remember?.[person.name] ?? []) front.text(`Remember: ${line}`, size, { gap: 2 });
   if (person.sheetLocked) front.text("Medical sheet kept encrypted: not on this card.", size * 0.85, { color: MUTED, gap: 2 });
   else {
     front.text(`Blood group: ${person.bloodGroup || "not known"}`, size, { gap: 2 });
@@ -117,6 +123,7 @@ function write(
   }
   if (household.home) {
     back.text(`Home: ${household.home.name}`, size * 0.85, { color: MUTED, gap: 2 });
+    for (const line of (household.home.address ?? "").split("\n").filter(Boolean)) back.text(line, size, { bold: true });
     for (const line of gridLines(household.home.lat, household.home.lon, formats)) back.text(line, size, { bold: false });
   }
   if (household.travelling) {

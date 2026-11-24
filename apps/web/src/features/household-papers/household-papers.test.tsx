@@ -419,8 +419,29 @@ describe("papers for a household that moves", () => {
       },
       null,
     );
-    expect(fixed.home).toEqual({ name: "Cottage", lat: 54.3, lon: -2.2 });
+    expect(fixed.home).toEqual({ name: "Cottage", lat: 54.3, lon: -2.2, address: "" });
     expect(fixed.travelling).toBeNull();
+    // With an address, it is printed first under Home, in bold, before the position.
+    const addressed = grabHousehold(
+      [],
+      [],
+      {
+        name: "Home",
+        kind: "fixed",
+        address: "3 Mill Lane\nKirkby Stephen",
+        home: { kind: "place", id: "h", name: "Cottage", lat: 54.3, lon: -2.2, country: "GB", at: null, source: null },
+      },
+      null,
+    );
+    const [card] = grabSheets([grabPerson({ memberId: "m1", name: "Sam", sheet: sheet() }, new Map(), {})], addressed, {
+      size: "a6",
+      formats: ["decimal"],
+      made: new Date(2026, 10, 20),
+      paper: "a4",
+    }).cards;
+    const words = card!.items.filter((item) => item.kind === "text").map((item) => (item as { text: string }).text);
+    expect(words.indexOf("3 Mill Lane")).toBeGreaterThan(words.indexOf("Home: Cottage"));
+    expect(words.indexOf("54.30000, -2.20000")).toBeGreaterThan(words.indexOf("Kirkby Stephen"));
   });
 
   it("says how old a position is and where it was", () => {
