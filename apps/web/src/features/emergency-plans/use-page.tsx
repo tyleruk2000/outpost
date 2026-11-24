@@ -63,6 +63,7 @@ export default function UsePlanPage() {
         resolved={resolved}
         ticks={ticks}
         onTick={(stepId, checked) => tick.mutate({ stepId, done: checked })}
+        editTo={`/prepare/plans/${id}`}
         head={
           <>
             <BackLink to={`/prepare/plans/${id}`} className="mb-2">

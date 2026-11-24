@@ -4,7 +4,14 @@
  * out: never deleted from the People list), where a portable one has been, the way to its
  * supplies and papers, and removing it.
  */
-import { DEFAULT_HOUSEHOLD, type EnergyTable, type HouseholdDto, type HouseholdHolds, type HouseholdKind } from "@outpost/shared";
+import {
+  DEFAULT_HOUSEHOLD,
+  type EnergyTable,
+  HOUSEHOLD_LIMITS,
+  type HouseholdDto,
+  type HouseholdHolds,
+  type HouseholdKind,
+} from "@outpost/shared";
 import { ChevronRight, LocateFixed, MapPin, Trash2, UserRoundPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
@@ -13,7 +20,7 @@ import { LeaveGuard } from "@/components/leave-guard";
 import { EmptyState, ErrorState, Joined, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { Field, Input } from "@/components/ui/input";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { SAVE_BAR_ROOM, SaveBar } from "@/features/household-papers/save-bar";
@@ -58,6 +65,7 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
   const [homePlaceId, setHomePlaceId] = useState(household.homePlaceId);
   const [basePlaceId, setBasePlaceId] = useState(household.basePlaceId);
   const [country, setCountry] = useState(household.countryOverride ?? WORKED_OUT);
+  const [address, setAddress] = useState(household.address);
   const [problem, setProblem] = useState<string | null>(null);
   const [hereOpen, setHereOpen] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -65,19 +73,21 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
   const save = useUpdateHousehold(household.id);
   const countries = [...(catalogue.data?.countries ?? [])].sort((a, b) => a.name.localeCompare(b.name));
   const workedOut = household.home?.country ?? null;
+  const near = household.home?.countryNear ?? [];
   const dirty =
     name !== household.name ||
     kind !== household.kind ||
     homePlaceId !== household.homePlaceId ||
     basePlaceId !== household.basePlaceId ||
-    country !== (household.countryOverride ?? WORKED_OUT);
+    country !== (household.countryOverride ?? WORKED_OUT) ||
+    address !== household.address;
 
   const submit = () => {
     if (!name.trim()) return setProblem("Give the household a name.");
     setProblem(null);
     settle(
       save,
-      { name: name.trim(), kind, homePlaceId, basePlaceId, countryOverride: country === WORKED_OUT ? null : country },
+      { name: name.trim(), kind, homePlaceId, basePlaceId, countryOverride: country === WORKED_OUT ? null : country, address },
       {
         onSuccess: () => toast.success(`${name.trim()} saved.`),
         onError: (error) => setProblem(errorMessage(error)),
@@ -113,10 +123,36 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
         </div>
         {kind === "fixed" ? (
           <div className="grid gap-2">
-            <PlaceSelect label="Home place" value={homePlaceId} onChange={setHomePlaceId} />
+            <PlaceSelect
+              label="Home place"
+              value={homePlaceId}
+              onChange={setHomePlaceId}
+              hint={
+                !homePlaceId && household.home?.kind === "place"
+                  ? `None chosen here, so home is “${household.home.name}”, the first saved place with the home icon.`
+                  : undefined
+              }
+            />
             <Button className="justify-self-start" onClick={() => setHomeOpen(true)}>
               <MapPin /> {household.home ? "Mark a new home on the map" : "Mark home on the map"}
             </Button>
+            <Field
+              label="Address"
+              optional
+              hint="As a stranger helping one of you would need it: printed first on the grab cards, before the coordinates."
+            >
+              {(ids) => (
+                <Textarea
+                  {...ids}
+                  rows={3}
+                  value={address}
+                  maxLength={HOUSEHOLD_LIMITS.address}
+                  autoComplete="street-address"
+                  onChange={(event) => setAddress(event.target.value)}
+                  className="max-w-md"
+                />
+              )}
+            </Field>
           </div>
         ) : (
           <>
@@ -148,7 +184,11 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
           label="Country"
           hint={
             workedOut
-              ? `Worked out from ${kind === "portable" ? "where it is" : "home"}: ${countryName(workedOut) ?? workedOut}. Used for warnings, frequencies and the energy table.`
+              ? `Worked out from ${kind === "portable" ? "where it is" : "home"}: ${countryName(workedOut) ?? workedOut}.${
+                  near.length > 0
+                    ? ` Home is within a few kilometres of ${near.map((code) => countryName(code) ?? code).join(" and ")}: check it is right.`
+                    : ""
+                } Used for warnings, frequencies, emergency numbers and the energy table.`
               : "Not worked out: no home place or position yet. Choose one here if you like."
           }
         >

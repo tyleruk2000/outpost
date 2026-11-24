@@ -66,8 +66,28 @@ export const UPDATE_KINDS = [
   "space-weather",
 ] as const satisfies readonly WeatherKind[];
 
-/** The kinds "Update now" fetches. Climate averages and sunshine change over decades and are fetched on a press of their own. */
+/** The kinds "Update now" fetches in the UK. Climate averages and sunshine change over decades and are fetched on a press of their own. */
 export const LIVE_KINDS: WeatherKind[] = ["forecast", "warnings", "flood", "rivers"];
+
+/** The kinds kept for the UK alone: the Met Office's warnings, and the Environment Agency's flood warnings and levels (England). */
+export const UK_ONLY_KINDS: WeatherKind[] = ["warnings", "flood", "rivers"];
+
+/**
+ * What "Update now" asks, by the country warnings are for (the household's, or the one
+ * chosen for national warnings): the forecast for the places in the list; in the UK the
+ * Met Office's warnings and, for the places, the Environment Agency's flood warnings and
+ * river levels; elsewhere the country's own national service where Outpost knows one. No
+ * UK service is asked for a home outside the UK.
+ */
+export function liveKindsFor(input: { country: string | null; national: WeatherKind | null; places: number }): WeatherKind[] {
+  const uk = input.country === "GB";
+  const kinds: WeatherKind[] = [];
+  if (input.places > 0) kinds.push("forecast");
+  if (uk) kinds.push("warnings");
+  if (uk && input.places > 0) kinds.push("flood", "rivers");
+  if (!uk && input.national) kinds.push(input.national);
+  return kinds;
+}
 
 export type WeatherSourceId =
   | "open-meteo"
@@ -172,6 +192,8 @@ export interface WeatherPlace {
   /** The saved place it came from is home: it carries the home icon, and is the first saved that does (`homePlaceOf`). */
   isHome: boolean;
   region: MetOfficeRegionId | null;
+  /** The country the place is in (ISO 3166-1), from the countries' outlines: the UK's services are asked only about a UK place. */
+  country: string | null;
   createdAt: number;
 }
 
@@ -379,9 +401,11 @@ export interface UpdateOutcome {
   placeName: string | null;
   source: WeatherSourceId;
   ok: boolean;
-  /** What went wrong, for a person. */
+  /** What went wrong, for a person; or, with `skipped`, why it was not asked. */
   message: string | null;
   bytes: number;
+  /** Not asked at all, and nothing sent: a service that does not cover the place (the Environment Agency outside England). */
+  skipped?: boolean;
 }
 
 export interface UpdateResponse {

@@ -45,7 +45,9 @@ test.describe("Weather and hazards on a phone", () => {
     expect((await api(page, "GET", "/api/weather")).kept).toEqual([]);
 
     // A saved place, and its warning region from the drop-down.
-    await page.getByRole("button", { name: "Choose a place" }).tap();
+    // Home is offered in one press; another place is chosen under Places.
+    await expect(page.getByRole("button", { name: "Use Weather home" })).toBeVisible();
+    await page.getByRole("button", { name: "Choose another place" }).tap();
     await page.getByRole("button", { name: "Add a place" }).tap();
     const dialog = page.getByRole("dialog", { name: "Add a place" });
     await dialog.getByRole("button", { name: /Weather home/ }).tap();

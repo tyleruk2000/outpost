@@ -12,9 +12,9 @@
  *
  * Nothing is asked of anyone: every step reads what is on this computer.
  */
-import { bearingDegrees, compassPoint, countryAt, haversineMeters, homeAsOf, isValidLatLon, noHomeWords, placeName } from "@outpost/shared";
+import { bearingDegrees, compassPoint, haversineMeters, homeAsOf, isValidLatLon, noHomeWords, placeName } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
-import { COUNTRIES } from "../layers/countries.ts";
+import { countryOfPoint } from "../layers/borders.ts";
 import { foldName, sameName } from "../layers/store.ts";
 
 export interface Where {
@@ -42,8 +42,6 @@ export function distanceFrom(from: { lat: number; lon: number }, to: { lat: numb
   const distance = km < 1 ? `${Math.round(meters / 10) * 10} m` : `${km < 10 ? km.toFixed(1) : Math.round(km)} km`;
   return { meters, words: `${distance} ${compassPoint(bearingDegrees(from.lat, from.lon, to.lat, to.lon))}` };
 }
-
-const countryOfPoint = (lat: number, lon: number) => countryAt({ lat, lon }, COUNTRIES);
 
 /**
  * The current household's home, as every screen takes it (`households.home()`): its saved

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { useSaveMarker } from "@/features/maps/data";
+import { countryName } from "@/features/maps/lib/search";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useUpdateHousehold } from "./data";
@@ -46,8 +47,14 @@ export function HomePlaceDialog({
         icon: "home",
         isFavorite: true,
       });
-      await update.mutateAsync({ homePlaceId: marker.id });
-      toast.success(`${name} is ${household.name}'s home place, and saved on the map.`);
+      const saved = await update.mutateAsync({ homePlaceId: marker.id });
+      // The country is said at once, so a wrong one (a home near a border) is seen and can be changed below.
+      const country = saved.household.home?.country;
+      toast.success(`${name} is ${household.name}'s home place, and saved on the map.`, {
+        description: country
+          ? `Outpost takes it to be in ${countryName(country) ?? country}. If that is wrong, choose the country under Name and place.`
+          : undefined,
+      });
       close(false);
     } catch (error) {
       notify.error(errorMessage(error));

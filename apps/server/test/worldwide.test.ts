@@ -31,8 +31,12 @@ const setHome = async (lat: number, lon: number) => {
 };
 
 describe("a new plan's emergency number", () => {
-  it("is 112 with no home place, then the one for Home's country, and a change that names none keeps the plan's", async () => {
-    expect((await ok("POST", "/api/emergency-plans", plan())).plan.emergencyNumber).toBe("112");
+  it("is none with no home place, then the one for Home's country, none where it is not known, and a change that names none keeps the plan's", async () => {
+    expect((await ok("POST", "/api/emergency-plans", plan())).plan.emergencyNumber).toBe("");
+    await setHome(42.36, -71.06); // Boston: in the United States, though Canada's box reaches it
+    expect((await ok("POST", "/api/emergency-plans", plan())).plan.emergencyNumber).toBe("911");
+    await setHome(-23.55, -46.63); // São Paulo: no published source in Outpost, so no guess
+    expect((await ok("POST", "/api/emergency-plans", plan())).plan.emergencyNumber).toBe("");
     await setHome(40.71, -74.0); // New York
     expect((await ok("POST", "/api/emergency-plans", plan())).plan.emergencyNumber).toBe("911");
     await setHome(51.5, -1.0); // Oxfordshire

@@ -4,18 +4,23 @@
  * the new place: screens that use home say their figures are for the earlier one until a
  * person presses for new ones.
  */
-import type { HereSource, HouseholdDto, HouseholdHereInput, MarkerDto } from "@outpost/shared";
+import { type Bbox, type HereSource, type HouseholdDto, type HouseholdHereInput, type MarkerDto, parseCoordinates } from "@outpost/shared";
 import { Crosshair, LocateFixed, MapPin } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
-import { useMarkers } from "@/features/maps/data";
+import { useCatalogue } from "@/features/layers/data";
+import { useMapOverview, useMarkers, usePlaceSearch } from "@/features/maps/data";
+import { pointFeature } from "@/features/propagation/map/layers";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { deviceRegion } from "@/lib/region";
+import { useDebounced } from "@/lib/use-debounced";
 import { settle, useSetHere } from "./data";
+import { useHome } from "./home";
 import { positionName } from "./words";
 
 const PlanMap = lazy(() => import("@/features/propagation/map/plan-map").then((module) => ({ default: module.PlanMap })));
@@ -39,6 +44,139 @@ export function locateDevice(): Promise<{ lat: number; lon: number }> {
       { enableHighAccuracy: true, maximumAge: 60_000, timeout: 30_000 },
     );
   });
+}
+
+/** An area round a point to open the map on: about a town's width. */
+const around = (point: { lat: number; lon: number }, span = 0.08): Bbox => [
+  point.lon - span * 1.6,
+  point.lat - span,
+  point.lon + span * 1.6,
+  point.lat + span,
+];
+
+/**
+ * Finding the place on the map: a box that takes a town's name (once place names are
+ * installed), a postcode, coordinates, a grid reference or a locator, and the map itself,
+ * opened on the household's country (else the device's region), to press. Nothing leaves
+ * this Outpost: names are looked up in the place names it holds.
+ */
+function MapChooser({
+  value,
+  places,
+  onPick,
+}: {
+  value: HereChoice | null;
+  places: MarkerDto[];
+  onPick: (pick: { lat: number; lon: number; name: string | null }) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const typed = useDebounced(query.trim(), 250);
+  const coordinate = useMemo(() => parseCoordinates(typed), [typed]);
+  const search = usePlaceSearch(coordinate ? "" : typed, undefined);
+  const overview = useMapOverview();
+  const placesInstalled = (overview.data?.places.length ?? 0) > 0;
+  const catalogue = useCatalogue();
+  const current = useHome();
+  const region = current.country ?? deviceRegion();
+  const countryBox = catalogue.data?.countries.find((country) => country.code === region)?.bbox ?? null;
+  // A country that crosses the 180th meridian has a box the world's width: open on the world instead.
+  const opening = countryBox && countryBox[2] - countryBox[0] < 180 ? countryBox : null;
+  const [moved, setMoved] = useState<Bbox | null>(null);
+  const fit = moved ?? (value ? around(value) : opening);
+  const pin = useMemo(
+    () => ({ type: "FeatureCollection" as const, features: value ? [pointFeature("pick", value.name || "Here", value)] : [] }),
+    [value],
+  );
+  const found = coordinate ? [] : typed.length >= 2 && search.data?.query === typed ? search.data.places.slice(0, 6) : [];
+  const take = (pick: { lat: number; lon: number; name: string | null }) => {
+    onPick(pick);
+    setMoved(around(pick));
+    setQuery("");
+  };
+  return (
+    <div className="grid gap-3">
+      <Field
+        label="Find the place"
+        hint={
+          placesInstalled
+            ? "A town or village, a postcode, coordinates such as 47.8561, 12.1225, a grid reference or a locator. Or press the map."
+            : "Coordinates such as 47.8561, 12.1225, a grid reference or a locator. Towns can be found by name once place names are added on Maps. Or press the map."
+        }
+      >
+        {(ids) => (
+          <Input
+            {...ids}
+            type="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              if (coordinate) take({ lat: coordinate.lat, lon: coordinate.lon, name: null });
+              else if (found.length === 1) take({ lat: found[0]!.lat, lon: found[0]!.lon, name: found[0]!.name });
+            }}
+          />
+        )}
+      </Field>
+      {coordinate || found.length > 0 || (typed.length >= 2 && search.data?.query === typed) ? (
+        <ul aria-label="Places found" className="divide-y divide-border rounded-panel border border-border">
+          {coordinate ? (
+            <li>
+              <button
+                type="button"
+                className="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-small text-ink hover:bg-surface"
+                onClick={() => take({ lat: coordinate.lat, lon: coordinate.lon, name: null })}
+              >
+                <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                <span>
+                  Use <span className="font-mono">{positionName({ lat: coordinate.lat, lon: coordinate.lon, name: null })}</span>
+                </span>
+              </button>
+            </li>
+          ) : found.length > 0 ? (
+            found.map((place) => (
+              <li key={place.id}>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-small text-ink hover:bg-surface"
+                  onClick={() => take({ lat: place.lat, lon: place.lon, name: place.name })}
+                >
+                  <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    <span className="font-medium">{place.name}</span>
+                    <span className="text-ink-muted">
+                      {" "}
+                      · {[place.kindLabel, place.source === "os" ? place.admin1 : null, place.country].filter(Boolean).join(", ")}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))
+          ) : (
+            <li className="px-3 py-2 text-small text-ink-muted">
+              {search.data?.notice ??
+                (placesInstalled
+                  ? "Nothing is called that. Try another spelling, or type the position."
+                  : "Place names are not installed, so towns cannot be found by name yet. Type the position, or press the map.")}
+            </li>
+          )}
+        </ul>
+      ) : null}
+      <Suspense fallback={<Skeleton className="h-72 sm:h-80" />}>
+        <PlanMap
+          label="Map: press where the household is"
+          data={pin}
+          places={places}
+          fit={fit}
+          fitMaxZoom={13}
+          onPress={({ position, place }) => onPick({ lat: position.lat, lon: position.lon, name: place?.name ?? null })}
+          className="h-72 overflow-hidden rounded-panel border border-border sm:h-80"
+        />
+      </Suspense>
+    </div>
+  );
 }
 
 /** The three ways of saying where a portable household is, with the place chosen so far. */
@@ -78,7 +216,7 @@ export function HereChooser({
           options={(
             [
               { value: "device", label: "This device", icon: <LocateFixed aria-hidden /> },
-              { value: "map", label: "On the map", icon: <Crosshair aria-hidden /> },
+              { value: "map", label: "Find or press on the map", icon: <Crosshair aria-hidden /> },
               { value: "place", label: "A saved place", icon: <MapPin aria-hidden /> },
             ] as const
           ).filter((option) => sources.includes(option.value))}
@@ -94,19 +232,11 @@ export function HereChooser({
         </div>
       ) : null}
       {how === "map" ? (
-        <div className="grid gap-2">
-          <p className="text-small text-ink-muted">Press the map where the household is.</p>
-          <Suspense fallback={<Skeleton className="h-64" />}>
-            <PlanMap
-              label="Map: press where the household is"
-              places={places}
-              onPress={({ position, place }) =>
-                onChange({ lat: position.lat, lon: position.lon, name: place?.name ?? value?.name ?? null, source: "map" })
-              }
-              className="h-64 overflow-hidden rounded-panel border border-border"
-            />
-          </Suspense>
-        </div>
+        <MapChooser
+          value={value}
+          places={places}
+          onPick={(pick) => onChange({ lat: pick.lat, lon: pick.lon, name: pick.name ?? value?.name ?? null, source: "map" })}
+        />
       ) : null}
       {how === "place" ? (
         places.length === 0 ? (

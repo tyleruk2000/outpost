@@ -178,6 +178,22 @@ describe("weather and hazards", () => {
     expect(asked).toEqual([]);
   });
 
+  it("never sends a place outside England to the Environment Agency, and says it was not asked", async () => {
+    const place = await homePlace("Rosenheim", "home", 47.8561, 12.1225);
+    expect(place).toMatchObject({ country: "DE" });
+    const { body } = await app.api("POST", "/api/weather/update", { kinds: ["flood", "rivers"] });
+    expect(body.outcomes).toEqual([
+      expect.objectContaining({
+        kind: "flood",
+        ok: true,
+        skipped: true,
+        message: expect.stringMatching(/England only.*Germany.*Nothing was sent/),
+      }),
+      expect.objectContaining({ kind: "rivers", ok: true, skipped: true }),
+    ]);
+    expect(asked.filter((line) => line.startsWith("/ea-"))).toEqual([]);
+  });
+
   it("adds a saved place, knows it is home, and fetches only when asked", async () => {
     const place = await homePlace();
     expect(place).toMatchObject({ name: "Home", isHome: true, region: "ee", lat: 52.13, lon: -0.46 });

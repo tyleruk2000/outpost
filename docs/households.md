@@ -34,8 +34,10 @@ they are in.
 ## Fixed and portable
 
 - **Fixed:** a home that stays put. Its home is a saved place: choose one on the
-  household's page, or press **Mark home on the map** there and press the map where
-  home is (or use this device's location). That saves the place on the map with the
+  household's page, or press **Mark home on the map** there. Type coordinates, a grid
+  reference or a locator (or, once place names are added on Maps, a town or postcode)
+  in **Find the place**, or press the map, which opens on the household's country (else
+  your device's region). Or use this device's location. That saves the place on the map with the
   home icon and makes it the household's home in one go.
 - **Portable:** a caravan, a car or a hiking group. Its home is wherever you last said
   it is. Press **We're here now** (on Households, the household's page, or Home) and
@@ -50,10 +52,11 @@ for the earlier place. The household's page lists where it has been, newest firs
 last 50). **Where it is kept** (a storage yard, say) is shown but never taken as where
 it is.
 
-**Country** is worked out from home or where it is now. Choose another on the
-household's page if the one worked out is wrong (near a border, the boxes it is worked
-out from are rough). It decides weather warnings, the energy table, frequencies and
-licences.
+**Country** is worked out from home or where it is now, from the countries' outlines
+(accurate to about a kilometre). Outpost says which country it took when you mark home,
+and the household's page says when home is within a few kilometres of another country,
+so you can check. Choose another there if the one worked out is wrong. It decides the
+emergency number, weather warnings, the energy table, frequencies and licences.
 
 ## People in several households
 

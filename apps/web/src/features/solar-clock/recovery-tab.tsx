@@ -294,7 +294,8 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
         </div>
       ) : null}
 
-      <div className="grid">
+      {/* One column no wider than the screen: an implicit column grew to the widest line inside it at 200% text. */}
+      <div className="grid grid-cols-[minmax(0,1fr)]">
         <Calculator
           id="recover-noon"
           title="Noon from a shadow"

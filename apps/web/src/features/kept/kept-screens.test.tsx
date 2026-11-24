@@ -403,11 +403,14 @@ describe("an emergency plan kept on this device", () => {
     );
     expect(await screen.findByRole("heading", { level: 1, name: "Power cut" })).toBeInTheDocument();
     expect(screen.getByText(/The copy kept on this \w+, from .* \(2 hours ago\)\. Ticks made here are kept/)).toBeInTheDocument();
-    const [first] = within(screen.getByRole("heading", { name: "Before" }).closest("section")!).getAllByRole("checkbox");
+    const [first] = within(screen.getByRole("heading", { name: "What to do now" }).closest("section")!).getAllByRole("checkbox");
     await userEvent.click(first!);
     expect(await screen.findByText(/1 change waiting/)).toBeInTheDocument();
     const { readKeptPlan } = await import("./plan-copy");
-    expect(Object.keys((await readKeptPlan("p1"))!.pending.ticks)).toEqual(["s1"]);
+    // The first box is the first of the steps for now (During), which Use now shows first.
+    const { PLAN_TEMPLATES } = await import("@outpost/shared");
+    const firstNow = PLAN_TEMPLATES.find((each) => each.id === "power-cut")!.steps.findIndex((step) => step.phase === "during");
+    expect(Object.keys((await readKeptPlan("p1"))!.pending.ticks)).toEqual([`s${firstNow + 1}`]);
   });
 });
 

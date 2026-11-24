@@ -14,12 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox, Segmented, Skeleton } from "@/components/ui/misc";
 import type { CardPaper } from "@/features/emergency-plans/cards";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
-import { ForHousehold } from "@/features/households/for-household";
+import { ForHousehold, HOUSEHOLDS_PATH } from "@/features/households/for-household";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
 import { PAPERS } from "@/features/maps/print/paper";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { appLocale } from "@/lib/region";
+import { GrabCardView } from "./grab-card-view";
 import type { GrabCardSize } from "./grab-cards";
 import { grabHousehold, grabPerson, useHouseholdSources } from "./household-data";
 import { grabCardsDocument, grabOverflow } from "./kit-papers";
@@ -36,7 +37,8 @@ export default function GrabCardsPage() {
   const sources = useHouseholdSources();
   const [size, setSize] = useState<GrabCardSize>(() => readStored(SIZE_KEY, isSize, "wallet"));
   const [paper, setPaper] = useState<CardPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
-  const [formats, setFormats] = useState<GridFormat[]>(() => readStored(FORMATS_KEY, isFormats, ["decimal", "osgb", "maidenhead"]));
+  // Coordinates only by default: the address comes first on the card, and a grid or locator is a choice for those who use one.
+  const [formats, setFormats] = useState<GridFormat[]>(() => readStored(FORMATS_KEY, isFormats, ["decimal"]));
 
   const household = useMemo(
     () => grabHousehold(sources.plans, sources.emergencyContacts, sources.which, sources.comms, sources.travel),
@@ -104,6 +106,13 @@ export default function GrabCardsPage() {
         </EmptyState>
       ) : (
         <div className="grid gap-4">
+          {/* Read on the phone first; printing is the second thing a person does with it. */}
+          <GrabCardView
+            people={cardPeople}
+            household={household}
+            householdTo={sources.which ? `${HOUSEHOLDS_PATH}/${sources.which.id}` : HOUSEHOLDS_PATH}
+          />
+          <h2 className="mt-6 text-heading font-semibold text-ink">To print</h2>
           {/* Each choice says what it is: "Wallet, A6" and "A4, US Letter" side by side read as one choice (owner's review). */}
           <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
             <div className="grid gap-1.5">

@@ -174,8 +174,8 @@ const planSchema = z
     emergencyNumber: z
       .string()
       .trim()
-      .min(1, "Give the number for the emergency services where you are.")
       .max(20)
+      // Empty where it is not known: the plan asks for the household's own, never a guess.
       // Left out: Home's country's number on a new plan (`numberHere`), the plan's own on a change.
       .optional(),
     reviewEveryDays: z.number().int().min(7, "Ask for a review no more often than once a week.").max(3650).nullable().default(180),
@@ -523,10 +523,10 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
   app.get("/api/emergency-plans", async () => ({ plans: service.list() }));
   /**
    * The number for a new plan that names none: the one listed for the current
-   * household's country (its override, else the country its home is in), else 112. The
+   * household's country (its override, else the country its home is in), else none. The
    * screen offers its own first choice too; this is for anything that asks without one.
    */
-  const numberHere = () => emergencyNumberFor(ctx.services.households.country());
+  const numberHere = () => emergencyNumberFor(ctx.services.households.country()) ?? "";
   app.post("/api/emergency-plans", async (request) => {
     const plan = planSchema.parse(request.body);
     return service.create({ ...plan, emergencyNumber: plan.emergencyNumber ?? numberHere() });

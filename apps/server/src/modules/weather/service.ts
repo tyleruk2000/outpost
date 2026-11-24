@@ -59,7 +59,11 @@ const gone = (message: string) => new AppError("not_found", message);
 
 import { newId } from "../../core/ids.ts";
 import { weatherCache, weatherPlaces, weatherReadings } from "../../db/schema.ts";
+import { countryOfPoint } from "../layers/borders.ts";
 import { COUNTRIES } from "../layers/countries.ts";
+
+const countryNameOf = (code: string): string => COUNTRIES.find((entry) => entry.code === code)?.name ?? code;
+
 import {
   capAlertOf,
   parseCapDocument,
@@ -214,6 +218,7 @@ export function createWeatherService(
     markerId: row.markerId,
     isHome: row.markerId !== null && homes.has(row.markerId),
     region: (row.region as MetOfficeRegionId | null) ?? null,
+    country: countryOfPoint(row.lat, row.lon),
     createdAt: row.createdAt,
   });
 
@@ -704,6 +709,22 @@ export function createWeatherService(
                 source: SOURCE_OF[kind],
                 ok: false,
                 message: REMOVED,
+                bytes: 0,
+              });
+              continue;
+            }
+            // The Environment Agency covers England: a place elsewhere is not asked, and its position is not sent.
+            if ((kind === "flood" || kind === "rivers") && target.country !== "GB") {
+              outcomes.push({
+                kind,
+                placeId: target.id,
+                placeName: target.name,
+                source: SOURCE_OF[kind],
+                ok: true,
+                skipped: true,
+                message: `Not asked: the Environment Agency covers England only, and ${target.name} is ${
+                  target.country ? `in ${countryNameOf(target.country)}` : "not in the UK"
+                }. Nothing was sent.`,
                 bytes: 0,
               });
               continue;

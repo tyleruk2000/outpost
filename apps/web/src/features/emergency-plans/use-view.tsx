@@ -1,16 +1,19 @@
 /**
- * What "Use now" shows of a plan: the emergency number, the steps to tick, who to call
- * and where to meet, in large type. Drawn the same from the server's answer
+ * What "Use now" shows of a plan, in large type: the emergency number, then what to do now
+ * (the During steps), who to call, where to meet, where things are, what to do if the phones
+ * fail, each person's own line and the notes; the After steps; and the Before steps last,
+ * folded, since by now they are done or too late. Drawn the same from the server's answer
  * (`use-page.tsx`) and from the copy kept on a phone (`features/kept/kept-plan-screen.tsx`);
  * each says where its ticks go.
  */
-import { type EmergencyPlan, PLAN_PHASES, type PlanResolved, planCaveat } from "@outpost/shared";
-import { Check, MapPin, Phone } from "lucide-react";
+import { type EmergencyPlan, type PlanPhase, type PlanResolved, planCaveat } from "@outpost/shared";
+import { Check, ChevronRight, MapPin, Phone } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
+import { JumpLinks } from "@/components/page";
 import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate, plural } from "@/lib/utils";
-import { type ReadNumber, readableOf } from "./printable";
+import { type Readable, type ReadNumber, readableOf } from "./printable";
 
 function Dial({ number, label, big }: { number: ReadNumber; label: string; big?: boolean }) {
   const content = (
@@ -42,6 +45,9 @@ export function stateLine(plan: EmergencyPlan, ticks: Record<string, number>, st
     : `${plural(steps, "step")}. Not in use.`;
 }
 
+/** The order "Use now" shows a plan's phases in: what to do now first; what was for beforehand last, folded. */
+const NOW_FIRST: PlanPhase[] = ["during", "after"];
+
 export function PlanInUse({
   plan,
   resolved,
@@ -49,6 +55,7 @@ export function PlanInUse({
   onTick,
   head,
   foot,
+  editTo,
 }: {
   plan: EmergencyPlan;
   resolved: PlanResolved;
@@ -58,6 +65,8 @@ export function PlanInUse({
   head: ReactNode;
   /** After the caveat. */
   foot?: ReactNode;
+  /** Where the plan is changed, for "add your local number"; none on a copy kept on a phone. */
+  editTo?: string;
 }) {
   const readable = useMemo(() => readableOf(plan, resolved), [plan, resolved]);
   const emergency: ReadNumber = {
@@ -65,65 +74,94 @@ export function PlanInUse({
     value: plan.emergencyNumber,
     dial: plan.emergencyNumber.replace(/[^\d+*#]/g, "") || null,
   };
+  const people = readable.people.filter((person) => person.name && (person.remember.trim() || person.medical.trim()));
+  const notes = plan.body.notes.trim();
+  const before = readable.steps.filter((step) => step.phase === "before");
+  const beforeDone = before.filter((step) => ticks[step.id] !== undefined).length;
+  const phaseSteps = (phase: PlanPhase) => readable.steps.filter((step) => step.phase === phase);
+  const jumps = [
+    phaseSteps("during").length > 0 ? { id: "phase-during", label: "What to do now" } : null,
+    readable.contacts.length > 0 ? { id: "who-to-call", label: "Who to call" } : null,
+    readable.places.length > 0 ? { id: "where-to-meet", label: "Where to meet" } : null,
+    readable.where.length > 0 ? { id: "where-things-are", label: "Where things are" } : null,
+    readable.comms.length > 0 ? { id: "if-phones-fail", label: "If the phones fail" } : null,
+  ].filter((item): item is { id: string; label: string } => item !== null);
+
+  const stepList = (steps: Readable["steps"]) => (
+    <ol className="mt-2 divide-y divide-border border-y border-border">
+      {steps.map((step, index) => {
+        const at = ticks[step.id];
+        const checked = at !== undefined;
+        return (
+          <li key={step.id}>
+            <label className="flex min-h-14 cursor-pointer items-start gap-4 py-3">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={checked}
+                onChange={(event) => onTick(step.id, event.target.checked)}
+              />
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-0.5 grid size-8 shrink-0 place-items-center rounded-control border-2 peer-focus-visible:ring-2 peer-focus-visible:ring-focus",
+                  checked ? "border-primary bg-primary text-primary-ink" : "border-border-strong bg-page",
+                )}
+              >
+                {checked ? <Check className="size-5" strokeWidth={3} /> : null}
+              </span>
+              <span className="min-w-0">
+                {/* A step may hold an address (a web page to read), which must wrap on a small phone. */}
+                <span className={cn("block text-lead wrap-anywhere", checked ? "text-ink-muted line-through decoration-1" : "text-ink")}>
+                  <span className="tabular">{index + 1}.</span> {step.text}
+                </span>
+                {checked ? <span className="block text-small text-ink-muted">Done at {formatTimeOfDay(at)}</span> : null}
+              </span>
+            </label>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
   return (
     <>
       {head}
       <section aria-label="Emergency services" className="mt-6 border-y border-border py-4">
         <p className="text-body text-ink">Emergency services</p>
-        <Dial number={emergency} label="the emergency services" big />
+        {plan.emergencyNumber.trim() ? (
+          <Dial number={emergency} label="the emergency services" big />
+        ) : (
+          <p className="mt-1 text-lead text-warning">
+            Not given in this plan.{" "}
+            {editTo ? (
+              <Link to={`${editTo}#plan-what`} className="text-primary underline underline-offset-4">
+                Add your local number
+              </Link>
+            ) : (
+              "Add your local number to the plan."
+            )}
+          </p>
+        )}
       </section>
+      {jumps.length > 1 ? <JumpLinks label="In this plan" items={jumps} className="mt-4 mb-0" /> : null}
 
-      {PLAN_PHASES.map((phase) => {
-        const steps = readable.steps.filter((step) => step.phase === phase.id);
+      {NOW_FIRST.map((phase) => {
+        const steps = phaseSteps(phase);
         if (steps.length === 0) return null;
         return (
-          <section key={phase.id} className="mt-8" aria-labelledby={`phase-${phase.id}`}>
-            <h2 id={`phase-${phase.id}`} className="text-heading font-semibold text-ink">
-              {phase.label}
+          <section key={phase} className="mt-8" aria-labelledby={`phase-${phase}`}>
+            <h2 id={`phase-${phase}`} className="scroll-mt-20 text-heading font-semibold text-ink">
+              {phase === "during" ? "What to do now" : "Afterwards"}
             </h2>
-            <ol className="mt-2 divide-y divide-border border-y border-border">
-              {steps.map((step, index) => {
-                const at = ticks[step.id];
-                const checked = at !== undefined;
-                return (
-                  <li key={step.id}>
-                    <label className="flex min-h-14 cursor-pointer items-start gap-4 py-3">
-                      <input
-                        type="checkbox"
-                        className="peer sr-only"
-                        checked={checked}
-                        onChange={(event) => onTick(step.id, event.target.checked)}
-                      />
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "mt-0.5 grid size-8 shrink-0 place-items-center rounded-control border-2 peer-focus-visible:ring-2 peer-focus-visible:ring-focus",
-                          checked ? "border-primary bg-primary text-primary-ink" : "border-border-strong bg-page",
-                        )}
-                      >
-                        {checked ? <Check className="size-5" strokeWidth={3} /> : null}
-                      </span>
-                      <span className="min-w-0">
-                        {/* A step may hold an address (a web page to read), which must wrap on a small phone. */}
-                        <span
-                          className={cn("block text-lead wrap-anywhere", checked ? "text-ink-muted line-through decoration-1" : "text-ink")}
-                        >
-                          <span className="tabular">{index + 1}.</span> {step.text}
-                        </span>
-                        {checked ? <span className="block text-small text-ink-muted">Done at {formatTimeOfDay(at)}</span> : null}
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ol>
+            {stepList(steps)}
           </section>
         );
       })}
 
       {readable.contacts.length > 0 ? (
         <section className="mt-8" aria-labelledby="who-to-call">
-          <h2 id="who-to-call" className="text-heading font-semibold text-ink">
+          <h2 id="who-to-call" className="scroll-mt-20 text-heading font-semibold text-ink">
             Who to call
           </h2>
           <ol className="mt-2 divide-y divide-border border-y border-border">
@@ -155,7 +193,7 @@ export function PlanInUse({
 
       {readable.places.length > 0 ? (
         <section className="mt-8" aria-labelledby="where-to-meet">
-          <h2 id="where-to-meet" className="text-heading font-semibold text-ink">
+          <h2 id="where-to-meet" className="scroll-mt-20 text-heading font-semibold text-ink">
             Where to meet
           </h2>
           <ul className="mt-2 divide-y divide-border border-y border-border">
@@ -178,6 +216,87 @@ export function PlanInUse({
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {readable.where.length > 0 ? (
+        <section className="mt-8" aria-labelledby="where-things-are">
+          <h2 id="where-things-are" className="scroll-mt-20 text-heading font-semibold text-ink">
+            Where things are
+          </h2>
+          <dl className="mt-2 divide-y divide-border border-y border-border">
+            {readable.where.map((item, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: as above
+              <div key={index} className="py-3">
+                <dt className="text-body text-ink-muted">{item.what}</dt>
+                <dd className="text-lead text-ink">{item.where || <span className="text-ink-muted">Not written down yet.</span>}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+
+      {readable.comms.length > 0 ? (
+        <section className="mt-8" aria-labelledby="if-phones-fail">
+          <h2 id="if-phones-fail" className="scroll-mt-20 text-heading font-semibold text-ink">
+            If the phones fail
+          </h2>
+          <div className="mt-2 border-y border-border py-3">
+            {readable.comms.map((line) => (
+              <p key={line} className="whitespace-pre-line text-lead text-ink">
+                {line}
+              </p>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {people.length > 0 ? (
+        <section className="mt-8" aria-labelledby="each-person">
+          <h2 id="each-person" className="text-heading font-semibold text-ink">
+            Each person
+          </h2>
+          <ul className="mt-2 divide-y divide-border border-y border-border">
+            {people.map((person, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: as above
+              <li key={index} className="py-3">
+                <p className="text-lead font-semibold text-ink">{person.name}</p>
+                {person.remember.trim() ? <p className="text-lead text-ink">{person.remember}</p> : null}
+                {person.medical.trim() ? <p className="text-body text-ink-muted">Medical: {person.medical}</p> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {notes ? (
+        <section className="mt-8" aria-labelledby="plan-notes">
+          <h2 id="plan-notes" className="text-heading font-semibold text-ink">
+            Notes
+          </h2>
+          <p className="mt-2 whitespace-pre-line border-y border-border py-3 text-lead text-ink">{notes}</p>
+        </section>
+      ) : null}
+
+      {before.length > 0 ? (
+        <section className="mt-8" aria-labelledby="phase-before">
+          <details className="group">
+            <summary className="flex min-h-12 cursor-default items-start gap-2 py-2 marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
+              <ChevronRight
+                aria-hidden
+                className="mt-[0.3em] size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"
+              />
+              <span className="min-w-0">
+                <h2 id="phase-before" className="text-heading font-semibold text-ink">
+                  Before: things to have done ahead
+                </h2>
+                <span className="block text-body text-ink-muted tabular">
+                  {beforeDone} of {before.length} done
+                </span>
+              </span>
+            </summary>
+            {stepList(before)}
+          </details>
         </section>
       ) : null}
 

@@ -8,9 +8,12 @@ import {
   parseCoordinates,
   toMaidenhead,
 } from "@outpost/shared";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { Segmented } from "@/components/ui/misc";
+import { useHome } from "@/features/households/home";
 import { formatBearing, formatDistanceWithMiles } from "@/features/maps/lib/geo";
 import { moonPhase } from "@/features/maps/lib/moon";
 import { dayLengthChange, isIsoDate, sunDay } from "@/features/maps/lib/sun";
@@ -264,19 +267,24 @@ function CoordinateInput({
   value,
   onChange,
   point,
+  hint,
+  className,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (next: string) => void;
   point: ParsedCoordinate | null;
+  hint?: ReactNode;
+  className?: string;
 }) {
   const error = value.trim() && !point ? "Not a position Outpost reads. Try 54.4609, -3.0886, or NY 34200 07100, or IO84ik." : undefined;
   return (
     <Field
       label={label}
       error={error}
-      hint={!error ? "Decimal degrees, degrees and minutes, a British grid reference or a Maidenhead locator." : undefined}
+      className={className}
+      hint={!error ? (hint ?? "Decimal degrees, degrees and minutes, a British grid reference or a Maidenhead locator.") : undefined}
     >
       {(ids) => (
         <Input
@@ -379,11 +387,19 @@ function DistanceCalculator() {
 
 function SunCalculator() {
   const style = useClockStyle();
-  const [placeText, setPlace] = useText("outdoors.sun.place", "54.4609, -3.0886");
+  // Starts from the household's home (as Solar clock does), not from an example: a sunrise read off is taken as the answer.
+  const [typed, setPlace] = useText("outdoors.sun.place", "");
+  const home = useHome().home;
+  const homeText = home ? formatDecimal(home.lat, home.lon, 4) : "";
+  const placeText = typed || homeText;
   const [date, setDate] = useText("outdoors.sun.date", "");
   const place = useMemo(() => parseCoordinates(placeText), [placeText]);
+  const atHome = Boolean(home && placeText === homeText);
   const zone = deviceZone();
-  const day = date && isIsoDate(date) ? date : dateIn(zone, Date.now());
+  const today = dateIn(zone, Date.now());
+  const tomorrow = dateIn(zone, Date.now() + 86_400_000);
+  const day = date && isIsoDate(date) ? date : today;
+  const where = atHome ? ` at ${home?.name || "Home"}` : "";
   const rows = useMemo(() => {
     if (!place) return null;
     const sun = sunDay(place.lat, place.lon, day);
@@ -404,13 +420,51 @@ function SunCalculator() {
       }
     >
       <Inputs>
-        <CoordinateInput id="place" label="Position" value={placeText} onChange={setPlace} point={place} />
+        <CoordinateInput
+          id="place"
+          label="Position"
+          value={placeText}
+          onChange={setPlace}
+          point={place}
+          className="sm:col-span-2"
+          hint={
+            atHome ? (
+              `${home?.name || "Home"}, the household's home. Type another position to see its sun.`
+            ) : home ? (
+              <>
+                Decimal degrees, degrees and minutes, a British grid reference or a Maidenhead locator.{" "}
+                <Button variant="link" onClick={() => setPlace("")}>
+                  Use {home.name || "Home"}
+                </Button>
+              </>
+            ) : (
+              "Decimal degrees, degrees and minutes, a British grid reference or a Maidenhead locator. Mark home on the map to start from it."
+            )
+          }
+        />
         <Field label="Date" hint="Today if left empty.">
           {(ids) => <Input {...ids} type="date" value={date} onChange={(event) => setDate(event.target.value)} />}
         </Field>
+        <div className="grid content-start gap-1.5">
+          <span className="text-small font-medium text-ink">Day</span>
+          <Segmented<"today" | "tomorrow" | "other">
+            label="Day"
+            value={day === today ? "today" : day === tomorrow ? "tomorrow" : "other"}
+            onChange={(next) => {
+              if (next === "today") setDate("");
+              else if (next === "tomorrow") setDate(tomorrow);
+            }}
+            options={[
+              { value: "today", label: "Today" },
+              { value: "tomorrow", label: "Tomorrow" },
+              ...(day !== today && day !== tomorrow ? [{ value: "other" as const, label: day }] : []),
+            ]}
+            className="justify-self-start"
+          />
+        </div>
       </Inputs>
       <Result
-        label={`On ${day}, in this device's time (${zone})`}
+        label={`${rows?.some((row) => row.key === "sunrise") ? "Sunrise" : (rows?.[0]?.label ?? "The sun")}${where} ${day === today ? "today" : day === tomorrow ? "tomorrow" : `on ${day}`} (${day}), in this device's time (${zone})`}
         figure={rows ? (rows.find((row) => row.key === "sunrise")?.value ?? rows[0]?.value ?? "") : null}
         keep={
           rows && place

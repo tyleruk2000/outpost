@@ -11,6 +11,7 @@ const place = (id: string, lat: number, lon: number): WeatherPlace => ({
   markerId: null,
   isHome: false,
   region: null,
+  country: null,
   createdAt: 1,
 });
 const forecast = (placeId: string, fetchedAt: number, hours: Array<[number, number | null, number | null]>): KeptCopy =>

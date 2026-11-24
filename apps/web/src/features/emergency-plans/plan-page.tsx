@@ -7,6 +7,7 @@ import {
   EMERGENCY_NUMBERS,
   type EmergencyPlanInput,
   type EmergencyPlanResponse,
+  emergencyNumberFor,
   PLAN_KINDS,
   type PlanBody,
   type PlanKind,
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { BookPlansLine } from "@/features/household-book/book-line";
 import { PlanIllustrations } from "@/features/nuclear/plan-illustrations";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/utils";
@@ -86,8 +88,9 @@ function useDraft(response: EmergencyPlanResponse | undefined, reload: () => Pro
     // A person who has not chosen a side yet has not agreed to overwrite anything.
     if (stopped.current) return;
     const waiting = pending.current;
-    // A plan always has a name, and a step always has words: what is half-typed waits for the next change.
-    if (waiting?.name.trim() && waiting.emergencyNumber.trim()) {
+    // A plan always has a name, and a step always has words: what is half-typed waits for the next change. A plan
+    // whose number is not known yet is saved all the same, and goes on asking for it.
+    if (waiting?.name.trim()) {
       pending.current = null;
       const body: PlanBody = {
         ...waiting.body,
@@ -150,12 +153,12 @@ function useDraft(response: EmergencyPlanResponse | undefined, reload: () => Pro
     ? "conflict"
     : draft && !draft.name.trim()
       ? "unnamed"
-      : draft && !draft.emergencyNumber.trim()
-        ? "no-number"
-        : pending.current || save.isPending
-          ? "saving"
-          : save.isError
-            ? "failed"
+      : pending.current || save.isPending
+        ? "saving"
+        : save.isError
+          ? "failed"
+          : draft && !draft.emergencyNumber.trim()
+            ? "no-number"
             : "saved";
   return { draft, change, state, flush, conflict, choosing, keepMine, takeTheirs };
 }
@@ -175,6 +178,11 @@ const PARTS = [
 ] as const;
 
 /** One part of the plan, with an address to jump to; it keeps the space a section has above it. */
+/** "999 in the United Kingdom; 112 also in the United Kingdom; 112 across the European Union; …": the numbers Outpost has a source for. */
+function numbersKnown(): string {
+  return EMERGENCY_NUMBERS.map((entry) => `${entry.number} ${entry.where}`).join("; ");
+}
+
 function Part({ id, children }: { id: string; children: ReactNode }) {
   return (
     <div id={id} className="mt-10 scroll-mt-16 first:mt-0 md:scroll-mt-6 [&>section]:mt-0">
@@ -184,11 +192,11 @@ function Part({ id, children }: { id: string; children: ReactNode }) {
 }
 
 /** The states in which leaving would lose what was typed: it cannot be sent as it is. */
-const UNSENT = ["conflict", "unnamed", "no-number", "failed"];
+const UNSENT = ["conflict", "unnamed", "failed"];
 
 const STATE_WORDS: Record<string, string> = {
   unnamed: "Give the plan a name to save it.",
-  "no-number": "Give the emergency number to save the plan.",
+  "no-number": "Saved, without the number for the emergency services: add it below.",
   conflict: "Not saved: this plan was changed somewhere else.",
   saving: "Saving…",
   failed: "The last change was not saved.",
@@ -235,6 +243,7 @@ function Sources({ templateId }: { templateId: string | null }) {
 export default function EmergencyPlanPage() {
   const { id = "" } = useParams();
   const response = usePlan(id);
+  const home = useHomeCountry();
   const { draft, change, state, flush, conflict, choosing, keepMine, takeTheirs } = useDraft(response.data, async () => {
     const fresh = await response.refetch();
     return fresh.data;
@@ -402,8 +411,14 @@ export default function EmergencyPlanPage() {
             </Field>
             <Field
               label="Emergency services number"
-              hint={`It differs by country: ${EMERGENCY_NUMBERS.map((entry) => `${entry.number} ${entry.where}`).join("; ")}.`}
-              error={draft.emergencyNumber.trim() ? undefined : "Give the number."}
+              hint={`It differs by country. Outpost knows it, from each country's own published source, ${numbersKnown()}.`}
+              error={
+                draft.emergencyNumber.trim()
+                  ? undefined
+                  : home && !emergencyNumberFor(home.code)
+                    ? `Not known for ${home.name}: add your local number.`
+                    : "Give the number for the emergency services where you are."
+              }
             >
               {(ids) => (
                 <Input
@@ -521,7 +536,11 @@ export default function EmergencyPlanPage() {
       />
       {/* A change waiting to be saved is sent on leaving; one that cannot be (no name, a newer version elsewhere, a failed
           save) is asked about. Reloading or closing the tab asks while anything at all is unsent. */}
-      <LeaveGuard when={!gone && UNSENT.includes(state)} beforeUnload={!gone && state !== "saved"} what="the changes to this plan" />
+      <LeaveGuard
+        when={!gone && UNSENT.includes(state)}
+        beforeUnload={!gone && state !== "saved" && state !== "no-number"}
+        what="the changes to this plan"
+      />
     </Page>
   );
 }

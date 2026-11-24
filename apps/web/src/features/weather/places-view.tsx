@@ -23,6 +23,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent } from "@/components/u
 import { Badge, Select, Spinner } from "@/components/ui/misc";
 import { NoHome, useHome } from "@/features/households/home";
 import { useMarkers } from "@/features/maps/data";
+import { countryName } from "@/features/maps/lib/search";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
@@ -47,6 +48,7 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
   const update = useUpdatePlace();
   const remove = useRemovePlace();
   const bringIn = useImportPlaces();
+  const add = useAddPlace();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<WeatherPlace | null>(null);
   const current = useHome();
@@ -74,12 +76,17 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
                   {place.markerId ? "" : " (not a saved place)"}
                 </p>
               </div>
-              <Select<MetOfficeRegionId | "none">
-                aria-label={`Met Office warning region for ${place.name}`}
-                value={place.region ?? "none"}
-                onChange={(region) => update.mutate({ id: place.id, region: region === "none" ? null : region })}
-                options={[{ value: "none", label: "No warning region chosen" }, ...REGION_OPTIONS]}
-              />
+              {place.country === "GB" ? (
+                <Select<MetOfficeRegionId | "none">
+                  aria-label={`Met Office warning region for ${place.name}`}
+                  value={place.region ?? "none"}
+                  onChange={(region) => update.mutate({ id: place.id, region: region === "none" ? null : region })}
+                  options={[{ value: "none", label: "No warning region chosen" }, ...REGION_OPTIONS]}
+                />
+              ) : (
+                // Met Office regions are the UK's: a place elsewhere has its country's warnings, under Warnings.
+                <span className="text-small text-ink-muted">{place.country ? countryName(place.country) : "Outside the UK"}</span>
+              )}
               <Button variant="ghost" size="icon" aria-label={`Remove ${place.name}`} onClick={() => setRemoving(place)}>
                 <Trash2 />
               </Button>
@@ -88,7 +95,9 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
         </ul>
       ) : null}
       <p className="mt-3 max-w-[70ch] text-small text-ink-muted">
-        The Met Office words its warnings by region and Outpost cannot tell a region from a position, so choose each place's.{" "}
+        {places.some((place) => place.country === "GB")
+          ? "The Met Office words its warnings by region and Outpost cannot tell a region from a position, so choose each UK place's. "
+          : ""}
         {current.several && current.household
           ? `The home place is ${current.household.name}'s, the household Outpost is set to now.`
           : "The home place is the saved place with the home icon on the map (the first saved, if several have it)."}
@@ -108,7 +117,16 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
             : current.household?.homePlaceId === home.id
               ? "is the home place"
               : "has the home icon"}{" "}
-          but is not in this list, so no warnings are matched to it. Add it below.
+          but is not in this list, so nothing is fetched for it.{" "}
+          <Button
+            variant="link"
+            loading={add.isPending || undefined}
+            onClick={() =>
+              add.mutate({ markerId: home.id ?? undefined }, { onError: (error: unknown) => notify.error(errorMessage(error)) })
+            }
+          >
+            Add {home.name || "home"} to the list
+          </Button>
         </p>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">

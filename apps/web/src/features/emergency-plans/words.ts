@@ -20,13 +20,12 @@ export const blankPlan = (name: string, emergencyNumber: string): EmergencyPlanI
 });
 
 /**
- * The number to offer first: the one for Home's country where it is listed, else the
- * one for the device's region, else 112, which mobile phones put through to the
- * emergency services across Europe and in many other countries. Always changeable, and
- * the field lists the others.
+ * The number to offer first: the one for Home's country where Outpost has a published
+ * source for it; with no home, the one for the device's region. Empty where that country's
+ * number is not known: the plan then asks for it, and nothing is guessed.
  */
 export function guessEmergencyNumber(language?: string, homeCountry?: string | null): string {
-  return emergencyNumberFor(homeCountry, language === undefined ? deviceRegion() : regionOfLanguage(language));
+  return emergencyNumberFor(homeCountry, language === undefined ? deviceRegion() : regionOfLanguage(language)) ?? "";
 }
 
 /**

@@ -16,6 +16,8 @@ export interface PaperHousehold {
   /** True when there are several households, so that a paper names the one it is for. */
   several: boolean;
   home: HouseholdHome | null;
+  /** Home's address as the household wrote it; empty when not given. */
+  address: string;
 }
 
 /** The current household for the papers; null while it is read (or when it cannot be). */
@@ -25,7 +27,14 @@ export function usePaperHousehold(): { which: PaperHousehold | null; isPending: 
     const list: HouseholdDto[] = Array.isArray(query.data?.households) ? query.data.households : [];
     const household = list.find((entry) => entry.id === query.data?.currentId) ?? list[0];
     return household
-      ? { id: household.id, name: household.name, kind: household.kind, several: list.length > 1, home: household.home }
+      ? {
+          id: household.id,
+          name: household.name,
+          kind: household.kind,
+          several: list.length > 1,
+          home: household.home,
+          address: household.address ?? "",
+        }
       : null;
   }, [query.data]);
   return {

@@ -52,6 +52,7 @@ const updateSchema = z
       .transform((code) => code.toUpperCase())
       .nullable()
       .optional(),
+    address: z.string().max(HOUSEHOLD_LIMITS.address).optional(),
   })
   .strict();
 

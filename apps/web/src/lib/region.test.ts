@@ -79,15 +79,18 @@ describe("the device's region", () => {
 });
 
 describe("the emergency number offered first", () => {
-  it("is Home's country's, then the device's, then 112", () => {
+  it("is Home's country's, else the device's, and never a guess", () => {
     expect(guessEmergencyNumber("en-GB", "US")).toBe("911");
     expect(guessEmergencyNumber("en-US", null)).toBe("911");
     setDeviceRegion("NZ");
     expect(guessEmergencyNumber()).toBe("111");
     expect(guessEmergencyNumber(undefined, "AU")).toBe("000");
+    expect(guessEmergencyNumber(undefined, "CA")).toBe("911");
+    // A home in a country Outpost has no source for is not given the device's number, nor 112.
+    expect(guessEmergencyNumber(undefined, "BR")).toBe("");
     setDeviceRegion(null);
-    expect(guessEmergencyNumber()).toBe("112");
-    expect(guessEmergencyNumber(undefined, "ZZ")).toBe("112");
+    expect(guessEmergencyNumber()).toBe("");
+    expect(guessEmergencyNumber(undefined, "ZZ")).toBe("");
   });
 });
 

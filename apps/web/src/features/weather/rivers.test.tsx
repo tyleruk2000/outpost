@@ -33,7 +33,17 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const home: WeatherPlace = { id: "p1", name: "Home", lat: 52.75, lon: 0.4, markerId: "m1", isHome: true, region: "ee", createdAt: 1 };
+const home: WeatherPlace = {
+  id: "p1",
+  name: "Home",
+  lat: 52.75,
+  lon: 0.4,
+  markerId: "m1",
+  isHome: true,
+  region: "ee",
+  country: "GB",
+  createdAt: 1,
+};
 const levels: WeatherSourceInfo = {
   id: "ea-levels",
   kind: "rivers",

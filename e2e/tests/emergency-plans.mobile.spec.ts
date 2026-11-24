@@ -87,7 +87,7 @@ test.describe("Emergency plans on a phone", () => {
     await expect(page.getByRole("link", { name: "Call Ελένη Παπαδοπούλου: +44 7700 900461" })).toHaveAttribute("href", "tel:+447700900461");
     await page.getByRole("button", { name: "Start using this plan" }).tap();
     await expect(page.getByText(/In use since/)).toBeVisible();
-    const during = page.locator("section", { has: page.getByRole("heading", { name: "During" }) });
+    const during = page.locator("section", { has: page.getByRole("heading", { name: "What to do now" }) });
     // A finger presses the whole row, which is the checkbox's label.
     const rows = during.locator("label");
     await rows.nth(0).tap();

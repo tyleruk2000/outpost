@@ -136,7 +136,7 @@ export function walletCard(plan: Readable, person: ReadPerson, made: Date): Wall
       front.text("Medical", size * 0.85, { color: MUTED, gap: 2 });
       front.text(person.medical.trim(), size);
     }
-    front.number("emergency services", plan.emergencyNumber, size + 2);
+    front.number("emergency services", plan.emergencyNumber.trim() || "not given", size + 2);
     front.text(`${plan.name}, made ${shortDate(made)}. Our own plan: follow official warnings.`, size * 0.75, { color: MUTED, gap: 1 });
 
     const inside = new Column(pad, CARD_HEIGHT + pad - 2, width, 2 * CARD_HEIGHT - pad);
@@ -278,7 +278,15 @@ export function fridgeSheets(plan: Readable, options: { made: Date; paper: CardP
     if (room(size * 2)) {
       y += size * 1.9;
       put({ kind: "text", x: MARGIN, y, text: "Emergency services", size: size * 0.9, color: INK });
-      put(unbroken(plan.emergencyNumber, MARGIN + measure("Emergency services  ", size * 0.9), y, size * 1.6, inner / 2));
+      put(
+        unbroken(
+          plan.emergencyNumber.trim() || "not given",
+          MARGIN + measure("Emergency services  ", size * 0.9),
+          y,
+          size * 1.6,
+          inner / 2,
+        ),
+      );
     }
     for (const phase of ["during", "after"] as const) {
       const steps = plan.steps.filter((step) => step.phase === phase);
@@ -421,7 +429,7 @@ export function grabSheets(plan: Readable, options: { made: Date; paper: CardPap
   }
   next(26);
   put({ kind: "text", x: MARGIN, y, text: "Emergency services", size: 11, color: INK });
-  put(unbroken(plan.emergencyNumber, MARGIN + measure("Emergency services  ", 11), y, 16, inner / 2));
+  put(unbroken(plan.emergencyNumber.trim() || "not given", MARGIN + measure("Emergency services  ", 11), y, 16, inner / 2));
   for (const words of [planCaveat(plan.emergencyNumber), ...plan.attributions])
     for (const line of wrapLine(words, 8, inner)) {
       next(11);

@@ -234,7 +234,7 @@ describe("emergency plans", () => {
     expect(refused.status).toBe(400);
     expect(JSON.stringify(refused.body)).toContain("same id");
     expect((await app.api("POST", "/api/emergency-plans", { ...blank("x"), kind: "zombies" })).status).toBe(400);
-    expect((await app.api("POST", "/api/emergency-plans", { ...blank("x"), emergencyNumber: "" })).status).toBe(400);
+    expect((await app.api("POST", "/api/emergency-plans", { ...blank("x"), emergencyNumber: "1".repeat(21) })).status).toBe(400);
     expect((await app.api("GET", "/api/emergency-plans/nothing-here")).status).toBe(404);
   });
 

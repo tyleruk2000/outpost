@@ -10,12 +10,14 @@ import {
   attributionsFor,
   compareSupplies,
   EMERGENCY_NUMBERS,
+  emergencyNumberFor,
   type HeldRow,
   neededOf,
   PLAN_KIND_IDS,
   PLAN_SOURCES,
   PLAN_TEMPLATES,
   type PlanSupply,
+  planCaveat,
   planFromTemplate,
   SOURCE_TERMS,
   sameThing,
@@ -123,6 +125,15 @@ describe("the templates", () => {
 
   it("give each emergency number a source", () => {
     expect(EMERGENCY_NUMBERS.find((entry) => entry.regions.includes("GB"))?.number).toBe("999");
+    expect(emergencyNumberFor("CA")).toBe("911");
+    expect(emergencyNumberFor("US")).toBe("911");
+    expect(emergencyNumberFor("DE")).toBe("112");
+    // Never a guess: a country with no published source has no number, and the first region given decides.
+    expect(emergencyNumberFor("BR")).toBeNull();
+    expect(emergencyNumberFor("BR", "GB")).toBeNull();
+    expect(emergencyNumberFor(null, "GB")).toBe("999");
+    expect(emergencyNumberFor()).toBeNull();
+    expect(planCaveat("")).toContain("add your local number");
     for (const entry of EMERGENCY_NUMBERS) expect(sourceIds.has(entry.source), entry.number).toBe(true);
   });
 
