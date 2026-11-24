@@ -18,9 +18,10 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { Bbox, ReferenceRegionDto, ReferenceRegionsResponse } from "@outpost/shared";
+import type { ReferenceRegionDto, ReferenceRegionsResponse } from "@outpost/shared";
 import type { AppContext } from "../../../core/context.ts";
 import type { HttpClient } from "../../../core/http.ts";
+import { countryOfPoint } from "../borders.ts";
 import { COUNTRIES } from "../countries.ts";
 import { foldName } from "../store.ts";
 import { fetchText } from "./http.ts";
@@ -184,11 +185,9 @@ export function createRegionIndex(ctx: AppContext, client: HttpClient): RegionIn
   };
 }
 
-/** The smallest box of a country's that holds a point: the country a home place is likely in. */
+/** The country whose outline holds a point (`layers/borders.ts`): the country a home place is in. */
 export function countryAt(lat: number, lon: number): string | null {
-  const inside = COUNTRIES.filter(({ bbox }) => lon >= bbox[0] && lon <= bbox[2] && lat >= bbox[1] && lat <= bbox[3]);
-  const area = (box: Bbox) => (box[2] - box[0]) * (box[3] - box[1]);
-  return inside.sort((a, b) => area(a.bbox) - area(b.bbox))[0]?.code ?? null;
+  return countryOfPoint(lat, lon);
 }
 
 /** A region of a country whose name is one of `names` (as Natural Earth's regions layer gives them), folded. */

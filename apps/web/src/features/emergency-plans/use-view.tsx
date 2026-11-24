@@ -10,9 +10,9 @@ import { type EmergencyPlan, type PlanPhase, type PlanResolved, planCaveat } fro
 import { Check, ChevronRight, MapPin, Phone } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
+import { JumpLinks } from "@/components/page";
 import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate, plural } from "@/lib/utils";
-import { JumpLinks } from "@/components/page";
 import { type Readable, type ReadNumber, readableOf } from "./printable";
 
 function Dial({ number, label, big }: { number: ReadNumber; label: string; big?: boolean }) {

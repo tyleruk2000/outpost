@@ -65,6 +65,7 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
   const save = useUpdateHousehold(household.id);
   const countries = [...(catalogue.data?.countries ?? [])].sort((a, b) => a.name.localeCompare(b.name));
   const workedOut = household.home?.country ?? null;
+  const near = household.home?.countryNear ?? [];
   const dirty =
     name !== household.name ||
     kind !== household.kind ||
@@ -113,7 +114,16 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
         </div>
         {kind === "fixed" ? (
           <div className="grid gap-2">
-            <PlaceSelect label="Home place" value={homePlaceId} onChange={setHomePlaceId} />
+            <PlaceSelect
+              label="Home place"
+              value={homePlaceId}
+              onChange={setHomePlaceId}
+              hint={
+                !homePlaceId && household.home?.kind === "place"
+                  ? `None chosen here, so home is “${household.home.name}”, the first saved place with the home icon.`
+                  : undefined
+              }
+            />
             <Button className="justify-self-start" onClick={() => setHomeOpen(true)}>
               <MapPin /> {household.home ? "Mark a new home on the map" : "Mark home on the map"}
             </Button>
@@ -148,7 +158,11 @@ function DetailsForm({ household }: { household: HouseholdDto }) {
           label="Country"
           hint={
             workedOut
-              ? `Worked out from ${kind === "portable" ? "where it is" : "home"}: ${countryName(workedOut) ?? workedOut}. Used for warnings, frequencies and the energy table.`
+              ? `Worked out from ${kind === "portable" ? "where it is" : "home"}: ${countryName(workedOut) ?? workedOut}.${
+                  near.length > 0
+                    ? ` Home is within a few kilometres of ${near.map((code) => countryName(code) ?? code).join(" and ")}: check it is right.`
+                    : ""
+                } Used for warnings, frequencies, emergency numbers and the energy table.`
               : "Not worked out: no home place or position yet. Choose one here if you like."
           }
         >

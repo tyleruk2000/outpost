@@ -5,9 +5,9 @@
  */
 import {
   EMERGENCY_NUMBERS,
-  emergencyNumberFor,
   type EmergencyPlanInput,
   type EmergencyPlanResponse,
+  emergencyNumberFor,
   PLAN_KINDS,
   type PlanBody,
   type PlanKind,

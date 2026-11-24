@@ -278,7 +278,15 @@ export function fridgeSheets(plan: Readable, options: { made: Date; paper: CardP
     if (room(size * 2)) {
       y += size * 1.9;
       put({ kind: "text", x: MARGIN, y, text: "Emergency services", size: size * 0.9, color: INK });
-      put(unbroken(plan.emergencyNumber.trim() || "not given", MARGIN + measure("Emergency services  ", size * 0.9), y, size * 1.6, inner / 2));
+      put(
+        unbroken(
+          plan.emergencyNumber.trim() || "not given",
+          MARGIN + measure("Emergency services  ", size * 0.9),
+          y,
+          size * 1.6,
+          inner / 2,
+        ),
+      );
     }
     for (const phase of ["during", "after"] as const) {
       const steps = plan.steps.filter((step) => step.phase === phase);

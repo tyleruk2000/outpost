@@ -9,7 +9,6 @@
  * change stores it (`ensure`), so that a GET never writes.
  */
 import {
-  countryAt,
   FIRST_HOUSEHOLD_ID,
   FIRST_HOUSEHOLD_NAME,
   type HereSource,
@@ -32,7 +31,13 @@ import {
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
-import { COUNTRIES } from "../layers/countries.ts";
+import { countryFound } from "../layers/borders.ts";
+
+/** The country a home is in, from the countries' outlines, and any other a few kilometres off. */
+const countryFields = (lat: number, lon: number): { country: string | null; countryNear: string[] } => {
+  const found = countryFound(lat, lon);
+  return { country: found?.code ?? null, countryNear: found?.near ?? [] };
+};
 
 /** The settings row that says which household is current (not one of the Settings screen's). */
 export const CURRENT_SETTING = "households.current";
@@ -216,7 +221,7 @@ export function createHouseholdsService(ctx: AppContext): HouseholdsService {
         name: here.name || `Where ${row.name} is now`,
         lat: here.lat,
         lon: here.lon,
-        country: countryAt(here, COUNTRIES),
+        ...countryFields(here.lat, here.lon),
         at: here.at,
         source: here.source,
       };
@@ -231,7 +236,7 @@ export function createHouseholdsService(ctx: AppContext): HouseholdsService {
       name: marker.name || "Home",
       lat: marker.lat,
       lon: marker.lon,
-      country: countryAt(marker, COUNTRIES),
+      ...countryFields(marker.lat, marker.lon),
       at: null,
       source: null,
     };

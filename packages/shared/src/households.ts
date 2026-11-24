@@ -75,8 +75,10 @@ export interface HouseholdHome {
   name: string;
   lat: number;
   lon: number;
-  /** ISO 3166-1 alpha-2 of the country the point is in (`countryAt`), or null. */
+  /** ISO 3166-1 alpha-2 of the country whose outline holds the point (`countryIn`), or null. */
   country: string | null;
+  /** Other countries within a few kilometres of the point: the country may be wrong there, so it is asked. */
+  countryNear?: string[];
   /** When a portable household's position was set; null for a saved place. */
   at: number | null;
   source: HereSource | null;

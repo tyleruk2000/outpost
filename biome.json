@@ -15,6 +15,7 @@
       "!apps/server/src/modules/supplies/foods/fdc-sr-legacy.json",
       "!apps/server/src/modules/tides/data/noaa-harmonic.json",
       "!apps/server/src/modules/tides/data/ticon4-harmonic.json",
+      "!apps/server/src/modules/layers/borders.json",
       "!apps/server/test/fixtures/tides",
       "!apps/server/test/fixtures/sky",
       "!scripts/search-eval/reference.json",
