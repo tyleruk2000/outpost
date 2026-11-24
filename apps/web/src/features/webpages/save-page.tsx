@@ -399,7 +399,7 @@ export function SaveWebPage({ className, autoFocus }: { className?: string; auto
               if (preview) setPreview(undefined);
               if (look.isError) look.reset();
             }}
-            className="min-w-0 font-mono text-small sm:flex-1"
+            className="min-w-0 font-mono text-body sm:flex-1 md:pointer-fine:text-small"
           />
           {look.isPending ? (
             <Button type="button" onClick={stopLooking}>

@@ -128,7 +128,10 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
             ) : (
               "This is the Markdown file as Outpost reads it. Pictures and embedded web content are left out."
             )}{" "}
-            <a href={downloadUrl} className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
+            <a
+              href={downloadUrl}
+              className="inline-flex min-h-6 items-center font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 pointer-coarse:min-h-11"
+            >
               Download the original
             </a>
           </p>
@@ -188,7 +191,10 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
       <div className={`${markdown ? "max-w-[68rem]" : "max-w-[48rem]"} px-5 pt-6 pb-16 md:px-10 md:pt-8`}>
         <p className="mb-8 max-w-[48rem] border-b border-border pb-4 text-small text-ink-muted">
           This is the text Outpost read from the {document.ext === "txt" ? "text" : kind.label} file, without its original layout.{" "}
-          <a href={downloadUrl} className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
+          <a
+            href={downloadUrl}
+            className="inline-flex min-h-6 items-center font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 pointer-coarse:min-h-11"
+          >
             Download the original
           </a>
         </p>

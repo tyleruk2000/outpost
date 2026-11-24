@@ -44,6 +44,11 @@ export interface ComposerProps {
   /** Said under the sentence about what the model is given: whether it can also look things up in Outpost. */
   toolsNote?: ReactNode;
   autoFocus?: boolean;
+  /**
+   * Once a conversation has begun: on a phone the sentences under the box are folded away (still read as its
+   * description), so that the box and its hint do not take a third of the screen before the keyboard comes up.
+   */
+  quiet?: boolean;
   ref?: Ref<ComposerHandle>;
 }
 
@@ -67,6 +72,7 @@ export function Composer({
   notice,
   toolsNote,
   autoFocus = false,
+  quiet = false,
   ref,
 }: ComposerProps) {
   const box = useRef<HTMLTextAreaElement>(null);
@@ -156,7 +162,11 @@ export function Composer({
         />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 pr-1.5 pl-3.5">
           {scope ? null : (
-            <label htmlFor={switchId} className="flex cursor-pointer items-center gap-2.5 text-small text-ink select-none max-md:min-h-11">
+            <label
+              htmlFor={switchId}
+              // The whole label presses the switch: 44 px tall on a touch screen, where the switch alone is 24.
+              className="flex cursor-pointer items-center gap-2.5 text-small text-ink select-none max-md:min-h-11 md:pointer-coarse:min-h-11"
+            >
               <Switch id={switchId} checked={useLibrary} onCheckedChange={onUseLibrary} disabled={!onUseLibrary} />
               Use my library
             </label>
@@ -185,7 +195,7 @@ export function Composer({
           </span>
         </div>
       </form>
-      <p id={modeId} className="mt-2 text-small text-ink-muted" data-testid="chat-mode">
+      <p id={modeId} className={cn("mt-2 text-small text-ink-muted", quiet && "max-md:sr-only")} data-testid="chat-mode">
         {scope ? (
           <>
             Each message is answered from passages of{" "}
@@ -204,7 +214,7 @@ export function Composer({
         )}
       </p>
       {toolsNote ? (
-        <p className="mt-1 max-w-[68ch] text-small text-ink-muted" data-testid="chat-tools-note">
+        <p className={cn("mt-1 max-w-[68ch] text-small text-ink-muted", quiet && "max-md:sr-only")} data-testid="chat-tools-note">
           {toolsNote}
         </p>
       ) : null}

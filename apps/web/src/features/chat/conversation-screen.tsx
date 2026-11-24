@@ -75,7 +75,12 @@ function Title({
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
+  /** The name last sent, so that leaving the field after Enter does not send it twice. */
+  const sent = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    setDraft(value);
+    sent.current = undefined;
+  }, [value]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: measured again whenever the name changes
   useLayoutEffect(() => {
     const area = inputRef.current;
@@ -85,8 +90,12 @@ function Title({
   }, [draft, inputRef]);
   const commit = () => {
     const next = draft.replace(/\s+/g, " ").trim();
-    if (next && next !== value) onRename(next);
-    else setDraft(value);
+    if (!next) return setDraft(value);
+    setDraft(next);
+    if (next !== value && next !== sent.current) {
+      sent.current = next;
+      onRename(next);
+    }
   };
   return (
     <h1 className="min-w-0">
@@ -97,9 +106,10 @@ function Title({
         onChange={(event) => setDraft(event.target.value.replace(/\n/g, " "))}
         onBlur={commit}
         onKeyDown={(event) => {
+          // Enter saves the name and leaves focus here: blurring the field dropped focus to the top of the app.
           if (event.key === "Enter") {
             event.preventDefault();
-            event.currentTarget.blur();
+            commit();
           }
           if (event.key === "Escape") {
             const area = event.currentTarget;
@@ -109,6 +119,7 @@ function Title({
         }}
         maxLength={200}
         aria-label="Name of this conversation"
+        enterKeyHint="done"
         className="-mx-1.5 block w-[calc(100%+0.75rem)] resize-none overflow-hidden rounded-control bg-transparent px-1.5 font-title text-title text-ink max-md:min-h-11 max-md:py-1 outline-none hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-focus"
       />
     </h1>
@@ -468,6 +479,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
               setDraft("");
             }}
             autoFocus
+            quiet={messages.length > 0}
             toolsNote={toolsNoteFor({
               status,
               model,
@@ -491,7 +503,10 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
               ) : elsewhere ? (
                 <Notice tone="info" title="The model is writing a reply in another conversation">
                   It writes one at a time. Send your message when that reply has finished.{" "}
-                  <Link to={`/chat/${elsewhere}`} className="font-medium underline underline-offset-2">
+                  <Link
+                    to={`/chat/${elsewhere}`}
+                    className="inline-flex min-h-6 items-center font-medium underline underline-offset-2 pointer-coarse:min-h-11"
+                  >
                     Open that conversation
                   </Link>
                 </Notice>

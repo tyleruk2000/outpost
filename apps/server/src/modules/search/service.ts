@@ -1254,9 +1254,8 @@ export function createSearchService(ctx: AppContext): SearchService {
         if (!source.isAvailable()) return false;
         if (source.layer === "semantic") return mode !== "keyword";
         // A module answering from its own table is one of Outpost's own results: it does not wait with the archives.
-        if (source.layer === "local") {
-          return mode !== "semantic" && !params.tag && (!params.kinds?.length || params.kinds.includes(source.kind ?? source.id));
-        }
+        // Asked on every tab, so that its count beside the tabs stays the same whichever is chosen (it is cheap: a table of names).
+        if (source.layer === "local") return mode !== "semantic" && !params.tag;
         if (params.reference === "later") return false;
         if (params.kinds?.length && !params.kinds.includes("reference")) return false;
         return mode !== "semantic" && ctx.services.settings.get("search.includeReference");
@@ -1348,10 +1347,12 @@ export function createSearchService(ctx: AppContext): SearchService {
               return { ...result, score: Math.max(parts.score, 0.5 * result.score), why: reasonFor(parts) || "Matches the name" };
             })
             .sort((a, b) => b.score - a.score);
-          if (found.length > 0) keyword.facets[source.kind ?? source.id] = found.length;
-          // Asked for by kind, they are the results; otherwise they wait in their own strip, out of the main list.
-          if (params.kinds?.includes(source.kind ?? source.id)) lexical.push(...found);
-          else places.push(...found);
+          const sourceKind = source.kind ?? source.id;
+          if (found.length > 0) keyword.facets[sourceKind] = found.length;
+          // Asked for by kind, they are the results; on "Everything" they wait in their own strip, out of the main list;
+          // on another kind's tab only their count is wanted.
+          if (params.kinds?.includes(sourceKind)) lexical.push(...found);
+          else if (!params.kinds?.length) places.push(...found);
         } else {
           // A message written for a person is passed on; anything else (a raw library error) is put in words.
           warnings.push({

@@ -18,6 +18,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { ExternalLinkNotice } from "@/features/reader/linked-files";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BookPlace, BookTurn, type TurnTo } from "./chapter-nav";
@@ -158,7 +159,7 @@ function Front({ document, book, downloadUrl }: { document: DocumentDto; book: D
           <p>
             This is the book as Outpost reads it: its words and pictures, set in Outpost’s own type. The book’s own fonts and layout are
             left out, and so are audio, video and anything interactive.{" "}
-            <a href={downloadUrl} className={LINK}>
+            <a href={downloadUrl} className={cn(LINK, "inline-flex min-h-6 items-center pointer-coarse:min-h-11")}>
               Download the original
             </a>
           </p>
@@ -213,8 +214,14 @@ function Chapter({
   // The top of the screen carries the chapter's name; this line says which book, and how far through it.
   const where = `${position} of ${total}`;
 
+  // A link to the web is not followed at once: the notice says it leaves the library and needs the internet.
+  const [external, setExternal] = useState<string>();
   const links = useMemo<BookLinks>(
-    () => ({ picture: (src) => pictureUrl(document.id, src), chapter: (to, anchor) => chapterTo(document.id, to, anchor) }),
+    () => ({
+      picture: (src) => pictureUrl(document.id, src),
+      chapter: (to, anchor) => chapterTo(document.id, to, anchor),
+      external: setExternal,
+    }),
     [document.id],
   );
 
@@ -227,6 +234,9 @@ function Chapter({
   useEffect(() => {
     const region = scroller.current;
     if (!drawn || !region) return;
+    // Turned to from the chapter before (Next, Previous): the press that did it went with that chapter, and focus
+    // with it to the top of the app. It goes to this chapter's text instead, which reads its name.
+    if (globalThis.document.activeElement === globalThis.document.body) region.focus({ preventScroll: true });
     let timer: number | undefined;
     let moved = false;
     // Nothing is kept until the reader has been put back where they were: the top of the chapter is not a place they chose.
@@ -281,48 +291,51 @@ function Chapter({
   const refused = chapter.error instanceof ApiError && (reason !== undefined || chapter.error.status === 404);
 
   return (
-    <Scroller ref={scroller} label={`Text of ${bookTitle}`}>
-      <BookPlace contents={contents} where={where} />
-      {chapter.isPending ? (
-        <TextSkeleton />
-      ) : chapter.isError ? (
-        refused ? (
-          // The server's reason, where the chapter would be; the rest of the book is still a link away.
-          <div className="max-w-[34rem] py-6">
-            <span aria-hidden className="mb-4 block text-ink-muted [&_svg]:size-6">
-              <FileWarning />
-            </span>
-            <h2 className="font-title text-heading text-ink">This chapter cannot be shown</h2>
-            <p className="mt-2 text-body text-ink-muted">{chapter.error.message}</p>
-            <div className="mt-6">
-              <Button asChild>
-                <a href={downloadUrl}>Download original</a>
-              </Button>
+    <>
+      {external ? <ExternalLinkNotice href={external} foundIn={bookTitle} onDismiss={() => setExternal(undefined)} /> : null}
+      <Scroller ref={scroller} label={`Text of ${bookTitle}`}>
+        <BookPlace contents={contents} where={where} />
+        {chapter.isPending ? (
+          <TextSkeleton />
+        ) : chapter.isError ? (
+          refused ? (
+            // The server's reason, where the chapter would be; the rest of the book is still a link away.
+            <div className="max-w-[34rem] py-6">
+              <span aria-hidden className="mb-4 block text-ink-muted [&_svg]:size-6">
+                <FileWarning />
+              </span>
+              <h2 className="font-title text-heading text-ink">This chapter cannot be shown</h2>
+              <p className="mt-2 text-body text-ink-muted">{chapter.error.message}</p>
+              <div className="mt-6">
+                <Button asChild>
+                  <a href={downloadUrl}>Download original</a>
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="max-w-[46rem]">
+              <ErrorState error={chapter.error} onRetry={() => chapter.refetch()} />
+            </div>
+          )
         ) : (
-          <div className="max-w-[46rem]">
-            <ErrorState error={chapter.error} onRetry={() => chapter.refetch()} />
-          </div>
-        )
-      ) : (
-        <>
-          {chapter.data.notes.length > 0 ? (
-            <div className="mb-8 max-w-[48rem] border-b border-border pb-4 text-small text-ink-muted">
-              {chapter.data.notes.map((note) => (
-                <p key={note} className="[&+p]:mt-1">
-                  {note}
-                </p>
-              ))}
-            </div>
-          ) : null}
-          <BookLinksContext value={links}>
-            <MarkdownDocument blocks={chapter.data.blocks} title="" empty="This part of the book has no words or pictures." />
-          </BookLinksContext>
-        </>
-      )}
-      {chapter.isPending ? null : <BookTurn previous={turn(position - 1)} next={turn(position + 1)} contents={contents} />}
-    </Scroller>
+          <>
+            {chapter.data.notes.length > 0 ? (
+              <div className="mb-8 max-w-[48rem] border-b border-border pb-4 text-small text-ink-muted">
+                {chapter.data.notes.map((note) => (
+                  <p key={note} className="[&+p]:mt-1">
+                    {note}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            <BookLinksContext value={links}>
+              <MarkdownDocument blocks={chapter.data.blocks} title="" empty="This part of the book has no words or pictures." />
+            </BookLinksContext>
+          </>
+        )}
+        {chapter.isPending ? null : <BookTurn previous={turn(position - 1)} next={turn(position + 1)} contents={contents} />}
+      </Scroller>
+    </>
   );
 }
 

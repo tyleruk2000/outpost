@@ -411,6 +411,10 @@ export class PdfPages {
       } else {
         button.dataset.dest = JSON.stringify(link.dest);
         button.setAttribute("aria-label", "Link to another page of this document");
+        // Named by the page it goes to, once that is known: 29 links all called the same said nothing.
+        void this.#pageOf(link.dest).then((index) => {
+          if (index !== null) button.setAttribute("aria-label", `Go to page ${index + 1}`);
+        });
       }
       layer.append(button);
     }
@@ -445,16 +449,22 @@ export class PdfPages {
     else if (button.dataset.dest) void this.#followDestination(JSON.parse(button.dataset.dest) as unknown);
   };
 
-  async #followDestination(destination: unknown): Promise<void> {
+  /** The index of the page a link inside the document goes to, or null for one that goes nowhere. */
+  async #pageOf(destination: unknown): Promise<number | null> {
     try {
       const explicit = typeof destination === "string" ? await this.#pdf.getDestination(destination) : destination;
       const target = Array.isArray(explicit) ? (explicit[0] as unknown) : null;
-      if (target === null || target === undefined || this.#destroyed) return;
-      const index = typeof target === "number" ? target : await this.#pdf.getPageIndex(target as { num: number; gen: number });
-      if (!this.#destroyed) this.goToPage(index + 1);
+      if (target === null || target === undefined || this.#destroyed) return null;
+      return typeof target === "number" ? target : await this.#pdf.getPageIndex(target as { num: number; gen: number });
     } catch {
       // A link to a page that does not exist goes nowhere.
+      return null;
     }
+  }
+
+  async #followDestination(destination: unknown): Promise<void> {
+    const index = await this.#pageOf(destination);
+    if (index !== null && !this.#destroyed) this.goToPage(index + 1);
   }
 
   // While a selection is being dragged, a layer under the text catches the pointer between

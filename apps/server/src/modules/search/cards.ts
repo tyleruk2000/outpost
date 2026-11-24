@@ -113,6 +113,9 @@ export function sameTitleKey(title: string): string {
  * one's is taken out and named under it (`alsoIn`). Reference articles are left as they
  * are: two collections' articles of one name are usually two different articles.
  */
+/** Kinds never put together by their titles: reference articles, and things found by a name that many places share. */
+const SEPARATE_BY_NAME = new Set(["reference", "map-feature", "repeater"]);
+
 export function collapseSameTitles<
   T extends {
     kind: string;
@@ -128,7 +131,8 @@ export function collapseSameTitles<
   const kept: T[] = [];
   let collapsed = 0;
   for (const result of results) {
-    const key = result.kind === "reference" ? "" : sameTitleKey(result.title);
+    // Places and repeaters of one name are different places ("Water", a drinking-water tap, in five villages).
+    const key = SEPARATE_BY_NAME.has(result.kind) ? "" : sameTitleKey(result.title);
     const earlier = key ? first.get(key) : undefined;
     if (earlier) {
       earlier.alsoIn = [

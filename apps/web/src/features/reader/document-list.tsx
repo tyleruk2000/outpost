@@ -160,7 +160,7 @@ function KeepFile({
 
 const titleClass = "font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em]";
 const fileClass =
-  "min-w-0 py-1 text-small break-words text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:py-2.5";
+  "inline-flex min-h-6 min-w-0 items-center py-1 text-small break-words text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11 max-md:py-2.5 md:pointer-coarse:min-h-11";
 
 function DocumentRow({
   collectionId,

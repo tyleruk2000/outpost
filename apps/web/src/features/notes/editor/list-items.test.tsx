@@ -572,3 +572,22 @@ describe("pages written before", () => {
     expect(selectedTopBlock(instance)?.typeName).toBe("paragraph");
   });
 });
+
+describe("ticking a to-do", () => {
+  it("changes only the to-do, and leaves the caret out of the text", async () => {
+    const instance = open(doc(tl(task(false, p("Sweep the chimney")), task(false, p("Logs in")))));
+    document.body.append(instance.view.dom);
+    // The editor says it is made a moment after it is.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const boxes = instance.view.dom.querySelectorAll<HTMLInputElement>("input[type=checkbox]");
+    expect(boxes).toHaveLength(2);
+    const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    boxes[1]!.closest("label")!.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+    boxes[1]!.checked = true;
+    boxes[1]!.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(json(instance)).toEqual(doc(tl(task(false, p("Sweep the chimney")), task(true, p("Logs in")))));
+    expect(instance.isFocused).toBe(false);
+    instance.view.dom.remove();
+  });
+});

@@ -202,6 +202,8 @@ export function DocumentDetails({
     <>
       <CalibreBookDetails documentId={document.id} title={document.title} />
       <Group title="About this document">
+        {/* Said once, where the fields begin: each saves itself, and "Saved" shows beside it when it has. */}
+        <p className="-mt-2 mb-3 text-small text-ink-muted">Each change is saved as you leave the field or press Enter.</p>
         <div className="grid gap-4">
           <SavedField label="Title" value={document.title} onSave={(title) => save({ title })} maxLength={300} />
           <SavedField

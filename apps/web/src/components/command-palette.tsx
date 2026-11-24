@@ -293,6 +293,15 @@ export function CommandPalette({
                 </>
               ) : null}
             </Command.List>
+            {/* Said once the library has answered: the rows themselves are read only as they are reached. */}
+            <p role="status" className="sr-only">
+              {searching && results.isSuccess && !results.isFetching
+                ? (() => {
+                    const count = places.length + actions.length + own.length + referenceShown.length + toDownload.length;
+                    return count === 0 ? `Nothing matches ${debounced}` : `${count} ${count === 1 ? "result" : "results"}`;
+                  })()
+                : ""}
+            </p>
           </Command>
           {/* The keys, where someone with a keyboard will look for them. A phone has none of them. */}
           <p className="hidden flex-wrap gap-x-5 gap-y-1 border-t border-border px-4 py-2.5 text-micro text-ink-muted md:flex">

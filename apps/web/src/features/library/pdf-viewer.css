@@ -121,6 +121,9 @@
 .pdf-links button {
   position: absolute;
   pointer-events: auto;
+  /* A line of small print in a contents page is under 20 px tall: never a target under 24 px. */
+  min-width: 24px;
+  min-height: 24px;
   border-radius: 2px;
   transition: background-color var(--duration) var(--ease-out);
 }

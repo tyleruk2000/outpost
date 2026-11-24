@@ -3,9 +3,14 @@ import net from "node:net";
 import { cleanup, configure } from "@testing-library/react";
 import { afterEach, beforeEach, expect } from "vitest";
 import { setClockChoice, setDeviceClockStyle } from "@/lib/clock";
+import { forgetReferenceSearches } from "@/lib/reference-search";
 import { setDeviceRegion } from "@/lib/region";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  // Each test asks the reference collections afresh.
+  forgetReferenceSearches();
+});
 
 // How long findBy… and waitFor wait for what they wait for. Testing Library's own 1 s is a
 // guess at how fast a screen comes up, and on a busy machine (every suite at once, a build

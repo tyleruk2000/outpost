@@ -345,7 +345,10 @@ function NewConversation() {
           ) : status?.writingIn ? (
             <Notice tone="info" title="The model is writing a reply in another conversation">
               It writes one at a time. Start this one when that reply has finished.{" "}
-              <Link to={`/chat/${status.writingIn}`} className="font-medium underline underline-offset-2">
+              <Link
+                to={`/chat/${status.writingIn}`}
+                className="inline-flex min-h-6 items-center font-medium underline underline-offset-2 pointer-coarse:min-h-11"
+              >
                 Open that conversation
               </Link>
             </Notice>

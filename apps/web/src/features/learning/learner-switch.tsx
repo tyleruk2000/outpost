@@ -104,7 +104,15 @@ export function DeviceLearnerSwitch({ onChoose, className }: { onChoose: (name: 
             }
           >
             {device.recording ? <UserRound aria-hidden /> : <CircleSlash aria-hidden />}
-            <span className="truncate">{label}</span>
+            {device.recording && device.learner === null ? (
+              // On a phone the question was cut to "Who is …": one word fits.
+              <span className="truncate">
+                <span className="md:hidden">Learner</span>
+                <span className="max-md:hidden">{label}</span>
+              </span>
+            ) : (
+              <span className="truncate">{label}</span>
+            )}
             <ChevronDown aria-hidden className="text-ink-faint" />
           </Button>
         </MenuTrigger>

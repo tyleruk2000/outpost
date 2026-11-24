@@ -373,6 +373,8 @@
     font-weight: 600;
   }
   .outpost-table[data-stack] thead {
+    /* A block, or the hiding does not hold and its cells widen the page (How search was tuned at 200% text). */
+    display: block;
     position: absolute;
     width: 1px;
     height: 1px;

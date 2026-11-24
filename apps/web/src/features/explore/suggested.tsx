@@ -80,8 +80,7 @@ export function SuggestedForHome({
         Suggested for {suggestions.country.name}
       </h2>
       <p className="mt-1 max-w-[68ch] text-small text-ink-muted">
-        For the country Home is in, by the outline of the country round it; near a border it may be the neighbour. Each opens the screen
-        that fetches it, which shows the size first.
+        Chosen for the country your home place is in. Each shows its size before anything is fetched.
       </p>
       <HomeAsOf home={home} className="mt-1" />
       <Rows rows={base} onDownload={onDownload} label={`Suggested for ${suggestions.country.name}`} />
@@ -123,7 +122,7 @@ function Rows({
           ) : row.to ? (
             <Link
               to={row.to}
-              className="flex min-h-11 shrink-0 items-center gap-1 text-small font-medium text-primary underline-offset-2 hover:underline md:min-h-8"
+              className="flex min-h-11 shrink-0 items-center gap-1 text-small font-medium text-primary underline-offset-2 hover:underline md:min-h-8 md:pointer-coarse:min-h-11"
             >
               Open <ChevronRight aria-hidden className="size-4" />
               <span className="sr-only">{row.title}</span>

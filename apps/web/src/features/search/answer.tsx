@@ -56,7 +56,7 @@ export function Marker({ piece }: { piece: Extract<AnswerPiece, { kind: "marker"
     <Popover>
       <PopoverTrigger
         aria-label={`Source ${source.marker}: ${whereOf(source)}. Show the passage.`}
-        className="rounded-[3px] bg-primary-soft px-1 py-px font-mono text-[0.8125rem] font-semibold whitespace-nowrap text-primary-soft-ink decoration-1 underline-offset-2 hover:underline data-[state=open]:underline"
+        className="relative rounded-[3px] bg-primary-soft px-1 py-px font-mono pointer-coarse:after:absolute pointer-coarse:after:-inset-x-1 pointer-coarse:after:-inset-y-3 text-[0.8125rem] font-semibold whitespace-nowrap text-primary-soft-ink decoration-1 underline-offset-2 hover:underline data-[state=open]:underline"
       >
         [{source.marker}]
       </PopoverTrigger>
@@ -185,7 +185,7 @@ function SourceRow({ source, state, startOpen }: { source: AnswerSource; state: 
             aria-expanded={open}
             aria-controls={id}
             onClick={() => setOpen((value) => !value)}
-            className="-ml-1.5 rounded-control px-1.5 py-1 text-small font-medium text-primary hover:bg-surface-strong max-md:py-2"
+            className="-ml-1.5 inline-flex min-h-6 items-center rounded-control px-1.5 py-1 text-small font-medium text-primary hover:bg-surface-strong max-md:min-h-11 md:pointer-coarse:min-h-11"
           >
             {open ? "Hide the passage" : "Show the passage"}
           </button>

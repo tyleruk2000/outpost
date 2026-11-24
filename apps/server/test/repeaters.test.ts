@@ -992,9 +992,12 @@ describe("repeaters API", () => {
     expect(
       (await app.api<SearchResponse>("GET", "/api/search?q=thornwick&kinds=repeater")).body.results.map((result) => result.kind),
     ).toEqual(["repeater"]);
-    expect((await app.api<SearchResponse>("GET", "/api/search?q=thornwick&kinds=note")).body.results.map((result) => result.kind)).toEqual([
-      "note",
-    ]);
+    const notesTab = (await app.api<SearchResponse>("GET", "/api/search?q=thornwick&kinds=note")).body;
+    expect(notesTab.results.map((result) => result.kind)).toEqual(["note"]);
+    // Every tab is counted whichever is chosen, so the tabs and their counts stay put; the repeater is not listed there.
+    expect(notesTab.facets).toEqual({ note: 1, repeater: 1 });
+    expect(notesTab.places).toEqual([]);
+    expect((await app.api<SearchResponse>("GET", "/api/search?q=thornwick&kinds=repeater")).body.facets).toEqual({ note: 1, repeater: 1 });
     // A removed entry is not found.
     const gone = await find("QZ3AB");
     await app.api("DELETE", `/api/repeaters/${gone.id}`);

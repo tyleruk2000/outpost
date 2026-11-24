@@ -10,8 +10,13 @@ import { type RefObject, useEffect } from "react";
 /** Room left between a focused control and a bar, in CSS pixels. */
 const ROOM = 8;
 
-/** How far to scroll the page so that a box lies between the bars: negative is up, 0 is not at all. */
-export function clearance(box: { top: number; bottom: number }, clearBelow: number, clearAbove: number): number {
+/**
+ * How far to scroll the page so that a box lies between the bars: negative is up, 0 is not at all. A box wholly
+ * outside the window (`height` tall) was not scrolled to by the browser: focus given with `preventScroll`, or the page
+ * moved since (a remembered place restored on Back, which this used to undo by scrolling back up to the search field).
+ */
+export function clearance(box: { top: number; bottom: number }, clearBelow: number, clearAbove: number, height = Infinity): number {
+  if (box.bottom <= 0 || box.top >= height) return 0;
   if (box.top < clearBelow) return box.top - clearBelow - ROOM;
   // Up from under the bottom bar, but never so far that its top goes under the top bar: for a box taller than the room, the top matters.
   if (box.bottom > clearAbove) return Math.max(0, Math.min(box.bottom - clearAbove + ROOM, box.top - clearBelow - ROOM));
@@ -56,7 +61,7 @@ export function useFocusClearOfBars(top: RefObject<HTMLElement | null>, bottom: 
           const box = stuck.getBoundingClientRect();
           if (box.top <= clearBelow + 1) clearBelow = Math.max(clearBelow, box.bottom);
         }
-        const by = clearance(target.getBoundingClientRect(), clearBelow, bar.getBoundingClientRect().top);
+        const by = clearance(target.getBoundingClientRect(), clearBelow, bar.getBoundingClientRect().top, window.innerHeight);
         if (by !== 0) window.scrollBy({ top: by, behavior: "instant" });
       });
     };

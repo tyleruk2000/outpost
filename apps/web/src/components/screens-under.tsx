@@ -16,7 +16,7 @@ export function ScreensUnder({ parent, className }: { parent: string; className?
         <Link
           key={child.to}
           to={child.to}
-          className="inline-flex min-h-11 items-center gap-2 text-body text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 md:min-h-9"
+          className="inline-flex min-h-11 items-center gap-2 text-body text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 md:min-h-9 md:pointer-coarse:min-h-11"
         >
           <child.icon aria-hidden className="size-[18px] shrink-0" strokeWidth={1.6} />
           {child.label}

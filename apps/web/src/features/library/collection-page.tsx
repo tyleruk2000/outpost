@@ -129,7 +129,7 @@ function Details({ collection }: { collection: CollectionDto }) {
       </Fact>
       <Fact label="Installed">{formatDateTime(collection.installedAt)}</Fact>
       <Fact label="Storage location">
-        <Link to="/storage" className="text-primary underline underline-offset-2">
+        <Link to="/storage" className="inline-flex min-h-6 items-center text-primary underline underline-offset-2 pointer-coarse:min-h-11">
           {collection.locationName}
         </Link>
         <span className={collection.locationAvailable ? "text-ink-muted" : "text-warning"}>

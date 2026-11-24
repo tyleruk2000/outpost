@@ -154,6 +154,8 @@ test.describe("chat with a local model", () => {
     const name = page.getByRole("textbox", { name: "Name of this conversation" });
     await name.fill("Lamp wicks");
     await name.press("Enter");
+    // Saved, and focus stays in the field rather than dropping to the top of the app.
+    await expect(name).toBeFocused();
     await page.getByRole("link", { name: "Chat", exact: true }).first().click();
     await expect(page.getByRole("list", { name: "Conversations" }).getByRole("link", { name: /^Lamp wicks/ })).toBeVisible();
     expect(errors).toEqual([]);

@@ -184,6 +184,34 @@ describe("keyword search", () => {
     expect((await app.api("GET", "/api/search?q=radio&limit=2&kinds=note")).body.total).toBe(10);
   });
 
+  it("counts each kind the same whichever kind is asked for, and lists as many as it counts", async () => {
+    const { search } = app.ctx.services;
+    // Six documents hold "radio" itself, one page holds only a longer word it begins.
+    for (let index = 0; index < 6; index += 1) {
+      search.upsert({
+        kind: "document",
+        entityId: `r${index}`,
+        title: `Radio log ${index}`,
+        url: `/library/documents/r${index}`,
+        sections: [{ text: "A radio contact." }],
+      });
+    }
+    search.upsert({
+      kind: "note",
+      entityId: "rn",
+      title: "Radiograph",
+      url: "/notes/rn",
+      sections: [{ text: "Radiographs of the knee." }],
+    });
+    const everything = (await app.api("GET", "/api/search?q=radio")).body;
+    const pages = (await app.api("GET", "/api/search?q=radio&kinds=note")).body;
+    const documents = (await app.api("GET", "/api/search?q=radio&kinds=document")).body;
+    expect(pages.facets).toEqual(everything.facets);
+    expect(documents.facets).toEqual(everything.facets);
+    expect(pages.total).toBe(everything.facets.note ?? 0);
+    expect(documents.total).toBe(everything.facets.document);
+  });
+
   it("survives hostile input", async () => {
     for (const q of ['"', "AND OR NOT", "title:*", "a) OR (b", "\\", "NEAR(", "x".repeat(600)]) {
       const response = await app.api("GET", `/api/search?q=${encodeURIComponent(q)}`);

@@ -23,11 +23,15 @@ export function useDismiss(box: RefObject<HTMLElement | null>, open: boolean, cl
     const onFocus = (event: FocusEvent) => {
       if (outside(event.target)) latest.current();
     };
+    // Focus gone into a frame (an article in the reader) or out of the window: neither is seen by the two above.
+    const onLeave = () => latest.current();
     document.addEventListener("pointerdown", onPress, true);
     document.addEventListener("focusin", onFocus);
+    window.addEventListener("blur", onLeave);
     return () => {
       document.removeEventListener("pointerdown", onPress, true);
       document.removeEventListener("focusin", onFocus);
+      window.removeEventListener("blur", onLeave);
     };
   }, [open, box]);
 }

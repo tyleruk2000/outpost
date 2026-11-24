@@ -2,10 +2,11 @@ import type { SearchCard, SearchMode, SearchResponse, SearchResult, SearchSugges
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, ClipboardList, LoaderCircle, MapPin, Search as SearchIcon, Wrench, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigationType, useSearchParams } from "react-router";
 import { findPlaces, type Place } from "@/components/find-places";
 import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
 import { ScreensUnder } from "@/components/screens-under";
+import { returnsToPlace } from "@/components/scroll-memory";
 import { Highlighted, kindMeta, kindOf, resultHref } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
@@ -100,12 +101,16 @@ function AnswerCard({ card }: { card: SearchCard }) {
 function AlsoIn({ result }: { result: SearchResult }) {
   if (!result.alsoIn?.length) return null;
   return (
-    <p className="mt-2 text-small text-ink-muted">
+    // Above the link that covers the whole row (ResultRow), and each tall enough to press: 24 px, 44 on a touch screen.
+    <p className="relative z-10 mt-1 text-small text-ink-muted">
       Also in:{" "}
       {result.alsoIn.map((other, index) => (
         <span key={`${other.kind}:${other.url}`}>
           {index > 0 ? ", " : null}
-          <Link to={other.url} className="text-primary underline underline-offset-2">
+          <Link
+            to={other.url}
+            className="inline-flex min-h-6 items-center text-primary underline underline-offset-2 pointer-coarse:min-h-11"
+          >
             {[kindOf(other.kind).label, other.collection ?? other.subtitle].filter(Boolean).join(", ")}
           </Link>
         </span>
@@ -139,7 +144,10 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
   const kind = kindOf(result.kind);
   const context = [kind.label, result.collection, result.subtitle].filter(Boolean);
   return (
-    <li className="py-5">
+    // The whole row opens the result: its title's link is stretched over it (the passages are what a person reads to
+    // choose, and a 28 px title as wide as its words was the only thing that could be pressed). Long unbroken words
+    // (a web address, a key, the dotted leaders of a contents page) break rather than push the page sideways.
+    <li className="group/row relative isolate py-5 [overflow-wrap:anywhere] before:absolute before:-inset-x-2 before:inset-y-0 before:-z-10 before:rounded-control before:transition-colors before:duration-(--duration-fast) hover:before:bg-surface has-[a:active]:before:bg-surface-strong">
       <div className="flex items-baseline justify-between gap-4">
         <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-small text-ink-muted">
           <kind.icon aria-hidden className="size-3.5 shrink-0" />
@@ -159,7 +167,10 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
         {result.why ? <span className="shrink-0 text-micro text-ink-faint">{result.why}</span> : null}
       </div>
       <Heading className="mt-1 font-title text-lead hyphens-auto break-words">
-        <Link to={resultHref(result)} className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
+        <Link
+          to={resultHref(result)}
+          className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] after:absolute after:-inset-x-2 after:inset-y-0 after:rounded-control group-hover/row:underline focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-focus"
+        >
           <Highlighted segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]} />
         </Link>
       </Heading>
@@ -345,8 +356,8 @@ function Waiting({ count, noun = "article" }: { count: number; noun?: string }) 
 /**
  * One line under the count of a person's own results that says where the search of
  * reference collections has got to, and how many of their articles are in the list. It is
- * there from the first results and always one line high, so that nothing below it moves
- * when the collections answer.
+ * there from the first results, so that nothing below it moves when the collections answer.
+ * On a phone it wraps rather than being cut off at the edge.
  */
 function ReferenceLine({ reference, inList, firstPage }: { reference: ReferenceSearch; inList: number; firstPage: boolean }) {
   const found = reference.results.length;
@@ -358,7 +369,7 @@ function ReferenceLine({ reference, inList, firstPage }: { reference: ReferenceS
         ? `${plural(found, "article")} from reference collections ${found === 1 ? "is" : "are"} in this list`
         : `The best ${inList} of ${found} articles from reference collections are in this list`;
   return (
-    <p className="tabular mt-1 truncate text-small text-ink-muted" role="status">
+    <p className="tabular mt-1 text-small text-ink-muted" role="status">
       {reference.status !== "done"
         ? referenceProgress(reference)
         : reference.problem
@@ -382,6 +393,16 @@ export default function SearchPage() {
   const allCollections = params.get("collections") === "all";
   const [draft, setDraft] = useState(q);
   const inputRef = useRef<HTMLInputElement>(null);
+  const arrival = useNavigationType();
+  const { key: entry } = useLocation();
+
+  // The screen exists to be typed into, so the field has focus when it opens; but not on Back or Forward, which
+  // return to the results at the place they were left (components/scroll-memory.ts): focus on the field there
+  // scrolled the page back up to it on an iPhone. Nor does focus move the page itself.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, as the screen opens
+  useEffect(() => {
+    if (!returnsToPlace(entry, arrival)) inputRef.current?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => setDraft(q), [q]);
 
@@ -511,8 +532,7 @@ export default function SearchPage() {
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Search everything you keep"
             aria-label="Search your library"
-            // biome-ignore lint/a11y/noAutofocus: the search screen exists to be typed into
-            autoFocus
+            enterKeyHint="search"
             className="h-13 w-full rounded-panel border border-border-strong bg-page pr-12 pl-12 text-lead text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-search-cancel-button]:hidden"
           />
           {draft ? (
@@ -705,6 +725,13 @@ export default function SearchPage() {
                   </p>
                 )}
                 {own.length > 0 && data.relaxed ? <p className="mt-1 text-small text-ink">{relaxedSentence(data.everyWord)}</p> : null}
+                {/* A word nothing holds ("zzqqxxyy") still has things nearest to it in meaning: say that nothing was found. */}
+                {own.length > 0 &&
+                own.every((result) => result.sources.length > 0 && result.sources.every((source) => source === "semantic")) ? (
+                  <p className="mt-1 text-small text-ink">
+                    Nothing has these words. These are only the nearest in meaning, and may not be about it at all.
+                  </p>
+                ) : null}
                 {own.length > 0 && data.ignored.length > 0 ? (
                   <p className="mt-1 text-small text-ink-muted">
                     Left out of the search, as words that only shape a question: {data.ignored.map((word) => `“${word}”`).join(", ")}.

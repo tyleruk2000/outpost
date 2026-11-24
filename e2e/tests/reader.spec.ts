@@ -94,7 +94,7 @@ test.describe("a collection that is a list of documents", () => {
     await expect(page.getByText(/1 entry in the collection's list names no file that can be opened/)).toBeVisible();
 
     // The reader's search box looks through the documents as it is typed into.
-    const search = page.getByRole("searchbox", { name: "Search the documents in Field library" });
+    const search = page.getByRole("combobox", { name: "Search the documents in Field library" });
     await search.fill("water");
     await expect(page.getByRole("heading", { name: "Documents matching “water”", level: 1 })).toBeVisible();
     await expect(listStatus(page)).toHaveText("2 of 10 documents");
@@ -219,7 +219,7 @@ test.describe("a collection that is a list of documents", () => {
         const box = await page.getByRole("button", { name }).boundingBox();
         expect(box!.height, name).toBeGreaterThanOrEqual(40);
       }
-      await page.getByRole("searchbox").fill("grain");
+      await page.getByRole("combobox", { name: "Search the documents in Field library" }).fill("grain");
       await expect(listStatus(page)).toHaveText("1 of 10 documents");
       // Pressing the description opens the document, not only its title.
       const words = (await page.getByText('Food: "dry, dark and cool"').boundingBox())!;
@@ -344,7 +344,7 @@ test.describe("a collection that is a list of documents", () => {
       const errors = watchForErrors(page);
       await removeAdded(page.request, id);
       await page.goto(`/library/read/${id}/`);
-      await page.getByRole("searchbox").fill("water");
+      await page.getByRole("combobox", { name: "Search the documents in Field library" }).fill("water");
       await page.getByRole("button", { name: "Add these 2 to library" }).click();
       await page
         .getByRole("dialog", { name: "Add these 2 documents to your library?" })
@@ -355,7 +355,7 @@ test.describe("a collection that is a list of documents", () => {
 
       // The rest, slowly, and stopped before the end.
       await archiveAs("?delay=900");
-      await page.getByRole("searchbox").fill("");
+      await page.getByRole("combobox", { name: "Search the documents in Field library" }).fill("");
       await page.getByRole("button", { name: "Add the other 6 to library" }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Add 6 documents" }).click();
       const going = page.getByRole("region", { name: "Adding to your library" });

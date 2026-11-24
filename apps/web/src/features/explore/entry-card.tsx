@@ -215,7 +215,7 @@ export function EntryCard({
       {entry.chapterCount && entry.licenseNote ? (
         // A book carries its author's own account of how it was reviewed; it is a line away, not hidden.
         <details className="mt-1.5 text-small text-ink-muted">
-          <summary className="w-fit cursor-pointer rounded-control font-medium text-primary underline-offset-[0.2em] hover:underline">
+          <summary className="w-fit cursor-pointer rounded-control py-0.5 font-medium text-primary underline-offset-[0.2em] hover:underline pointer-coarse:py-3">
             Who wrote it and how it was reviewed
           </summary>
           <p className="mt-1.5 max-w-[68ch] leading-relaxed text-ink">{entry.licenseNote}</p>

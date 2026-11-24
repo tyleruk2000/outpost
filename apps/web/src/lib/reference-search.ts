@@ -98,6 +98,32 @@ function after(held: Held, event: ReferenceSearchEvent): Held {
   return { ...held, search: { ...search, status: "done", more: event.more ?? 0, missing: event.missing, problem: event.message } };
 }
 
+/** Searches that finished whole, for a short while: Back to a search shows what it showed when it was left. */
+const finished = new Map<string, { held: Held; at: number }>();
+const KEPT_MS = 5 * 60_000;
+const KEPT_AT_MOST = 8;
+
+function keep(wanted: string, held: Held): void {
+  finished.delete(wanted);
+  finished.set(wanted, { held, at: Date.now() });
+  while (finished.size > KEPT_AT_MOST) finished.delete(finished.keys().next().value!);
+}
+
+function recall(wanted: string): Held | undefined {
+  const kept = finished.get(wanted);
+  if (!kept) return undefined;
+  if (Date.now() - kept.at > KEPT_MS) {
+    finished.delete(wanted);
+    return undefined;
+  }
+  return kept.held;
+}
+
+/** For tests: every search is asked afresh. */
+export function forgetReferenceSearches(): void {
+  finished.clear();
+}
+
 /**
  * How long the words must stand still, from the last keystroke, before reference
  * collections are asked. Searching them takes seconds of kiwix-serve's time on a small
@@ -121,17 +147,32 @@ export function useReferenceSearch(
 ): ReferenceSearch {
   // The words and how to search them, as one key: any of them changing is a new search.
   const wanted = enabled && q.trim() ? `${exact ? "1" : "0"}${all ? "1" : "0"}${q.trim()}` : "";
-  const [state, setState] = useState<{ q: string; held: Held }>({ q: "", held: { search: NOTHING, parts: new Map() } });
+  const [state, setState] = useState<{ q: string; held: Held }>(() => {
+    const kept = wanted ? recall(wanted) : undefined;
+    return kept ? { q: wanted, held: kept } : { q: "", held: { search: NOTHING, parts: new Map() } };
+  });
 
   useEffect(() => {
     if (!wanted) {
       setState({ q: "", held: { search: NOTHING, parts: new Map() } });
       return;
     }
+    // Back to a search that has just finished: the same articles at once, so the list is as it was left and the
+    // screen returns to the result that was opened (articles arriving again moved the list under it).
+    const kept = recall(wanted);
+    if (kept) {
+      setState((current) => (current.q === wanted && current.held === kept ? current : { q: wanted, held: kept }));
+      return;
+    }
     const controller = new AbortController();
     setState({ q: wanted, held: { search: { ...NOTHING, status: "searching" }, parts: new Map() } });
     const apply = (change: (held: Held) => Held) =>
-      setState((current) => (controller.signal.aborted || current.q !== wanted ? current : { q: wanted, held: change(current.held) }));
+      setState((current) => {
+        if (controller.signal.aborted || current.q !== wanted) return current;
+        const held = change(current.held);
+        if (held.search.status === "done" && !held.search.problem) keep(wanted, held);
+        return { q: wanted, held };
+      });
     const finish = (problem: string | null) => (held: Held) =>
       held.search.status === "done" && !problem ? held : { ...held, search: { ...held.search, status: "done" as const, problem } };
     const ask = () => {

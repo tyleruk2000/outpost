@@ -87,15 +87,23 @@ export function useFocusReturn(onCloseAutoFocus?: (event: Event) => void) {
     if (!node) return;
     let element = document.activeElement as HTMLElement | null;
     if (element && node.contains(element)) element = focusedBefore;
+    // Focus fell to the page because what held it has just gone: the frame quick search shows while its code loads,
+    // the first time it is opened. What had focus before that frame opened both.
+    else if ((!element || element === document.body) && focusedNow && !focusedNow.isConnected) element = focusedBefore;
     const menu = element?.closest<HTMLElement>('[role="menu"]');
     if (menu?.id) element = document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(menu.id)}"]`) ?? element;
     opener.current = element && element !== document.body && !node.contains(element) ? element : null;
+    // And if the opener is that frame, still there as this attaches, what had focus before it.
+    const previous = element === focusedNow ? focusedBefore : null;
+    fallback.current = previous && previous !== document.body && !node.contains(previous) ? previous : null;
   }, []);
+  const fallback = useRef<HTMLElement | null>(null);
   const onClose = useCallback(
     (event: Event) => {
       onCloseAutoFocus?.(event);
-      const element = opener.current;
+      const element = opener.current?.isConnected ? opener.current : fallback.current;
       opener.current = null;
+      fallback.current = null;
       if (event.defaultPrevented || !element?.isConnected) return;
       event.preventDefault();
       element.focus();
