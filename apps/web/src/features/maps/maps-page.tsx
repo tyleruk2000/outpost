@@ -520,8 +520,9 @@ export default function MapsPage() {
       setContextMenu(null);
       setTool("browse");
       setDraft({ name, note: "", color: "teal", icon: "pin", isFavorite: false, lat: position.lat, lon: position.lon });
+      // At half height: the new place is shown on the map above the form (the sheet stands on the keyboard when its name
+      // is typed). The form has the sheet without the tabs.
       showPanel("places");
-      setDetent(FORM_DETENT);
       setReveal(position);
     },
     [showPanel],

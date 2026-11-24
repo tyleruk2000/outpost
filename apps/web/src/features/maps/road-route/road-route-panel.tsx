@@ -538,7 +538,11 @@ export function RoadRoutePanel({
         {streets.data && !streets.data.installed ? (
           <p className="text-small text-ink-muted">
             Door to door, walking and cycling routes come with an optional add-on for the streets.{" "}
-            <Link to="/help/road-routes#h-door-to-door-walking-and-cycling" className="text-primary underline underline-offset-2">
+            <Link
+              to="/help/road-routes#h-door-to-door-walking-and-cycling"
+              // A line of its own and 44 px on a phone, where the form now has the sheet and this is in reach of a thumb.
+              className="text-primary underline underline-offset-2 max-md:flex max-md:min-h-11 max-md:items-center md:pointer-coarse:inline-flex md:pointer-coarse:min-h-11 md:pointer-coarse:items-center"
+            >
               How to turn it on
             </Link>
           </p>

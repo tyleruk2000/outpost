@@ -137,7 +137,9 @@ test.describe("Maps by touch on an iPhone", () => {
     await expect(page.locator(SHEET)).toHaveAttribute("data-detent", "full");
     await expect.poll(() => page.url()).not.toBe(before);
     await picture(page, info, "place-form");
-    // Its note is not under its buttons.
+    // Its note, scrolled to, is wholly above its buttons.
+    await page.getByRole("textbox", { name: "Note" }).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
     const note = (await page.getByRole("textbox", { name: "Note" }).boundingBox())!;
     const footer = (await page.getByRole("button", { name: /^(Close|Cancel)$/ }).boundingBox())!;
     expect(note.y + note.height).toBeLessThanOrEqual(footer.y);
