@@ -6,34 +6,54 @@ with Apple Silicon and one Raspberry Pi 5 have been used
 ([testing-status.md](testing-status.md)); if a step goes wrong, see
 [troubleshooting.md](troubleshooting.md).
 
-## From a Mac to a Raspberry Pi, step by step
+## On a Raspberry Pi, step by step
 
-For someone with Outpost on a Mac, a Raspberry Pi 5 (or 4), and no Docker experience.
+From a new card to the household's phones, with only the Pi and a laptop (Windows, macOS
+or Linux) on the same home network. No Docker experience is needed: the scripts do that
+part. Times and sizes below were measured on one Raspberry Pi 5 with 8 GB; where nothing
+has been measured yet, this says so.
 
 ### What you need
 
-The Pi, its power supply, a microSD card of 32 GB or more (and for a large library an
-SSD on USB 3), the Mac on the same home network, the internet for steps 1 to 4, and
-about an hour.
+- **A Raspberry Pi 5 or 4** with 4 GB of memory or more (8 GB to build walking and
+  cycling for a large country, or to run a model server beside Outpost), and its
+  official power supply: Outpost warns when the power dips.
+- **A microSD card of 64 GB or more; 128 GB for the United Kingdom with walking and
+  cycling.** On the Pi measured, the United Kingdom's map, hills, place names, routes,
+  nearby places and walking and cycling came to 9.2 GB with its 2.3 GB source file;
+  building walking and cycling needs about 8 GB more free while it runs; Outpost's
+  images take about 1.2 GB; all on top of the system and Docker. A build also writes
+  about 53 GB to the disk it works on, and a larger card spreads that wear over more of
+  itself. A reference library is better kept on a NAS or a USB 3 SSD.
+- **A NAS** (any that shares folders over SMB, such as Synology or QNAP), with a user
+  for Outpost and a folder made for it already, such as `Outpost` in the share `docs`.
+- The internet, for the installation (steps 1 to 4) and for each download you press.
 
-### 1. Put Raspberry Pi OS on the card
+### 1. Write the card
 
-On the Mac, install **Raspberry Pi Imager** from
-<https://www.raspberrypi.com/documentation/computers/os.html> and write **Raspberry Pi
-OS (64-bit)** to the card. When Imager offers to change the settings, set a host name
-(this page uses `outpost`), your own user name and password, your Wi-Fi and country (or
-use a network cable), and turn on SSH. Put the card in the Pi and switch it on.
+On the laptop, install **Raspberry Pi Imager** from
+<https://www.raspberrypi.com/software/>. Choose your Pi, then **Raspberry Pi OS (64-bit)**
+(the Lite version, without a desktop, is enough), then the card. When Imager offers to
+customise the settings, set:
 
-### 2. Reach the Pi from the Mac
+- the host name `outpost` (the rest of this page uses it),
+- your own user name and password,
+- your Wi-Fi and country (or plug in a network cable, which is steadier),
+- **SSH** on, with password authentication.
 
-In **Terminal** on the Mac, with your user name:
+Write the card, put it in the Pi and switch it on. The first start takes a minute or two.
+
+### 2. Sign in to the Pi
+
+On the laptop, open **PowerShell** (Windows) or **Terminal** (macOS, Linux) and type, with
+your user name:
 
 ```bash
 ssh yourname@outpost.local
 ```
 
-Answer `yes`, then give the Pi's password; everything typed from now on runs on the Pi.
-If the name is not found, use the Pi's address from your router's list of devices
+Answer `yes`, then the Pi's password. Everything typed from now on runs on the Pi. If the
+name is not found, use the Pi's address from your router's list of devices
 (`ssh yourname@192.168.1.30`). `uname -m` must print `aarch64`; if not, write the card
 again with the 64-bit system.
 
@@ -45,68 +65,156 @@ git clone https://github.com/tyleruk2000/outpost.git
 cd outpost
 ```
 
-Use the same version as on the Mac (`git pull` there first), or the Mac's backup may be
-refused.
+### 4. Install it
 
-### 4. Run the install script
+See what it would do, then do it:
 
 ```bash
-./deploy/pi/install.sh --dry-run --install-docker --lan --https
-./deploy/pi/install.sh --install-docker --lan --https
+./deploy/pi/install.sh --dry-run --install-docker --lan
+./deploy/pi/install.sh --install-docker --lan
 ```
 
-It asks for your password where it needs `sudo`, warns that memory limits are off
-(expected: see [Raspberry Pi 4 and 5](#raspberry-pi-4-and-5)), and ends with
-`Outpost is running.` and the addresses to open, such as
-`On your network: http://192.168.1.30:8080`.
+It asks for your password where it needs `sudo`. In order, it:
+
+1. installs Docker from Docker's own apt repository (`--install-docker`),
+2. lets other devices on your network open Outpost, and announces the Pi as
+   `outpost.local` (`--lan`),
+3. builds Outpost's image on the Pi and starts it. The build downloads Node, the programs
+   Outpost uses, map fonts and the search model; it has not yet been timed on a fresh Pi,
+   so leave it running however long it is quiet,
+4. adds two small services: one that lets Outpost set the Pi's clock, and one that
+   installs updates from the app (skipped, saying so, while releases are not signed),
+5. fetches the HF propagation planner's data (559 kB).
+
+It ends with `Outpost is running.` and the addresses to open, such as
+`On your network: http://192.168.1.30:8080`. A warning that memory limits are off is
+expected (see [Raspberry Pi 4 and 5](#raspberry-pi-4-and-5)). If it stops with a
+message, see [troubleshooting.md](troubleshooting.md#the-raspberry-pi-scripts). If
+`docker` then says permission denied, sign out (`exit`) and back in.
 
 **If the Pi already had Docker** and `docker context ls` shows `rootless *`, add
-`--sudo` to the script and put `sudo` before every `docker` command on this page:
+`--sudo` to every script on this page and put `sudo` before every `docker` command:
 Outpost in a rootless Docker stops when you sign out and cannot use a NAS share.
 
-If it stops with a message, see
-[troubleshooting.md](troubleshooting.md#the-raspberry-pi-scripts). If `docker` then says
-permission denied, sign out (`exit`) and back in.
+### 5. Open it, and give the phones the address
 
-### 5. Open it from a phone
+On the laptop or a phone on the same network, open `http://outpost.local:8080`, or the
+address printed under "On your network" if the name does not open (some networks do not
+pass `.local` names on; `hostname -I` on the Pi prints its address again). That address
+is the one to give the family: on each phone, open it and add it to the Home Screen.
 
-On any device on the same network, open the address printed under "On your network"
-(or `http://outpost.local:8080`) and add it to the Home Screen. For location and things
-kept on the phone, turn on [HTTPS on your network](#https-on-your-network) later.
+**HTTPS stays off.** Over plain `http` everything opens and works, except what browsers
+keep to secure pages: the phone's location on the map, recording a track, keeping maps
+and pages on the phone itself, and keeping the screen awake. Outpost says so at each of
+those, with the way to turn it on. When you want them, run the installer again with
+`--https` and follow [HTTPS on your network](#https-on-your-network); each phone then
+trusts Outpost's certificate once.
 
-### 6. Bring your library across
+### 6. Connect your NAS
 
-Outpost's records (notes, contacts, settings, the list of what is in the library) travel
-in a **backup**; the files themselves stay on their storage locations and move
-separately ([storage.md](storage.md#backing-up)).
-
-**The records.** On the Mac, **Settings → Backup → Download backup**. In Docker,
-allow restoring from another device for the occasion:
+In the `outpost` folder on the Pi, with your NAS's address, share, folder and user:
 
 ```bash
-echo "OUTPOST_ALLOW_REMOTE_ERASE=true" >> .env
-docker compose up -d
+./deploy/pi/nas-share.sh --dry-run --server 192.168.1.20 --share docs --folder Outpost --user me
+./deploy/pi/nas-share.sh --server 192.168.1.20 --share docs --folder Outpost --user me
 ```
 
-From the Mac's browser at the Pi's address, **Settings → Backup → Restore from a
-backup**, pick the file, **Restore after restart**, then **Restart now**. Then delete
-that line from `.env` and run `docker compose up -d` again. A backup with a passphrase
-can be restored from another device only over `https`.
+The folder must be on the NAS already. The script asks for the NAS password and keeps it
+where only root can read it, mounts the folder at every start (the Pi still starts when
+the NAS is off), gives it to Outpost as `/storage/nas/docs`, and restarts Outpost. Then,
+in Outpost: **Storage → Add location**, open `nas` → `docs`, give it a name, kind
+**Network share**. To keep downloads there, tick **Use for new downloads**; maps are
+better left on the Pi, so that they work while the NAS is off. For NFS, see
+[storage.md](storage.md#a-share-mounted-by-the-host-then-bind-mounted).
+
+### 7. Nightly backups to the NAS
+
+**Settings → Automatic backups**, choose the NAS: the next one is at 3:00 am, daily or
+weekly, with how many are kept. Press **Back up now** (seconds), then **Test a restore**
+in that backup's menu: it opens the backup and says what is in it. **Settings → Server
+status** then shows the last backup. A backup holds Outpost's records (notes, contacts,
+settings, the list of what is in the library), not the library's files
+([storage.md](storage.md#backing-up)). Giving backups a passphrase is kept to the Pi
+itself: see [step 10](#10-things-kept-to-the-pi-itself).
+
+### 8. Maps, routes, and walking and cycling
+
+**Home → Download a map → Add a place**, choose the country, tick **Map**, **Routes** and
+**Nearby places**, and choose whether to keep the country's source file (the United
+Kingdom's is 2.3 GB, and walking and cycling is built from it) ([maps.md](maps.md)).
+
+Walking, cycling and door-to-door routes come from an optional add-on
+([Street routes](#street-routes)). Add it on the Pi:
+
+```bash
+./deploy/pi/install.sh --street-routes
+```
+
+It downloads Valhalla's image (about 700 MB) once and builds the streets image on the Pi.
+Then **Add a place** again with **Walking and cycling** ticked, and under **Where it
+works** choose the NAS to spare the card. On the Pi 5 measured, the build took **91
+minutes for the United Kingdom** (56 for Great Britain); routes keep working on what is
+in use meanwhile.
+
+### 9. A reference library
+
+**Home → Download a reference collection** opens Explore, with each collection's size and
+licence. **Wikipedia 100** is a small first one to try. In the download dialog, **Where
+to keep it** offers the NAS. Nothing is fetched until you press **Download**.
+
+### 10. Things kept to the Pi itself
+
+Outpost has no accounts, so a few things are kept to "the computer Outpost runs on":
+restoring a backup, deleting stored ones, a backup passphrase, erasing everything,
+setting the clock, and some settings. In Docker no browser counts as that computer, not
+even one on the Pi, and opening them to the whole network would not be safe. Instead,
+open Outpost through the Pi for as long as you need it. From the laptop, sign in with a
+tunnel, then start it:
+
+```bash
+ssh -L 8090:localhost:8090 yourname@outpost.local
+cd outpost && ./deploy/pi/on-this-pi.sh
+```
+
+Open `http://localhost:8090` on the laptop: there, those things are allowed. **Ctrl-C**
+closes it again; it changes no setting. With a screen and keyboard on the Pi, run the
+second line there and open the same address in the Pi's browser (the desktop version of
+the system has one). The clock can also be
+set on the Pi itself with `sudo date -s "2026-11-24 09:30"` (your time now).
+
+### 11. Updating, and going back
+
+Back up first (**Settings → Automatic backups → Back up now**), then on the Pi:
+
+```bash
+cd ~/outpost
+git pull
+./deploy/pi/install.sh
+```
+
+The installer keeps what is in `.env` (network access, walking and cycling) and the HTTPS
+port, then rebuilds and restarts Outpost; the library and the backups are not touched. If
+walking and cycling then says it cannot write to the NAS, run `nas-share.sh` again with
+the options you first gave it (it keeps the password).
+
+To go back: `git log --oneline -5` lists the last versions; `git checkout <the one
+before>`, then `./deploy/pi/install.sh` again. The newer version may have changed the
+database: if something is wrong, restore the backup made before updating (as in step 10,
+then **Settings → Backup → Restore from a backup**). `git checkout main` returns to the
+newest. Updating from inside the app: [updating.md](updating.md).
+
+### Moving from a Mac
+
+Optional, for someone who already has Outpost on a Mac. Update both to the same version
+first (`git pull` on each), or the Mac's backup may be refused.
+
+**The records.** On the Mac, **Settings → Backup → Download backup**. Open Outpost on the
+Pi as in [step 10](#10-things-kept-to-the-pi-itself), then **Settings → Backup → Restore
+from a backup**, pick the file, **Restore after restart**, then **Restart now**.
 
 **The files.** **Storage** on the Mac shows each location's folder.
 
-- **On a NAS (SMB).** On the Pi, in the `outpost` folder:
-
-  ```bash
-  ./deploy/pi/nas-share.sh --dry-run --server 192.168.1.20 --share docs --folder Outpost --user me
-  ./deploy/pi/nas-share.sh --server 192.168.1.20 --share docs --folder Outpost --user me
-  ```
-
-  (add `--sudo` if you installed with it). It asks for the NAS password, keeps it
-  readable by root only, mounts the folder at every start as `/storage/nas/docs` in both
-  containers, and restarts Outpost. Then **Storage → Add location**, folder
-  `/storage/nas/docs`, kind **Network share**. For NFS see
-  [storage.md](storage.md#a-share-mounted-by-the-host-then-bind-mounted).
+- **On a NAS (SMB).** Connect the same folder as in [step 6](#6-connect-your-nas).
 - **On the Mac's disk or a drive.** Copy each location's folder whole onto the Pi's SSD
   (with its hidden `.outpost-location.json`), mount it at a fixed place in both services
   (see [Linux](#linux-x86-64-and-arm64)), then **Storage → Add location**.
@@ -115,7 +223,7 @@ Until then a location shows as disconnected; nothing is lost. A
 [portable drive](portable.md) is for taking a library away, not for moving an
 installation.
 
-### 7. Away from home: the Pi's own Wi-Fi network
+### Away from home: the Pi's own Wi-Fi network
 
 With no router, the Pi can make a Wi-Fi network of its own: see
 [A box you can carry](#a-box-you-can-carry-the-install-script-and-a-wi-fi-network-of-the-pis-own).
@@ -257,7 +365,8 @@ As well as turning HTTPS on:
    from another device and press the button that adds it.
 
 **Make a new certificate authority** and **Turn HTTPS off and delete it** need
-`OUTPOST_ALLOW_REMOTE_ERASE=true` for the occasion, or delete `ca.crt`, `ca.key`,
+`OUTPOST_ALLOW_REMOTE_ERASE=true` for the occasion (on a Pi, open Outpost through
+[`on-this-pi.sh`](#10-things-kept-to-the-pi-itself) instead), or delete `ca.crt`, `ca.key`,
 `server.crt` and `server.key` from the volume's `tls` folder with Outpost stopped. A
 certificate of your own goes in by the folder, then **Use them** (a renewal repeats the
 last two lines):
@@ -287,7 +396,8 @@ For the [mesh radio link](mesh-radio.md):
   Docker Desktop on a Mac cannot pass USB through; run Outpost without Docker there, or
   use the radio's network port.
 - **Settings → Mesh radio** can be changed in a container only with
-  `OUTPOST_ALLOW_REMOTE_SETTINGS=true` in `.env`.
+  `OUTPOST_ALLOW_REMOTE_SETTINGS=true` in `.env`, or on a Pi through
+  [`on-this-pi.sh`](#10-things-kept-to-the-pi-itself).
 
 ### Backups and moving
 
@@ -404,11 +514,14 @@ downloads Valhalla's image, about 700 MB, once). Elsewhere, put `COMPOSE_PROFILE
 in `.env` and run `docker compose up -d --build`.
 
 Then add **Walking and cycling** for a place under **Maps → Offline maps**, in **Add a
-place** ([maps.md](maps.md#walking-and-cycling)). Great Britain took 56 minutes on a Pi 5 with
-8 GB, needed about 8 GB free while building, takes 2.7 GB after, and wrote about 53 GB to
-the disk: choose a NAS or USB disk as the place it works to spare the SD card (that
-location must be mounted read-write in the `valhalla` service). Drives keep planning on
-Outpost's own routes whether or not the add-on is there.
+place** ([maps.md](maps.md#walking-and-cycling)). On a Pi 5 with 8 GB, Great Britain took
+56 minutes and the United Kingdom 91; each needed about 8 GB free while building, takes
+2.7 to 2.9 GB after, and wrote about 53 GB to the disk it worked on. Choose a NAS or USB
+disk as the place it works to spare the SD card. That location must be mounted read-write
+in the `valhalla` service: a NAS connected with `deploy/pi/nas-share.sh` is (if it was
+connected by an older copy of the script, run it again with the same options); for a USB
+disk, add the mount to the `valhalla` service in `compose.override.yaml`. Drives keep
+planning on Outpost's own routes whether or not the add-on is there.
 
 Outpost's own updates do not touch the streets service. When a release changes it (its notes
 say so), rebuild and restart it from the checkout; the streets already built are kept:
@@ -438,7 +551,9 @@ your home Wi-Fi; `hotspot.sh status` says which it is.
 - The Pi's one Wi-Fi radio cannot be a hotspot and on your home Wi-Fi at once.
 - The Wi-Fi password is all that stands between that network and Outpost.
 - If the Pi has internet over Ethernet, it is shared with whoever joins.
-- **Erase everything** and restoring need `OUTPOST_ALLOW_REMOTE_ERASE=true` from a phone.
+- **Erase everything** and restoring need a laptop through
+  [`on-this-pi.sh`](#10-things-kept-to-the-pi-itself), or `OUTPOST_ALLOW_REMOTE_ERASE=true`
+  from a phone.
 - For location and offline use, [turn on HTTPS](#turning-it-on) and use
   `https://10.42.0.1:8443`.
 

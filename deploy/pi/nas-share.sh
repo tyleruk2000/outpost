@@ -30,8 +30,10 @@
 #   2. Adds one line to /etc/fstab (the file as it was is kept beside it) so that the
 #      system mounts the folder at /mnt/outpost-nas/NAME when it is first used, and again
 #      after a restart. If the NAS is off, the Pi still starts.
-#   3. Writes compose.nas.yaml, which gives the outpost and kiwix containers
-#      /mnt/outpost-nas as /storage/nas, and names it in COMPOSE_FILE in .env.
+#   3. Writes compose.nas.yaml, which gives the containers /mnt/outpost-nas as
+#      /storage/nas (read-only for kiwix), and names it in COMPOSE_FILE in .env.
+#      Run again after an update, it brings compose.nas.yaml up to date (the password
+#      kept is used again).
 #   4. Restarts Outpost so that it sees the folder.
 # Then, in Outpost: Storage → Add a location, folder /storage/nas/NAME, kind Network share.
 #
@@ -61,7 +63,7 @@ while [ $# -gt 0 ]; do
     --sudo) USE_SUDO=true; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
     -h | --help)
-      sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'
+      awk 'NR > 1 && /^set -euo/ { exit } NR > 1' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -158,12 +160,12 @@ fi
 
 # ── /etc/fstab ───────────────────────────────────────────────────────────────
 run sudo mkdir -p "$MOUNT"
-if grep -qE "^[^#]*[[:space:]]$MOUNT[[:space:]]" /etc/fstab 2>/dev/null; then
+if grep -qE "^[^#]*[[:space:]]${MOUNT}[[:space:]]" /etc/fstab 2>/dev/null; then
   if grep -qF "$LINE" /etc/fstab; then
     say "/etc/fstab already has the line for $MOUNT."
   else
     stop "/etc/fstab already mounts something else at $MOUNT:
-$(grep -E "^[^#]*[[:space:]]$MOUNT[[:space:]]" /etc/fstab)
+$(grep -E "^[^#]*[[:space:]]${MOUNT}[[:space:]]" /etc/fstab)
 Remove that line, or choose another --name, and run this again."
   fi
 else
@@ -218,14 +220,16 @@ services:
         read_only: true
         bind:
           propagation: rslave
-  # Walking and cycling (the optional \"routes\" profile) reads source files kept on the NAS;
-  # read-only, so its working files stay on this computer's own disk.
+  # Walking and cycling (the optional \"routes\" profile) reads country files kept on the
+  # NAS, and may build there (Offline maps → Where it works) to spare this computer's SD
+  # card, so it may write too. It writes only inside a folder called outpost-streets-work.
+  # The whole folder is given, not that one: a mount of a folder inside the share would
+  # stop the streets service starting whenever the NAS is off.
   valhalla:
     volumes:
       - type: bind
         source: $PARENT
         target: /storage/nas
-        read_only: true
         bind:
           propagation: rslave"
 if $DRY_RUN; then
@@ -235,21 +239,11 @@ else
   printf '%s\n' "$NAS_COMPOSE" >compose.nas.yaml
 fi
 
-# Naming COMPOSE_FILE stops Compose looking for compose.override.yaml by itself, so it is named too.
-FILES="compose.yaml"
-[ -f compose.override.yaml ] && FILES="$FILES:compose.override.yaml"
-FILES="$FILES:compose.nas.yaml"
-if $DRY_RUN; then
-  printf '  would set COMPOSE_FILE=%s in .env\n' "$FILES"
-else
-  [ -f .env ] || cp .env.example .env
-  current="$(grep '^COMPOSE_FILE=' .env | tail -1 | cut -d= -f2- || true)"
-  if [ -z "$current" ]; then
-    printf '\n# The Compose files in use: written by deploy/pi/nas-share.sh.\nCOMPOSE_FILE=%s\n' "$FILES" >>.env
-  elif [[ ":$current:" != *":compose.nas.yaml:"* ]]; then
-    sed -i "s|^COMPOSE_FILE=.*|COMPOSE_FILE=$current:compose.nas.yaml|" .env
-  fi
-fi
+# Naming COMPOSE_FILE stops Compose reading compose.override.yaml by itself (install.sh
+# --https writes it), so compose-files.sh names that too, whichever script ran first.
+# shellcheck source=deploy/pi/compose-files.sh
+. "$HERE/compose-files.sh"
+compose_files_sync "$DRY_RUN" compose.nas.yaml
 
 if $RESTART; then
   say "Restarting Outpost so that it sees the folder (a few seconds)."

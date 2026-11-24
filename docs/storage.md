@@ -122,7 +122,7 @@ Whatever is mounted for `outpost` must be mounted at the same path, read-only, f
 ### A share mounted by the host, then bind-mounted
 
 On a Raspberry Pi or other Debian system, `deploy/pi/nas-share.sh` does this for SMB
-([deployment.md](deployment.md#6-bring-your-library-across); `--help` says what it
+([deployment.md](deployment.md#6-connect-your-nas); `--help` says what it
 changes and how to undo it). If you write the lines yourself, copy what it does: mount
 **one folder** of the share, end the `/etc/fstab` line `nofail,_netdev,x-systemd.automount`
 so the computer starts with the NAS off, and give the containers the folder **above** the
