@@ -17,20 +17,23 @@ import {
   type RepeaterFields,
   toMaidenhead,
 } from "@outpost/shared";
-import { CircleAlert, MapPin, Pencil, Radar, RadioTower, Trash2, Undo2 } from "lucide-react";
+import { CircleAlert, Compass, Ellipsis, MapPin, Pencil, Radar, RadioTower, Trash2, Undo2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { BackLink, ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/misc";
 import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
-import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
+import { formatBearing } from "@/features/maps/lib/geo";
 import { formatDate } from "@/lib/utils";
 import { useRemoveRepeater, useRepeater, useRevertRepeater, useSeparate } from "./data";
-import { OriginPicker, useOrigin } from "./origin";
+import { OriginPicker, REPEATERS_ORIGIN_KEY, useOrigin, useStoredOrigin } from "./origin";
 import { RepeaterFormDialog } from "./repeater-form";
+import { RepeaterSpotMap } from "./repeater-spot-map";
+import { useDistanceText } from "./units";
 import { ageWarning, isApproximate, modesLine, positionDigits, positionNote, sourceOf } from "./words";
 
 function Facts({ children }: { children: ReactNode }) {
@@ -85,7 +88,8 @@ export default function RepeaterPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const detail = useRepeater(id);
-  const origin = useOrigin();
+  const origin = useOrigin(useStoredOrigin(REPEATERS_ORIGIN_KEY));
+  const distanceText = useDistanceText();
   const revert = useRevertRepeater();
   const separate = useSeparate();
   const remove = useRemoveRepeater();
@@ -148,9 +152,18 @@ export default function RepeaterPage() {
           <Button onClick={() => setEditing(true)}>
             <Pencil /> Change
           </Button>
-          <Button variant="danger-ghost" onClick={() => setRemoving(true)}>
-            <Trash2 /> Remove
-          </Button>
+          <Menu>
+            <MenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label={`More for ${repeater.callsign}`}>
+                <Ellipsis />
+              </Button>
+            </MenuTrigger>
+            <MenuContent align="end">
+              <MenuItem danger onSelect={() => setRemoving(true)}>
+                <Trash2 /> Remove {repeater.callsign}
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         </div>
       </header>
 
@@ -241,18 +254,29 @@ export default function RepeaterPage() {
 
       <section aria-label="From a place" className="mt-8 grid gap-3">
         <h2 className="text-lead font-semibold text-ink">From a place</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <OriginPicker origin={origin} label="Measure from" />
-        </div>
+        <OriginPicker origin={origin} label="Measure from" onPoint={position ? () => undefined : undefined} />
         {position && from && distance !== null && bearing !== null ? (
-          <p className="tabular text-body text-ink" aria-live="polite">
-            {isApproximate(repeater) ? "About " : ""}
-            <span className="font-semibold">{formatDistance(distance)}</span> from {origin.name}, on a bearing of{" "}
-            <span className="font-semibold">{formatBearing(bearing)}</span>.
-          </p>
+          <div className="grid gap-1">
+            <p className="tabular text-body text-ink" aria-live="polite">
+              {isApproximate(repeater) ? "About " : ""}
+              <span className="font-semibold">{distanceText(distance)}</span> from {origin.name}, on a bearing of{" "}
+              <span className="font-semibold">{formatBearing(bearing)}</span> from true north.
+            </p>
+            <p className="text-small">
+              <Link
+                to={`/tools/compass?lat=${from.lat.toFixed(5)}&lon=${from.lon.toFixed(5)}`}
+                className="inline-flex min-h-11 items-center gap-1.5 text-primary underline underline-offset-2 md:min-h-6"
+              >
+                <Compass aria-hidden className="size-4" /> Magnetic and grid north at {origin.name}
+              </Link>
+            </p>
+          </div>
         ) : position ? (
-          <p className="text-small text-ink-muted">Choose a place to see how far the repeater is from it, and on what bearing.</p>
+          <p className="text-small text-ink-muted">
+            Choose a place, or tap the map, to see how far the repeater is from it and on what bearing.
+          </p>
         ) : null}
+        {position ? <RepeaterSpotMap repeater={repeater} origin={origin} className="h-72 sm:h-80" /> : null}
         {position ? (
           <div className="flex flex-wrap gap-2">
             <Button asChild>

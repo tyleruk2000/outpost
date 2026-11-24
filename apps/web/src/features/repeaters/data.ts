@@ -17,6 +17,7 @@ import type {
   RepeaterMergeResult,
   RepeaterMode,
   RepeaterOverlayResponse,
+  RepeaterSort,
   RepeaterSourcesResponse,
   RepeaterStatus,
   RepeatersOverview,
@@ -43,7 +44,7 @@ export const NO_FILTERS: RepeaterFilters = { q: "", band: "", mode: "", hideOffA
 
 const positionText = (position: LatLon) => `${position.lat.toFixed(5)},${position.lon.toFixed(5)}`;
 
-export function filterQuery(filters: Partial<RepeaterFilters>, near?: LatLon | null, withinKm?: number | null) {
+export function filterQuery(filters: Partial<RepeaterFilters>, near?: LatLon | null, withinKm?: number | null, sort?: RepeaterSort) {
   return {
     q: filters.q?.trim() || undefined,
     band: filters.band || undefined,
@@ -52,6 +53,8 @@ export function filterQuery(filters: Partial<RepeaterFilters>, near?: LatLon | n
     list: filters.list || undefined,
     near: near ? positionText(near) : undefined,
     withinKm: near && withinKm ? withinKm : undefined,
+    // Nearest first is the server's own order when there is a place; callsign order when there is none.
+    sort: sort && sort !== "near" && !(sort === "callsign" && !near) ? sort : undefined,
   };
 }
 
@@ -61,8 +64,8 @@ export const useRepeatersOverview = (enabled = true) =>
   useQuery({ queryKey: ["repeaters", "overview"], queryFn: () => api.get<RepeatersOverview>("/api/repeaters/overview"), enabled });
 
 /** The list, a page at a time: "Show more" asks for the next fifty. */
-export function useRepeaterList(filters: RepeaterFilters, near: LatLon | null, withinKm: number | null) {
-  const query = filterQuery(filters, near, withinKm);
+export function useRepeaterList(filters: RepeaterFilters, near: LatLon | null, withinKm: number | null, sort: RepeaterSort = "near") {
+  const query = filterQuery(filters, near, withinKm, sort);
   return useInfiniteQuery({
     queryKey: ["repeaters", "list", query],
     queryFn: ({ pageParam, signal }) =>
@@ -84,9 +87,12 @@ export const repeaterQuery = (id: string | null | undefined) => ({
 
 export const useRepeater = (id: string | null | undefined) => useQuery({ ...repeaterQuery(id), enabled: Boolean(id) });
 
-/** What to draw in a box of the map. The last answer stays up while the next is fetched, so the map does not blink. */
-export function useRepeaterOverlay(bbox: string | null, filters: Partial<RepeaterFilters>) {
-  const query = filterQuery(filters);
+/**
+ * What to draw in a box of the map, with the list's filters (and its "within" distance of a place, when it has one).
+ * The last answer stays up while the next is fetched, so the map does not blink.
+ */
+export function useRepeaterOverlay(bbox: string | null, filters: Partial<RepeaterFilters>, near?: LatLon | null, withinKm?: number | null) {
+  const query = filterQuery(filters, withinKm ? near : null, withinKm);
   return useQuery({
     queryKey: ["repeaters", "overlay", bbox, query],
     queryFn: ({ signal }) => api.get<RepeaterOverlayResponse>("/api/repeaters/overlay", { ...query, bbox: bbox ?? undefined }, signal),
@@ -189,9 +195,10 @@ export function exportHref(
   near: LatLon | null,
   withinKm: number | null,
   limit: number | null,
+  sort?: RepeaterSort,
 ): string {
   const params = new URLSearchParams({ format });
-  for (const [name, value] of Object.entries({ ...filterQuery(filters, near, withinKm), limit: limit ?? undefined })) {
+  for (const [name, value] of Object.entries({ ...filterQuery(filters, near, withinKm, sort), limit: limit ?? undefined })) {
     if (value !== undefined) params.set(name, String(value));
   }
   return `/api/repeaters/export?${params.toString()}`;

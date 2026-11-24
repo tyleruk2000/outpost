@@ -4,14 +4,15 @@
  * the phone's own compass corrected by them, and a bearing converted between them.
  *
  * Worked out on this device from the World Magnetic Model (packages/shared/src/wmm.ts)
- * with no internet. The place is the home place unless another is chosen (a saved place,
- * the middle of the map, where the device is, or typed); the map's centre card opens this
- * screen with `?lat=&lon=`. The choice is a preference of this browser, nothing more.
+ * with no internet. The place is Home unless another is chosen (where the device is, a
+ * saved place, or a place found by typing a name, a grid reference or a locator); the
+ * map's centre card opens this screen with `?lat=&lon=`, a point on the map. The choice
+ * is a preference of this browser, nothing more.
  */
 import { formatMgrs, type MapGrid, type Norths, northsAt, usualGrid } from "@outpost/shared";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { OriginPicker, useOrigin } from "@/features/repeaters/origin";
+import { OriginPicker, useOrigin, useStoredOrigin } from "@/features/repeaters/origin";
 import { Calculator, ChoiceField, Formula, HowWorkedOut, Result, ToolScreen, useChoice } from "../tools/kit";
 import { BearingConverter } from "./bearing-converter";
 import { LiveCompass } from "./live-compass";
@@ -25,7 +26,7 @@ const CALCULATORS = [
   { id: "convert", title: "Convert a bearing" },
 ] as const;
 
-const KEYS = { choice: "outpost.compass.from", typed: "outpost.compass.fromTyped" };
+const ORIGIN_KEY = "outpost.compass.from";
 
 type GridChoice = MapGrid | "usual";
 const GRID_OPTIONS = [
@@ -47,7 +48,7 @@ function givenPosition(params: URLSearchParams): { lat: number; lon: number } | 
 export default function CompassPage() {
   const [params] = useSearchParams();
   const [given] = useState(() => givenPosition(params));
-  const origin = useOrigin(given, KEYS);
+  const origin = useOrigin(useStoredOrigin(ORIGIN_KEY), given);
   // The date the figures are for: today, as this device's clock has it when the screen is opened.
   const [now] = useState(() => Date.now());
   const position = origin.position;
@@ -73,10 +74,10 @@ export default function CompassPage() {
       }
     >
       <section aria-label="Place" className="mb-2 grid items-start gap-4 sm:grid-cols-2">
-        <OriginPicker origin={origin} label="Place" />
+        <OriginPicker origin={origin} label="Place" className="grid gap-4" />
         {position ? (
           <p className="self-end font-mono text-small text-ink-muted sm:col-span-2">
-            {origin.name ? `${origin.name} · ` : ""}
+            {origin.value.kind === "point" ? "A point on the map · " : origin.name ? `${origin.name} · ` : ""}
             {position.lat.toFixed(4)}, {position.lon.toFixed(4)}
             {mgrs ? ` · MGRS ${mgrs}` : ""}
           </p>
@@ -109,12 +110,12 @@ export default function CompassPage() {
                 "Finding where this device is."
               ) : (
                 <>
-                  Choose a place above: a saved place, the middle of the map, where you are, or a position or grid reference typed in. To
-                  start from your home, mark it on{" "}
-                  <Link to="/maps" className="text-primary underline underline-offset-2">
-                    Maps
+                  Choose a place above: where you are, a saved place, or a town, grid reference or locator found by typing. To start from
+                  your home, choose it on the{" "}
+                  <Link to="/prepare/households" className="text-primary underline underline-offset-2">
+                    Households
                   </Link>{" "}
-                  with the home icon.
+                  page.
                 </>
               )
             }

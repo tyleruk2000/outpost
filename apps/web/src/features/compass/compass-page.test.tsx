@@ -1,6 +1,7 @@
 /** The Compass screen against a stand-in server: the place, the three norths, the live compass's states and the converter. */
 import { compassRule, northsAt } from "@outpost/shared";
 import { act, fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findPlaces, placeName } from "@/components/find-places";
 import { fakeApi, renderScreen } from "../manage/test-support";
@@ -77,7 +78,9 @@ describe("north here", () => {
   it("asks for a place when there is no home place", async () => {
     fakeApi({ "GET /api/maps/markers": { markers: [] } });
     renderScreen(<CompassPage />, "/tools/compass");
-    expect(await screen.findByText(/Choose a place above: a saved place, the middle of the map/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Choose a place above: where you are, a saved place, or a town, grid reference or locator/),
+    ).toBeInTheDocument();
     expect(within(region("Convert a bearing")).getByText(/Choose a place above: the norths are different/)).toBeInTheDocument();
   });
 
@@ -90,7 +93,7 @@ describe("north here", () => {
     // Paris is 0.65° west of zone 31's central meridian, 3° E: grid north is a little west of true north.
     expect(norths.convergence!).toBeCloseTo(-0.65 * Math.sin((48.8566 * Math.PI) / 180), 2);
     expect(within(section).getByText(/Grid north is 0\.5° west of true north here/)).toBeInTheDocument();
-    expect(screen.getByText(/the middle of the map · 48\.8566, 2\.3522 · MGRS 31U DQ \d{5} \d{5}/)).toBeInTheDocument();
+    expect(screen.getByText(/A point on the map · 48\.8566, 2\.3522 · MGRS 31U DQ \d{5} \d{5}/)).toBeInTheDocument();
   });
 
   it("gives true and magnetic only when the National Grid is asked for outside Great Britain, or no grid", async () => {
@@ -107,12 +110,23 @@ describe("north here", () => {
     expect(within(region("North here")).queryByText(/There is no Ordnance Survey grid here/)).toBeNull();
   });
 
-  it("reads a typed grid reference", async () => {
-    fakeApi({ "GET /api/maps/markers": { markers: [] } });
-    localStorage.setItem("outpost.compass.from", JSON.stringify("typed"));
+  it("finds a place from a typed grid reference", async () => {
+    fakeApi({
+      "GET /api/maps/markers": { markers: [] },
+      "GET /api/maps/places": {
+        query: "NY 21548 07214",
+        coordinate: { lat: 54.4508, lon: -3.2195, format: "osgb", precisionMeters: 1 },
+        places: [],
+      },
+    });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScreen(<CompassPage />, "/tools/compass");
-    fireEvent.change(await screen.findByLabelText("Position or locator"), { target: { value: "NY 21548 07214" } });
+    await user.click(await screen.findByRole("combobox", { name: "Place" }));
+    await user.click(await screen.findByRole("option", { name: "Search for a place…" }));
+    await user.type(screen.getByLabelText("Place to measure from"), "NY 21548 07214");
+    await user.click(await screen.findByRole("button", { name: /NY 21548 07214/ }));
     expect(await within(region("North here")).findByText("With an Ordnance Survey map here")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Place" })).toHaveTextContent("NY 21548 07214");
   });
 
   it("still answers after the model's years, and says it is out of date and by how long", async () => {

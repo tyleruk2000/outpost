@@ -67,6 +67,7 @@ import {
   type RepeaterMode,
   type RepeaterOverlayResponse,
   type RepeaterPoint,
+  type RepeaterSort,
   type RepeaterSourcesResponse,
   type RepeaterStatus,
   type RepeatersOverview,
@@ -222,6 +223,8 @@ export interface RepeaterQuery extends RepeaterFilter {
   near?: { lat: number; lon: number };
   /** With `near`: only those within this many kilometres. */
   withinKm?: number;
+  /** Nearest first (with `near`, and the default then), by callsign (the default without), or by the frequency to listen on. */
+  sort?: RepeaterSort;
   limit?: number;
   offset?: number;
 }
@@ -307,7 +310,10 @@ export interface RepeatersService {
   importFetched(token: string, options: ImportOptions): Promise<RepeaterImportResult>;
   /** Forgets a held file the person decided against. */
   discardFetched(token: string): void;
-  overlay(query: { bbox: [number, number, number, number] } & RepeaterFilter): RepeaterOverlayResponse;
+  /** With `near` and `withinKm`, only those within that distance of it: the map then shows what the list does. */
+  overlay(
+    query: { bbox: [number, number, number, number]; near?: { lat: number; lon: number }; withinKm?: number } & RepeaterFilter,
+  ): RepeaterOverlayResponse;
   preview(upload: RepeaterUpload, options: ImportOptions): Promise<RepeaterImportPreview>;
   importFile(upload: RepeaterUpload, options: ImportOptions): Promise<RepeaterImportResult>;
   updateList(id: string, patch: { name?: string; source?: string; sourceUrl?: string | null; dataDate?: number }): RepeaterListDto;
@@ -357,6 +363,10 @@ export interface RepeaterServiceDeps {
 
 export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDeps): RepeatersService {
   const { sqlite } = ctx;
+  // The distance the list measures, for the map's "within" ring to agree with it to the metre.
+  sqlite.function("repeater_meters", { deterministic: true }, (lat1, lon1, lat2, lon2) =>
+    haversineMeters(Number(lat1), Number(lon1), Number(lat2), Number(lon2)),
+  );
   const changed = () => ctx.events.publish({ type: "repeaters.changed" });
   let importing = false;
 
@@ -548,7 +558,15 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
       const counts = sqlite
         .prepare(`SELECT count(*) AS total, coalesce(sum(r.lat IS NULL), 0) AS unplaced FROM repeaters r WHERE ${where.sql}`)
         .get(...where.args) as { total: number; unplaced: number };
-      return { total: counts.total, withoutPosition: counts.unplaced, repeaters: inCallsignOrder(query, where, limit, offset).map(toDto) };
+      const rows =
+        query.sort === "frequency"
+          ? (sqlite
+              .prepare(
+                `SELECT ${COLUMNS} FROM repeaters r WHERE ${where.sql} ORDER BY r.output_hz, r.callsign COLLATE NOCASE, r.id LIMIT ? OFFSET ?`,
+              )
+              .all(...where.args, limit, offset) as Row[])
+          : inCallsignOrder(query, where, limit, offset);
+      return { total: counts.total, withoutPosition: counts.unplaced, repeaters: rows.map(toDto) };
     }
 
     // A box round the place first, so a distance limit does not measure the whole world.
@@ -568,12 +586,24 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
       }
     }
     const placed = sqlite
-      .prepare(`SELECT r.id AS id, r.lat AS lat, r.lon AS lon FROM repeaters r WHERE ${where.sql} AND r.lat IS NOT NULL${box}`)
+      .prepare(
+        `SELECT r.id AS id, r.lat AS lat, r.lon AS lon, r.callsign AS callsign, r.output_hz AS hz FROM repeaters r WHERE ${where.sql} AND r.lat IS NOT NULL${box}`,
+      )
       .raw()
-      .all(...where.args, ...boxArgs) as Array<[string, number, number]>;
-    let measured = placed.map(([id, lat, lon]) => ({ id, meters: haversineMeters(near.lat, near.lon, lat, lon) }));
+      .all(...where.args, ...boxArgs) as Array<[string, number, number, string, number]>;
+    let measured = placed.map(([id, lat, lon, callsign, hz]) => ({
+      id,
+      meters: haversineMeters(near.lat, near.lon, lat, lon),
+      callsign,
+      hz,
+    }));
     if (within !== undefined) measured = measured.filter((item) => item.meters <= within * 1000);
-    measured.sort((a, b) => a.meters - b.meters || (a.id < b.id ? -1 : 1));
+    const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    const byCallsign = (a: { callsign: string; hz: number; id: string }, b: { callsign: string; hz: number; id: string }) =>
+      a.callsign.localeCompare(b.callsign, "en", { sensitivity: "base" }) || a.hz - b.hz || byId(a, b);
+    if (query.sort === "callsign") measured.sort(byCallsign);
+    else if (query.sort === "frequency") measured.sort((a, b) => a.hz - b.hz || byCallsign(a, b));
+    else measured.sort((a, b) => a.meters - b.meters || byId(a, b));
 
     const withoutPosition =
       within === undefined
@@ -1631,13 +1661,22 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
       return { separated: changes };
     },
 
-    overlay({ bbox, ...filter }) {
+    overlay({ bbox, near, withinKm, ...filter }) {
       const [west, south, east, north] = bbox;
       const where = whereOf(filter);
       // A view that spans the 180° meridian has its west edge east of its east edge.
       const box = west <= east ? "r.lon >= ? AND r.lon <= ?" : "(r.lon >= ? OR r.lon <= ?)";
-      const sql = `${where.sql} AND r.lat >= ? AND r.lat <= ? AND ${box}`;
-      const args = [...where.args, south, north, west, east];
+      // Within a distance of a place, as the list has it: measured exactly, after the cheaper box.
+      const ring = near && withinKm !== undefined ? " AND repeater_meters(?, ?, r.lat, r.lon) <= ?" : "";
+      const sql = `${where.sql} AND r.lat >= ? AND r.lat <= ? AND ${box}${ring}`;
+      const args = [
+        ...where.args,
+        south,
+        north,
+        west,
+        east,
+        ...(near && withinKm !== undefined ? [near.lat, near.lon, withinKm * 1000] : []),
+      ];
       const total = (sqlite.prepare(`SELECT count(*) AS n FROM repeaters r WHERE ${sql}`).get(...args) as { n: number }).n;
       const pointColumns =
         "r.id AS id, r.callsign AS callsign, r.lat AS lat, r.lon AS lon, r.output_hz AS outputHz, r.band AS band, r.status AS status";

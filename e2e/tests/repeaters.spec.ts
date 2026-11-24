@@ -86,9 +86,10 @@ test.describe("repeaters", () => {
     await page.getByRole("combobox", { name: "Band" }).click();
     await page.getByRole("option", { name: /^2 m \(2\)/ }).click();
     await expect(rows).toHaveCount(2);
-    await page.getByRole("combobox", { name: "Distance from" }).click();
-    await page.getByRole("option", { name: "A position or locator" }).click();
-    await page.getByLabel("Position or locator").fill("IO84JL");
+    await page.getByRole("combobox", { name: "Measure from" }).click();
+    await page.getByRole("option", { name: "Search for a place…" }).click();
+    await page.getByLabel("Place to measure from").fill("IO84JL");
+    await page.getByRole("button", { name: /IO84JL/ }).click();
     await expect(page.getByText(/2 repeaters of 6, nearest to IO84JL first/)).toBeVisible();
     await expect(rows.first()).toContainText(/QZ3AB.*\d\.\d\d km, \d+° [NESW]+/s);
     await page.getByRole("combobox", { name: "Within" }).click();
@@ -133,7 +134,8 @@ test.describe("repeaters", () => {
     await expect(card).toContainText("CTCSS 94.8 Hz · FM");
     await expect(card).toContainText("THORNWICK · IO84KM");
     await expect(card).toContainText("Listed as operational. A made-up society, data of 1 Oct 2026");
-    await expect(card).toContainText(/km, \d+° [NESW]+ from the middle of the map/);
+    // With no home set and the device not followed, there is nothing to measure from: never "the middle of the map".
+    await expect(card).not.toContainText("middle of the map");
 
     // One whose position the list has blurred says so.
     await card.getByRole("button", { name: "Close this repeater" }).click();
@@ -182,7 +184,7 @@ test.describe("repeaters", () => {
     await page.goBack();
 
     // The person corrects the tone. The entry is then theirs.
-    await page.getByRole("button", { name: "Change" }).click();
+    await page.getByRole("button", { name: "Change", exact: true }).click();
     const form = page.getByRole("dialog", { name: "Change QZ3AB" });
     await form.getByLabel("CTCSS tone, Hz").fill("77.0");
     await form.getByRole("button", { name: "Save changes" }).click();
@@ -192,6 +194,7 @@ test.describe("repeaters", () => {
 
     // The same file again, as an update: the changed entry is left alone, and the dialog says so before anything is done.
     await page.goto("/radio/repeaters");
+    await page.getByText(/^Lists and where to get them/).click();
     await page.getByRole("button", { name: "Bring up to date" }).click();
     const update = page.getByRole("dialog", { name: "Bring “North list” up to date" });
     await update.getByLabel("File of repeaters").setInputFiles(LIST);
@@ -211,14 +214,15 @@ test.describe("repeaters", () => {
     sealed,
   }) => {
     const errors = watchForErrors(page);
-    // As the Maps screen leaves it in this browser when it was last looking at the made-up hillside.
-    await page.addInitScript(() =>
-      localStorage.setItem("outpost.maps.view", JSON.stringify({ lat: 54.52, lon: -3.05, zoom: 9.5, bearing: 0, pitch: 0 })),
-    );
+    // Home is on the made-up hillside, where QZ3AB is.
+    const {
+      marker: { id: home },
+    } = await api(page, "POST", "/api/maps/markers", { name: "Home", lat: 54.521, lon: -3.123, icon: "home" });
     await page.goto("/radio/repeaters");
+    await page.getByText(/^Lists and where to get them/).click();
     const sources = page.locator("section").filter({ has: page.getByRole("heading", { name: "Get a list" }) });
     // So the sources for there come first, and nobody was asked where the device is.
-    await expect(sources.getByText("The sources for where your map was last looking come first.")).toBeVisible();
+    await expect(sources.getByText("The sources for where your home is come first.")).toBeVisible();
     const source = sources.getByRole("listitem").filter({ hasText: "Stand-in list" }).first();
     await expect(source).toContainText("Outpost can get this list. Not held yet.");
 
@@ -278,8 +282,10 @@ test.describe("repeaters", () => {
     await expect(rows.first()).toContainText("A made-up society, data of");
     expect((await api(page, "GET", "/api/repeaters/overlay?bbox=-10,49,5,61")).total).toBe(6);
 
-    // The repeater's own screen says what was set aside for it, and can separate them again.
-    await rows.first().getByRole("link").click();
+    // The repeater's own screen says what was set aside for it, and can separate them again. Beside the map a row
+    // rings its repeater there, and offers its details.
+    await rows.first().getByRole("button").click();
+    await rows.first().getByRole("link", { name: "Details of QZ3AB" }).click();
     const merged = page.getByRole("region", { name: "Merged entries" });
     await expect(merged).toContainText("QZ3AB, 145.6625 MHz: from “Stand-in list”, data of 1 Oct 2026");
     await merged.getByRole("button", { name: "Separate them" }).click();
@@ -289,6 +295,7 @@ test.describe("repeaters", () => {
     const overview = await api<{ lists: Array<{ id: string; name: string }> }>(page, "GET", "/api/repeaters/overview");
     await api(page, "DELETE", `/api/repeaters/lists/${overview.lists.find((list) => list.name === "Stand-in list")!.id}`);
     expect((await api(page, "GET", "/api/repeaters/overview")).total).toBe(6);
+    await api(page, "DELETE", `/api/maps/markers/${home}`);
     expect(errors).toEqual([]);
     expect(sealed.external).toEqual([]);
   });
