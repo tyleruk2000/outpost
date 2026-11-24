@@ -11,6 +11,7 @@
  *    plug in through `addSource`;
  *  - hybrid: every source's ranked list fused with reciprocal rank fusion.
  */
+import { REFERENCE_BESIDE_OWN } from "@outpost/shared";
 import { and, eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
@@ -330,7 +331,7 @@ export const TITLE_MATCH_BONUS = 0.15;
  * of itself. A reference article has to be clearly better to come above a page the person
  * chose to keep. The reference collections' own list is not changed.
  */
-export const OWN_FIRST = 0.95;
+export const OWN_FIRST = REFERENCE_BESIDE_OWN;
 
 /** True when a title is the answer by its words alone (see `TITLE_MATCH_BONUS`). */
 export function titleIsAnswer(title: string, terms: ScoringTerm[], nouns: string[]): boolean {

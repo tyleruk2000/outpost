@@ -53,6 +53,13 @@ export interface SearchCard {
   url: string;
 }
 
+/**
+ * Among results that are nearly as good, a person's own come first: where reference
+ * articles and the library's own items are one list (on the server, and on the search
+ * screen as the articles arrive), an article's score counts this much of itself.
+ */
+export const REFERENCE_BESIDE_OWN = 0.95;
+
 export interface SearchSuggestion {
   /** The whole query with the suggested words in place of the typed ones. */
   query: string;
