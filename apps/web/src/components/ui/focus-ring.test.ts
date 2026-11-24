@@ -31,6 +31,7 @@ const RINGED_BY_WRAPPER: Record<string, string> = {
   "features/notes/move-dialog.tsx": "searchRowFocus",
   "features/notes/editor/document-picker.tsx": "searchRowFocus",
   "features/propagation/antenna-picker.tsx": "searchRowFocus",
+  "features/satellites/satellite-picker.tsx": "searchRowFocus",
   "features/maps/search-box.tsx": "searchRowFocus",
   "features/library/document-tags.tsx": "focus-within:ring-2 focus-within:ring-focus",
   "features/chat/composer.tsx": "focus-within:ring-2 focus-within:ring-focus",

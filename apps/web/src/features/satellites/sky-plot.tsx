@@ -34,6 +34,7 @@ export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: Satell
     .join(" ");
   const [px, py] = skyXY(pass.tcaAzimuthDeg, pass.maxElevationDeg);
   const [sx, sy] = path[0] ? skyXY(path[0].azimuthDeg, 0) : [C, C];
+  const [ex, ey] = skyXY(pass.losAzimuthDeg, 0);
   const nowPoint =
     now && now >= pass.aos && now <= pass.los
       ? path.reduce((best, point) =>
@@ -76,21 +77,40 @@ export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: Satell
           60°
         </text>
         <path d={d} fill="none" stroke="var(--chart-1)" strokeWidth="2.5" strokeLinecap="round" />
-        <circle cx={sx} cy={sy} r="4" fill="var(--color-page)" stroke="var(--chart-1)" strokeWidth="2" />
-        <circle cx={px} cy={py} r="5" fill="var(--chart-1)" stroke="var(--color-page)" strokeWidth="2" />
+        {/* Rises: an open circle. Highest: a diamond. Sets: a square. The shapes as on the printed pass. */}
+        <circle cx={sx} cy={sy} r="4.5" fill="var(--color-page)" stroke="var(--color-ink)" strokeWidth="2" />
+        <path
+          d={`M${px} ${py - 6.5}L${px + 6.5} ${py}L${px} ${py + 6.5}L${px - 6.5} ${py}Z`}
+          fill="var(--color-ink)"
+          stroke="var(--color-page)"
+          strokeWidth="1.5"
+        />
+        <rect x={ex - 4.5} y={ey - 4.5} width="9" height="9" fill="var(--color-ink)" stroke="var(--color-page)" strokeWidth="1.5" />
         {nowPoint ? (
-          <circle
-            cx={skyXY(nowPoint.azimuthDeg, nowPoint.elevationDeg)[0]}
-            cy={skyXY(nowPoint.azimuthDeg, nowPoint.elevationDeg)[1]}
-            r="6"
-            fill="none"
-            stroke="var(--color-lamp)"
-            strokeWidth="2.5"
-          />
+          <g>
+            {/* Now: a ring in the lamp's ink, which stands out at 3:1 or more in both themes, on a halo of the page. */}
+            <circle
+              cx={skyXY(nowPoint.azimuthDeg, nowPoint.elevationDeg)[0]}
+              cy={skyXY(nowPoint.azimuthDeg, nowPoint.elevationDeg)[1]}
+              r="8"
+              fill="none"
+              stroke="var(--color-page)"
+              strokeWidth="4.5"
+            />
+            <circle
+              cx={skyXY(nowPoint.azimuthDeg, nowPoint.elevationDeg)[0]}
+              cy={skyXY(nowPoint.azimuthDeg, nowPoint.elevationDeg)[1]}
+              r="8"
+              fill="none"
+              stroke="var(--color-lamp-ink)"
+              strokeWidth="2.5"
+            />
+          </g>
         ) : null}
       </svg>
       <figcaption className="text-small text-ink-muted">
-        {description} Open ring: where it rises. Filled: its highest point.{nowPoint ? " Amber ring: where it is now." : ""}
+        {description} Open circle: where it rises. Diamond: its highest point. Square: where it sets.
+        {nowPoint ? " Large ring: where it is now." : ""}
       </figcaption>
     </figure>
   );

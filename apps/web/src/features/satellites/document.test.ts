@@ -1,11 +1,17 @@
+import fs from "node:fs";
+import path from "node:path";
 import { parseCelestrakCsv, type SatelliteTransmitter } from "@outpost/shared";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
-import { elevationChart, skyPlot } from "./diagrams";
+import { elevationChart, overTheGround, skyPlot } from "./diagrams";
 import { type PassSheet, passDocument, passTitle } from "./document";
 import { passSkyPath, predictPasses } from "./engine";
+import { sampleTrack } from "./ground-track";
+import { FUNCUBE } from "./test-orbits";
+
+const land = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../../../public/world/land.json"), "utf8"));
 
 const HEADER =
   "OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE,ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID,ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT";
@@ -45,8 +51,39 @@ function sheet(): PassSheet {
     transmitters: [REPEATER],
     written: EPOCH,
     licensed: false,
+    ground: {
+      samples: sampleTrack(ISS!, LONDON, new Date(pass.aos.getTime() - 45 * 60_000), new Date(pass.los.getTime() + 45 * 60_000)),
+      home: LONDON,
+      land,
+    },
   };
 }
+
+async function pageTexts(bytes: Uint8Array): Promise<string[]> {
+  const pdf = await getDocument({ data: bytes.slice() }).promise;
+  const pages: string[] = [];
+  for (let page = 1; page <= pdf.numPages; page += 1)
+    pages.push((await (await pdf.getPage(page)).getTextContent()).items.map((item) => ("str" in item ? item.str : "")).join(" "));
+  return pages;
+}
+
+const transmitter = (
+  id: string,
+  description: string,
+  type: string,
+  mode: string,
+  down: number,
+  up: number | null,
+): SatelliteTransmitter => ({
+  ...REPEATER,
+  id,
+  noradId: 39444,
+  description,
+  type,
+  mode,
+  downlinkLowHz: down,
+  uplinkLowHz: up,
+});
 
 describe("the pass sheet", () => {
   it("draws the sky track with the rise, highest and set marked and timed, inside its box", () => {
@@ -81,13 +118,59 @@ describe("the pass sheet", () => {
     writeSample("pass-after", printed.bytes);
     // Where to point on the first page; what to tune to may run onto a second.
     expect(printed.pages).toBeLessThanOrEqual(2);
-    const pdf = await getDocument({ data: printed.bytes.slice() }).promise;
-    let text = "";
-    for (let page = 1; page <= pdf.numPages; page += 1)
-      text += (await (await pdf.getPage(page)).getTextContent()).items.map((item) => ("str" in item ? item.str : "")).join(" ");
+    const text = (await pageTexts(printed.bytes)).join(" ");
     expect(text).toContain("Across the sky");
+    expect(text).toContain("Over the ground");
+    expect(text).toMatch(/night shaded as at its highest, \d\d:\d\d UTC/);
     expect(text).toContain("437.7916 MHz");
     const again = await renderPdf(passDocument(sheet(), "a4"));
     expect(again.bytes).toEqual(printed.bytes);
+  }, 60_000);
+
+  it("draws the ground under the pass: the track, its ticks timed, Home, the ring and the three moments", () => {
+    const value = sheet();
+    const drawn = overTheGround(value.pass, value.ground!, 499);
+    expect(drawn.width).toBe(499);
+    expect(drawn.height).toBe(233);
+    const words = [...drawn.svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((match) => match[1]!);
+    expect(words.length).toBeGreaterThan(5);
+    for (const word of words) expect(word).toMatch(/^\d\d:\d0$/);
+    // Heavy where it is up, the dashed ring, and the rise's open circle, the diamond and the square.
+    expect(drawn.svg).toContain('stroke-width="3.2"');
+    expect(drawn.svg).toContain('stroke-dasharray="3 2"');
+    expect(drawn.svg).toMatch(/<circle[^>]*r="4" fill="#ffffff"/);
+    expect(drawn.svg).toMatch(/<rect[^>]*width="8" height="8"/);
+  });
+
+  it("keeps What to tune to with its first table, for a satellite with three transmitters", async () => {
+    const from = new Date(Date.parse("2026-11-24T00:00:00Z"));
+    const pass = predictPasses(FUNCUBE, LONDON, from, 24, 8).find((item) => item.maxElevationDeg > 10)!;
+    const value: PassSheet = {
+      name: "FUNCUBE-1 (AO-73)",
+      noradId: 39444,
+      epoch: FUNCUBE.epoch,
+      place: "Home",
+      pass,
+      path: passSkyPath(FUNCUBE, LONDON, pass, Math.max(2, Math.round(pass.durationSeconds / 60))),
+      transmitters: [
+        transmitter("a", "CW Beacon", "Transmitter", "CW", 145_815_000, null),
+        transmitter("b", "Mode U/V Linear", "Transponder", "USB", 145_950_000, 435_130_000),
+        transmitter("c", "BPSK Telemetry", "Transmitter", "BPSK", 145_935_000, null),
+      ],
+      written: from,
+      licensed: true,
+      ground: {
+        samples: sampleTrack(FUNCUBE, LONDON, new Date(pass.aos.getTime() - 45 * 60_000), new Date(pass.los.getTime() + 45 * 60_000)),
+        home: LONDON,
+        land,
+      },
+    };
+    const printed = await renderPdf(passDocument(value, "a4"));
+    writeSample("pass-funcube", printed.bytes);
+    const pages = await pageTexts(printed.bytes);
+    const withHeading = pages.find((page) => page.includes("What to tune to"));
+    expect(withHeading).toContain("CW Beacon, CW");
+    expect(withHeading).toContain("Listen on");
+    expect(pages.join(" ")).toContain("Over the ground");
   }, 60_000);
 });

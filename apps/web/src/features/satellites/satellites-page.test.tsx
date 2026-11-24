@@ -105,6 +105,70 @@ describe("the Satellites screen", () => {
     expect(await screen.findByRole("link", { name: /Save as PDF/ }, { timeout: 15_000 })).toBeInTheDocument();
   });
 
+  it("lists passes 10° and up at first, and opens one at the satellite's name, with the transponder to tune to", {
+    timeout: 40_000,
+  }, async () => {
+    const user = userEvent.setup();
+    const transmitter = {
+      alive: true,
+      status: "active" as const,
+      noradId: 25544,
+      uplinkHighHz: null,
+      downlinkHighHz: null,
+      invert: false,
+      baud: null,
+      updatedAt: null,
+    };
+    show({
+      satellites: iss,
+      transmitters: [
+        {
+          ...transmitter,
+          id: "b",
+          description: "CW Beacon",
+          type: "Transmitter",
+          mode: "CW",
+          uplinkLowHz: null,
+          downlinkLowHz: 145_825_000,
+        },
+        {
+          ...transmitter,
+          id: "t",
+          description: "Mode U/V Linear",
+          type: "Transponder",
+          mode: "USB",
+          uplinkLowHz: 435_130_000,
+          downlinkLowHz: 145_950_000,
+        },
+      ],
+      about: [],
+      wikipedia: [],
+      sources: sources(now),
+      fetching: false,
+      now,
+    });
+    expect(screen.getByRole("checkbox", { name: /Only passes 10° high or more/ })).toBeChecked();
+    // Recent elements: the detail folded under one line.
+    expect(screen.getByText(/^Orbital elements up to date: 1 satellite/)).toBeInTheDocument();
+    const first = await screen.findAllByRole("button", { name: /ISS \(ZARYA\)/ }, { timeout: 20_000 });
+    await user.click(first[0]!);
+    const heading = await screen.findByRole("heading", { name: "ISS (ZARYA)", level: 2 });
+    expect(heading).toHaveFocus();
+    expect(screen.getByText("Where to point and what to tune to, minute by minute")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Listen on, MHz" })).toBeInTheDocument();
+    // The transponder before the beacon, and the beacon a choice away.
+    expect(screen.getAllByText("Mode U/V Linear, USB").length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: /^Ground track\./ })).toBeInTheDocument();
+  });
+
+  it("keeps where to point through a pass for a satellite with no downlink", { timeout: 40_000 }, async () => {
+    const user = userEvent.setup();
+    show({ satellites: iss, transmitters: [], about: [], wikipedia: [], sources: sources(now), fetching: false, now });
+    await user.click(screen.getByRole("tab", { name: "One satellite" }));
+    expect(await screen.findByText("Where to point, minute by minute")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /Listen on/ })).toBeNull();
+  });
+
   it("warns when the elements are old", () => {
     const old = parseCelestrakCsv(
       `${HEADER}\nISS (ZARYA),1998-067A,${new Date(now - 40 * 86_400_000).toISOString().replace("Z", "")},15.49527370,.0007384,51.6319,243.0636,49.3258,310.8372,0,U,25544,999,59609,.2073332E-3,.11207E-3,0`,

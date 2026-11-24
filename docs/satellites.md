@@ -38,19 +38,65 @@ how old that is. Nothing is worked out again because it moved until you open the
 ## Passes
 
 **Passes** lists every amateur satellite pass over the next 24 hours, 2, 3 or 7 days, by day:
-rise and set (UTC and your clock), highest point, how long it is up, and the directions it rises,
-peaks and sets in. A pass under 10° is marked "low pass"; under 2° is left out. Press a pass to open it under **One satellite**.
+rise and set (UTC and your clock), the directions it rises and sets in, how long it is up, and its
+highest point. At first only passes 10° high or more are listed (untick **Only passes 10° high or
+more** for the low ones too, marked "low pass"); passes under 2° are left out. The list shows 40
+at a time, with **Show 40 more** under it. Press a pass to open it under **One satellite**, at the
+satellite's name.
+
+When the elements are recent and nothing has gone wrong, what was fetched and when folds into
+one line above **Seen from**; open it to fetch again.
 
 ## One satellite
 
+Choose what to **Show** (every kept satellite, or one group), then the **Satellite**: type part of
+its name or its NORAD number in the list and press Enter for the first match.
+
+- **Passes in the next 24 hours**, first. The pass shown is marked with a bar and "shown"; choose
+  another for its **sky track** (as if lying on your back, head to the north, horizon as the outer
+  ring): an open circle where it rises, a diamond at its highest, a square where it sets, and a
+  large ring where it is now during a pass. **Where to point and what to tune to, minute by
+  minute** gives the bearing and height for each minute and, for a satellite with a downlink, the
+  frequency to listen on (and to send on, with a licence), in MHz. It starts with the main
+  transmitter (a transponder or repeater before a beacon or telemetry); choose another under
+  **Transmitter**. A satellite with no downlink in use keeps the bearings and heights.
 - **Where it is now**: the point beneath it, height, speed, and from your place its bearing,
-  elevation, distance and whether it is coming nearer, updated every second.
+  elevation, distance and whether it is coming nearer, updated every second. Under it, the
+  **ground track** (below).
 - **Frequencies and modes**: transmitters SatNOGS DB lists as in use. While it is above your
   horizon each downlink is also given corrected for Doppler; with a licence set under **Settings
   → Radio licence**, the uplink too.
-- **Passes in the next 24 hours**. Choose one for its **sky track** (as if lying on your back,
-  head to the north, horizon as the outer ring) and **What to tune to through the pass**: bearing,
-  elevation and frequency for each minute.
+
+### Ground track
+
+Where on the Earth the satellite is overhead, drawn on a flat map of the world with no map tiles,
+so it works with no internet. Choose **1 turn** or **2 turns** from now, or **This pass** (45
+minutes before the pass chosen rises to 45 minutes after it sets).
+
+- The heavy line is where it is above your horizon; the thin line the rest of the track; a dotted
+  line where it has already been.
+- A small circle marks every 10 minutes of UTC, with the time beside it where there is room (fewer
+  times on a phone; every one is in the table).
+- The square is your place; the dashed ring is where the satellite must be to be above your
+  horizon, for its height now. The ringed dot is where it is now.
+- Night is shaded as now, or for **This pass** as at its highest point.
+
+Under the map a line says it in words ("Now over 7.6° S, 16.1° W. Above Home 06:14 to 06:24 UTC, N
+to WSW."), or when it is next up if it is not in the stretch drawn. **The track as a table** gives
+the same every 10 minutes: the time, the point beneath it, and its bearing and height from your
+place, the rows when it is up in bold.
+
+A geostationary satellite stays over one point on the equator, so it is drawn as one dot with the
+edge of where it can be seen, and the line says where to point from your place.
+
+### The pass on paper
+
+**This pass as a PDF** makes a sheet to take outside: when it rises, peaks and sets, the sky
+track, its height minute by minute, where to point each minute, **Over the ground** (the ground
+track from 45 minutes before the rise to 45 after the set, the rise, highest and set marked with
+the same shapes as the sky track, your place as a house, night as at the highest point), and what
+to tune to for each transmitter. It prints in greys as well as in colour: the marks differ by
+shape and the lines by weight and dashes.
 
 ### About this satellite
 

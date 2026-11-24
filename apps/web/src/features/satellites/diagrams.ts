@@ -5,7 +5,9 @@
  */
 import { compassPoint } from "@outpost/shared";
 import { PRINT_COLOURS as C, chart, type Drawing, drawing, round, svgArrowHead, svgText } from "@/features/print-kit";
+import type { LandShapes } from "@/features/propagation/print/radio-diagrams";
 import type { SatellitePass, SatelliteState } from "./engine";
+import { type LonLat, NORTH, pointAt, project, SOUTH, type TrackSample, trackFigure } from "./ground-track";
 import { skyPoint } from "./sky-plot";
 import { utcTime } from "./words";
 
@@ -129,3 +131,78 @@ export function elevationChart(pass: SatellitePass, path: SatelliteState[], widt
 
 /** "Rise: 14:22 UTC, 194° SSW", for words beside the drawing. */
 export const momentWords = (at: Date, azimuth: number) => `${utcTime(at)} UTC, ${Math.round(azimuth)}° ${compassPoint(azimuth)}`;
+
+/** The ground under the pass, for paper: what the figure needs besides the pass. */
+export interface PassGround {
+  /** From 45 minutes before the rise to 45 after the set (ground-track.ts, sampleTrack). */
+  samples: TrackSample[];
+  home: { lat: number; lon: number };
+  land: LandShapes | null;
+}
+
+/** A house, for Home: the set's square is taken. */
+const house = (x: number, y: number) =>
+  `<path d="M${round(x)},${round(y - 5.5)} L${round(x + 5)},${round(y - 1)} L${round(x + 5)},${round(y + 4.5)} L${round(x - 5)},${round(y + 4.5)} L${round(x - 5)},${round(y - 1)} Z" fill="${C.ink}" stroke="#ffffff" stroke-width="0.9"/>`;
+
+/**
+ * Over the ground: the track from 45 minutes before the rise to 45 after the set on a
+ * flat world, with night as at the highest point, the part above the horizon heavy,
+ * Home, the ring inside which the satellite is above Home's horizon (dashed), a tick each
+ * 10 minutes with its time, and the rise, highest and set marked as in the sky plot.
+ * The same geometry as the screen's ground track (ground-track.ts). Greys apart: heavy
+ * against thin, dashed against whole, and each mark its own shape.
+ */
+export function overTheGround(pass: SatellitePass, ground: PassGround, width: number): Drawing {
+  const at = (ms: number): LonLat | null => {
+    const point = pointAt(ground.samples, ms);
+    return point ? [point.lon, point.lat] : null;
+  };
+  const moments: Array<[keyof typeof MOMENT, LonLat | null]> = [
+    ["rise", at(pass.aos.getTime())],
+    ["highest", at(pass.tca.getTime())],
+    ["set", at(pass.los.getTime())],
+  ];
+  const figure = trackFigure({
+    width,
+    samples: ground.samples,
+    land: ground.land,
+    nightAt: pass.tca.getTime(),
+    home: ground.home,
+    now: null,
+    ringAltitudeKm: pointAt(ground.samples, pass.tca.getTime())?.altitudeKm ?? null,
+    labelSize: 6.5,
+    marks: moments.flatMap(([, point]) => (point ? [point] : [])),
+  });
+  const { box } = figure;
+  const { width: w, height: h } = box;
+  let body = `<clipPath id="ground"><rect x="0" y="0" width="${w}" height="${h}"/></clipPath><g clip-path="url(#ground)">`;
+  body += `<rect x="0" y="0" width="${w}" height="${h}" fill="#f3f6f7"/>`;
+  if (figure.land) body += `<path d="${figure.land}" fill="#dcdfd6" stroke="#b3b8ab" stroke-width="0.3"/>`;
+  for (let lon = -150; lon <= 150; lon += 30) {
+    const [x] = project([lon, 0], box);
+    body += `<line x1="${round(x)}" y1="0" x2="${round(x)}" y2="${h}" stroke="#ffffff" stroke-width="0.5"/>`;
+  }
+  for (let lat = -60; lat <= 60; lat += 30) {
+    if (lat > NORTH || lat < SOUTH) continue;
+    const [, y] = project([0, lat], box);
+    body += `<line x1="0" y1="${round(y)}" x2="${w}" y2="${round(y)}" stroke="#ffffff" stroke-width="${lat === 0 ? 0.9 : 0.5}"/>`;
+  }
+  if (figure.night) body += `<path d="${figure.night}" fill="${C.ink}" fill-opacity="0.16"/>`;
+  for (const d of figure.ring) body += `<path d="${d}" fill="none" stroke="${C.act}" stroke-width="0.9" stroke-dasharray="3 2"/>`;
+  for (const run of figure.runs.filter((item) => !item.up))
+    body += `<path d="${run.d}" fill="none" stroke="${C.muted}" stroke-width="0.9" stroke-linejoin="round"/>`;
+  for (const run of figure.runs.filter((item) => item.up))
+    body += `<path d="${run.d}" fill="none" stroke="${C.accent}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  for (const tick of figure.ticks)
+    body += `<circle cx="${round(tick.xy[0])}" cy="${round(tick.xy[1])}" r="1.8" fill="#ffffff" stroke="${C.ink}" stroke-width="0.7"/>`;
+  for (const tick of figure.ticks) {
+    if (!tick.label) continue;
+    const label = tick.label.box;
+    body += `<rect x="${round(label.x)}" y="${round(label.y)}" width="${round(label.width)}" height="${round(label.height)}" fill="#ffffff" fill-opacity="0.8"/>`;
+    body += svgText(tick.label.x, tick.label.y, tick.label.text, { size: 6.5, bold: true, anchor: tick.label.anchor });
+  }
+  if (figure.home) body += house(figure.home[0], figure.home[1]);
+  for (const [kind, point] of moments) if (point) body += momentMark(kind, project(point, box));
+  body += `</g><rect x="0" y="0" width="${w}" height="${h}" fill="none" stroke="${C.rule}" stroke-width="0.6"/>`;
+  return drawing(w, h, body);
+}

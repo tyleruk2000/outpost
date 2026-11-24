@@ -74,6 +74,11 @@ export function auditLayout(options: AuditOptions = {}): Finding[] {
       if (style.position === "absolute" && (style.clipPath === "inset(50%)" || style.clip === "rect(0px, 0px, 0px, 0px)")) return false;
       // `aria-hidden` hides a thing from a screen reader, not from the eye, so it does not count here.
       if ((node as HTMLElement).inert || node.hasAttribute("hidden")) return false;
+      // Inside a closed <details>, all but its summary is folded away. WebKit still gives such a part a box.
+      if (node !== element && node instanceof HTMLDetailsElement && !node.open) {
+        const summary = node.querySelector(":scope > summary");
+        if (!summary?.contains(element)) return false;
+      }
     }
     return true;
   };

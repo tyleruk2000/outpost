@@ -1,7 +1,8 @@
 /**
  * One pass on paper, to take outside with a handheld and a compass: when it rises, peaks
  * and sets (UTC and local), where it goes across the sky, how high it stands minute by
- * minute, where to point, what to tune to through it for each published transmitter, and
+ * minute, where to point, the ground beneath it ("Over the ground"), what to tune to
+ * through it for each published transmitter (kept with its heading on one page), and
  * how old the elements were. Laid out with the print kit and made on this device.
  */
 import { compassPoint, elementsAgeWarning, type SatelliteTransmitter } from "@outpost/shared";
@@ -24,8 +25,9 @@ import {
 } from "@/features/print-kit";
 import { formatTimeOfDay } from "@/lib/clock";
 import { formatDate } from "@/lib/utils";
-import { elevationChart, MOMENT, momentWords, skyPlot } from "./diagrams";
+import { elevationChart, MOMENT, momentWords, overTheGround, type PassGround, skyPlot } from "./diagrams";
 import { dopplerTuning, type SatellitePass, type SatelliteState } from "./engine";
+import { overWords, pointAt } from "./ground-track";
 import { frequencyWords, geometryWords, pathWords, utcTime } from "./words";
 
 export interface PassSheet {
@@ -39,6 +41,8 @@ export interface PassSheet {
   transmitters: SatelliteTransmitter[];
   written: Date;
   licensed: boolean;
+  /** The track under the pass, for "Over the ground"; left out with no place to draw it from. */
+  ground?: PassGround;
 }
 
 export const passTitle = (sheet: Pick<PassSheet, "name" | "pass">) =>
@@ -146,27 +150,44 @@ export function passDocument(sheet: PassSheet, paper: PrintPaper): TDocumentDefi
     minuteTable(path),
     note("Bearings are from true north, as the elements give them. A wrong clock makes every time here wrong."),
   ];
-  const tuning = marks(path);
-  if (sheet.transmitters.length > 0) content.push(heading("What to tune to"));
-  for (const transmitter of sheet.transmitters) {
-    const down = transmitter.downlinkLowHz;
-    const up = transmitter.uplinkLowHz;
+  if (sheet.ground) {
+    const ground = overTheGround(pass, sheet.ground, measure);
+    const highest = pointAt(sheet.ground.samples, pass.tca.getTime());
     content.push(
-      label(printable(`${transmitter.description}${transmitter.mode ? `, ${transmitter.mode}` : ""}`)),
-      dataTable(
-        ["", "UTC", ...(down ? ["Listen on"] : []), ...(up ? [sheet.licensed ? "Send on" : "Uplink (licence needed to send)"] : [])],
-        tuning.map((point, index) => {
-          const tuned = dopplerTuning(point.rangeRateKmS, down, up);
-          return [
-            `**${["Rises", "Highest", "Sets"][index] ?? ""}**`,
-            utcTime(point.at),
-            ...(tuned.downlinkHz ? [frequencyWords(tuned.downlinkHz)] : []),
-            ...(tuned.uplinkHz ? [frequencyWords(tuned.uplinkHz)] : []),
-          ];
-        }),
-      ),
+      figure(ground.svg, {
+        title: "Over the ground",
+        width: measure,
+        caption: `From 45 minutes before it rises to 45 minutes after it sets; night shaded as at its highest, ${utcTime(pass.tca)} UTC${
+          highest ? `, when it is over ${overWords(highest.lat, highest.lon)}` : ""
+        }. Heavy line: above the horizon at ${printable(sheet.place)}. Open circle: rises. Diamond: highest. Square: sets. House: ${printable(sheet.place)}. Dashed ring: inside it, the satellite is above ${printable(sheet.place)}'s horizon. A small circle each 10 minutes, its time in UTC beside it where there is room.`,
+      }),
     );
   }
+  const tuning = marks(path);
+  sheet.transmitters.forEach((transmitter, index) => {
+    const down = transmitter.downlinkLowHz;
+    const up = transmitter.uplinkLowHz;
+    // The heading, the transmitter's name and its table on one page: never a heading alone at a page's foot.
+    content.push({
+      unbreakable: true,
+      stack: [
+        ...(index === 0 ? [heading("What to tune to")] : []),
+        label(printable(`${transmitter.description}${transmitter.mode ? `, ${transmitter.mode}` : ""}`)),
+        dataTable(
+          ["", "UTC", ...(down ? ["Listen on"] : []), ...(up ? [sheet.licensed ? "Send on" : "Uplink (licence needed to send)"] : [])],
+          tuning.map((point, row) => {
+            const tuned = dopplerTuning(point.rangeRateKmS, down, up);
+            return [
+              `**${["Rises", "Highest", "Sets"][row] ?? ""}**`,
+              utcTime(point.at),
+              ...(tuned.downlinkHz ? [frequencyWords(tuned.downlinkHz)] : []),
+              ...(tuned.uplinkHz ? [frequencyWords(tuned.uplinkHz)] : []),
+            ];
+          }),
+        ),
+      ],
+    } as Content);
+  });
   if (!sheet.licensed && sheet.transmitters.some((transmitter) => transmitter.uplinkLowHz))
     content.push(
       callout(
