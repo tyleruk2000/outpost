@@ -86,6 +86,8 @@ export function useReferenceLayers({
   const [view, setView] = useState<{ box: string; zoom: number } | null>(null);
   /** The middle of the map when it last came to rest: the nearest list measures from it. */
   const [centre, setCentre] = useState<LatLon | null>(null);
+  /** Roughly where the map is (to a tenth of a degree), drawn or not: the country a layer with nothing held is offered for. */
+  const [roughly, setRoughly] = useState<LatLon | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [alsoHere, setAlsoHere] = useState<Array<{ id: number; name: string; kindLabel: string; provenance: FeatureProvenance }>>([]);
   const summary = useLayersSummary();
@@ -117,6 +119,16 @@ export function useReferenceLayers({
     read();
     return engine.on("moveend", read);
   }, [engine, drawn.length, populationOn]);
+  useEffect(() => {
+    if (!engine) return;
+    const read = () => {
+      const at = engine.getCenter();
+      const next = { lat: Math.round(at.lat * 10) / 10, lon: Math.round(at.lon * 10) / 10 };
+      setRoughly((current) => (current && current.lat === next.lat && current.lon === next.lon ? current : next));
+    };
+    read();
+    return engine.on("moveend", read);
+  }, [engine]);
 
   const selected = detail.data;
   const ringLat = selected?.lat ?? undefined;
@@ -274,11 +286,11 @@ export function useReferenceLayers({
       onChoice={setChoice}
       colours={colours}
       shades={shades}
-      onManage={onManage}
       onOpen={open}
       floodZones={overlay.data?.floodZones ?? null}
       lines={overlay.data?.lines ?? null}
       centre={centre}
+      roughly={roughly}
     />
   );
 

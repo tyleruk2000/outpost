@@ -5,21 +5,15 @@
  * one is in place; roads and places are read again from the kept country file with no download,
  * or from a new country file. Nothing is checked or fetched without a press.
  */
-import {
-  formatBytes,
-  type MapDataCheckResponse,
-  type MapDataItem,
-  type MapDataPlace,
-  type MapDataResponse,
-  type ReferenceEstimateRequest,
-} from "@outpost/shared";
+import { formatBytes, type MapDataCheckResponse, type MapDataItem, type MapDataPlace, type MapDataResponse } from "@outpost/shared";
 import { CircleAlert, CircleCheck } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { Link } from "react-router";
 import { Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { usePacks } from "@/features/layers/data";
+import { Checkbox } from "@/components/ui/misc";
+import { useCatalogue, useEstimate, usePacks, useStartDownloads } from "@/features/layers/data";
 import { errorMessage } from "@/lib/api";
 import { useAddMapData, useCheckUpdate, useUpdateMapData } from "./use-map-data";
 import { BUNDLE_NAMES, dayText, hostsText, isHere, KIND_NAMES, keptFileFor, overAYearOld } from "./words";
@@ -174,36 +168,86 @@ function FromCountryFile({ item, data }: { item: MapDataItem; data: MapDataRespo
   );
 }
 
-/** Updated elsewhere: where, and for a layer from its own source, the way there. */
-function Elsewhere({
-  item,
-  onUpdatePlaces,
-}: {
-  item: MapDataItem;
-  onUpdatePlaces?: ((request: ReferenceEstimateRequest) => void) | undefined;
-}) {
+/**
+ * Nearby places from their own source (Natural Earth, OurAirports, WorldPop…): Check asks it for
+ * the size on a press, Update fetches it again, the set held staying until the new one is in.
+ * Anything else updated elsewhere says where.
+ */
+function Elsewhere({ item }: { item: MapDataItem }) {
   const packs = usePacks(item.kind === "places" && item.packId !== null);
   const pack = packs.data?.find((each) => each.id === item.packId);
-  if (item.kind === "places" && pack?.request && onUpdatePlaces)
-    return (
-      <div>
-        <Button size="sm" className={small} onClick={() => pack.request && onUpdatePlaces(pack.request)}>
-          Check for an update
+  const catalogue = useCatalogue(Boolean(pack?.request));
+  const estimate = useEstimate();
+  const start = useStartDownloads();
+  const [agreed, setAgreed] = useState(false);
+  const agreeId = useId();
+  const request = pack?.request;
+  if (!(item.kind === "places" && pack && request))
+    return <p className="text-small text-ink-muted">{item.update?.note ?? "Outpost cannot fetch this again: add a newer copy instead."}</p>;
+  const asker = catalogue.data?.providers.find((each) => each.id === request.provider && each.clientName);
+  const found = estimate.data;
+  const bytes = found ? found.items.reduce((sum, each) => sum + each.bytes, 0) : 0;
+  const hosts = found ? [...new Set(found.items.flatMap((each) => (each.host ? [each.host] : [])))] : [];
+  if (start.isSuccess) return <Started>Downloading again. What you have is used until the new one is in place.</Started>;
+  return (
+    <div className="grid gap-2">
+      {found ? (
+        <p className="tabular text-small text-ink">
+          {found.items.length === 0
+            ? found.notes.join(" ") || "The source has nothing for it now."
+            : `${formatBytes(bytes)} to download${hosts.length > 0 ? ` from ${hostsText(hosts)}` : ""}. The one you have is replaced once the new one is in.`}
+        </p>
+      ) : (
+        <p className="text-small text-ink-muted">
+          Check asks {pack.providerName} how large it is now. Nothing is downloaded until you press Update.
+        </p>
+      )}
+      {asker && !found ? (
+        <div className="relative flex min-h-11 items-center gap-3 md:min-h-8">
+          <Checkbox id={agreeId} checked={agreed} onCheckedChange={(on) => setAgreed(on === true)} className="z-[1]" />
+          <label htmlFor={agreeId} className="cursor-pointer text-small text-ink before:absolute before:inset-0 before:content-['']">
+            Send Outpost's name to {asker.id === "osm" ? "the Overpass server" : asker.name}
+          </label>
+        </div>
+      ) : null}
+      {estimate.isError ? <Failed error={estimate.error} /> : null}
+      {start.isError ? <Failed error={start.error} /> : null}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={found ? undefined : "primary"}
+          className={small}
+          loading={estimate.isPending}
+          disabled={Boolean(asker) && !agreed && !found}
+          onClick={() => estimate.mutate({ ...request, ...(asker ? { clientNameAgreed: agreed } : {}) })}
+          aria-label={`Check for a newer copy: ${item.title}`}
+        >
+          {found ? "Check again" : "Check"}
         </Button>
+        {found && found.items.length > 0 ? (
+          <Button
+            size="sm"
+            variant="primary"
+            className={small}
+            loading={start.isPending}
+            onClick={() =>
+              start.mutate({
+                estimateId: found.estimateId,
+                keys: found.items.map((each) => each.key),
+                ...(item.locationId ? { locationId: item.locationId } : {}),
+              })
+            }
+            aria-label={`Update: ${item.title}`}
+          >
+            Update
+          </Button>
+        ) : null}
       </div>
-    );
-  return <p className="text-small text-ink-muted">{item.update?.note ?? "Outpost cannot fetch this again: add a newer copy instead."}</p>;
+    </div>
+  );
 }
 
-export function UpdateEntry({
-  item,
-  data,
-  onUpdatePlaces,
-}: {
-  item: MapDataItem;
-  data: MapDataResponse;
-  onUpdatePlaces?: ((request: ReferenceEstimateRequest) => void) | undefined;
-}) {
+export function UpdateEntry({ item, data }: { item: MapDataItem; data: MapDataResponse }) {
   const way = item.update?.how;
   return (
     <li className="grid gap-2 py-3">
@@ -220,7 +264,7 @@ export function UpdateEntry({
       ) : way === "country-file" ? (
         <FromCountryFile item={item} data={data} />
       ) : (
-        <Elsewhere item={item} onUpdatePlaces={onUpdatePlaces} />
+        <Elsewhere item={item} />
       )}
     </li>
   );
@@ -232,14 +276,12 @@ export function UpdatesDialog({
   data,
   open,
   onOpenChange,
-  onUpdatePlaces,
   review = false,
 }: {
   items: MapDataItem[];
   data: MapDataResponse;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdatePlaces?: (request: ReferenceEstimateRequest) => void;
   /** Review updates: what is over a year old, however many. Otherwise the one thing whose Update was pressed. */
   review?: boolean;
 }) {
@@ -261,7 +303,7 @@ export function UpdatesDialog({
         <DialogBody>
           <Rows aria-label={one ? "What updating it takes" : "What is over a year old"} className="border-y-0">
             {shown.map((item) => (
-              <UpdateEntry key={item.key} item={item} data={data} onUpdatePlaces={onUpdatePlaces} />
+              <UpdateEntry key={item.key} item={item} data={data} />
             ))}
           </Rows>
         </DialogBody>
@@ -303,14 +345,12 @@ export function PlaceUpdatesDialog({
   data,
   open,
   onOpenChange,
-  onUpdatePlaces,
 }: {
   places: MapDataPlace[];
   review: boolean;
   data: MapDataResponse;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdatePlaces?: (request: ReferenceEstimateRequest) => void;
 }) {
   const [shown, setShown] = useState(places);
   const [wasOpen, setWasOpen] = useState(open);
@@ -371,7 +411,7 @@ export function PlaceUpdatesDialog({
               <h3 className="text-body font-medium text-ink">{placeUpdateLine(place, items)}</h3>
               <Rows aria-label={`What updating ${place.name} takes`} className="border-y-0">
                 {items.map((item) => (
-                  <UpdateEntry key={item.key} item={item} data={data} onUpdatePlaces={onUpdatePlaces} />
+                  <UpdateEntry key={item.key} item={item} data={data} />
                 ))}
               </Rows>
             </section>

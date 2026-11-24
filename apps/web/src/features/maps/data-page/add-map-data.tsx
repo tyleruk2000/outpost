@@ -7,10 +7,12 @@
  * Nothing is chosen for the person: Outpost is used anywhere.
  *
  * Step 2, "What for France?": Map (the map, its hills and its place names), Routes and Nearby
- * places, ticked; More choices for the detail, the hills, where it is kept and the source file.
- * The first time Routes or Nearby places are added, the source file is a two-line choice, then
- * remembered. One button changes as it goes: "Check size" (which asks the map sources and, the
- * first time, reads Geofabrik's list of regions) and then "Download · 4.1 GB".
+ * places, ticked; Nearby places opens to "Which kinds" (hospitals, shelters, food and supplies…),
+ * each with its source as a detail line; More choices for the detail, the hills and where things
+ * are kept. The source file is always one line on this view: the first time both choices (keep
+ * it, or delete it once read) with their reasons, afterwards the remembered one with Change.
+ * One button changes as it goes: "Check size" (which asks the map sources and, the first time,
+ * reads Geofabrik's list of regions) and then "Download · 4.1 GB".
  *
  * Walking and cycling (where the add-on is installed) and Satellite pictures are ticks of step 2
  * too, each with its cost: walking and cycling is built on this device from the kept source file
@@ -32,6 +34,7 @@ import {
   type MapRegionPresetStatus,
   type OsNamesCheck,
   type ReferenceEstimate,
+  type ReferenceEstimateRequest,
   type ReferenceRegionDto,
   type ReferenceRegionsResponse,
 } from "@outpost/shared";
@@ -47,6 +50,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Progress, Segmented, Spinner } from "@/components/ui/misc";
 import { ChoiceList } from "@/features/downloads/choice-list";
 import { useHomeCountry } from "@/features/frequencies/home-country";
+import { useCatalogue, useLayersSummary, useStartDownloads } from "@/features/layers/data";
 import { api, errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { estimateRegion, type RegionEstimate, useMapRegions, useStartPlaces } from "../data";
@@ -58,6 +62,7 @@ import { fold } from "../lib/search";
 import { isCameraView, readStored, STORAGE_KEYS } from "../lib/view";
 import { DestinationPicker, useDestination } from "../panels/destination";
 import { suggestedFileLocation } from "./country-file-choice";
+import { heldKind, type NearbyKind, type NearbyPlace, nearbyKindsFor, otherRequests, SOURCE_FILE } from "./nearby-kinds";
 import { touchSize } from "./pattern";
 import { OWN, WalkDetails, walkCostLine } from "./streets-build";
 import { mapDataKeys, useAddMapData } from "./use-map-data";
@@ -97,6 +102,8 @@ export interface AddStart {
   area?: { name: string; bbox: Bbox };
   /** The whole world's basics. */
   world?: boolean;
+  /** Which kinds of nearby places to tick (?layers=hospitals): a layer, or "population". */
+  layers?: string[];
 }
 
 /** The older kinds a link may still give, as the bundles they are part of. */
@@ -330,11 +337,11 @@ function Where({
             }
           />
         ) : null}
-        {!world || world.bundles.some((bundle) => bundle.kind === "map" && bundle.state === "none") ? (
+        {!world || world.bundles.some((bundle) => (bundle.kind === "map" || bundle.kind === "nearby") && bundle.state === "none") ? (
           <SuggestionButton
             icon={<Globe />}
             title="The whole world"
-            note="Countries, cities and main roads everywhere, at less detail"
+            note="Countries, cities and main roads everywhere, at less detail; borders and airports"
             onChoose={() => onChoose([WORLD])}
           />
         ) : null}
@@ -371,25 +378,76 @@ function Tick({
 }) {
   const id = useId();
   return (
-    <li className="py-3">
-      <div className="flex items-start gap-3">
-        <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(next) => onChange(next === true)} className="mt-0.5" />
+    <li className="py-1">
+      <TickRow id={id} checked={checked} disabled={disabled} onChange={onChange} described={["detail", ...(trailing ? ["size"] : [])]}>
         <label
           htmlFor={id}
           className={cn(
             "flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4",
+            // The whole row is the target, not the 18 px box: the label's own layer covers it.
+            "before:absolute before:inset-0 before:content-['']",
             disabled ? "cursor-not-allowed" : "cursor-pointer",
           )}
         >
           <span className="min-w-0">
-            <span className={cn("block text-small font-medium", disabled ? "text-ink-muted" : "text-ink")}>{name}</span>
-            <span className="block text-small text-ink-muted">{detail}</span>
+            <span id={`${id}-name`} className={cn("block text-small font-medium", disabled ? "text-ink-muted" : "text-ink")}>
+              {name}
+            </span>
+            <span id={`${id}-detail`} className="block text-small text-ink-muted">
+              {detail}
+            </span>
           </span>
-          {trailing ? <span className="tabular shrink-0 text-small text-ink-muted">{trailing}</span> : null}
+          {trailing ? (
+            <span id={`${id}-size`} className="tabular shrink-0 text-small text-ink-muted">
+              {trailing}
+            </span>
+          ) : null}
         </label>
-      </div>
+      </TickRow>
       {children}
     </li>
+  );
+}
+
+/**
+ * A tick and its label as one target the height of a thumb: the label (given as children) covers
+ * the row with its `before:` layer, the box sits above it so a press on the box itself is the box's.
+ */
+function TickRow({
+  id,
+  checked,
+  disabled,
+  onChange,
+  children,
+  className,
+  described,
+}: {
+  id: string;
+  checked: boolean;
+  disabled?: boolean | undefined;
+  onChange: (on: boolean) => void;
+  children: ReactNode;
+  className?: string;
+  /** Named by the label's `${id}-name` alone, and described by these of its other parts (`${id}-detail`, `${id}-size`). */
+  described?: string[];
+}) {
+  return (
+    <div className={cn("relative flex min-h-11 items-start gap-3 py-2 md:min-h-9 md:pointer-coarse:min-h-11", className)}>
+      <Checkbox
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(next) => onChange(next === true)}
+        className="z-[1] mt-0.5"
+        {...(described
+          ? {
+              "aria-labelledby": `${id}-name`,
+              ...(described.length > 0 ? { "aria-describedby": described.map((part) => `${id}-${part}`).join(" ") } : {}),
+            }
+          : {})}
+      />
+      {children}
+    </div>
   );
 }
 
@@ -403,6 +461,8 @@ interface Sizes {
   hosts: string[];
   /** Geofabrik's list, read on the press where it was not held. */
   regions: ReferenceRegionDto[];
+  /** Nearby places from their own sources (Natural Earth, OurAirports, WorldPop…), one answer each. */
+  others: ReferenceEstimate[];
 }
 
 const hostOf = (url: string) => {
@@ -412,6 +472,18 @@ const hostOf = (url: string) => {
     return url;
   }
 };
+
+/** What Nearby places offers for the places chosen. */
+function nearbyPlaceOf(places: Chosen[]): NearbyPlace {
+  const first = places[0];
+  if (!first || first.type === "world") return { type: "world" };
+  if (first.type === "area") return { type: "area" };
+  return { type: "country", code: places.length === 1 ? first.code : null };
+}
+
+/** A source that asks to be told what is asking, by a short name for the tick. */
+const askerName = (provider: string, name: string) =>
+  provider === "osm" ? "the Overpass server" : provider === "wikidata" ? "Wikidata" : name;
 
 const placeKey = (place: Chosen) =>
   place.type === "area" ? `area:${place.bbox?.join(",")}` : `${place.type}:${place.code ?? ""}:${place.part?.regionId ?? ""}`;
@@ -424,7 +496,6 @@ export function AddMapData({
   start,
   onAdded,
   onImport,
-  onOtherSources,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -432,8 +503,6 @@ export function AddMapData({
   start: AddStart | null;
   onAdded?: (place: Chosen) => void;
   onImport: () => void;
-  /** Nearby places from other sources (Natural Earth, airports, national lists): the layers' own choices. */
-  onOtherSources: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -448,7 +517,6 @@ export function AddMapData({
               onOpenChange(false);
               onImport();
             }}
-            onOtherSources={onOtherSources}
           />
         ) : null}
       </DialogContent>
@@ -462,14 +530,12 @@ function Flow({
   onClose,
   onAdded,
   onImport,
-  onOtherSources,
 }: {
   data: MapDataResponse;
   start: AddStart | null;
   onClose: () => void;
   onAdded?: ((place: Chosen) => void) | undefined;
   onImport: () => void;
-  onOtherSources: () => void;
 }) {
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -484,6 +550,15 @@ function Flow({
   const [zoom, setZoom] = useState<number | null>(null);
   const [keep, setKeep] = useState<boolean | undefined>(data.countryFileChoice.keep ?? undefined);
   const firstTime = data.countryFileChoice.keep === null;
+  /** The source file's line opened to its choices by Change. */
+  const [changingFile, setChangingFile] = useState(false);
+  /** The kinds of nearby places ticked, by id (`hospitals`, `population`). */
+  const [nearby, setNearby] = useState<Set<string>>(new Set());
+  /** Sources that may be told Outpost's name, as each asks (Wikidata, an Overpass server): ticked by the person. */
+  const [agreed, setAgreed] = useState<Set<string>>(new Set());
+  const summary = useLayersSummary();
+  const catalogue = useCatalogue();
+  const startOthers = useStartDownloads();
   /** Parts left out, by country: none left out means the whole country's one file. */
   const [leftOut, setLeftOut] = useState<Set<string>>(new Set());
   const [sizes, setSizes] = useState<{ key: string; sizes: Sizes } | null>(null);
@@ -504,8 +579,19 @@ function Flow({
   const allPresets = useMemo(() => (presets.data?.groups ?? []).flatMap((group) => group.regions), [presets.data]);
   const known = placesIn(data);
 
-  function choose(next: Chosen[], asked?: MapDataBundleKind[]) {
+  function choose(next: Chosen[], asked?: MapDataBundleKind[], layers?: string[]) {
     setPlaces(next);
+    // Which kinds of nearby places: those asked for, else the usual ones not held already.
+    const where = nearbyPlaceOf(next);
+    const kinds = nearbyKindsFor(where);
+    setNearby(
+      new Set(
+        (layers?.length
+          ? kinds.filter((kind) => layers.includes(kind.id))
+          : kinds.filter((kind) => kind.usual && !heldKind(kind, where, summary.data))
+        ).map((kind) => kind.id),
+      ),
+    );
     const held = (bundle: MapDataBundleKind) =>
       next.every((place) => {
         const have =
@@ -517,7 +603,9 @@ function Flow({
       ? (asked.filter((each) => (CHOOSABLE as string[]).includes(each)) as Choosable[])
       : next[0]?.type === "country"
         ? (["map", "routes"] as const).filter((each) => !held(each))
-        : ["map"];
+        : next[0]?.type === "world" && held("map")
+          ? ["nearby"]
+          : ["map"];
     setTicks(new Set(wanted.length > 0 ? wanted : next[0]?.type === "country" ? ["routes"] : ["map"]));
     setZoom(null);
     setLeftOut(new Set());
@@ -533,11 +621,12 @@ function Flow({
     if (applied || !start) return;
     const codes = start.countries?.length ? start.countries : start.country ? [start.country] : [];
     setApplied(true);
-    if (start.world) return choose([WORLD], start.bundles);
+    if (start.world) return choose([WORLD], start.bundles, start.layers);
     if (start.area)
       return choose(
         [{ type: "area", code: null, name: start.area.name, countryName: null, regionId: null, part: null, bbox: start.area.bbox }],
-        ["map"],
+        start.bundles ?? ["map"],
+        start.layers,
       );
     if (codes.length === 0) return;
     void whereIs(`countries=${codes.join(",")}`).then((answer) => {
@@ -546,6 +635,7 @@ function Flow({
       choose(
         answer.results.map((result) => chosenOf(result, false)),
         start.bundles ?? (codes.length > 1 ? ["routes"] : undefined),
+        start.layers,
       );
     });
   }, [start]);
@@ -557,7 +647,21 @@ function Flow({
   }, [step]);
 
   const countries = places.filter((place) => place.type === "country");
-  const fromFile = ticks.has("routes") || ticks.has("nearby") || ticks.has("walk");
+  // Nearby places: the kinds chosen, read from the source file or asked of their own sources.
+  const nearbyPlace = nearbyPlaceOf(places);
+  const kinds = nearbyKindsFor(nearbyPlace);
+  const chosenKinds = ticks.has("nearby") ? kinds.filter((kind) => nearby.has(kind.id)) : [];
+  const fileLayers = [...new Set(chosenKinds.filter((kind) => kind.provider === SOURCE_FILE).flatMap((kind) => kind.layers))];
+  const askerOf = (provider: string) => catalogue.data?.providers.find((each) => each.id === provider && each.clientName);
+  const otherScope =
+    nearbyPlace.type === "world"
+      ? {}
+      : nearbyPlace.type === "area"
+        ? { bbox: places[0]!.bbox! }
+        : { countries: countries.flatMap((place) => (place.code ? [place.code] : [])) };
+  const others: ReferenceEstimateRequest[] = otherRequests(chosenKinds, otherScope, agreed, (provider) => Boolean(askerOf(provider)));
+  const unagreed = others.filter((request) => request.clientNameAgreed === false).map((request) => request.provider);
+  const fromFile = ticks.has("routes") || ticks.has("walk") || (countries.length > 0 && fileLayers.length > 0);
   /** Walking and cycling are built from the source file: ticked, it is kept. */
   const mustKeep = ticks.has("walk");
   const keepChoice = mustKeep ? true : keep;
@@ -596,6 +700,8 @@ function Flow({
     zoom,
     leftOut: [...leftOut].sort(),
     world: ticks.has("imagery") ? (worldOption?.id ?? null) : null,
+    nearby: chosenKinds.map((kind) => kind.id),
+    others,
   });
   const found = sizes?.key === signature ? sizes.sizes : null;
 
@@ -613,7 +719,7 @@ function Flow({
         void client.invalidateQueries({ queryKey: ["layers", "regions"] });
         void client.invalidateQueries({ queryKey: mapDataKeys.all });
       }
-      const result: Sizes = { map: {}, file: {}, names: null, hosts, regions };
+      const result: Sizes = { map: {}, file: {}, names: null, hosts, regions, others: [] };
       if (fromFile) {
         const ids: string[] = [];
         for (const place of countries) {
@@ -668,6 +774,12 @@ function Flow({
           }
         }
       }
+      // Nearby places from their own sources: each asked once for its size, on this press.
+      for (const request of others) {
+        const estimate = await api.post<ReferenceEstimate>("/api/reference/estimate", request);
+        for (const item of estimate.items) if (item.host) hosts.push(item.host);
+        result.others.push(estimate);
+      }
       setSizes({ key: signature, sizes: { ...result, hosts: [...new Set(hosts)] } });
     } catch (error) {
       setCheckError(error);
@@ -680,11 +792,15 @@ function Flow({
   const mapBytes = found ? Object.values(found.map).reduce((sum, estimate) => sum + estimate.totalBytes, 0) : 0;
   const namesBytes = found?.names && !found.names.installed ? found.names.sizeBytes : 0;
   const worldBytes = ticks.has("imagery") && places[0]?.type === "world" && worldOption ? worldOption.transferBytes : 0;
-  const total = fileBytes + mapBytes + namesBytes + worldBytes;
+  const otherBytes = found
+    ? found.others.reduce((sum, estimate) => sum + estimate.items.reduce((each, item) => each + item.bytes, 0), 0)
+    : 0;
+  const total = fileBytes + mapBytes + namesBytes + worldBytes + otherBytes;
   const allKept = fromFile && found !== null && Object.values(found.file).every((bytes) => bytes === null);
 
   const mapDestination = useDestination(found ? mapBytes + namesBytes + worldBytes : null, "maps");
   const fileDestination = useDestination(found && fileBytes > 0 ? fileBytes : null);
+  const layersDestination = useDestination(found && otherBytes > 0 ? otherBytes : null, "layers");
   const [suggested, setSuggested] = useState(false);
   useEffect(() => {
     if (suggested || fileDestination.locations.length === 0) return;
@@ -694,9 +810,18 @@ function Flow({
   }, [suggested, fileDestination, data.countryFileChoice.locationId]);
 
   const askFile = fromFile && countries.length > 0 && !allKept;
-  const problems = [
+  /** What stops Check size: nothing is asked of anyone until these are settled. */
+  const before = [
     ticks.size === 0 ? "Choose what to add." : null,
+    ticks.has("nearby") && chosenKinds.length === 0 ? "Choose which kinds of nearby places." : null,
+    unagreed.length > 0
+      ? `Tick to send Outpost's name to ${askerName(unagreed[0]!, askerOf(unagreed[0]!)?.name ?? unagreed[0]!)}, or leave its kinds out.`
+      : null,
+  ].filter((each): each is string => each !== null);
+  const problems = [
+    ...before,
     askFile && keepChoice === undefined ? "Choose what happens to the source file." : null,
+    otherBytes > 0 && !layersDestination.locationId ? "Choose where to keep the nearby places." : null,
     askFile && keepChoice && fileBytes > 0 && !fileDestination.locationId ? "Choose where to keep the source file." : null,
     (ticks.has("map") || worldBytes > 0) && found && !mapDestination.locationId ? "Choose where to keep the map." : null,
     ticks.has("imagery") && places[0]?.type === "world" && !worldOption ? "NASA's picture of the world is added already." : null,
@@ -712,11 +837,12 @@ function Flow({
         if (place.type === "country" && fromFile) {
           for (const regionId of filesOf({ ...place, regionId: wholeRegion(place) })) {
             const kept = keptFor(regionId);
-            const read = [...(ticks.has("routes") ? (["roads"] as const) : []), ...(ticks.has("nearby") ? (["places"] as const) : [])];
+            const read = [...(ticks.has("routes") ? (["roads"] as const) : []), ...(fileLayers.length > 0 ? (["places"] as const) : [])];
             requests.push({
               regionId,
               // Only walking and cycling: the source file itself, kept, to build it from.
               kinds: read.length > 0 ? read : ["extract"],
+              ...(fileLayers.length > 0 ? { layers: fileLayers } : {}),
               keep: kept ? true : (keepChoice ?? false),
               ...(ticks.has("walk") ? { streets: workWhere !== OWN ? { workLocationId: workWhere } : {} } : {}),
               ...(kept
@@ -756,6 +882,15 @@ function Flow({
             ...(mapDestination.locationId ? { locationId: mapDestination.locationId } : {}),
           });
       }
+      // Nearby places from their own sources: started from the sizes just shown.
+      for (const estimate of found.others) {
+        if (estimate.items.length === 0) continue;
+        await startOthers.mutateAsync({
+          estimateId: estimate.estimateId,
+          keys: estimate.items.map((item) => item.key),
+          ...(layersDestination.locationId ? { locationId: layersDestination.locationId } : {}),
+        });
+      }
       mapDestination.remember();
       toast.success(`Adding ${namesText(places.map((place) => place.name))}. Progress is shown on Offline maps.`);
       onAdded?.(places[0]!);
@@ -775,7 +910,8 @@ function Flow({
         <Where
           data={data}
           heading={heading}
-          onChoose={(next) => choose(next)}
+          // Arriving to add something with no place yet (?get=places): what was asked is ticked once it is chosen.
+          onChoose={(next) => choose(next, start?.bundles, start?.layers)}
           onDraw={() => {
             onClose();
             navigate("/maps?offline=draw");
@@ -843,6 +979,9 @@ function Flow({
     if (!found) return null;
     if (bundle === "map") return mapBytes > 0 ? formatBytes(mapBytes + namesBytes) : null;
     if (bundle === "walk") return walkHeld ? "Built here" : "Source file kept";
+    if (bundle === "nearby" && otherBytes > 0)
+      return fileLayers.length > 0 ? `${formatBytes(otherBytes)} and the file` : formatBytes(otherBytes);
+    if (bundle === "nearby" && fileLayers.length === 0) return null;
     if (allKept) return "No download";
     if (bundle === "routes") return fileBytes > 0 ? `about ${formatBytes(fileBytes * ROADS_SHARE)} kept` : null;
     return ticks.has("routes") ? "Read from the same file" : null;
@@ -851,25 +990,35 @@ function Flow({
     first?.type === "country"
       ? ["map", "routes", "nearby", ...(data.streetsInstalled ? (["walk"] as const) : [])]
       : first?.type === "world"
-        ? ["map", ...(worldOptions.length > 0 ? (["imagery"] as const) : [])]
-        : ["map", "imagery"];
+        ? ["map", "nearby", ...(worldOptions.length > 0 ? (["imagery"] as const) : [])]
+        : ["map", "nearby", "imagery"];
   const partsNote = countries.length === 1 && !countries[0]!.part ? partsOf(countries[0]!) : [];
   const wholeSize = found && countries.length === 1 ? found.file[wholeRegion(countries[0]!) ?? ""] : undefined;
 
-  const fileChoice = mustKeep ? (
-    <div className="grid gap-2">
-      <p className="text-small text-ink">
-        The source file{fileBytes > 0 ? ` (${formatBytes(fileBytes)})` : ""} is kept: walking and cycling are built from it, and routes and
-        places can be rebuilt with no download.
-      </p>
-      {fileBytes > 0 ? <DestinationPicker destination={fileDestination} label="Where to keep the source file" /> : null}
-    </div>
-  ) : (
-    <div className="grid gap-2">
-      <p className="text-small text-ink-muted">
-        Routes, places and walking and cycling are made from the source file and keep working without it. Keep it only to make them again
-        without downloading it.
-      </p>
+  const fileSize = fileBytes > 0 ? ` (${formatBytes(fileBytes)})` : "";
+  const keptOn = fileDestination.location ? ` on ${fileDestination.location.name}` : "";
+  /** Both choices shown: the first time, while none is made, or on Change. Walking and cycling settles it: kept. */
+  const fileOpen = !mustKeep && (firstTime || changingFile || keepChoice === undefined);
+  const change = (
+    <button
+      type="button"
+      onClick={() => setChangingFile(true)}
+      className="-my-2.5 inline-block py-2.5 text-primary underline decoration-1 underline-offset-2 md:-my-1 md:py-1"
+    >
+      Change<span className="sr-only">{mustKeep ? " where the source file is kept" : " what happens to the source file"}</span>
+    </button>
+  );
+  const fileLine = !askFile ? null : fileOpen ? (
+    <section className="grid gap-2" aria-label="The source file">
+      <div>
+        <h4 id="add-file" className="text-small font-semibold text-ink">
+          Source file{fileSize}
+        </h4>
+        <p className="max-w-[60ch] text-small text-ink-muted">
+          Routes and nearby places are read from {countries.length === 1 ? `${countries[0]!.name}'s` : "each country's"} whole OpenStreetMap
+          record. Keep it, or delete it once read?
+        </p>
+      </div>
       <ChoiceList
         label="The source file"
         value={keep === undefined ? undefined : keep ? "keep" : "delete"}
@@ -877,17 +1026,124 @@ function Flow({
         choices={[
           {
             value: "keep",
-            title: `Keep the source file${fileBytes > 0 ? ` (${formatBytes(fileBytes)})` : ""}`,
-            detail: "Add walking and cycling, update, or rebuild later with no download",
+            title: `Keep it${keptOn}`,
+            detail: "Needed to add walking and cycling later, or to update without downloading again",
           },
           {
             value: "delete",
             title: "Delete it after reading",
-            detail: `${fileBytes > 0 ? `Saves ${formatBytes(fileBytes)}` : "Saves the space"}. Everything made from it keeps working; adding walking and cycling or updating downloads it again`,
+            detail: `${fileBytes > 0 ? `Saves ${formatBytes(fileBytes)}. ` : ""}Routes and nearby places keep working; walking and cycling or an update downloads it again`,
           },
         ]}
       />
       {keep && fileBytes > 0 ? <DestinationPicker destination={fileDestination} label="Where to keep the source file" /> : null}
+      {changingFile ? (
+        <div>
+          <Button size="sm" className={touchSize} onClick={() => setChangingFile(false)}>
+            Done
+          </Button>
+        </div>
+      ) : null}
+    </section>
+  ) : (
+    <section className="grid gap-2" aria-label="The source file">
+      <p className="text-small text-ink">
+        <span className="font-medium">Source file{fileSize}:</span>{" "}
+        {mustKeep ? (
+          <>kept{keptOn}. Walking and cycling is built from it, so it is kept.</>
+        ) : keepChoice ? (
+          <>kept{keptOn}. Needed to add walking and cycling or update without downloading again</>
+        ) : (
+          <>deleted after reading. Routes and nearby places keep working</>
+        )}
+        {mustKeep && (changingFile || fileBytes === 0) ? null : <> · {change}</>}
+      </p>
+      {mustKeep && changingFile && fileBytes > 0 ? (
+        <>
+          <DestinationPicker destination={fileDestination} label="Where to keep the source file" />
+          <div>
+            <Button size="sm" className={touchSize} onClick={() => setChangingFile(false)}>
+              Done
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+
+  /** The size of one kind from its own source, once asked; held kinds say so. */
+  const kindTrailing = (kind: NearbyKind): ReactNode => {
+    if (kind.provider === SOURCE_FILE) return heldKind(kind, nearbyPlace, summary.data) ? "Held" : null;
+    const bytes = (found?.others ?? [])
+      .filter((estimate) => estimate.provider === kind.provider)
+      .flatMap((estimate) => estimate.items)
+      .filter((item) => kind.layers.length === 0 || item.layers.some((layer) => kind.layers.includes(layer)))
+      .reduce((sum, item) => sum + item.bytes, 0);
+    if (found && nearby.has(kind.id)) return bytes > 0 ? formatBytes(bytes) : "Nothing here";
+    return heldKind(kind, nearbyPlace, summary.data) ? "Held" : null;
+  };
+  const sources = [...new Set(kinds.map((kind) => kind.source))];
+  const askers = [...new Set(chosenKinds.map((kind) => kind.provider))].flatMap((provider) => {
+    const asker = askerOf(provider);
+    return asker ? [asker] : [];
+  });
+  const caution = chosenKinds.some((kind) => kind.id === "military")
+    ? catalogue.data?.providers.find((each) => each.id === SOURCE_FILE)?.caution
+    : null;
+  const whichKinds = (
+    <div className="grid gap-2 pb-2 pl-[30px]">
+      <p className="text-small font-medium text-ink" id="add-kinds">
+        Which kinds
+      </p>
+      {sources.map((source) => (
+        <div key={source} className="grid">
+          <p className="text-micro text-ink-muted">From {source}</p>
+          <ul aria-label={`Kinds from ${source}`} aria-describedby="add-kinds" className="grid">
+            {kinds
+              .filter((kind) => kind.source === source)
+              .map((kind) => (
+                <KindTick
+                  key={`${kind.provider}:${kind.id}`}
+                  kind={kind}
+                  checked={nearby.has(kind.id)}
+                  trailing={kindTrailing(kind)}
+                  onChange={(on) =>
+                    setNearby((current) => {
+                      const next = new Set(current);
+                      if (on) next.add(kind.id);
+                      else next.delete(kind.id);
+                      return next;
+                    })
+                  }
+                />
+              ))}
+          </ul>
+        </div>
+      ))}
+      {askers.map((asker) => (
+        <AgreeTick
+          key={asker.id}
+          name={askerName(asker.id, asker.name)}
+          clientName={asker.clientName ?? ""}
+          checked={agreed.has(asker.id)}
+          onChange={(on) =>
+            setAgreed((current) => {
+              const next = new Set(current);
+              if (on) next.add(asker.id);
+              else next.delete(asker.id);
+              return next;
+            })
+          }
+        />
+      ))}
+      {caution ? <p className="max-w-[70ch] text-micro text-ink-muted">Military sites: {caution}</p> : null}
+      {(found?.others ?? [])
+        .flatMap((estimate) => estimate.notes)
+        .map((note) => (
+          <p key={note} className="max-w-[70ch] text-small text-ink-muted">
+            {note}
+          </p>
+        ))}
     </div>
   );
 
@@ -933,6 +1189,8 @@ function Flow({
               >
                 {bundle === "walk" && ticks.has("walk") ? (
                   <WalkDetails request={walkRequest} where={workWhere} onWhere={setWorkWhere} />
+                ) : bundle === "nearby" && ticks.has("nearby") ? (
+                  whichKinds
                 ) : bundle === "imagery" && ticks.has("imagery") && first?.type === "world" && worldOptions.length > 1 ? (
                   <div className="pt-2 pl-8">
                     <WorldPictureChoice options={worldOptions} value={worldOption?.id} onChange={setWorldPicture} />
@@ -941,7 +1199,7 @@ function Flow({
               </Tick>
             ))}
           </ul>
-          {fromFile && partsNote.length > 0 ? (
+          {fromFile && partsNote.length > 1 ? (
             <div className="grid gap-1.5 text-small">
               <p className="text-ink">
                 {countries[0]!.name} comes in {partsNote.length} parts
@@ -971,17 +1229,7 @@ function Flow({
           ) : null}
         </section>
 
-        {askFile && firstTime ? (
-          <section className="grid gap-2" aria-labelledby="add-file">
-            <h4 id="add-file" className="text-small font-semibold text-ink">
-              The source file
-            </h4>
-            <p className="max-w-[60ch] text-small text-ink-muted">
-              Routes and nearby places are read from the country's whole OpenStreetMap record.
-            </p>
-            {fileChoice}
-          </section>
-        ) : null}
+        {fileLine}
 
         <Disclosure summary="More choices">
           <div className="grid gap-5">
@@ -997,7 +1245,10 @@ function Flow({
                     label: detailLabel(each),
                   }))}
                 />
-                <label htmlFor="add-hills" className="mt-1 flex cursor-pointer items-start gap-3 text-small text-ink">
+                <label
+                  htmlFor="add-hills"
+                  className="mt-1 flex min-h-11 cursor-pointer items-start gap-3 py-1 text-small text-ink md:min-h-0"
+                >
                   <Checkbox id="add-hills" checked={hills} onCheckedChange={(on) => setHills(on === true)} className="mt-0.5" />
                   <span>
                     Hills and heights
@@ -1012,19 +1263,11 @@ function Flow({
                 <DestinationPicker destination={mapDestination} label="Where the map is kept" />
               </div>
             ) : null}
-            {askFile && !firstTime ? (
+            {otherBytes > 0 ? (
               <div className="grid gap-2">
-                <h4 className="text-small font-semibold text-ink">The source file</h4>
-                {fileChoice}
+                <h4 className="text-small font-semibold text-ink">Where nearby places are kept</h4>
+                <DestinationPicker destination={layersDestination} label="Where nearby places are kept" />
               </div>
-            ) : null}
-            {ticks.has("nearby") || first?.type === "world" ? (
-              <p className="text-small">
-                <button type="button" onClick={onOtherSources} className="text-primary underline decoration-1 underline-offset-2">
-                  Nearby places from other sources
-                </button>
-                <span className="text-ink-muted">: borders, airports, national lists</span>
-              </p>
             ) : null}
           </div>
         </Disclosure>
@@ -1044,8 +1287,14 @@ function Flow({
               <span className="tabular font-semibold">
                 {allKept && mapBytes === 0 ? "No download: read from the kept file" : `${formatBytes(total)} to download`}
               </span>
-              {fromFile && !allKept && keep === false ? ", the source file deleted once read" : ""}.
-              {found.hosts.length > 0 ? <span className="block text-ink-muted">Sizes from {namesText(found.hosts)}.</span> : null}
+              {fromFile && !allKept
+                ? keepChoice === undefined
+                  ? `, the source file${fileSize} kept or deleted as you choose`
+                  : keepChoice
+                    ? `, the source file${fileSize} kept${keptOn}`
+                    : `, the source file${fileSize} deleted once read`
+                : ""}
+              .{found.hosts.length > 0 ? <span className="block text-ink-muted">Sizes from {namesText(found.hosts)}.</span> : null}
             </p>
           ) : (
             <p className="max-w-[60ch] text-small text-ink-muted">
@@ -1058,7 +1307,9 @@ function Flow({
         </div>
       </DialogBody>
       <DialogFooter>
-        {found && problems[0] ? <span className="mr-auto text-small text-ink-muted">{problems[0]}</span> : null}
+        {(found ? problems[0] : before[0]) ? (
+          <span className="mr-auto text-small text-ink-muted">{found ? problems[0] : before[0]}</span>
+        ) : null}
         <Button onClick={() => setStep("where")}>
           <ArrowLeft /> Another place
         </Button>
@@ -1071,7 +1322,7 @@ function Flow({
             {allKept && mapBytes === 0 ? "Build from the kept file" : `Download · ${formatBytes(total)}`}
           </Button>
         ) : (
-          <Button variant="primary" onClick={checkSize} loading={checking} disabled={ticks.size === 0}>
+          <Button variant="primary" onClick={checkSize} loading={checking} disabled={before.length > 0}>
             {checkError ? "Check size again" : "Check size"}
           </Button>
         )}
@@ -1083,12 +1334,86 @@ function Flow({
 function PartTick({ name, checked, onChange }: { name: string; checked: boolean; onChange: (on: boolean) => void }) {
   const id = useId();
   return (
-    <li className="flex min-h-11 items-center gap-3 md:min-h-8 md:pointer-coarse:min-h-11">
-      <Checkbox id={id} checked={checked} onCheckedChange={(on) => onChange(on === true)} />
-      <label htmlFor={id} className="cursor-pointer text-small text-ink">
-        {name}
-      </label>
+    <li>
+      <TickRow id={id} checked={checked} onChange={onChange} className="items-center py-1 md:min-h-8">
+        <label htmlFor={id} className="cursor-pointer text-small text-ink before:absolute before:inset-0 before:content-['']">
+          {name}
+        </label>
+      </TickRow>
     </li>
+  );
+}
+
+/** One kind of nearby place: the whole row is the target. */
+function KindTick({
+  kind,
+  checked,
+  trailing,
+  onChange,
+}: {
+  kind: NearbyKind;
+  checked: boolean;
+  trailing: ReactNode;
+  onChange: (on: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <li>
+      <TickRow
+        id={id}
+        checked={checked}
+        onChange={onChange}
+        className="py-1.5"
+        described={[...(kind.detail ? ["detail"] : []), ...(trailing ? ["size"] : [])]}
+      >
+        <label
+          htmlFor={id}
+          className="flex min-w-0 flex-1 cursor-pointer flex-wrap items-baseline justify-between gap-x-4 before:absolute before:inset-0 before:content-['']"
+        >
+          <span className="min-w-0">
+            <span id={`${id}-name`} className="block text-small text-ink">
+              {kind.name}
+            </span>
+            {kind.detail ? (
+              <span id={`${id}-detail`} className="block text-micro text-ink-muted">
+                {kind.detail}
+              </span>
+            ) : null}
+          </span>
+          {trailing ? (
+            <span id={`${id}-size`} className="tabular shrink-0 text-small text-ink-muted">
+              {trailing}
+            </span>
+          ) : null}
+        </label>
+      </TickRow>
+    </li>
+  );
+}
+
+/** A source that asks to be told what is asking: sent only when ticked, on this press. */
+function AgreeTick({
+  name,
+  clientName,
+  checked,
+  onChange,
+}: {
+  name: string;
+  clientName: string;
+  checked: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <TickRow id={id} checked={checked} onChange={onChange} className="mt-1 border-t border-border pt-2.5">
+      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer before:absolute before:inset-0 before:content-['']">
+        <span className="block text-small font-medium text-ink">Send Outpost's name to {name}</span>
+        <span className="block text-small text-ink-muted">
+          It asks programs to say what they are. The name gives the project's web address and nothing about you or this device:{" "}
+          <span className="font-mono text-[0.8125rem] break-all">{clientName}</span>
+        </span>
+      </label>
+    </TickRow>
   );
 }
 

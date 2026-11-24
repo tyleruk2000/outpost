@@ -334,6 +334,11 @@ describe("Add a place", () => {
       { regions: [], coming: [{ regionId: "france", name: "France", country: "FR", bytes: 4_900_000_000 }] },
     ]);
     expect(within(dialog).queryByRole("radio", { name: /Delete it after reading/ })).not.toBeInTheDocument();
+    // Said on the main view, and the same as the tick says: kept, because it is built from it.
+    expect(within(dialog).getByRole("region", { name: "The source file" })).toHaveTextContent(
+      /^Source file \(\d\.\d+ GB\): kept on .+\. Walking and cycling is built from it, so it is kept\./,
+    );
+    expect(within(dialog).queryByText(/keep working without it/)).not.toBeInTheDocument();
     await user.click(within(within(dialog).getByRole("radiogroup", { name: "Where it works" })).getByRole("radio", { name: /^NAS/ }));
     await user.click(within(dialog).getByRole("button", { name: /^Download · / }));
     await waitFor(() =>
@@ -341,6 +346,141 @@ describe("Add a place", () => {
         { regionId: "france", kinds: ["extract"], keep: true, streets: { workLocationId: "nas" }, locationId: expect.any(String) },
       ]),
     );
+  });
+
+  it("says the remembered source-file choice in one line on the main view, with Change, and in the total", async () => {
+    const user = userEvent.setup();
+    serve(mapData({ countryFileChoice: { keep: true, locationId: "nas" } }), {
+      "GET /api/reference/regions": {
+        held: true,
+        readAt: 1,
+        source: "x",
+        regions: [{ id: "france", name: "France", country: "FR", parent: null, depth: 0 }],
+        suggested: [],
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&country=FR&kinds=roads");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for France?" });
+    // Not folded into More choices, and nothing silently applied: the choice is said, with Change beside it.
+    const line = within(dialog).getByRole("region", { name: "The source file" });
+    expect(line).toHaveTextContent(
+      /^Source file: kept on NAS\. Needed to add walking and cycling or update without downloading again · Change/,
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Check size" }));
+    await within(dialog).findByRole("button", { name: /^Download · / });
+    const total = () =>
+      within(dialog)
+        .getByText(/ to download$/)
+        .closest("p");
+    expect(total()).toHaveTextContent(/to download, the source file \(\d\.\d+ GB\) kept on NAS\./);
+    // Change opens both choices, each with its reason.
+    await user.click(within(line).getByRole("button", { name: /Change/ }));
+    expect(within(dialog).getByRole("radio", { name: /Keep it on NAS/ })).toBeChecked();
+    await user.click(within(dialog).getByRole("radio", { name: /Delete it after reading.*Routes and nearby places keep working/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(within(dialog).getByRole("region", { name: "The source file" })).toHaveTextContent(
+      /^Source file \(\d\.\d+ GB\): deleted after reading\. Routes and nearby places keep working · Change/,
+    );
+    expect(total()).toHaveTextContent(/the source file \(\d\.\d+ GB\) deleted once read\./);
+    await user.click(within(dialog).getByRole("button", { name: /^Download · / }));
+    await waitFor(() => expect(posted("/api/maps/data/add")).toEqual([{ regionId: "france", kinds: ["roads"], keep: false }]));
+  });
+
+  it("asks which kinds of nearby places, reads those ticked from the source file, and makes the whole row the target", async () => {
+    const user = userEvent.setup();
+    serve(mapData({ countryFileChoice: { keep: false, locationId: null } }), {
+      "GET /api/reference/regions": {
+        held: true,
+        readAt: 1,
+        source: "x",
+        regions: [{ id: "france", name: "France", country: "FR", parent: null, depth: 0 }],
+        suggested: [],
+      },
+    });
+    // From the Layers tab: "Add shelters for France".
+    renderScreen(<MapDataPage />, "/maps/data?add=1&country=FR&kinds=places&layers=shelters");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for France?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Nearby places/ })).toBeChecked();
+    const fromFile = within(dialog).getByRole("list", { name: "Kinds from OpenStreetMap, read from the source file" });
+    expect(within(fromFile).getByRole("checkbox", { name: "Shelters and assembly points" })).toBeChecked();
+    expect(within(fromFile).getByRole("checkbox", { name: "Hospitals" })).not.toBeChecked();
+    // A press anywhere on the row ticks it: the label covers the row.
+    await user.click(within(fromFile).getByText("Hospitals"));
+    expect(within(fromFile).getByRole("checkbox", { name: "Hospitals" })).toBeChecked();
+    expect(within(fromFile).getByText("Hospitals").closest("label")).toHaveClass("before:absolute", "before:inset-0");
+    // No separate dialog and no other source's question for what the source file holds.
+    expect(within(dialog).queryByText(/Nearby places from other sources/)).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Check size" }));
+    await user.click(await within(dialog).findByRole("button", { name: /^Download · / }));
+    await waitFor(() =>
+      expect(posted("/api/maps/data/add")).toEqual([
+        { regionId: "france", kinds: ["places"], keep: false, layers: ["hospitals", "shelters"] },
+      ]),
+    );
+  });
+
+  it("adds World basics' borders from their own source, the size shown first, and asks before telling a source Outpost's name", async () => {
+    const user = userEvent.setup();
+    const estimate = (provider: string, layers: string[], bytes: number) => ({
+      estimateId: `e-${provider}`,
+      provider,
+      items: [
+        {
+          key: provider,
+          title: provider,
+          layers,
+          bytes,
+          exact: true,
+          basis: "",
+          records: null,
+          host: `${provider}.example.org`,
+          replaces: null,
+        },
+      ],
+      totalBytes: bytes,
+      databaseBytes: bytes,
+      notes: [],
+    });
+    serve(mapData(), {
+      "GET /api/reference/catalogue": {
+        providers: [{ id: "wikidata", name: "Wikidata", clientName: "Outpost/0.1 (+https://example.org/outpost)", scopes: ["world"] }],
+        linked: [],
+        countries: [],
+      },
+      "POST /api/reference/estimate": ({ url: _url }: { url: URL }) => {
+        const body = posted("/api/reference/estimate").at(-1) as { provider: string; layers: string[] };
+        return estimate(body.provider, body.layers ?? [], body.provider === "wikidata" ? 40_000 : 2_000_000);
+      },
+      "POST /api/reference/downloads": { downloads: [] },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&world=1&kinds=places&layers=boundaries");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for The whole world?" });
+    expect(within(dialog).getByRole("checkbox", { name: "Country boundaries" })).toBeChecked();
+    expect(within(dialog).getByText("From Natural Earth, public domain")).toBeInTheDocument();
+    // Wikidata asks to be told what is asking: nothing is asked of it until that is ticked.
+    await user.click(within(dialog).getByRole("checkbox", { name: "Nuclear power stations and research reactors" }));
+    expect(within(dialog).getByRole("button", { name: "Check size" })).toBeDisabled();
+    expect(within(dialog).getByText(/Tick to send Outpost's name to Wikidata, or leave its kinds out\./)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("checkbox", { name: /Send Outpost's name to Wikidata/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Check size" }));
+    const download = await within(dialog).findByRole("button", { name: /^Download · 2\.04 MB$/ });
+    expect(posted("/api/reference/estimate")).toEqual([
+      { provider: "natural-earth", scope: {}, layers: ["boundaries"] },
+      { provider: "wikidata", scope: {}, layers: ["nuclear"], clientNameAgreed: true },
+    ]);
+    // Each kind's own size, once asked.
+    expect(within(dialog).getByRole("checkbox", { name: "Country boundaries" }).closest("li")).toHaveTextContent("2.00 MB");
+    await user.click(download);
+    await waitFor(() =>
+      expect(posted("/api/reference/downloads")).toEqual([
+        { estimateId: "e-natural-earth", keys: ["natural-earth"], locationId: expect.any(String) },
+        { estimateId: "e-wikidata", keys: ["wikidata"], locationId: expect.any(String) },
+      ]),
+    );
+    expect(posted("/api/maps/data/add")).toEqual([]);
   });
 
   it("adds satellite pictures of an area as a tick, then chooses the day of the picture in the same dialog", async () => {

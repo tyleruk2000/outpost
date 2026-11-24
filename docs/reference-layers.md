@@ -6,8 +6,10 @@ emergency services, shelters and meeting points, emergency planning zones, flood
 England, population, historical records, walking and cycling routes with rights of way,
 and food and supplies.
 
-Nothing is bundled and nothing is fetched by itself: each set is downloaded when you
-press **Download**, after its size has been shown, or imported from a file. Every record
+Nothing is bundled and nothing is fetched by itself. The layers are **nearby places**: a
+country's are added in **Offline maps → Add a place → Nearby places → Which kinds**, the
+worldwide sets under **World basics** the same way, each after its size has been shown; a
+file you obtained is imported. Every record
 keeps its source, dates, accuracy and licence, and the map says what kind of record it is:
 
 | Class | On the map | Meaning |
@@ -26,26 +28,32 @@ mapped infrastructure and anything modelled are kept apart and never counted tog
 ## Where it is
 
 - **Maps → Layers**: a switch, mark and count for each installed layer; population with
-  its scale; filters by country, source and kind; a search by name; the legend.
+  its scale; filters by country, source and kind; a search by name; the legend. A layer
+  with nothing held is offered as the step that adds it, for the country in the middle of
+  the map (or home): "Add hospitals for United Kingdom", or "Add country boundaries for the
+  whole world". Nothing is downloaded or removed from the Layers tab itself.
 - **A press on a record** opens its card: kind, class, source, dates, licence, accuracy,
   and every field the source gives.
-- **Maps → Offline maps** (also from Storage): what is held, under **Nearby places** for each
-  place and under **World basics**, with **Update** and **Remove…** in each place's **⋯**
-  menu; **Add a place** adds nearby places for a country or a part of one; **Sources and
-  licences** lists the sources that are only linked, with why.
+- **Maps → Offline maps** (also from Storage): the one place layer data is managed. What is
+  held is under **Nearby places** for each place and under **World basics**, with **Update**
+  and **Remove…** in each place's **⋯** menu; **Add a place** adds the kinds you tick for a
+  country, a part of one, an area you draw or the world; **Sources and licences** lists the
+  sources that are only linked, with why.
 - **Preparedness → Nuclear preparedness** shows the same layers
   ([nuclear-preparedness.md](nuclear-preparedness.md)). **Search** finds records by name.
 
 ## Getting a set
 
-In **Get layer data** (the Layers tab) choose a source, the area (a country, a state or region, the
-area on screen, or the world, as the source allows) and the layers, then **Show the
-size**. Each item is listed with its size, host and what it would replace, then the total,
-the room needed, and a choice of storage location. Press **Download** within half an hour.
+In **Add a place**, choose the place (a country, a part of one such as a US state, an area
+you draw, or the whole world), tick **Nearby places**, then the kinds under **Which kinds**.
+Each kind says its source. A country's kinds are read from its source file; the others are
+asked of their own source on **Check size**, which shows each kind's size, then the total and
+where it is kept. Press **Download** within half an hour. ([maps.md](maps.md) has the steps.)
 
 Downloads resume and are checked where a checksum exists. A file that cannot be read
-leaves the installed set as it was. **Update** repeats the estimate and replaces the
-set. If a set's drive is unplugged its records stay on the map.
+leaves the installed set as it was. **Update** in the place's menu asks the source again
+(**Check**) and replaces the set (**Update**). If a set's drive is unplugged its records
+stay on the map.
 
 **Importing.** GeoJSON and CSV in WGS 84, Web Mercator, the British National Grid (to
 about 5 m) or the Swiss grids (about 1 m); others are refused. A WorldPop grid downloaded
@@ -104,9 +112,9 @@ is open, kept up or meant for you.
 
 The Environment Agency's Flood Zones 2 and 3, from rivers and the sea. England only.
 
-- **Getting it**: source "Flood zones, England (Environment Agency)", **The area on
-  screen**, **Show the size**. At most 0.2° by 0.3° (about 22 by 20 km) and 5,000 areas,
-  so move closer first. Larger boxes went unanswered.
+- **Getting it**: **Add a place → Draw an area on the map**, then **Nearby places →
+  Flood zones (England)** and **Check size**. At most 0.2° by 0.3° (about 22 by 20 km) and
+  5,000 areas, so draw a small area. Larger boxes went unanswered.
 - **On the map** once a town fills a phone, at most 3,000 to a view. Zone 3 is
   the deeper tone with a solid edge, zone 2 lighter with a broken edge.
 - **The legend** gives each zone in the Agency's words (Zone 3: a 1% or greater annual
@@ -130,8 +138,9 @@ Most sources are asked under Outpost's plain name. The public Overpass servers a
 Wikidata ask programs to identify themselves, so to those two Outpost sends
 `Outpost/0.1.0 (self-hosted offline library; +https://github.com/tyleruk2000/outpost)`,
 the same for every copy and nothing about you (the source sees your address, as any site
-does). It is never done quietly: the name is shown word for word, and **Show the size**
-stays off until you tick **Send this name to …**, each time, updates included.
+does). It is never done quietly: the name is shown word for word, and **Check size** (or
+**Check**, for an update) stays off until you tick **Send Outpost's name to …**, each time,
+updates included.
 
 ## OpenStreetMap: which tags
 
@@ -177,12 +186,11 @@ The Food Standards Agency's list is fuller for UK shops but places some at the p
 
 **Getting it**:
 
-- **OpenStreetMap, by tag query**: tick **Food and supplies** (never part of "all
-  layers"), **The area on screen**, agree to send the name, **Show the size**. At most
-  1.5° by 2° (about a county) and 30,000 places.
-- **OpenStreetMap, from a Geofabrik extract**, for a state, region or country
-  ([below](#food-and-supplies-for-a-state-or-region)).
-- **Food Standards Agency (UK)**: **The area on screen**, same limits; two sets,
+- **A country or a part of one**: **Food and supplies** under **Which kinds**, read from
+  its source file ([below](#food-and-supplies-for-a-state-or-region)).
+- **An area you draw**: **Food and supplies**, asked of an Overpass server, after you tick
+  to send it Outpost's name. At most 1.5° by 2° (about a county) and 30,000 places.
+- **Food Standards Agency (UK)**: **Registered food shops (UK)** for an area you draw, same limits; two sets,
   supermarkets and other shops. **Hygiene ratings are not kept or shown.**
 
 A shop in both sources is shown once, the other listed under "Also recorded by".
@@ -201,16 +209,17 @@ several times a day, which an offline copy cannot do: linked, not fetched.
 
 ### Food and supplies for a state or region
 
-Source **OpenStreetMap, from a Geofabrik extract**, area **A state or region, by name**:
+In **Add a place**, type the state or region ("Ohio", "Bavaria"). Parts of countries are
+found once Geofabrik's list of regions has been read, which the first **Check size** does
+(about 500 kB); a country Geofabrik publishes in parts also offers **Choose parts**.
 
-1. The first time, press **Read the list of regions** (about 500 kB).
-2. Type a name ("ohio", "bay") or pick from **For the home place** or **Countries**.
-3. Tick up to three, tick **Food and supplies** (and any other layer, read from the same
-   file), **Show the size**: Ohio is 328 MB to download and at most 26.3 MB kept.
-4. **Download**. Each region is its own set.
+1. Choose the part (**Ohio**), tick **Nearby places**, and under **Which kinds** tick **Food
+   and supplies** (and any other kind, read from the same file).
+2. **Check size**: Ohio is 328 MB to download.
+3. Say what happens to the source file, then **Download**. Each region is its own set.
 
 Sizes run from Cumbria's 46 MB to England's 1.72 GB and the United States' 12.3 GB. The
-file is deleted once read unless you tick **Keep the downloaded file too**. A state the
+file is deleted once read or kept, as you choose on the source file's line. A state the
 size of Ohio takes about a minute and 650 MB of memory to read on a Mac, a few minutes on
 a Raspberry Pi; on a Pi with 1 GB start Outpost with a capped heap. Germany's whole-country
 file is on another host, which Outpost does not follow: choose its Länder.

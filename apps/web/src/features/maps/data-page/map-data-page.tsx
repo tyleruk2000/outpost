@@ -3,7 +3,8 @@
  * country, a part of one, an area drawn on the map, the world's basics), each saying where its
  * Map, Routes, Nearby places and Walk/cycle stand; a line for anything downloading; a line for
  * what is over a year old; one button, "Add a place". Everything else that offers map data
- * (Road route, Reach, the map's first card, Storage, quick search) leads here.
+ * (Road route, Reach, the map's first card, Storage, quick search, the Layers tab) leads here; the
+ * layers' data is nearby places, added under Add a place › Nearby places › Which kinds.
  */
 import type { Bbox, MapDataBundleKind, MapDataPlace, MapDataResponse } from "@outpost/shared";
 import { ChevronRight, Plus } from "lucide-react";
@@ -17,7 +18,7 @@ import { useHomeCountry } from "@/features/frequencies/home-country";
 import { ON_THIS_DEVICE } from "@/features/kept/device";
 import { keepingSupported, useKept } from "@/features/kept/store";
 import { useCatalogue } from "@/features/layers/data";
-import { GetDialog, ImportDialog } from "@/features/layers/dataset-manager";
+import { ImportDialog } from "@/features/layers/dataset-manager";
 import { useActiveJobs } from "@/lib/queries";
 import { plural } from "@/lib/utils";
 import { useMapOverview } from "../data";
@@ -63,7 +64,12 @@ function Sources() {
         <li>
           Routes, nearby places and source files: OpenStreetMap, © OpenStreetMap contributors (ODbL), in extracts made by Geofabrik GmbH.
         </li>
-        <li>Borders and airports: Natural Earth (public domain) and OurAirports (public domain).</li>
+        <li>
+          Nearby places from their own publishers: borders and towns from Natural Earth and airports from OurAirports (both public domain);
+          nuclear facilities from Wikidata (CC0); population from WorldPop (CC BY 4.0); Swiss meeting points from the Federal Office for
+          Civil Protection; UK food shops from the Food Standards Agency and England's flood zones from the Environment Agency (Open
+          Government Licence); a drawn area's places from OpenStreetMap through an Overpass server.
+        </li>
         <li>Satellite pictures: each set says its publisher, its licence and the day it was taken, wherever it is shown.</li>
       </ul>
       {(catalogue.data?.linked ?? []).length > 0 ? (
@@ -137,13 +143,12 @@ export default function MapDataPage() {
   const home = useHomeCountry();
   const [params, setParams] = useSearchParams();
   const [adding, setAdding] = useState<AddStart | null>(null);
-  const [getting, setGetting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [updating, setUpdating] = useState<{ places: MapDataPlace[]; review: boolean } | null>(null);
   const [removing, setRemoving] = useState<MapDataPlace | null>(null);
 
   // Arriving to do something: ?add=1 (with &countries=FR,CH or &country=GB, &kinds=roads, or an area
-  // drawn: &bbox=w,s,e,n&name=…), ?get=places, ?names=1, ?streets=1.
+  // drawn: &bbox=w,s,e,n&name=…; &layers=hospitals for which kinds of nearby places), ?get=places, ?names=1, ?streets=1.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival
   useEffect(() => {
     const kinds = (params.get("kinds") ?? "").split(",").filter(Boolean);
@@ -153,6 +158,10 @@ export default function MapDataPage() {
       .map((code) => code.trim().toUpperCase())
       .filter((code) => /^[A-Z]{2}$/.test(code));
     const bbox = (params.get("bbox") ?? "").split(",").map(Number);
+    const layers = (params.get("layers") ?? "")
+      .split(",")
+      .map((each) => each.trim())
+      .filter((each) => /^[a-z-]{2,30}$/.test(each));
     if (params.get("add") || params.get("names")) {
       const area =
         bbox.length === 4 && bbox.every(Number.isFinite)
@@ -163,9 +172,12 @@ export default function MapDataPage() {
         ...(params.get("names") ? { bundles: ["map"] as MapDataBundleKind[] } : bundles.length > 0 ? { bundles } : {}),
         ...(area ? { area } : {}),
         ...(params.get("world") ? { world: true } : {}),
+        ...(layers.length > 0 ? { layers } : {}),
       });
     }
-    if (params.get("get")) setGetting(true);
+    // Layer data (an older link, ?get=places): nearby places are a tick of Add a place like the rest.
+    if (params.get("get"))
+      setAdding({ ...(countries.length > 0 ? { countries } : {}), bundles: ["nearby"], ...(layers.length > 0 ? { layers } : {}) });
     // Walking and cycling are a tick of Add a place, as every kind of map data is added.
     if (params.get("streets")) setAdding({ ...(countries.length > 0 ? { countries } : {}), bundles: ["walk"] as MapDataBundleKind[] });
     if (params.get("add") || params.get("get") || params.get("names") || params.get("streets")) setParams({}, { replace: true });
@@ -293,13 +305,8 @@ export default function MapDataPage() {
           start={adding}
           onAdded={added}
           onImport={() => setImporting(true)}
-          onOtherSources={() => {
-            setAdding(null);
-            setGetting(true);
-          }}
         />
       ) : null}
-      <GetDialog open={getting} onOpenChange={setGetting} engine={null} initial={null} />
       <ImportDialog open={importing} onOpenChange={setImporting} />
       {answer ? (
         <PlaceUpdatesDialog

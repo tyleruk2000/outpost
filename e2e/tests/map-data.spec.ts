@@ -100,9 +100,13 @@ test.describe("Offline maps", () => {
     await expect(download).toBeVisible({ timeout: 15_000 });
     await expect(dialog.getByText(/Sizes from 127\.0\.0\.1/)).toBeVisible();
 
-    // The source file, asked once (it may have been answered by another test already: then under More choices).
-    const keep = dialog.getByRole("radio", { name: /Keep the source file/ });
-    if (!(await keep.isVisible())) await dialog.getByText("More choices").click();
+    // The source file, on the main view: both choices the first time, else the remembered one in a line with Change.
+    const keep = dialog.getByRole("radio", { name: /^Keep it/ });
+    if (!(await keep.isVisible()))
+      await dialog
+        .getByRole("region", { name: "The source file" })
+        .getByRole("button", { name: /^Change/ })
+        .click();
     await keep.click();
     await expect(
       dialog.getByRole("radiogroup", { name: "Where to keep the source file" }).getByRole("radio", { checked: true }),
@@ -122,16 +126,20 @@ test.describe("Offline maps", () => {
       .networks;
     expect(networks).toEqual([expect.objectContaining({ regionId: "monaco", extract: expect.objectContaining({ kept: true }) })]);
 
-    // Remembered: the next time the source file is not asked, and keeping it is chosen under More choices.
+    // Remembered: the next time the choice is said in one line on the main view, with Change; nothing is folded away.
     await page.getByRole("button", { name: "Add a place" }).first().click();
     await dialog.getByLabel("Country, region or town").fill("Luxembourg");
     await dialog
       .getByRole("list", { name: "Places found" })
       .getByRole("button", { name: /^Luxembourg/ })
       .click();
-    await expect(dialog.getByRole("radio", { name: /Keep the source file/ })).toHaveCount(0);
-    await dialog.getByText("More choices").click();
-    await expect(dialog.getByRole("radio", { name: /Keep the source file/ })).toBeChecked();
+    await expect(dialog.getByRole("radio", { name: /^Keep it/ })).toHaveCount(0);
+    const line = dialog.getByRole("region", { name: "The source file" });
+    await expect(line).toContainText(
+      /^Source file: kept on .+\. Needed to add walking and cycling or update without downloading again · Change/,
+    );
+    await line.getByRole("button", { name: /^Change/ }).click();
+    await expect(dialog.getByRole("radio", { name: /^Keep it/ })).toBeChecked();
     await page.keyboard.press("Escape");
 
     // Storage's row opens to Monaco with the same marks; Downloads and tasks titles the work in the same words.
