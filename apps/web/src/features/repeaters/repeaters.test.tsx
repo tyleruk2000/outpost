@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { hereHome, household, households } from "@/features/households/test-support";
 import { ApiError, api } from "@/lib/api";
 import { exportHref, NO_FILTERS } from "./data";
 import { DuplicatesDialog } from "./duplicates-dialog";
@@ -164,7 +165,14 @@ describe("repeaters on the map", () => {
     const data = repeatersData(overlay, { lat: 54.5, lon: -3.1 });
     expect(data.features.map((feature) => feature.properties.kind)).toEqual(["cell", "point", "point", "selected"]);
     expect(data.features[0]!.properties).toEqual({ kind: "cell", count: 1234, label: "1,234" });
-    expect(data.features[1]!.properties).toEqual({ kind: "point", id: "r1", callsign: "QZ3AB", detail: "QZ3AB\n145.6625", offAir: false });
+    expect(data.features[1]!.properties).toEqual({
+      kind: "point",
+      id: "r1",
+      callsign: "QZ3AB",
+      detail: "QZ3AB\n145.6625",
+      offAir: false,
+      shape: "circle",
+    });
     expect(data.features[2]!.properties.offAir).toBe(true);
     expect(data.features[1]!.geometry).toEqual({ type: "Point", coordinates: [-3.1, 54.5] });
     expect(repeatersData(undefined, null).features).toEqual([]);
@@ -563,7 +571,7 @@ describe("where lists can be had", () => {
     rest: ordered.rest.map((region) => region.id),
   });
 
-  it("puts first the country the map was last looking at, or failing that where the saved places are, and asks for no location", () => {
+  it("puts first the country home is in, or failing that where the saved places are, and asks for no location", () => {
     // Keswick: the United Kingdom only.
     expect(names(orderRegions(regions, { lat: 54.6, lon: -3.13 }, []))).toEqual({ likely: ["gb"], rest: ["world", "au", "ie"] });
     // Dublin is inside both boxes: the smaller country first.
@@ -672,19 +680,21 @@ describe("where lists can be had", () => {
   }
 
   it("says of each source whether Outpost can get it, how to get it by hand, or that there is nothing, with the reason and the terms", async () => {
-    // The map was last left over the Lake District.
-    localStorage.setItem("outpost.maps.view", JSON.stringify({ lat: 54.5, lon: -3.1, zoom: 9, bearing: 0, pitch: 0 }));
-    vi.spyOn(api, "get").mockImplementation(async (path) => (path === "/api/repeaters/sources" ? sources : { markers: [] }) as never);
+    // Home is in the Lake District.
+    const lakes = households([household({ home: hereHome("Where the van is", 54.5, -3.1, Date.now()) })]);
+    vi.spyOn(api, "get").mockImplementation(
+      async (path) => (path === "/api/repeaters/sources" ? sources : path === "/api/households" ? lakes : { markers: [] }) as never,
+    );
     const post = vi.spyOn(api, "post");
     show();
     const section = (await screen.findByRole("heading", { name: "Get a list" })).closest("section")!;
     expect(section).toHaveTextContent("Getting a list needs the internet for the moment it takes; nothing else on this screen does.");
-    expect(await within(section).findByText(/The sources for where your map was last looking come first\./)).toBeVisible();
+    expect(await within(section).findByText(/The sources for where your home is come first\./)).toBeVisible();
     const groups = within(section)
       .getAllByRole("group")
       .filter((group) => group.hasAttribute("aria-label"));
     expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual(["United Kingdom", "Worldwide"]);
-    // Where the map was looking is open, and so is the whole world.
+    // Where home is is open, and so is the whole world.
     expect(groups.every((group) => (group as HTMLDetailsElement).open)).toBe(true);
     expect(groups[0]).toHaveTextContent("1 Outpost can get, 1 by hand");
 

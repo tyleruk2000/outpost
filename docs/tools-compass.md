@@ -7,9 +7,10 @@ norths. It works with no internet.
 
 ## Using it
 
-- **Place.** Home unless you choose another: a saved place, the middle of the map, where
-  the device is (on a secure page only), or a position, grid reference or locator typed in.
-  The map's centre card opens this screen for the middle of the map.
+- **Place.** Home unless you choose another: where the device is (over HTTPS only; greyed
+  out with the reason otherwise), a saved place, or **Search for a place…** (a town, a
+  position, a grid reference or a locator). The map's centre card opens this screen for
+  the middle of the map, shown as a point on the map.
 - **North here.** In Great Britain, first the rule for an Ordnance Survey map, worked out
   for the place and today, for example at Scafell Pike in November 2026:
 

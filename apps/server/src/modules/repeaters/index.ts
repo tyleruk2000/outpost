@@ -19,6 +19,7 @@ import {
   REPEATER_DUPLICATE_CHOICES,
   REPEATER_EXPORT_FORMATS,
   REPEATER_MODE_IDS,
+  REPEATER_SORTS,
   REPEATER_STATUSES,
   type RepeaterBand,
   type RepeaterMode,
@@ -89,6 +90,7 @@ const listQuery = z.object({
   ...filterShape,
   near: position("near").optional(),
   withinKm: z.coerce.number().positive().max(20_000).optional(),
+  sort: z.enum(REPEATER_SORTS).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
@@ -98,11 +100,14 @@ const exportQuery = z.object({
   format: z.enum(REPEATER_EXPORT_FORMATS),
   near: position("near").optional(),
   withinKm: z.coerce.number().positive().max(20_000).optional(),
+  sort: z.enum(REPEATER_SORTS).optional(),
   limit: z.coerce.number().int().min(1).max(100_000).optional(),
 });
 
 const overlayQuery = z.object({
   ...filterShape,
+  near: position("near").optional(),
+  withinKm: z.coerce.number().positive().max(20_000).optional(),
   bbox: z
     .string()
     .regex(/^(-?\d+(\.\d+)?,){3}-?\d+(\.\d+)?$/, "Give `bbox` as west,south,east,north in degrees.")

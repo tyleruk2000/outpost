@@ -10,6 +10,7 @@
  * repeaters held more than once and makes one of each.
  */
 import {
+  type Bbox,
   bandName,
   formatMHz,
   MAX_CHIRP_ROWS,
@@ -23,27 +24,48 @@ import {
   type RepeaterExportFormat,
   type RepeaterListDto,
   type RepeaterMode,
+  type RepeaterSort,
   type RepeatersOverview,
 } from "@outpost/shared";
-import { CircleAlert, Download, Ellipsis, FileUp, Merge, Pencil, Plus, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import {
+  ArrowRight,
+  CircleAlert,
+  Download,
+  Ellipsis,
+  FileUp,
+  List as ListIcon,
+  Map as MapIcon,
+  MapPin,
+  Merge,
+  Pencil,
+  Plus,
+  Printer,
+  RefreshCw,
+  Search,
+  Trash2,
+  Undo2,
+} from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
+import { Disclosure, EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
-import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { Badge, Checkbox, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { FirstUseGuide } from "@/features/help/first-use";
-import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
+import { useStoredState } from "@/features/maps/hooks";
+import { formatBearing } from "@/features/maps/lib/geo";
+import type { CameraView } from "@/features/maps/lib/view";
 import { LicenceLine } from "@/features/radio/licence";
+import { type HeightUnit, useHeightUnit } from "@/lib/heights";
 import { useDebounced } from "@/lib/use-debounced";
-import { formatDate, formatNumber, plural } from "@/lib/utils";
+import { useMediaQuery } from "@/lib/use-media-query";
+import { cn, formatDate, formatNumber, plural } from "@/lib/utils";
 import {
   exportHref,
   type LatLon,
-  NO_FILTERS,
   type RepeaterFilters,
   useRemoveList,
   useRepeaterList,
@@ -54,57 +76,107 @@ import {
 } from "./data";
 import { DuplicatesDialog } from "./duplicates-dialog";
 import { ImportDialog } from "./import-dialog";
-import { OriginPicker, useOrigin } from "./origin";
+import { BandMark, bandShape } from "./map/band-shapes";
+import { OriginPicker, REPEATERS_ORIGIN_KEY, useOrigin, useStoredOrigin } from "./origin";
+import { PrintDialog } from "./print-dialog";
 import { RepeaterFormDialog } from "./repeater-form";
+import { RepeatersMap } from "./repeaters-map";
 import { SourcesSection, useGetList } from "./sources-section";
+import { useDistanceText, withinOptions, withinText } from "./units";
 import { accessParts, ageWarning, dayText, isApproximate, shiftWords, sourceOf } from "./words";
 
 const ANY = "any";
-const WITHIN = ["10", "25", "50", "100", "200", "500"] as const;
 
-/** One repeater in the list: what to listen on and how to get in first, then where it is and where it came from. */
-function RepeaterRow({ repeater, list, from }: { repeater: RepeaterDto; list: RepeaterListDto | undefined; from: string }) {
+/**
+ * One repeater in the list: what to listen on and how to get in first, then where it is and where it came from.
+ * On a phone the row opens the repeater; beside the map it rings the repeater there instead, and offers its details.
+ */
+function RepeaterRow({
+  repeater,
+  list,
+  from,
+  distance,
+  selected,
+  onSelect,
+}: {
+  repeater: RepeaterDto;
+  list: RepeaterListDto | undefined;
+  from: string;
+  distance: (meters: number) => string;
+  selected: boolean;
+  onSelect?: () => void;
+}) {
   const source = sourceOf(list);
   const access = accessParts(repeater);
-  return (
-    <li>
-      <Link
-        to={`/radio/repeaters/${repeater.id}`}
-        className="-mx-2 grid gap-x-4 gap-y-0.5 rounded-control px-2 py-2.5 hover:bg-surface focus-visible:-outline-offset-2 sm:grid-cols-[minmax(0,1fr)_auto]"
-      >
-        <span className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+  const body = (
+    <>
+      <span className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <span className="flex items-center gap-1.5 self-center">
+          <BandMark shape={bandShape(repeater.band)} hollow={repeater.status === "off-air"} className="size-3 shrink-0" />
           <span className="text-body font-semibold text-ink">{repeater.callsign}</span>
-          <span className="tabular font-mono text-[0.875rem] text-ink">{formatMHz(repeater.outputHz)}</span>
-          <span className="tabular text-small text-ink-muted">{shiftWords(repeater)}</span>
-          {access.length > 0 ? <span className="tabular text-small text-ink">{access.join(", ")}</span> : null}
         </span>
-        <span className="tabular text-small text-ink sm:text-right">
-          {repeater.distanceMeters !== undefined && repeater.bearingDegrees !== undefined ? (
-            <>
-              {isApproximate(repeater) ? "about " : ""}
-              {formatDistance(repeater.distanceMeters)}, {formatBearing(repeater.bearingDegrees)}
-              <span className="sr-only"> from {from}</span>
-            </>
-          ) : from && repeater.lat === null ? (
-            <span className="text-ink-muted">No position listed</span>
-          ) : null}
+        <span className="tabular font-mono text-[0.875rem] text-ink">{formatMHz(repeater.outputHz)} MHz</span>
+        <span className="tabular text-small text-ink-muted">{shiftWords(repeater)}</span>
+        {access.length > 0 ? <span className="tabular text-small text-ink">{access.join(", ")}</span> : null}
+      </span>
+      <span className="tabular text-small text-ink sm:text-right">
+        {repeater.distanceMeters !== undefined && repeater.bearingDegrees !== undefined ? (
+          <>
+            {isApproximate(repeater) ? "about " : ""}
+            {distance(repeater.distanceMeters)}, {formatBearing(repeater.bearingDegrees)}
+            <span className="sr-only"> from {from}</span>
+          </>
+        ) : from && repeater.lat === null ? (
+          <span className="text-ink-muted">No position listed</span>
+        ) : null}
+      </span>
+      <span className="min-w-0 text-small text-ink-muted sm:col-span-2">
+        {[repeater.place, repeater.locator, repeater.modes.map(modeName).join(", "), bandName(repeater.band)].filter(Boolean).join(" · ")}
+        {repeater.status === "off-air" ? (
+          <Badge tone="warning" className="ml-2 whitespace-normal">
+            Listed as not operational
+          </Badge>
+        ) : repeater.status === "reduced" ? (
+          <Badge className="ml-2 whitespace-normal">Listed as on reduced output</Badge>
+        ) : null}
+        {repeater.edited ? <Badge className="ml-2">Changed by you</Badge> : null}
+        <span className="block">
+          {source.text}
+          {source.age ? <span className="text-warning">, {source.age}</span> : null}
         </span>
-        <span className="min-w-0 text-small text-ink-muted sm:col-span-2">
-          {[repeater.place, repeater.locator, repeater.modes.map(modeName).join(", "), bandName(repeater.band)].filter(Boolean).join(" · ")}
-          {repeater.status === "off-air" ? (
-            <Badge tone="warning" className="ml-2 whitespace-normal">
-              Listed as not operational
-            </Badge>
-          ) : repeater.status === "reduced" ? (
-            <Badge className="ml-2 whitespace-normal">Listed as on reduced output</Badge>
-          ) : null}
-          {repeater.edited ? <Badge className="ml-2">Changed by you</Badge> : null}
-          <span className="block">
-            {source.text}
-            {source.age ? <span className="text-warning">, {source.age}</span> : null}
-          </span>
-        </span>
-      </Link>
+      </span>
+    </>
+  );
+  const row =
+    "-mx-2 grid w-[calc(100%+1rem)] gap-x-4 gap-y-0.5 rounded-control px-2 py-2.5 text-left transition-colors duration-(--duration-fast) hover:bg-surface focus-visible:-outline-offset-2 sm:grid-cols-[minmax(0,1fr)_auto]";
+  if (!onSelect) {
+    return (
+      <li id={`repeater-${repeater.id}`}>
+        <Link to={`/radio/repeaters/${repeater.id}`} className={row}>
+          {body}
+        </Link>
+      </li>
+    );
+  }
+  return (
+    <li id={`repeater-${repeater.id}`} className={cn(selected && "bg-surface")}>
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={onSelect}
+        className={cn(row, "cursor-default", selected && "shadow-[inset_3px_0_0_var(--primary)] hover:bg-surface-strong")}
+      >
+        {body}
+      </button>
+      {selected ? (
+        <div className="flex flex-wrap gap-2 pb-3">
+          <Button asChild size="sm" variant="primary">
+            <Link to={`/radio/repeaters/${repeater.id}`}>
+              Details of {repeater.callsign} <ArrowRight />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -130,6 +202,7 @@ function ExportDialog({
   filters,
   near,
   withinKm,
+  sort,
   total,
   from,
 }: {
@@ -138,6 +211,7 @@ function ExportDialog({
   filters: RepeaterFilters;
   near: LatLon | null;
   withinKm: number | null;
+  sort: RepeaterSort;
   total: number;
   from: string;
 }) {
@@ -152,7 +226,8 @@ function ExportDialog({
         <DialogBody className="grid gap-4">
           <p className="text-small text-ink-muted">
             The file holds the repeaters the list is showing now: {plural(total, "repeater")}
-            {near ? `, nearest to ${from} first` : ", in callsign order"}. Change the filters behind this box to choose a different set.
+            {near && sort === "near" ? `, nearest to ${from} first` : sort === "frequency" ? ", in frequency order" : ", in callsign order"}
+            . Change the filters behind this box to choose a different set.
           </p>
           <Field label="For">
             {(ids) => (
@@ -169,7 +244,11 @@ function ExportDialog({
           </Field>
           <Field
             label="At most"
-            hint={near ? "The nearest come first, so a small number is the nearest few." : "Radios hold a limited number of channels."}
+            hint={
+              near && sort === "near"
+                ? "The nearest come first, so a small number is the nearest few."
+                : "Radios hold a limited number of channels."
+            }
             error={limitOk ? undefined : `A number from 1 to ${formatNumber(format === "chirp" ? MAX_CHIRP_ROWS : 100_000)}.`}
             className="max-w-[12rem]"
           >
@@ -199,7 +278,7 @@ function ExportDialog({
           </Button>
           {limitOk && total > 0 ? (
             <Button asChild variant="primary">
-              <a href={exportHref(format, filters, near, withinKm, count)} download onClick={onClose}>
+              <a href={exportHref(format, filters, near, withinKm, count, sort)} download onClick={onClose}>
                 <Download /> Export {plural(taken, "repeater")}
               </a>
             </Button>
@@ -416,26 +495,120 @@ function summaryOf(overview: RepeatersOverview): string {
   return `${parts.join(", ")}.`;
 }
 
+/** "1 list, data of 17 Nov 2026" or "2 lists, the oldest of 1 Mar 2025": what the closed part about lists holds. */
+function listsSummary(lists: RepeaterListDto[], ownCount: number): string {
+  if (lists.length === 0) return ownCount > 0 ? "Entered by hand; where to get a list" : "Where to get a list";
+  const oldest = Math.min(...lists.map((list) => list.dataDate));
+  return `${plural(lists.length, "list")}, ${lists.length === 1 ? "data of" : "the oldest of"} ${formatDate(oldest)}; where to get more`;
+}
+
+type View = "list" | "map";
+const VIEW_KEY = "outpost.repeaters.view";
+const isView = (value: unknown): value is View => value === "list" || value === "map";
+/** At this width and wider, the list and the map sit side by side. */
+const SIDE_BY_SIDE = "(min-width: 64rem)";
+
+/** The screen's state in its address, so that Back from a repeater comes back to the same list, place and map. */
+function useAddressState() {
+  const [params, setParams] = useSearchParams();
+  const update = useCallback(
+    (changes: Record<string, string | null>) => {
+      // Read from the address as it is now: two changes in one moment (the map at rest, a filter) must not undo each other.
+      const next = new URLSearchParams(window.location.search);
+      for (const [name, value] of Object.entries(changes)) {
+        if (value === null || value === "") next.delete(name);
+        else next.set(name, value);
+      }
+      setParams(next, { replace: true, preventScrollReset: true });
+    },
+    [setParams],
+  );
+  return [params, update] as const;
+}
+
+const cameraOf = (text: string | null): CameraView | null => {
+  const match = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/.exec(text ?? "");
+  if (!match) return null;
+  const view = { lat: Number(match[1]), lon: Number(match[2]), zoom: Number(match[3]) };
+  return Math.abs(view.lat) <= 90 && Math.abs(view.lon) <= 180 && view.zoom <= 22 ? view : null;
+};
+
+/** The words for a filter that is on, for saying what matched nothing. */
+function activeFilters(
+  applied: RepeaterFilters,
+  withinKm: number | null,
+  origin: string,
+  lists: Map<string, RepeaterListDto>,
+  unit: HeightUnit,
+): string[] {
+  return [
+    applied.band ? bandName(applied.band) : "",
+    applied.mode ? modeName(applied.mode) : "",
+    withinKm ? `within ${withinText(withinKm, unit)} of ${origin}` : "",
+    applied.hideOffAir ? "leaving out those not operational" : "",
+    applied.list === "own" ? "only those entered by hand" : applied.list ? `only “${lists.get(applied.list)?.name ?? "one list"}”` : "",
+  ].filter(Boolean);
+}
+
 export default function RepeatersPage() {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params, update] = useAddressState();
   const overview = useRepeatersOverview();
-  // "Open the list" on the map hands over where the map was looking.
-  const handed = useMemo(() => {
-    const match = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(params.get("near") ?? "");
-    return match ? { lat: Number(match[1]), lon: Number(match[2]) } : null;
-  }, [params]);
-  const origin = useOrigin(handed);
-  const [filters, setFilters] = useState<RepeaterFilters>(() => ({ ...NO_FILTERS, q: params.get("q") ?? "" }));
-  const [within, setWithin] = useState<string>(ANY);
+  const unit = useHeightUnit();
+  const sideBySide = useMediaQuery(SIDE_BY_SIDE, true);
+
+  // Where distances are measured from: the address first, then what this browser last chose.
+  const [storedOrigin, setStoredOrigin] = useStoredOrigin(REPEATERS_ORIGIN_KEY);
+  // "Open the list" on the Maps screen hands over where the map was looking, as a point on the map.
+  const handed = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(params.get("near") ?? "");
+  const fromText = params.get("from") ?? (handed ? `point:${handed[1]},${handed[2]}` : storedOrigin);
+  const origin = useOrigin([
+    fromText,
+    (next: string) => {
+      setStoredOrigin(next);
+      update({ from: next, near: null });
+    },
+  ]);
+
+  const filters: RepeaterFilters = {
+    q: params.get("q") ?? "",
+    band: (params.get("band") ?? "") as RepeaterBand | "",
+    mode: (params.get("mode") ?? "") as RepeaterMode | "",
+    hideOffAir: params.get("off") === "1",
+    list: params.get("list") ?? "",
+  };
+  const set = <K extends keyof RepeaterFilters>(key: K, value: RepeaterFilters[K]) => {
+    const name = key === "hideOffAir" ? "off" : key;
+    update({ [name]: typeof value === "boolean" ? (value ? "1" : null) : (value as string) || null });
+  };
+  const within = Number(params.get("within")) || null;
+  const sortAsked = (params.get("sort") ?? "near") as RepeaterSort;
+  const sort: RepeaterSort = sortAsked === "near" && !origin.position ? "callsign" : sortAsked;
+  const [storedView, setStoredView] = useStoredState<View>(VIEW_KEY, isView, "list");
+  const view: View = isView(params.get("view")) ? (params.get("view") as View) : storedView;
+  const setView = (next: View) => {
+    setStoredView(next);
+    update({ view: next });
+    // The map fills the screen below the switch: brought up to it, so the whole map is in reach of a thumb.
+    if (next === "map") requestAnimationFrame(() => document.getElementById("repeaters-view")?.scrollIntoView({ block: "start" }));
+  };
+  const selectedId = params.get("sel");
+  const select = (id: string | null) => update({ sel: id });
+  const camera = cameraOf(params.get("map"));
+
   const typed = useDebounced(filters.q, 250);
-  const applied = useMemo(() => ({ ...filters, q: typed }), [filters, typed]);
-  const withinKm = origin.position && within !== ANY ? Number(within) : null;
-  const list = useRepeaterList(applied, origin.position, withinKm);
+  const { band, mode, hideOffAir, list: listId } = filters;
+  const applied = useMemo<RepeaterFilters>(
+    () => ({ q: typed, band, mode, hideOffAir, list: listId }),
+    [typed, band, mode, hideOffAir, listId],
+  );
+  const withinKm = origin.position && within ? within : null;
+  const list = useRepeaterList(applied, origin.position, withinKm, sort);
 
   const [importing, setImporting] = useState<{ list: RepeaterListDto | null } | null>(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [editing, setEditing] = useState<RepeaterListDto | null>(null);
   const [removing, setRemoving] = useState<RepeaterListDto | null>(null);
   const [finding, setFinding] = useState(false);
@@ -443,16 +616,31 @@ export default function RepeatersPage() {
   const sources = useRepeaterSources();
   const removeList = useRemoveList();
   const hideId = useId();
+  const distance = useDistanceText();
 
   const lists = useMemo(() => new Map((overview.data?.lists ?? []).map((item) => [item.id, item])), [overview.data]);
   const pages = list.data?.pages ?? [];
   const repeaters = pages.flatMap((page) => page.repeaters);
   const total = pages[0]?.total ?? 0;
   const unplaced = pages[0]?.withoutPosition ?? 0;
-  const set = <K extends keyof RepeaterFilters>(key: K, value: RepeaterFilters[K]) =>
-    setFilters((current) => ({ ...current, [key]: value }));
   const filtered = Boolean(applied.q.trim() || applied.band || applied.mode || applied.hideOffAir || applied.list || withinKm);
   const held = overview.data?.total ?? 0;
+  const near = sort === "near" && origin.position;
+
+  // Round what the list shows, for a map with neither a place nor a view of its own to open on.
+  const fallbackFit = useMemo<Bbox | null>(() => {
+    const placed = repeaters.filter((repeater) => repeater.lat !== null && repeater.lon !== null);
+    if (placed.length === 0) return null;
+    const lats = placed.map((repeater) => repeater.lat!);
+    const lons = placed.map((repeater) => repeater.lon!);
+    return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+  }, [repeaters]);
+
+  // A repeater chosen on the map is brought into view in the list beside it.
+  useEffect(() => {
+    if (!selectedId || !sideBySide) return;
+    document.getElementById(`repeater-${selectedId}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId, sideBySide]);
 
   const bandOptions = [
     { value: ANY, label: "Every band" },
@@ -481,19 +669,66 @@ export default function RepeatersPage() {
       </Button>
     </>
   );
+  const clearFilters = () => update({ q: null, band: null, mode: null, off: null, list: null, within: null });
+  const orderWords = near ? `, nearest to ${origin.name} first` : sort === "frequency" ? ", by frequency" : ", by callsign";
+  const showMap = sideBySide || view === "map";
+  const showList = sideBySide || view === "list";
+  const empty = filtered ? activeFilters(applied, withinKm, origin.name, lists, unit) : [];
+
+  const results = (
+    <>
+      {list.isPending ? (
+        <ListSkeleton />
+      ) : list.isError ? (
+        <ErrorState error={list.error} onRetry={() => void list.refetch()} />
+      ) : repeaters.length === 0 ? (
+        <div className="border-y border-border py-6 text-body text-ink">
+          <p>
+            {applied.q.trim() ? `Nothing matches “${applied.q.trim()}”.` : "No repeater matches these filters."}
+            {empty.length > 0 ? <span className="text-ink-muted"> Filters on: {empty.join("; ")}.</span> : null}
+          </p>
+          {filtered ? (
+            <Button variant="link" onClick={clearFilters} className="mt-1">
+              Clear the filters
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          <Rows aria-label="Repeaters">
+            {repeaters.map((repeater) => (
+              <RepeaterRow
+                key={repeater.id}
+                repeater={repeater}
+                list={repeater.listId ? lists.get(repeater.listId) : undefined}
+                from={origin.position ? origin.name : ""}
+                distance={distance}
+                selected={sideBySide && selectedId === repeater.id}
+                onSelect={sideBySide ? () => select(selectedId === repeater.id ? null : repeater.id) : undefined}
+              />
+            ))}
+          </Rows>
+          {list.hasNextPage ? (
+            <div className="mt-4 flex items-center gap-3">
+              <Button onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>
+                Show more
+              </Button>
+              <span className="tabular text-small text-ink-muted">
+                {formatNumber(repeaters.length)} of {formatNumber(total)} shown
+              </span>
+            </div>
+          ) : null}
+        </>
+      )}
+    </>
+  );
 
   return (
-    <Page>
+    <Page width="full" className="max-w-[90rem]">
       <PageHeader
         title="Repeaters"
         description="Amateur radio repeaters kept in Outpost: found, measured from a place and written out for a radio with no connection."
         actions={held > 0 ? actions : undefined}
-      />
-      <LicenceLine use="listen-and-transmit" className="mb-6" />
-      <FirstUseGuide
-        slug="radio-quick-start"
-        words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
-        className="mb-6"
       />
 
       {overview.isPending ? (
@@ -502,6 +737,12 @@ export default function RepeatersPage() {
         <ErrorState error={overview.error} onRetry={() => void overview.refetch()} />
       ) : held === 0 && overview.data.lists.length === 0 ? (
         <>
+          <LicenceLine use="listen-and-transmit" className="mb-6" />
+          <FirstUseGuide
+            slug="radio-quick-start"
+            words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
+            className="mb-6"
+          />
           <EmptyState title="No repeaters yet" action={actions} seed={7}>
             <p>
               Bring in a list you have as a file: one of those the RSGB's ETCC offers at ukrepeater.net, a file saved from CHIRP, or any CSV
@@ -528,7 +769,9 @@ export default function RepeatersPage() {
                   onChange={(event) => set("q", event.target.value)}
                   placeholder="Callsign, town or frequency"
                   autoComplete="off"
+                  autoCorrect="off"
                   spellCheck={false}
+                  enterKeyHint="search"
                 />
               )}
             </Field>
@@ -552,15 +795,38 @@ export default function RepeatersPage() {
                 />
               )}
             </Field>
-            <OriginPicker origin={origin} />
-            <Field label="Within">
+            <OriginPicker
+              origin={origin}
+              onPoint={() => (sideBySide ? undefined : setView("map"))}
+              className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-3 [&>*:only-child]:col-span-2 max-sm:[&>*]:col-span-2"
+            />
+            <Field label="Within" hint={origin.position ? undefined : "Choose where to measure from first."}>
               {(ids) => (
                 <Select
                   {...ids}
-                  value={origin.position ? within : ANY}
-                  onChange={setWithin}
+                  value={origin.position && within ? String(within) : ANY}
+                  onChange={(value) => update({ within: value === ANY ? null : value })}
                   disabled={!origin.position}
-                  options={[{ value: ANY, label: "Any distance" }, ...WITHIN.map((km) => ({ value: km as string, label: `${km} km` }))]}
+                  options={[{ value: ANY, label: "Any distance" }, ...withinOptions(unit)]}
+                />
+              )}
+            </Field>
+            <Field label="Sort">
+              {(ids) => (
+                <Select<RepeaterSort>
+                  {...ids}
+                  value={sort}
+                  onChange={(value) => update({ sort: value === "near" ? null : value })}
+                  options={[
+                    {
+                      value: "near",
+                      label: "Nearest first",
+                      disabled: !origin.position,
+                      description: origin.position ? undefined : "Choose where to measure from first",
+                    },
+                    { value: "callsign", label: "Callsign" },
+                    { value: "frequency", label: "Frequency" },
+                  ]}
                 />
               )}
             </Field>
@@ -576,125 +842,138 @@ export default function RepeatersPage() {
               ) : null}
             </div>
           </section>
-          {origin.choice === "map" && !origin.position ? (
-            <p className="mt-2 text-small text-ink-muted">The map has not been opened in this browser yet, so its middle is not known.</p>
+          {!origin.position && !origin.locating ? (
+            <p className="mt-3 flex items-start gap-1.5 text-small text-ink">
+              <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+              <span>
+                Choose where to measure from to see distances: {origin.home ? "a place above" : "Home is not set, so choose a place above"},
+                or tap the map.
+              </span>
+            </p>
           ) : null}
 
-          <Section
-            className="mt-8"
-            title={
-              list.isPending ? (
-                "Repeaters"
-              ) : (
-                <span className="tabular" aria-live="polite">
-                  {filtered ? `${plural(total, "repeater")} of ${formatNumber(held)}` : plural(total, "repeater")}
-                  {origin.position ? `, nearest to ${origin.name} first` : ""}
-                </span>
-              )
-            }
-            description={
-              origin.position && unplaced > 0 && !withinKm
-                ? `${plural(unplaced, "entry", "entries")} with no position ${unplaced === 1 ? "comes" : "come"} last.`
-                : undefined
-            }
-            actions={
-              <Button size="sm" onClick={() => setExporting(true)} disabled={total === 0}>
-                <Download /> Export these
-              </Button>
-            }
-          >
-            {list.isPending ? (
-              <ListSkeleton />
-            ) : list.isError ? (
-              <ErrorState error={list.error} onRetry={() => void list.refetch()} />
-            ) : repeaters.length === 0 ? (
-              <p className="border-y border-border py-6 text-body text-ink-muted">
-                No repeater matches. {withinKm ? `None of those held is within ${withinKm} km of ${origin.name}. ` : ""}
-                {filtered ? (
-                  <Button
-                    variant="link"
-                    onClick={() => {
-                      setFilters(NO_FILTERS);
-                      setWithin(ANY);
-                    }}
-                  >
-                    Clear the filters
-                  </Button>
-                ) : null}
-              </p>
-            ) : (
-              <>
-                <Rows aria-label="Repeaters">
-                  {repeaters.map((repeater) => (
-                    <RepeaterRow
-                      key={repeater.id}
-                      repeater={repeater}
-                      list={repeater.listId ? lists.get(repeater.listId) : undefined}
-                      from={origin.position ? origin.name : ""}
-                    />
-                  ))}
-                </Rows>
-                {list.hasNextPage ? (
-                  <div className="mt-4 flex items-center gap-3">
-                    <Button onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>
-                      Show more
-                    </Button>
-                    <span className="tabular text-small text-ink-muted">
-                      {formatNumber(repeaters.length)} of {formatNumber(total)} shown
+          <section aria-labelledby="repeaters-results" className="mt-8">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <h2 id="repeaters-results" className="text-lead font-semibold text-ink">
+                  {list.isPending || list.isError ? (
+                    "Repeaters"
+                  ) : (
+                    <span className="tabular" aria-live="polite">
+                      {filtered ? `${plural(total, "repeater")} of ${formatNumber(held)}` : plural(total, "repeater")}
+                      {total > 1 ? orderWords : ""}
                     </span>
-                  </div>
+                  )}
+                </h2>
+                {near && unplaced > 0 && !withinKm ? (
+                  <p className="mt-0.5 text-small text-ink-muted">
+                    {plural(unplaced, "entry", "entries")} with no position {unplaced === 1 ? "comes" : "come"} last.
+                  </p>
                 ) : null}
-              </>
-            )}
-            <p className="mt-4 max-w-[70ch] text-small text-ink-muted">
-              {REPEATER_STATUS_LINE} Distances are from listed positions, which lists write roughly for private sites.{" "}
-              {REPEATER_LICENCE_LINE}
-            </p>
-          </Section>
-
-          <Section
-            title="Where these came from"
-            description="Each list keeps the date of its data. Bringing one up to date leaves alone what you changed."
-            actions={
-              <Button size="sm" onClick={() => setFinding(true)} disabled={held < 2}>
-                <Merge /> Find duplicates
-              </Button>
-            }
-          >
-            {overview.data.lists.length === 0 ? (
-              <p className="border-y border-border py-4 text-small text-ink-muted">
-                No list has been imported. Every entry here was entered by hand.
-              </p>
-            ) : (
-              <Rows aria-label="Imported lists">
-                {overview.data.lists.map((item) => {
-                  const source = item.fetched ? sources.data?.sources.find((entry) => entry.id === item.fetched?.sourceId) : undefined;
-                  return (
-                    <ListRow
-                      key={item.id}
-                      list={item}
-                      onUpdate={() => setImporting({ list: item })}
-                      onGetAgain={source?.kind === "fetch" ? () => getList.start(source, { aloud: true }) : undefined}
-                      getting={source !== undefined && getList.busyId === source.id}
-                      onEdit={() => setEditing(item)}
-                      onRemove={() => setRemoving(item)}
-                      onShow={() => set("list", item.id)}
-                    />
-                  );
-                })}
-              </Rows>
-            )}
-            {overview.data.ownCount > 0 ? (
-              <p className="mt-3 text-small text-ink-muted">
-                {plural(overview.data.ownCount, "entry", "entries")} entered by hand.{" "}
-                <Button variant="link" onClick={() => set("list", "own")}>
-                  Show only those
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => setPrinting(true)} disabled={total === 0}>
+                  <Printer /> Print these
                 </Button>
-              </p>
-            ) : null}
-          </Section>
+                <Button size="sm" onClick={() => setExporting(true)} disabled={total === 0}>
+                  <Download /> Export these
+                </Button>
+              </div>
+            </div>
+            {sideBySide ? null : (
+              <div id="repeaters-view" className="scroll-mt-4 max-md:scroll-mt-16">
+                <Segmented<View>
+                  label="Show as"
+                  value={view}
+                  onChange={setView}
+                  options={[
+                    { value: "list", label: "List", icon: <ListIcon aria-hidden /> },
+                    { value: "map", label: "Map", icon: <MapIcon aria-hidden /> },
+                  ]}
+                  className="mb-3 w-full sm:w-auto"
+                />
+              </div>
+            )}
+            <div className={sideBySide ? "grid grid-cols-[minmax(0,26rem)_minmax(0,1fr)] items-start gap-6" : undefined}>
+              {showList ? <div className="min-w-0">{results}</div> : null}
+              {showMap ? (
+                <RepeatersMap
+                  filters={applied}
+                  origin={origin}
+                  withinKm={withinKm}
+                  selectedId={selectedId}
+                  onSelect={select}
+                  view={camera}
+                  onView={(next) => update({ map: `${next.lat.toFixed(4)},${next.lon.toFixed(4)},${next.zoom.toFixed(2)}` })}
+                  fallbackFit={fallbackFit}
+                  className={
+                    sideBySide ? "sticky top-4 h-[calc(100dvh-2rem)] max-h-[56rem] min-h-[28rem]" : "h-[max(20rem,calc(100dvh-17rem))]"
+                  }
+                />
+              ) : null}
+            </div>
+            <p className="mt-4 max-w-[70ch] text-small text-ink-muted">
+              {REPEATER_STATUS_LINE} Distances are from listed positions, which lists write roughly for private sites; bearings are from
+              true north. {REPEATER_LICENCE_LINE}
+            </p>
+          </section>
 
-          <SourcesSection lists={overview.data.lists} getList={getList} />
+          <LicenceLine use="listen-and-transmit" className="mt-8" />
+          <FirstUseGuide
+            slug="radio-quick-start"
+            words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
+            className="mt-4"
+          />
+
+          <Disclosure
+            summary={`Lists and where to get them: ${listsSummary(overview.data.lists, overview.data.ownCount)}`}
+            className="mt-8"
+          >
+            <Section
+              title="Where these came from"
+              description="Each list keeps the date of its data. Bringing one up to date leaves alone what you changed."
+              actions={
+                <Button size="sm" onClick={() => setFinding(true)} disabled={held < 2}>
+                  <Merge /> Find duplicates
+                </Button>
+              }
+              className="mt-2"
+            >
+              {overview.data.lists.length === 0 ? (
+                <p className="border-y border-border py-4 text-small text-ink-muted">
+                  No list has been imported. Every entry here was entered by hand.
+                </p>
+              ) : (
+                <Rows aria-label="Imported lists">
+                  {overview.data.lists.map((item) => {
+                    const source = item.fetched ? sources.data?.sources.find((entry) => entry.id === item.fetched?.sourceId) : undefined;
+                    return (
+                      <ListRow
+                        key={item.id}
+                        list={item}
+                        onUpdate={() => setImporting({ list: item })}
+                        onGetAgain={source?.kind === "fetch" ? () => getList.start(source, { aloud: true }) : undefined}
+                        getting={source !== undefined && getList.busyId === source.id}
+                        onEdit={() => setEditing(item)}
+                        onRemove={() => setRemoving(item)}
+                        onShow={() => set("list", item.id)}
+                      />
+                    );
+                  })}
+                </Rows>
+              )}
+              {overview.data.ownCount > 0 ? (
+                <p className="mt-3 text-small text-ink-muted">
+                  {plural(overview.data.ownCount, "entry", "entries")} entered by hand.{" "}
+                  <Button variant="link" onClick={() => set("list", "own")}>
+                    Show only those
+                  </Button>
+                </p>
+              ) : null}
+            </Section>
+
+            <SourcesSection lists={overview.data.lists} getList={getList} />
+          </Disclosure>
         </>
       )}
 
@@ -710,8 +989,20 @@ export default function RepeatersPage() {
         filters={applied}
         near={origin.position}
         withinKm={withinKm}
+        sort={sort}
         total={total}
         from={origin.name}
+      />
+      <PrintDialog
+        open={printing}
+        onClose={() => setPrinting(false)}
+        filters={applied}
+        near={origin.position}
+        withinKm={withinKm}
+        sort={sort}
+        total={total}
+        from={origin.name}
+        lists={lists}
       />
       <ListDetailsDialog list={editing} onClose={() => setEditing(null)} />
       <DuplicatesDialog open={finding} onClose={() => setFinding(false)} />

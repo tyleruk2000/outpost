@@ -498,6 +498,36 @@ describe("repeaters API", () => {
     expect((await app.api("GET", "/api/repeaters?near=somewhere")).status).toBe(400);
   });
 
+  it("sorts by callsign or by frequency when asked, still measuring each from the place", async () => {
+    await importStatus();
+    expect(await calls("?sort=callsign")).toEqual(["QZ3AB", "QZ3EF", "QZ3GH", "QZ3KL", "QZ7CD", "QZ7IJ"]);
+    const byFrequency = await list("?sort=frequency");
+    const hertz = byFrequency.repeaters.map((repeater) => repeater.outputHz);
+    expect(hertz).toEqual([...hertz].sort((a, b) => a - b));
+    // With a place: the same orders, each with its distance, and the distance limit still kept.
+    const near = await list("?near=54.5,-3.1&withinKm=17.1&sort=frequency");
+    expect(near.repeaters.map((repeater) => repeater.callsign).sort()).toEqual(["QZ3AB", "QZ3KL", "QZ7CD"]);
+    const nearHertz = near.repeaters.map((repeater) => repeater.outputHz);
+    expect(nearHertz).toEqual([...nearHertz].sort((a, b) => a - b));
+    expect(near.repeaters.every((repeater) => repeater.distanceMeters !== undefined)).toBe(true);
+    expect(await calls("?near=54.5,-3.1&sort=callsign")).toEqual(["QZ3AB", "QZ3EF", "QZ3GH", "QZ3KL", "QZ7CD", "QZ7IJ"]);
+    expect((await app.api("GET", "/api/repeaters?sort=height")).status).toBe(400);
+  });
+
+  it("draws on the map only those within the list's distance of its place", async () => {
+    await importStatus();
+    const inside = (await app.api<RepeaterOverlayResponse>("GET", "/api/repeaters/overlay?bbox=-6,53,0,56&near=54.5,-3.1&withinKm=17.1"))
+      .body;
+    expect(inside.points.map((point) => point.callsign).sort()).toEqual(["QZ3AB", "QZ3KL", "QZ7CD"]);
+    const closer = (await app.api<RepeaterOverlayResponse>("GET", "/api/repeaters/overlay?bbox=-6,53,0,56&near=54.5,-3.1&withinKm=16.9"))
+      .body;
+    expect(closer.total).toBe(2);
+    // Without a distance the place changes nothing.
+    expect((await app.api<RepeaterOverlayResponse>("GET", "/api/repeaters/overlay?bbox=-6,53,0,56&near=54.5,-3.1")).body.total).toBe(
+      (await app.api<RepeaterOverlayResponse>("GET", "/api/repeaters/overlay?bbox=-6,53,0,56")).body.total,
+    );
+  });
+
   it("lists entries with no position after those with one, and leaves them out of a distance limit", async () => {
     await importStatus();
     await importFile("chirp.csv", fixture("chirp.csv"), { name: "My radio" });

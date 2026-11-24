@@ -10,6 +10,7 @@ import {
   bearingDegrees,
   formatMHz,
   haversineMeters,
+  homeLabel,
   REPEATER_STATUS_NAMES,
   type RepeaterDetailResponse,
   type SightRange,
@@ -20,6 +21,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { useHome } from "@/features/households/home";
 import { useStoredState } from "@/features/maps/hooks";
 import { formatBearing, formatDistance, type LatLon } from "@/features/maps/lib/geo";
 import type { MapEngine } from "@/features/maps/map/engine";
@@ -103,7 +105,7 @@ function RepeaterCard({
           <span className="tabular block text-ink">
             {isApproximate(repeater) ? "About " : ""}
             {formatDistance(meters)}, {formatBearing(bearingDegrees(from.position.lat, from.position.lon, repeater.lat!, repeater.lon!))}{" "}
-            from {from.name}
+            (true) from {from.name}
           </span>
         ) : null}
       </p>
@@ -155,12 +157,15 @@ export function useRepeatersOnMap({
   const navigate = useNavigate();
   const [on, setStored] = useStoredState(KEY, isBoolean, false);
   const [box, setBox] = useState<string | null>(null);
-  const [centre, setCentre] = useState<LatLon | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [emptyDismissed, setEmptyDismissed] = useState(false);
   // Nothing is asked of the server about repeaters until they are switched on.
   const overview = useRepeatersOverview(on);
   const overlay = useRepeaterOverlay(on ? box : null, {});
+  const { home } = useHome();
+  const homeFrom = home
+    ? { position: { lat: home.lat, lon: home.lon }, name: home.kind === "here" ? homeLabel(home, Date.now()) : home.name || "Home" }
+    : null;
   const detail = useRepeater(selectedId);
 
   // Which part of the map to ask about: now, and each time the map comes to rest.
@@ -168,7 +173,6 @@ export function useRepeatersOnMap({
     if (!engine || !on) return;
     const read = () => {
       setBox(overlayBox(engine.getBounds()));
-      setCentre(engine.getCenter());
     };
     read();
     return engine.on("moveend", read);
@@ -302,7 +306,10 @@ export function useRepeatersOnMap({
     toast("Repeaters are on the map. Press one for its details.", {
       action: {
         label: "Open the list",
-        onClick: () => navigate(`/radio/repeaters${at ? `?near=${at.lat.toFixed(4)},${at.lon.toFixed(4)}` : ""}`),
+        onClick: () =>
+          navigate(
+            `/radio/repeaters${at ? `?view=map&map=${at.lat.toFixed(4)},${at.lon.toFixed(4)},${engine?.getZoom().toFixed(2) ?? "9"}` : ""}`,
+          ),
       },
     });
   }, [on, drawable, engine, navigate]);
@@ -320,7 +327,8 @@ export function useRepeatersOnMap({
         </MapCard>
       );
     } else if (selectedId && detail.data) {
-      const from = here ? { position: here, name: "where you are" } : centre ? { position: centre, name: "the middle of the map" } : null;
+      // Where the device is when it is being followed; otherwise Home, as the Repeaters list measures from.
+      const from = here ? { position: here, name: "where you are" } : homeFrom;
       card = range.folded ?? (
         <RepeaterCard
           detail={detail.data}

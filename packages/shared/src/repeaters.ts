@@ -297,6 +297,10 @@ export interface RepeaterOverlayResponse {
   cells: RepeaterCell[];
 }
 
+/** How the list is put in order: nearest first (needs a place to measure from), by callsign, or by the frequency to listen on. */
+export const REPEATER_SORTS = ["near", "callsign", "frequency"] as const;
+export type RepeaterSort = (typeof REPEATER_SORTS)[number];
+
 /** No more repeaters than this are drawn one by one in a view; beyond it they are counted by patch. */
 export const REPEATER_OVERLAY_POINTS = 400;
 

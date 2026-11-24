@@ -113,13 +113,43 @@ ones. A merge sets the others aside, never deletes, and **Separate them** undoes
 
 ### Using it
 
-Filter by band, mode and distance from a place, nearest first. The place starts as the
-current household's home (for a portable household, where it was last said to be, with
-its age); choose instead the middle of the map, where you are, a position or locator, or
-a saved place. Find by callsign, town,
-locator or frequency (`145.7` finds 145.700 to 145.799 MHz). One repeater's screen gives what to listen and transmit on, access, status
-with its date, and **Show on the map** ([maps.md](maps.md#repeaters-on-the-map)), **Check
-line of sight** and **Estimated range**.
+Filter by band, mode and **Within** a distance, and **Sort** nearest first, by callsign or
+by frequency. Find by callsign, town, locator or frequency (`145.7` finds 145.700 to
+145.799 MHz). Distances are in kilometres, or in miles where **Settings › Units** writes
+heights in feet; bearings are from true north.
+
+**Measure from** says where distances and bearings are from:
+
+- **Home**: the current household's home (for a portable household, where it was last said
+  to be, with its age). With no home set, choose another place or tap the map.
+- **Where I am now**: this device's location. Browsers give it only to a page opened over
+  HTTPS, so on plain HTTP it is greyed out with the reason (**Settings › HTTPS**).
+- **A saved place**, or **Search for a place…**: a town (with place names installed), a
+  saved place, coordinates, a grid reference or a locator, found with no internet.
+- **A point on the map**: tap the map, or drag the pin; the list re-sorts and its heading
+  says "nearest to a point on the map (51.46, -0.19) first".
+
+**The map.** On a phone, **List** and **Map** switch between the two (the choice is
+remembered); on a wide screen the list sits beside the map. The map shows what the list
+shows, with the **Within** distance as a dashed ring. Each repeater is drawn by the shape
+of its band, in ink: a circle for 2 m, a square for 70 cm, a triangle for 6 m and 10 m, a
+diamond for 23 cm and up, a circle with a dot for the rest; hollow means listed as not
+operational. The key is under the map. Tap a repeater for its card (listen frequency,
+shift, tone, distance and bearing, **Details**, **Measure from here**); tap a number to go
+in closer. On a wide screen, choosing a row rings its repeater. The filters, the place,
+the view and the open repeater are kept in the page's address, so **Back** from a
+repeater returns to the same list. The map draws installed regions and fetches nothing.
+
+**Print these** makes a PDF of up to 200 of the repeaters shown, in the list's order:
+callsign, listen frequency, shift, tone, place, distance and bearing, and the list and date
+of each. **Lists and where to get them**, closed at the foot of the screen, holds the
+imported lists and the sources.
+
+One repeater's screen gives what to listen and transmit on, access, status with its date,
+the distance and bearing from the same **Measure from** with a small map (tap it to
+measure from a point), a link to **Tools › Compass** for magnetic and grid north there,
+and **Show on the map** ([maps.md](maps.md#repeaters-on-the-map)), **Check line of
+sight** and **Estimated range**. **Remove** is in its **More** menu.
 
 ### The estimated range
 
@@ -170,7 +200,7 @@ lidar in Great Britain, under 4 m elsewhere). How this was checked is in
 
 ### Taking a set out
 
-**Export these** writes the repeaters shown, nearest first: **CHIRP, to program a radio (CSV)**
+**Export these** writes the repeaters shown, in the list's order: **CHIRP, to program a radio (CSV)**
 (at most 2,000; tone burst, colour code and talkgroup go in the comment; an entry
 with no input is written so the radio will not transmit), or **Outpost, every field (CSV)**. **Check the file before you transmit.**
 

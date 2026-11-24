@@ -17,13 +17,13 @@ import { useCallback, useMemo, useState } from "react";
 import { ErrorState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { useHome } from "@/features/households/home";
 import { useMarkers } from "@/features/maps/data";
 import { ApiError, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import { fetchSource, type LatLon, useRepeaterSources } from "./data";
 import { ImportDialog } from "./import-dialog";
-import { lastMapCentre } from "./origin";
 import { dayText } from "./words";
 
 const inside = (bbox: [number, number, number, number], point: LatLon) => {
@@ -36,9 +36,8 @@ const areaOf = ([west, south, east, north]: [number, number, number, number]) =>
 
 /**
  * The regions in the order they are shown: those the person is likely in first (the
- * smallest that holds the middle of the map as it was last left; failing a map, those
- * holding the most saved places), then the whole world, then the rest by name. No
- * location is asked for.
+ * smallest that holds the household's home; failing a home, those holding the most saved
+ * places), then the whole world, then the rest by name. No location is asked for.
  */
 export function orderRegions(
   regions: RepeaterSourceRegion[],
@@ -150,7 +149,11 @@ function SourceRow({
             {source.held ? <RefreshCw /> : <Download />} {source.held ? "Get it again" : "Get the list"}
           </Button>
         ) : source.kind === "link" ? (
-          <Button asChild size="sm" className="h-auto min-h-8 max-w-full py-1.5 text-left whitespace-normal max-md:h-auto max-md:min-h-10">
+          <Button
+            asChild
+            size="sm"
+            className="h-auto min-h-8 max-w-full py-1.5 text-left whitespace-normal max-md:h-auto max-md:min-h-11 md:pointer-coarse:min-h-11"
+          >
             <a href={source.pageUrl} target="_blank" rel="noreferrer noopener">
               <ExternalLink /> Open {host}
             </a>
@@ -185,7 +188,7 @@ function SourceRow({
               size="sm"
               variant="ghost"
               onClick={() => onImport(source)}
-              className="h-auto min-h-8 max-w-full py-1.5 text-left whitespace-normal max-md:h-auto max-md:min-h-10"
+              className="h-auto min-h-8 max-w-full py-1.5 text-left whitespace-normal max-md:h-auto max-md:min-h-11 md:pointer-coarse:min-h-11"
             >
               <FileUp /> Import the file from {source.publisher.replace(/\s*\(.*\)$/, "")}
             </Button>
@@ -194,7 +197,7 @@ function SourceRow({
       ) : null}
 
       <details className="group">
-        <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-small text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+        <summary className="flex min-h-9 max-md:min-h-11 md:pointer-coarse:min-h-11 cursor-pointer list-none items-center gap-1.5 text-small text-ink-muted hover:text-ink [&::-webkit-details-marker]:hidden">
           <ChevronRight aria-hidden className="size-4 shrink-0 transition-transform group-open:rotate-90" />
           Why, and its terms as read
         </summary>
@@ -235,7 +238,13 @@ export function SourcesSection({ lists, getList, className }: { lists: RepeaterL
   const sources = useRepeaterSources();
   const markers = useMarkers();
   const [importing, setImporting] = useState<RepeaterSourceDto | null>(null);
-  const centre = useMemo(() => lastMapCentre(), []);
+  const { home } = useHome();
+  const homeLat = home?.lat;
+  const homeLon = home?.lon;
+  const centre = useMemo(
+    () => (homeLat !== undefined && homeLon !== undefined ? { lat: homeLat, lon: homeLon } : null),
+    [homeLat, homeLon],
+  );
   const ordered = useMemo(
     () =>
       orderRegions(
@@ -296,7 +305,7 @@ export function SourcesSection({ lists, getList, className }: { lists: RepeaterL
             and you import the file.{" "}
             {ordered.likely.length > 0
               ? centre
-                ? "The sources for where your map was last looking come first."
+                ? "The sources for where your home is come first."
                 : "The sources for where your saved places are come first."
               : ""}
           </p>

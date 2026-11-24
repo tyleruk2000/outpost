@@ -492,8 +492,11 @@ or stop it, and it can miss a narrow gully or footbridge.
 ## Repeaters on the map
 
 **Repeaters** draws the repeaters you hold ([radio.md](radio.md#repeaters)); Outpost has none
-until you add them. Each is a dot with its callsign and frequency as you zoom in; many are
-counted in discs. Press one for its card: frequencies, access, distance and bearing,
+until you add them. Each is drawn by the shape of its band (a circle for 2 m, a square for
+70 cm, a triangle for 6 m and 10 m, a diamond for 23 cm and up; hollow if listed as not
+operational), with its callsign and frequency as you zoom in; many are counted in discs.
+Press one for its card: frequencies, access, distance and bearing from where you are (when
+followed) or else from Home,
 **Check line of sight** and **Estimated range** (up to eight at once). Repeaters with no
 position are not drawn.
 

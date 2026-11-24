@@ -21,8 +21,9 @@ test.describe("the compass, on a phone", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Compass" })).toBeVisible();
 
     await page.getByRole("combobox", { name: "Place" }).click();
-    await page.getByRole("option", { name: "A position or locator" }).click();
-    await page.getByLabel("Position or locator").fill("NY 21548 07214");
+    await page.getByRole("option", { name: "Search for a place…" }).click();
+    await page.getByLabel("Place to measure from").fill("NY 21548 07214");
+    await page.getByRole("button", { name: /NY 21548 07214/ }).click();
     const norths = page.getByRole("region", { name: "North here" });
     await expect(norths.getByText("With an Ordnance Survey map here")).toBeVisible();
     await expect(norths.getByText(/^(Map to compass: (add|subtract) \d+°|Map and compass agree here)/)).toBeVisible();

@@ -1,20 +1,30 @@
 /**
  * Repeaters as the map draws them. Where there are few enough in view to tell apart,
- * each is a small dot in the ink colour with its callsign, and from closer in its
- * frequency; where there are more, the server counts them by patch and each patch is a
+ * each is a small mark in the ink colour, its shape saying its band (band-shapes.tsx),
+ * with its callsign, and from closer in its frequency; where there are more, the server counts them by patch and each patch is a
  * numbered disc. Either way they sit under saved places and routes, and their names
  * give way to the map's own, so switching them on never buries the map.
  */
 import { formatMHz, type RepeaterOverlayResponse } from "@outpost/shared";
+import { circleRing } from "@/features/maps/lib/geo";
 import { MAP_FONTS, type MapTheme } from "@/features/maps/lib/style";
 import type { LayerSpecification } from "@/features/maps/lib/style-types";
 import type { FeatureCollection } from "@/features/maps/map/overlays";
 import { formatNumber } from "@/lib/utils";
+import { bandShape } from "./band-shapes";
 
 export const REPEATER_SOURCE = "o-repeaters";
 
 export function repeaterLayers(theme: MapTheme): LayerSpecification[] {
   return [
+    {
+      // The "within" distance of the list, round the place it is measured from (the Repeaters screen's map only).
+      id: "o-repeaters-within",
+      type: "line",
+      source: REPEATER_SOURCE,
+      filter: ["==", ["get", "kind"], "within"],
+      paint: { "line-color": theme.primary, "line-width": 1.75, "line-dasharray": [3, 2], "line-opacity": 0.9 },
+    },
     {
       id: "o-repeaters-cell",
       type: "circle",
@@ -48,19 +58,23 @@ export function repeaterLayers(theme: MapTheme): LayerSpecification[] {
       type: "circle",
       source: REPEATER_SOURCE,
       filter: ["==", ["get", "kind"], "selected"],
-      paint: { "circle-radius": 11, "circle-opacity": 0, "circle-stroke-color": theme.primary, "circle-stroke-width": 2.5 },
+      paint: { "circle-radius": 12, "circle-opacity": 0, "circle-stroke-color": theme.primary, "circle-stroke-width": 3 },
     },
     {
       id: "o-repeaters-point",
-      type: "circle",
+      type: "symbol",
       source: REPEATER_SOURCE,
       filter: ["==", ["get", "kind"], "point"],
-      paint: {
-        "circle-radius": 4.5,
-        // One its list says is not operational is drawn hollow. The card says so in words.
-        "circle-color": ["case", ["get", "offAir"], theme.page, theme.ink],
-        "circle-stroke-color": ["case", ["get", "offAir"], theme.ink, theme.page],
-        "circle-stroke-width": ["case", ["get", "offAir"], 1.5, 2],
+      layout: {
+        // The band by its shape, in the ink colour; one its list says is not operational is drawn hollow. The card says so in words.
+        "icon-image": [
+          "concat",
+          "repeater-",
+          ["get", "shape"],
+          ["case", ["get", "offAir"], `|${theme.page}|${theme.ink}|${theme.page}`, `|${theme.ink}|${theme.ink}|${theme.page}`],
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
       },
     },
     {
@@ -84,12 +98,23 @@ export function repeaterLayers(theme: MapTheme): LayerSpecification[] {
   ];
 }
 
-/** What the server gave for the view, as map data, with a ring round the repeater that is open. */
+/**
+ * What the server gave for the view, as map data, with a ring round the repeater that is open and, on the Repeaters
+ * screen, the dashed circle of the list's "within" distance.
+ */
 export function repeatersData(
   overlay: RepeaterOverlayResponse | undefined,
   selected: { lat: number; lon: number } | null,
+  within?: { centre: { lat: number; lon: number }; meters: number } | null,
 ): FeatureCollection {
   const features: FeatureCollection["features"] = [];
+  if (within) {
+    features.push({
+      type: "Feature",
+      properties: { kind: "within" },
+      geometry: { type: "LineString", coordinates: circleRing(within.centre, within.meters, 96) },
+    });
+  }
   const at = (lon: number, lat: number) => ({ type: "Point", coordinates: [lon, lat] });
   for (const cell of overlay?.cells ?? []) {
     features.push({
@@ -107,6 +132,7 @@ export function repeatersData(
         callsign: point.callsign,
         detail: `${point.callsign}\n${formatMHz(point.outputHz)}`,
         offAir: point.status === "off-air",
+        shape: bandShape(point.band),
       },
       geometry: at(point.lon, point.lat),
     });
