@@ -9,7 +9,7 @@ import { elevationChart, overTheGround, skyPlot } from "./diagrams";
 import { type PassSheet, passDocument, passTitle } from "./document";
 import { passSkyPath, predictPasses } from "./engine";
 import { sampleTrack } from "./ground-track";
-import { FUNCUBE } from "./test-orbits";
+import { ESHAIL, FUNCUBE } from "./test-orbits";
 
 const land = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../../../public/world/land.json"), "utf8"));
 
@@ -141,6 +141,40 @@ describe("the pass sheet", () => {
     expect(drawn.svg).toMatch(/<circle[^>]*r="4" fill="#ffffff"/);
     expect(drawn.svg).toMatch(/<rect[^>]*width="8" height="8"/);
   });
+
+  it("prints a geostationary satellite in view as always up: where to point, no rise or set", async () => {
+    const from = new Date(Date.parse("2026-11-24T00:00:00Z"));
+    const pass = predictPasses(ESHAIL, LONDON, from, 24, 8)[0]!;
+    expect(pass.alwaysUp).toBe(true);
+    const path = passSkyPath(ESHAIL, LONDON, pass, 2);
+    const plot = skyPlot(pass, path, 236);
+    expect(plot.svg).not.toContain("<polyline");
+    expect(plot.svg).not.toMatch(/<rect[^>]*width="8" height="8"/);
+    const value: PassSheet = {
+      name: "ES'HAIL 2",
+      noradId: 43700,
+      epoch: ESHAIL.epoch,
+      place: "Home",
+      pass,
+      path,
+      transmitters: [transmitter("q", "QO-100 narrowband", "Transponder", "USB", 10_489_550_000, 2_400_050_000)],
+      written: from,
+      licensed: true,
+      ground: {
+        samples: sampleTrack(ESHAIL, LONDON, new Date(pass.tca.getTime() - 45 * 60_000), new Date(pass.tca.getTime() + 45 * 60_000)),
+        home: LONDON,
+        land,
+      },
+    };
+    const printed = await renderPdf(passDocument(value, "a4"));
+    writeSample("pass-eshail", printed.bytes);
+    const text = (await pageTexts(printed.bytes)).join(" ");
+    expect(text).toContain("Always up: it does not rise or set");
+    expect(text).toContain("All day");
+    expect(text).not.toContain("Rises");
+    expect(text).not.toContain("minute by minute");
+    expect(text).toContain("Over the ground");
+  }, 60_000);
 
   it("keeps What to tune to with its first table, for a satellite with three transmitters", async () => {
     const from = new Date(Date.parse("2026-11-24T00:00:00Z"));

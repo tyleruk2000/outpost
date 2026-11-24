@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { contrastRatio } from "@/features/maps/lib/map-styles";
 import { passSkyPath, predictPasses } from "./engine";
 import { SkyPlot } from "./sky-plot";
-import { FUNCUBE } from "./test-orbits";
+import { ESHAIL, FUNCUBE } from "./test-orbits";
 
 const LONDON = { lat: 51.5074, lon: -0.1278 };
 
@@ -43,6 +43,16 @@ describe("the sky track", () => {
     expect(container.querySelector('rect[width="9"][height="9"]')).not.toBeNull();
     expect(container.querySelector('circle[stroke="var(--color-lamp-ink)"]')).not.toBeNull();
     expect(screen.getByText(/Square: where it sets\. Large ring: where it is now\./)).toBeInTheDocument();
+  });
+
+  it("draws a satellite that is always up as one place to point, with no rise or set", () => {
+    const always = predictPasses(ESHAIL, LONDON, new Date(Date.parse("2026-11-24T00:00:00Z")), 24, 4)[0]!;
+    expect(always.alwaysUp).toBe(true);
+    const { container } = render(<SkyPlot pass={always} path={passSkyPath(ESHAIL, LONDON, always, 12)} />);
+    expect(screen.getByRole("img", { name: /Sky track\. Always up here: point \d+° up/ })).toBeInTheDocument();
+    expect(container.querySelector('circle[r="4.5"]')).toBeNull();
+    expect(container.querySelector('rect[width="9"][height="9"]')).toBeNull();
+    expect(screen.getByText(/Diamond: where to point\./)).toBeInTheDocument();
   });
 
   it("draws now in a colour that stands out at 3:1 from the plot in both themes", () => {

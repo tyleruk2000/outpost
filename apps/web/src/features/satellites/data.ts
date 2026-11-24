@@ -32,12 +32,26 @@ export function useFetchElements() {
   });
 }
 
-/** "Read about it on Wikipedia": the one press that asks Wikipedia, for one satellite. */
+/**
+ * "Read about it on Wikipedia": looks in a Wikipedia copy on this Outpost first and, when
+ * there is none, asks Wikipedia online; `online` asks online after the copy had nothing.
+ */
 export function useReadWikipedia() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (noradId: number) => api.post<{ wikipedia: SatelliteWikipedia }>(`/api/satellites/${noradId}/wikipedia`, {}),
+    mutationFn: ({ noradId, online }: { noradId: number; online?: boolean }) =>
+      api.post<{ wikipedia: SatelliteWikipedia }>(`/api/satellites/${noradId}/wikipedia`, online ? { online: true } : {}),
     onSettled: () => client.invalidateQueries({ queryKey: SATELLITES_KEY }),
+  });
+}
+
+/** Offers again the articles discarded for a satellite. */
+export function useForgetDiscarded() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (noradId: number) => api.delete<{ ok: true }>(`/api/satellites/${noradId}/wikipedia/discarded`),
+    onSettled: () => client.invalidateQueries({ queryKey: SATELLITES_KEY }),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

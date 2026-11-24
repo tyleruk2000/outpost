@@ -23,7 +23,7 @@ function rows(first: number, n: number, name: string): string {
 let requests: string[] = [];
 let failCelestrak = false;
 let failSatnogs = false;
-let failWikipedia = false;
+const failWikipedia = false;
 
 /** SatNOGS DB's satellite list, as it gives it (the ISS's record as read on 22 November 2026). */
 const SATNOGS_SATELLITES = [
@@ -288,53 +288,7 @@ describe("satellites", () => {
   });
 });
 
-describe("Wikipedia, on a press", () => {
-  it("finds the article under one of the satellite's names, passing over a disambiguation page, and keeps it", async () => {
-    requests = [];
-    const { status, body } = await app.api("POST", "/api/satellites/25544/wikipedia");
-    expect(status).toBe(200);
-    expect(body.wikipedia).toMatchObject({
-      noradId: 25544,
-      title: "International Space Station",
-      url: "https://en.wikipedia.org/wiki/International_Space_Station",
-      extract: "International Space Station is a test article.",
-      foundBy: "name",
-      searchedFor: "NA1SS",
-    });
-    expect(requests.filter((url) => url.startsWith("/wikipedia/"))).toHaveLength(2);
-    const list = (await app.api("GET", "/api/satellites")).body;
-    expect(list.wikipedia).toEqual([expect.objectContaining({ noradId: 25544, title: "International Space Station" })]);
-  });
-
-  it("searches when no name is an article, and says it was a search", async () => {
-    const { body } = await app.api("POST", "/api/satellites/91000/wikipedia");
-    expect(body.wikipedia).toMatchObject({ title: "Fox-1B", foundBy: "search", searchedFor: "AMSAT 0 satellite" });
-  });
-
-  it("says so when nothing is found, and keeps nothing", async () => {
-    const { status, body } = await app.api("POST", "/api/satellites/92000/wikipedia");
-    expect(status).toBe(404);
-    expect(JSON.stringify(body)).toMatch(/Wikipedia has no article/);
-    expect((await app.api("GET", "/api/satellites")).body.wikipedia).toHaveLength(2);
-  });
-
-  it("keeps what it had when Wikipedia fails", async () => {
-    failWikipedia = true;
-    const { status, body } = await app.api("POST", "/api/satellites/25544/wikipedia");
-    failWikipedia = false;
-    expect(status).toBe(502);
-    expect(JSON.stringify(body)).toMatch(/503/);
-    expect((await app.api("GET", "/api/satellites")).body.wikipedia).toHaveLength(2);
-  });
-
-  it("discards an article, and refuses a satellite it does not know", async () => {
-    expect((await app.api("DELETE", "/api/satellites/91000/wikipedia")).status).toBe(200);
-    const list = (await app.api("GET", "/api/satellites")).body;
-    expect(list.wikipedia.map((row: { noradId: number }) => row.noradId)).toEqual([25544]);
-    expect((await app.api("POST", "/api/satellites/12345/wikipedia")).status).toBe(404);
-    expect((await app.api("POST", "/api/satellites/abc/wikipedia")).status).toBe(400);
-  });
-});
+// "Read about it on Wikipedia" is tested in satellites-wikipedia.test.ts, against the 44 satellites of the review.
 
 describe("the radio licence setting", () => {
   it("is off by default and keeps a callsign in capitals", async () => {

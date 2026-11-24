@@ -70,7 +70,8 @@ export function GroundTrack({
   passes: SatellitePass[];
 }) {
   const [chosen, setChosen] = useState<Stretch>("2");
-  const stretch: Stretch = chosen === "pass" && !pass ? "2" : chosen;
+  const passable = pass && !pass.alwaysUp ? pass : null;
+  const stretch: Stretch = chosen === "pass" && !passable ? "2" : chosen;
   const [frame, measured] = useWidth();
   const width = measured > 0 ? measured : 640;
   const { land, settled } = useLand();
@@ -187,7 +188,7 @@ export function GroundTrack({
           options={[
             { value: "1" as const, label: "1 turn" },
             { value: "2" as const, label: "2 turns" },
-            ...(pass ? [{ value: "pass" as const, label: "This pass" }] : []),
+            ...(passable ? [{ value: "pass" as const, label: "This pass" }] : []),
           ]}
         />
       </div>

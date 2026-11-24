@@ -7,7 +7,7 @@
  */
 import { compassPoint } from "@outpost/shared";
 import type { SatellitePass, SatelliteState } from "./engine";
-import { utcTime } from "./words";
+import { alwaysUpWords, utcTime } from "./words";
 
 const SIZE = 240;
 const C = SIZE / 2;
@@ -26,6 +26,7 @@ export function skyPoint(azimuthDeg: number, elevationDeg: number, cx: number, c
 }
 
 export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: SatelliteState[]; now?: Date }) {
+  const up = pass.alwaysUp === true;
   const d = path
     .map((point, index) => {
       const [x, y] = skyXY(point.azimuthDeg, point.elevationDeg);
@@ -41,7 +42,9 @@ export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: Satell
           Math.abs(point.at.getTime() - now.getTime()) < Math.abs(best.at.getTime() - now.getTime()) ? point : best,
         )
       : null;
-  const description = `Rises in the ${compassPoint(pass.aosAzimuthDeg)} at ${utcTime(pass.aos)} UTC, highest ${Math.round(pass.maxElevationDeg)}° in the ${compassPoint(pass.tcaAzimuthDeg)} at ${utcTime(pass.tca)} UTC, sets in the ${compassPoint(pass.losAzimuthDeg)} at ${utcTime(pass.los)} UTC.`;
+  const description = up
+    ? `${alwaysUpWords(pass)}: it does not rise or set.`
+    : `Rises in the ${compassPoint(pass.aosAzimuthDeg)} at ${utcTime(pass.aos)} UTC, highest ${Math.round(pass.maxElevationDeg)}° in the ${compassPoint(pass.tcaAzimuthDeg)} at ${utcTime(pass.tca)} UTC, sets in the ${compassPoint(pass.losAzimuthDeg)} at ${utcTime(pass.los)} UTC.`;
   return (
     <figure className="grid gap-2">
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`Sky track. ${description}`} className="mx-auto w-full max-w-[17rem]">
@@ -76,16 +79,18 @@ export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: Satell
         <text x={C + 3} y={C - ((90 - 60) / 90) * R - 3} fontSize="10" fill="var(--color-ink-muted)">
           60°
         </text>
-        <path d={d} fill="none" stroke="var(--chart-1)" strokeWidth="2.5" strokeLinecap="round" />
+        {up ? null : <path d={d} fill="none" stroke="var(--chart-1)" strokeWidth="2.5" strokeLinecap="round" />}
         {/* Rises: an open circle. Highest: a diamond. Sets: a square. The shapes as on the printed pass. */}
-        <circle cx={sx} cy={sy} r="4.5" fill="var(--color-page)" stroke="var(--color-ink)" strokeWidth="2" />
+        {up ? null : <circle cx={sx} cy={sy} r="4.5" fill="var(--color-page)" stroke="var(--color-ink)" strokeWidth="2" />}
         <path
           d={`M${px} ${py - 6.5}L${px + 6.5} ${py}L${px} ${py + 6.5}L${px - 6.5} ${py}Z`}
           fill="var(--color-ink)"
           stroke="var(--color-page)"
           strokeWidth="1.5"
         />
-        <rect x={ex - 4.5} y={ey - 4.5} width="9" height="9" fill="var(--color-ink)" stroke="var(--color-page)" strokeWidth="1.5" />
+        {up ? null : (
+          <rect x={ex - 4.5} y={ey - 4.5} width="9" height="9" fill="var(--color-ink)" stroke="var(--color-page)" strokeWidth="1.5" />
+        )}
         {nowPoint ? (
           <g>
             {/* Now: a ring in the lamp's ink, which stands out at 3:1 or more in both themes, on a halo of the page. */}
@@ -109,7 +114,7 @@ export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: Satell
         ) : null}
       </svg>
       <figcaption className="text-small text-ink-muted">
-        {description} Open circle: where it rises. Diamond: its highest point. Square: where it sets.
+        {description} {up ? "Diamond: where to point." : "Open circle: where it rises. Diamond: its highest point. Square: where it sets."}
         {nowPoint ? " Large ring: where it is now." : ""}
       </figcaption>
     </figure>

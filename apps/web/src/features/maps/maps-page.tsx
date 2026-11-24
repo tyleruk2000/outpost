@@ -1173,6 +1173,13 @@ export default function MapsPage() {
   const heardMesh = useMeshOnMap({ engine });
   // Satellites now (features/satellites/map.tsx), worked out in the browser while switched on.
   const satellitesLayer = useSatellitesOnMap({ engine });
+  // /maps?satellite=<NORAD number>, from "Show on the map" on Radio → Satellites: once for each arrival.
+  const focusSatellite = satellitesLayer.focus;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival, not on every change
+  useEffect(() => {
+    const noradId = Number(new URLSearchParams(location.search).get("satellite"));
+    if (Number.isInteger(noradId) && noradId > 0) focusSatellite(noradId);
+  }, [location.key]);
   // APRS, aircraft and ships (features/heard), and the one card for anything heard, with the map's tools from there.
   // "Near home" is the current household's home: its saved place, or where a portable household was last said to be.
   // Every household's home is drawn, labelled with its name (features/households/map.ts).

@@ -101,6 +101,7 @@ export async function standInSatellites(page: Page): Promise<void> {
         transmitters: TRANSMITTERS,
         about: [],
         wikipedia: [],
+        wikipediaDiscarded: [],
         sources: [source("celestrak", "CelesTrak"), source("satnogs", "SatNOGS DB"), source("satnogs-satellites", "SatNOGS DB satellites")],
         fetching: false,
         now,

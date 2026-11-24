@@ -47,7 +47,9 @@ export function skyPlot(pass: SatellitePass, path: SatelliteState[], size = 236)
   body += `<line x1="${round(cx - radius)}" y1="${cy}" x2="${round(cx + radius)}" y2="${cy}" stroke="${C.rule}" stroke-width="0.5"/>`;
   body += `<line x1="${cx}" y1="${round(cy - radius)}" x2="${cx}" y2="${round(cy + radius)}" stroke="${C.rule}" stroke-width="0.5"/>`;
   const points = path.map((point) => skyPoint(point.azimuthDeg, point.elevationDeg, cx, cy, radius));
-  if (points.length > 1) {
+  // Always up (geostationary): one place in the sky, no track and no rise or set.
+  const up = pass.alwaysUp === true;
+  if (points.length > 1 && !up) {
     body += `<polyline points="${points.map(([x, y]) => `${round(x)},${round(y)}`).join(" ")}" fill="none" stroke="${C.accent}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
     for (const [x, y] of points.slice(1, -1)) body += `<circle cx="${round(x)}" cy="${round(y)}" r="1.4" fill="${C.accent}"/>`;
     // An arrowhead a little past the middle, the way the satellite goes.
@@ -56,11 +58,13 @@ export function skyPlot(pass: SatellitePass, path: SatelliteState[], size = 236)
     const [x2, y2] = points[at]!;
     if (Math.hypot(x2 - x1, y2 - y1) > 0.5) body += svgArrowHead(x2, y2, (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI, C.accent, 7);
   }
-  const moments: Array<[keyof typeof MOMENT, number, number, Date]> = [
-    ["rise", pass.aosAzimuthDeg, 0, pass.aos],
-    ["highest", pass.tcaAzimuthDeg, pass.maxElevationDeg, pass.tca],
-    ["set", pass.losAzimuthDeg, 0, pass.los],
-  ];
+  const moments: Array<[keyof typeof MOMENT, number, number, Date]> = up
+    ? [["highest", pass.tcaAzimuthDeg, pass.maxElevationDeg, pass.tca]]
+    : [
+        ["rise", pass.aosAzimuthDeg, 0, pass.aos],
+        ["highest", pass.tcaAzimuthDeg, pass.maxElevationDeg, pass.tca],
+        ["set", pass.losAzimuthDeg, 0, pass.los],
+      ];
   const labels: Array<[number, number]> = [];
   for (const [kind, azimuth, elevation, at] of moments) {
     const [x, y] = skyPoint(azimuth, elevation, cx, cy, radius);
@@ -74,7 +78,7 @@ export function skyPlot(pass: SatellitePass, path: SatelliteState[], size = 236)
     const tx = Math.min(size - 2, Math.max(2, lx));
     const ty = Math.min(size - 2, Math.max(8, ly));
     labels.push([tx + (anchor === "start" ? 10 : anchor === "end" ? -10 : 0), ty]);
-    body += svgText(tx, ty, utcTime(at), {
+    body += svgText(tx, ty, up ? `${Math.round(elevation)}°` : utcTime(at), {
       anchor,
       bold: true,
       size: 7,
@@ -157,11 +161,13 @@ export function overTheGround(pass: SatellitePass, ground: PassGround, width: nu
     const point = pointAt(ground.samples, ms);
     return point ? [point.lon, point.lat] : null;
   };
-  const moments: Array<[keyof typeof MOMENT, LonLat | null]> = [
-    ["rise", at(pass.aos.getTime())],
-    ["highest", at(pass.tca.getTime())],
-    ["set", at(pass.los.getTime())],
-  ];
+  const moments: Array<[keyof typeof MOMENT, LonLat | null]> = pass.alwaysUp
+    ? [["highest", at(pass.tca.getTime())]]
+    : [
+        ["rise", at(pass.aos.getTime())],
+        ["highest", at(pass.tca.getTime())],
+        ["set", at(pass.los.getTime())],
+      ];
   const figure = trackFigure({
     width,
     samples: ground.samples,

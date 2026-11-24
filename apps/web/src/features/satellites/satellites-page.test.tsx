@@ -55,7 +55,16 @@ const ISS_ABOUT: SatelliteAbout = {
 
 describe("the Satellites screen", () => {
   it("asks for a press before anything is fetched", () => {
-    show({ satellites: [], transmitters: [], about: [], wikipedia: [], sources: sources(null), fetching: false, now });
+    show({
+      satellites: [],
+      transmitters: [],
+      about: [],
+      wikipedia: [],
+      wikipediaDiscarded: [],
+      sources: sources(null),
+      fetching: false,
+      now,
+    });
     expect(screen.getByRole("heading", { name: "No orbital elements yet" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Get orbital elements" })).toBeInTheDocument();
   });
@@ -84,6 +93,7 @@ describe("the Satellites screen", () => {
       ],
       about: [ISS_ABOUT],
       wikipedia: [],
+      wikipediaDiscarded: [],
       sources: sources(now),
       fetching: false,
       now,
@@ -143,6 +153,7 @@ describe("the Satellites screen", () => {
       ],
       about: [],
       wikipedia: [],
+      wikipediaDiscarded: [],
       sources: sources(now),
       fetching: false,
       now,
@@ -163,7 +174,16 @@ describe("the Satellites screen", () => {
 
   it("keeps where to point through a pass for a satellite with no downlink", { timeout: 40_000 }, async () => {
     const user = userEvent.setup();
-    show({ satellites: iss, transmitters: [], about: [], wikipedia: [], sources: sources(now), fetching: false, now });
+    show({
+      satellites: iss,
+      transmitters: [],
+      about: [],
+      wikipedia: [],
+      wikipediaDiscarded: [],
+      sources: sources(now),
+      fetching: false,
+      now,
+    });
     await user.click(screen.getByRole("tab", { name: "One satellite" }));
     expect(await screen.findByText("Where to point, minute by minute")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /Listen on/ })).toBeNull();
@@ -174,7 +194,16 @@ describe("the Satellites screen", () => {
       `${HEADER}\nISS (ZARYA),1998-067A,${new Date(now - 40 * 86_400_000).toISOString().replace("Z", "")},15.49527370,.0007384,51.6319,243.0636,49.3258,310.8372,0,U,25544,999,59609,.2073332E-3,.11207E-3,0`,
       "amateur",
     );
-    show({ satellites: old, transmitters: [], about: [], wikipedia: [], sources: sources(now), fetching: false, now });
+    show({
+      satellites: old,
+      transmitters: [],
+      about: [],
+      wikipedia: [],
+      wikipediaDiscarded: [],
+      sources: sources(now),
+      fetching: false,
+      now,
+    });
     expect(screen.getByText("These elements are getting old")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Weather satellites" }));
   });
@@ -194,17 +223,24 @@ describe("the Satellites screen", () => {
           extract: "The International Space Station is a large space station.",
           foundBy: "search",
           searchedFor: "ISS satellite",
+          wikidataId: null,
+          archive: null,
           editedAt: null,
           fetchedAt: now,
         },
       ],
+      wikipediaDiscarded: [],
       sources: sources(now),
       fetching: false,
       now,
     });
     await user.click(screen.getByRole("tab", { name: "One satellite" }));
     expect(await screen.findByText("The International Space Station is a large space station.")).toBeInTheDocument();
-    expect(screen.getByText(/a search for “ISS satellite”: check it is about this satellite/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /a search for “ISS satellite”, about a spacecraft, but nothing ties it to this satellite's number: check it is about this satellite/,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "“International Space Station” on Wikipedia" })).toHaveAttribute(
       "href",
       "https://en.wikipedia.org/wiki/International_Space_Station",

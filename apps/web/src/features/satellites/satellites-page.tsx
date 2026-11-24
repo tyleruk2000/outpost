@@ -72,7 +72,7 @@ import { useChosenSatellite } from "./map";
 import { SatellitePicker } from "./satellite-picker";
 import { SkyPlot } from "./sky-plot";
 import { usePassSchedule } from "./use-schedule";
-import { bothTimes, countdown, dayWords, frequencyWords, geometryWords, lightAt, shiftWords, utcTime } from "./words";
+import { alwaysUpWords, bothTimes, countdown, dayWords, frequencyWords, geometryWords, lightAt, shiftWords, utcTime } from "./words";
 
 const PATH = "/radio/satellites";
 const BUCKET_MS = 300_000;
@@ -166,7 +166,10 @@ function ElementsStatus({ data, now }: { data: NonNullable<ReturnType<typeof use
         elements dated {formatDate(newest)}.{" "}
         {satnogs?.fetchedAt
           ? `${plural(satnogs.count, "transmitter")} from SatNOGS DB, ${timeAgo(satnogs.fetchedAt)}.`
-          : "No transmitters from SatNOGS DB yet."}
+          : "No transmitters from SatNOGS DB yet."}{" "}
+        {details && !details.fetchedAt
+          ? "Satellite details from SatNOGS DB (names, launch, countries) have never been fetched: the next press of Get orbital elements fetches them."
+          : null}
       </p>
       {age === "old" || age === "very-old" || age === "ahead" ? (
         <Notice tone="warning" className="mt-3" title={age === "ahead" ? "Check the clock" : "These elements are getting old"}>
@@ -235,11 +238,15 @@ function PassRowLine({ entry, now, onOpen }: { entry: ScheduledPass; now: Date; 
           </span>
           <span className="block text-small text-ink-muted">
             <Joined
-              parts={[
-                `${compassPoint(pass.aosAzimuthDeg)} to ${compassPoint(pass.losAzimuthDeg)}`,
-                `${Math.round(pass.durationSeconds / 60)} min`,
-                workable ? null : "low pass",
-              ]}
+              parts={
+                pass.alwaysUp
+                  ? [alwaysUpWords(pass), workable ? null : "low pass"]
+                  : [
+                      `${compassPoint(pass.aosAzimuthDeg)} to ${compassPoint(pass.losAzimuthDeg)}`,
+                      `${Math.round(pass.durationSeconds / 60)} min`,
+                      workable ? null : "low pass",
+                    ]
+              }
             />
           </span>
           {warning ? (
@@ -249,10 +256,12 @@ function PassRowLine({ entry, now, onOpen }: { entry: ScheduledPass; now: Date; 
           ) : null}
         </span>
         <span className="text-small sm:text-right">
-          <span className="block text-ink tabular">
-            <span className="text-small text-ink-muted">highest </span>
-            <span className="text-lead">{Math.round(pass.maxElevationDeg)}°</span>
-          </span>
+          {pass.alwaysUp ? null : (
+            <span className="block text-ink tabular">
+              <span className="text-small text-ink-muted">highest </span>
+              <span className="text-lead">{Math.round(pass.maxElevationDeg)}°</span>
+            </span>
+          )}
           <span className={cn("block", inView ? "font-medium text-lamp-ink" : "text-ink-muted")}>
             {inView ? "Up now" : countdown(pass.aos, now)}
           </span>
@@ -558,10 +567,13 @@ function ThroughThePass({
   path,
   transmitters,
   licensed,
+  alwaysUp = false,
 }: {
   path: SatelliteState[];
   transmitters: SatelliteTransmitter[];
   licensed: boolean;
+  /** Up all day (geostationary): a few looks through the day, not one a minute. */
+  alwaysUp?: boolean;
 }) {
   const choices = useMemo(() => byMain(transmitters), [transmitters]);
   const [chosenId, setChosenId] = useState<string | null>(null);
@@ -575,14 +587,23 @@ function ThroughThePass({
       const minute = Math.floor(point.at.getTime() / 60_000);
       if (!ends.has(minute) && !nearest.has(minute)) nearest.set(minute, point);
     }
+    if (alwaysUp) return path.filter((_, index) => index % 5 === 0);
     return [path[0]!, ...[...nearest.values()].sort((a, b) => a.at.getTime() - b.at.getTime()), path.at(-1)!];
-  }, [path]);
+  }, [path, alwaysUp]);
   const down = transmitter?.downlinkLowHz ?? null;
   const up = licensed ? (transmitter?.uplinkLowHz ?? null) : null;
   const named = (item: SatelliteTransmitter) => `${item.description}${item.mode ? `, ${item.mode}` : ""}`;
   return (
     <Disclosure
-      summary={transmitter ? "Where to point and what to tune to, minute by minute" : "Where to point, minute by minute"}
+      summary={
+        alwaysUp
+          ? transmitter
+            ? "Where to point and what to tune to, through the day"
+            : "Where to point, through the day"
+          : transmitter
+            ? "Where to point and what to tune to, minute by minute"
+            : "Where to point, minute by minute"
+      }
       className="mt-4"
     >
       {choices.length > 1 && transmitter ? (
@@ -859,17 +880,24 @@ function OneSatellite({
           epoch: selected.epoch,
           place: placeName,
           pass,
-          path: passSkyPath(selected.orbit, observer, pass, Math.max(2, Math.round(pass.durationSeconds / 60))),
+          path: passSkyPath(selected.orbit, observer, pass, pass.alwaysUp ? 2 : Math.max(2, Math.round(pass.durationSeconds / 60))),
           transmitters: byMain(own).concat(own.filter((item) => item.downlinkLowHz === null)),
           written: new Date(),
           licensed: licence.licensed,
           ground: {
-            samples: sampleTrack(
-              selected.orbit,
-              observer,
-              new Date(pass.aos.getTime() - 45 * 60_000),
-              new Date(pass.los.getTime() + 45 * 60_000),
-            ),
+            samples: pass.alwaysUp
+              ? sampleTrack(
+                  selected.orbit,
+                  observer,
+                  new Date(pass.tca.getTime() - 45 * 60_000),
+                  new Date(pass.tca.getTime() + 45 * 60_000),
+                )
+              : sampleTrack(
+                  selected.orbit,
+                  observer,
+                  new Date(pass.aos.getTime() - 45 * 60_000),
+                  new Date(pass.los.getTime() + 45 * 60_000),
+                ),
             home: observer,
             land,
           },
@@ -954,8 +982,14 @@ function OneSatellite({
                   <div className="lg:order-2">
                     <h3 className="text-body font-semibold text-ink">Sky track</h3>
                     <p className="mb-2 text-small text-ink-muted">
-                      {pass.aos <= now ? "Up now. " : `${dayWords(pass.aos, now)}. `}Rises {bothTimes(pass.aos)}, highest{" "}
-                      {Math.round(pass.maxElevationDeg)}° at {utcTime(pass.tca)} UTC, sets {utcTime(pass.los)} UTC.
+                      {pass.alwaysUp ? (
+                        `${alwaysUpWords(pass)}: it does not rise or set.`
+                      ) : (
+                        <>
+                          {pass.aos <= now ? "Up now. " : `${dayWords(pass.aos, now)}. `}Rises {bothTimes(pass.aos)}, highest{" "}
+                          {Math.round(pass.maxElevationDeg)}° at {utcTime(pass.tca)} UTC, sets {utcTime(pass.los)} UTC.
+                        </>
+                      )}
                     </p>
                     <SkyPlot pass={pass} path={path} now={now} />
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -967,7 +1001,7 @@ function OneSatellite({
                         <Button
                           onClick={() => {
                             setChosen(selected.noradId);
-                            navigate("/maps");
+                            navigate(`/maps?satellite=${selected.noradId}`);
                           }}
                         >
                           <MapIcon aria-hidden />
@@ -993,16 +1027,24 @@ function OneSatellite({
                             )}
                           >
                             <span className={cn("block text-body text-ink tabular", chosen && "font-semibold")}>
-                              {item.aos <= now ? "Up now" : `${dayWords(item.aos, now)}, ${bothTimes(item.aos)}`}
+                              {item.alwaysUp
+                                ? "Up all the time"
+                                : item.aos <= now
+                                  ? "Up now"
+                                  : `${dayWords(item.aos, now)}, ${bothTimes(item.aos)}`}
                             </span>
                             <span className="block text-small text-ink-muted">
                               <Joined
-                                parts={[
-                                  `highest ${Math.round(item.maxElevationDeg)}°`,
-                                  `${Math.round(item.durationSeconds / 60)} min`,
-                                  `${compassPoint(item.aosAzimuthDeg)} to ${compassPoint(item.losAzimuthDeg)}`,
-                                  chosen ? "shown" : null,
-                                ]}
+                                parts={
+                                  item.alwaysUp
+                                    ? [alwaysUpWords(item), chosen ? "shown" : null]
+                                    : [
+                                        `highest ${Math.round(item.maxElevationDeg)}°`,
+                                        `${Math.round(item.durationSeconds / 60)} min`,
+                                        `${compassPoint(item.aosAzimuthDeg)} to ${compassPoint(item.losAzimuthDeg)}`,
+                                        chosen ? "shown" : null,
+                                      ]
+                                }
                               />
                             </span>
                           </button>
@@ -1018,7 +1060,9 @@ function OneSatellite({
                 </div>
               </div>
             )}
-            {pass && path.length > 0 ? <ThroughThePass path={path} transmitters={own} licensed={licence.licensed} /> : null}
+            {pass && path.length > 0 ? (
+              <ThroughThePass path={path} transmitters={own} licensed={licence.licensed} alwaysUp={pass.alwaysUp === true} />
+            ) : null}
           </Section>
 
           {state ? (

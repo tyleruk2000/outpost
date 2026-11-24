@@ -103,7 +103,14 @@ GROUPS.prepare.push("garden_sowings", "garden_settings");
 // The Morse trainer (modules/morse), on a line of its own so that other additions merge cleanly.
 GROUPS.radio.push("morse_progress", "morse_sessions");
 // Satellite tracking (modules/satellites), on a line of its own so that other additions merge cleanly.
-GROUPS.radio.push("satellite_elements", "satellite_transmitters", "satellite_about", "satellite_wikipedia", "satellite_fetches");
+GROUPS.radio.push(
+  "satellite_elements",
+  "satellite_transmitters",
+  "satellite_about",
+  "satellite_wikipedia",
+  "satellite_wikipedia_discarded",
+  "satellite_fetches",
+);
 // Learning progress in reference archives (modules/learning), on a line of its own so that other additions merge cleanly.
 GROUPS.library.push("learning_pages", "learning_days", "learning_topics");
 // Heard on the radio (modules/heard), on a line of its own so that other additions merge cleanly.
