@@ -21,6 +21,7 @@ interface Query {
   q: string;
   grades: Record<string, number>;
   pi: string[];
+  sets?: string[];
 }
 interface Row {
   q: string;
@@ -30,6 +31,7 @@ interface Row {
   count: number;
   ms: number;
   titles: string[];
+  sets: string[];
 }
 interface Recorded {
   collections: Array<{
@@ -49,6 +51,9 @@ const grade = (query: Query, result: { kind: string }) =>
   result.kind === "reference" ? gradeByPattern(query, result) : gradeById(query, result);
 
 const { formatSummary, formatTable, foundByWords, gradeById, gradeByPattern, loadQueries, summarise } = metrics;
+/** The first household questions, and the everyday searches tried on a Raspberry Pi (queries.json `sets`). */
+const household = (rows: Row[]) => rows.filter((row) => !row.sets.length || row.sets.includes("household"));
+const everyday = (rows: Row[]) => rows.filter((row) => row.sets.includes("everyday"));
 const modelPresent = builtInInstallation(defaultModelDir()).installed;
 
 describe("search quality on the household evaluation set", () => {
@@ -105,6 +110,7 @@ describe("search quality on the household evaluation set", () => {
           count: results.length,
           ms,
           titles: results.map((result) => (result.kind === "reference" ? `[ref] ${result.title}` : result.title)),
+          sets: query.sets ?? [],
         });
       }
     };
@@ -128,11 +134,11 @@ describe("search quality on the household evaluation set", () => {
     // A file, not the console: the test runner keeps a passing test's output to itself.
     if (process.env.SEARCH_EVAL_OUT) {
       const withMeaning = modelPresent
-        ? `${formatTable(meaningRows)}\n\n${formatSummary("fixture library, keyword again", summarise(keywordAgain))}\n${formatSummary("fixture library, with search by meaning", summarise(meaningRows))}\n\n`
+        ? `${formatTable(meaningRows)}\n\n${formatSummary("fixture library, keyword again", summarise(keywordAgain))}\n${formatSummary("fixture library, with search by meaning", summarise(meaningRows))}\n${formatSummary("fixture library, with search by meaning, household questions", summarise(household(meaningRows)))}\n${formatSummary("fixture library, with search by meaning, everyday searches", summarise(everyday(meaningRows)))}\n\n`
         : "";
       writeFileSync(
         process.env.SEARCH_EVAL_OUT,
-        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
+        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
       );
     }
   }, 120_000);
@@ -145,7 +151,20 @@ describe("search quality on the household evaluation set", () => {
     const summary = summarise(rows);
     expect(summary.success3).toBeGreaterThanOrEqual(0.95);
     expect(summary.zeroResultRate).toBe(0);
-    expect(summary.ndcg5).toBeGreaterThanOrEqual(0.8);
+    expect(summarise(household(rows)).ndcg5).toBeGreaterThanOrEqual(0.81);
+    // Harder: graded against every article the Pi's 37 collections hold for them, most of which no list can show.
+    expect(summarise(everyday(rows)).ndcg5).toBeGreaterThanOrEqual(0.72);
+  });
+
+  it("answers the everyday car searches with vehicle sources, not a radio manual that mentions a flat battery", () => {
+    for (const q of ["car battery flat", "car battery dead", "car won't start"]) {
+      const row = rows.find((candidate) => candidate.q === q)!;
+      expect(
+        row.grades.slice(0, 3).every((grade) => grade >= 2),
+        `${q}: ${row.titles.slice(0, 3).join(" | ")}`,
+      ).toBe(true);
+      expect(row.titles.slice(0, 5)).not.toContain("Best practices");
+    }
   });
 
   it("puts a useful reference article in the first three for nearly every question, with no list pages", () => {
@@ -162,7 +181,7 @@ describe("search quality on the household evaluation set", () => {
       const summary = summarise(meaningRows);
       expect(summary.success3).toBeGreaterThanOrEqual(0.95);
       expect(summary.zeroResultRate).toBe(0);
-      expect(summary.ndcg5).toBeGreaterThanOrEqual(summarise(keywordAgain).ndcg5);
+      expect(summarise(household(meaningRows)).ndcg5).toBeGreaterThanOrEqual(summarise(household(keywordAgain)).ndcg5);
       expect(meaningRows.find((row) => row.q === "rescue breaths for a child")!.titles[0]).toBe("First aid manual");
     },
   );

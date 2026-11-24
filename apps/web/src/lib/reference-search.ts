@@ -84,7 +84,10 @@ function after(held: Held, event: ReferenceSearchEvent): Held {
   if (event.type === "start") {
     return { ...held, search: { ...search, collections: event.collections, more: event.more ?? 0, instead: event.instead ?? null } };
   }
-  if (event.type === "widen") return { ...held, search: { ...search, collections: search.collections + event.collections, more: 0 } };
+  if (event.type === "widen") {
+    const more = Math.max(0, search.more - event.collections);
+    return { ...held, search: { ...search, collections: search.collections + event.collections, more } };
+  }
   if (event.type === "collection") {
     const parts = new Map(held.parts);
     parts.delete(event.collectionId);

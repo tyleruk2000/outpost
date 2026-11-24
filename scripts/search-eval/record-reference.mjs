@@ -4,7 +4,7 @@
  * reference.json, for the server's tests to search offline (search-quality.test.ts).
  * Only GET requests are sent, to a running Outpost:
  *
- *   node scripts/search-eval/record-reference.mjs http://outpost.local:8080
+ *   node scripts/search-eval/record-reference.mjs http://outpost.local:8080 [--set everyday]
  *
  * For each question and each collection it asks for the full text (ten results, for the
  * words that matter and once more said another way) and for titles (kiwix-serve's title
@@ -28,7 +28,9 @@ async function get(path) {
 const { books } = await get("/api/kiwix/books");
 const { collections } = await get("/api/collections?kind=zim");
 const tasks = [];
-for (const query of loadQueries()) {
+// `--set everyday` records only the questions of that set (queries.json), for a set newly added.
+const onlySet = process.argv.includes("--set") ? process.argv[process.argv.indexOf("--set") + 1] : null;
+for (const query of loadQueries().filter((query) => !onlySet || query.sets?.includes(onlySet))) {
   if (query.pi.length === 0) continue;
   const { parsed } = expandQuery(parseQuery(query.q));
   const patterns = [plainQuery(parsed) || query.q, alternateQuery(parsed)].filter(Boolean);
@@ -66,7 +68,7 @@ async function work() {
     const entry = entryFor(task.book);
     for (const hit of hits) {
       if (entry.hits.some((other) => other.path === hit.path)) continue;
-      entry.hits.push({ title: hit.title, path: hit.path, snippet: (hit.snippet ?? "").slice(0, 160) });
+      entry.hits.push({ title: hit.title, path: hit.path, snippet: (hit.snippet ?? "").slice(0, 160).replace(/\p{Cs}/gu, "") });
       added += 1;
     }
     done += 1;

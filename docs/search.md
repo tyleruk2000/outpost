@@ -87,8 +87,9 @@ results come back), Outpost offers the nearest word your library does hold, as a
 "Did you mean **purify** water?" Your search stays as you typed it. The words come from
 your own library, not from reference collections.
 
-Reference collections are then asked both ways, as typed and corrected, and say so: "Also
-showing results for **purify** water." A real word your library happens not to hold
+A slip of the first key counts too: "vattery" offers **battery**, a far commoner word than
+one that starts with a "v". Reference collections are then asked both ways, as typed and
+corrected, and say so: "Also showing results for **purify** water." A real word your library happens not to hold
 ("bowline") still finds its own articles first.
 
 ### When few items have every word
@@ -131,7 +132,9 @@ Every result, whatever found it, is scored on one scale from 0 to 1, so a page o
 own and an article in a reference collection can be put in one order. Half the score is
 how much of the query a result holds, rarer words counting for more; the rest is the
 words in its title, how near together they are, whether they stand side by side in the
-order typed, and how often they occur. An item is scored by its best passage and shows up
+order typed, and how often they occur. Words held far apart count for less: a passage that
+says "car" at its start and "the battery is flat" at its end is not about a flat car
+battery, and says "All 3 words, far apart". An item is scored by its best passage and shows up
 to three, with the words that matter marked; a PDF opens at that passage's page. The
 exact weights are in [development/answers-and-search.md](development/answers-and-search.md#ranking-weights).
 
@@ -156,6 +159,11 @@ question favours manuals, guides and questions and answers. A source's kind come
 its collection, category, tags and title. These settle near ties; they never lift a poor
 match over a good one.
 
+The other way round, a collection plainly about another subject than the question counts a
+little less, and says "on another subject": a radio manual for "car battery flat", a woodshop
+forum for "first aid kit list". Collections for the whole household (preparedness, the
+outdoors, repairs, water) are never another subject.
+
 A few words have a strong other meaning: "CPR" in a railway history, a signal
 "generator", the "stroke" of an engine, a "shock" absorber, "bleeding" brakes. When the
 question is in the household's sense and a result is plainly in the other, it counts for
@@ -164,7 +172,7 @@ less. A question that names the other meaning ("CPR railway") is taken at its wo
 #### Why each result is there
 
 Beside each result a few words say why: "All 3 words in the title", "All 3 words, side by
-side", "2 of 3 words, not “sand”", "also matched tire", "favoured: first aid source",
+side", "All 3 words, far apart", "2 of 3 words, not “sand”", "also matched tire", "favoured: first aid source",
 "another meaning of “cpr”", "Found by meaning".
 
 ### The answer, above the results
@@ -199,8 +207,10 @@ archives are asked.
   the question's topic (medical words to medical collections, car words to motor
   mechanics, and so on), those whose title or description uses its words, a general
   encyclopaedia, manuals and questions-and-answers for "how to…", and those that answered
-  the same words well recently. When those find little, the rest are asked straight away;
-  otherwise **Search all reference collections** under the results asks every one.
+  the same words well recently. When those find little, the next eight likeliest are asked
+  straight away; **Search all reference collections** under the results asks every one.
+- **Not for every letter.** While you type, the collections are asked once the words have
+  stood still for about a third of a second, and a search typed over is dropped.
 - **Titles and text.** Each collection is asked for its full text and for its titles;
   titles answer fastest, so they are usually the first reference results to appear.
 - **Left out:** pages that only list other pages (questions by tag, one page of a longer
@@ -210,9 +220,16 @@ archives are asked.
   less than half of what was asked is dropped. An article whose title is exactly what was
   asked ("Burn" for "treat a burn"), in a collection that fits the question, says "The
   title is what was asked".
-- **In reference collections**, under your own results, shows the five best articles; the
-  **Reference** tab lists every one. While the pointer or focus is in the list, nothing
-  moves: newcomers wait, with a line saying how many.
+- **On Everything**, the ten best articles join the list of your own results as they arrive,
+  each where its score puts it, on a phone as on a wide screen: "Car battery flat after
+  sitting for 9 months" comes above a radio manual that mentions a flat battery. Between two
+  nearly as good, your own comes first (an article counts 0.95 of its score). When more pages
+  of your own follow, the first page holds only the articles that rank on it. The line under
+  the count says how many are in the list; **See all reference results** and the
+  **Reference** tab list every one.
+- **Nothing moves under your hand.** While the pointer or focus is in the list, or for a
+  moment after a finger lifts (longer while the page still scrolls), newcomers wait, with a
+  line saying how many.
 - A collection kiwix-serve cannot search by its full text is searched by its titles only;
   its details in **Library → Collections** say so.
 - A collection slower than a few seconds is left out of that search and named.
@@ -421,8 +438,9 @@ results says which way they were found ("found by words and by meaning").
   result holding all your words: when the words find plenty these wait below them, and
   when the words find little they fill the list. The model finds something near any
   question, nonsense included, so these are only as good as it is.
-- For a first aid or medical question, a trusted source holding all your words whose
-  passage means the same as the question comes first, and says "means the same".
+- For a first aid or medical question, a trusted source holding all your words, with one of
+  them in its title, a heading or a tag, whose passage means the same as the question comes
+  first, and says "means the same". A whole book that mentions the word on one page does not.
 
 **More options** holds **Weight of matching words**, **Weight of matching meaning** (both
 1) and, for the passages given to an answer, **Evenness of combining** (60); *How search

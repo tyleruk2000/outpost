@@ -1,129 +1,701 @@
 {
-  "about": "Household questions and what a good answer would be. `grades` grade the fixture library's items (3 the answer, 2 useful, 1 on the subject); `pi` are patterns that must all match a real library's result for it to count (all in the title: 3; all in title and text: 2; any in the title: 1).",
+  "about": "Household questions and what a good answer would be. `grades` grade the fixture library's items (3 the answer, 2 useful, 1 on the subject); `pi` are patterns that must all match a real library's result for it to count (all in the title: 3; all in title and text: 2; any in the title: 1). `sets` names the sets a question is in when not only the first: \"household\" (the first 56) and \"everyday\" (the searches the everyday searches the owner tried on a Raspberry Pi (November 2026), reported apart as well).",
   "queries": [
     {
       "q": "How to change car battery",
-      "grades": { "car-maint": 3, "jump-start": 1, "phone-charging": 1 },
+      "grades": {
+        "car-maint": 3,
+        "jump-start": 1,
+        "phone-charging": 1
+      },
       "pi": ["\\b(car|vehicle|automotive)", "batter"]
     },
     {
       "q": "purify water",
-      "grades": { "water-handbook": 3, "kit-list": 1 },
-      "pi": ["water", "purif|treat|disinfect|boil|filter|drinking"]
+      "grades": {
+        "water-handbook": 3,
+        "kit-list": 1
+      },
+      "pi": ["water", "purif|treat|disinfect|boil|filter|drinking"],
+      "sets": ["household", "everyday"]
     },
-    { "q": "treat a burn", "grades": { "burns": 3, "first-aid": 3, "sunburn": 1 }, "pi": ["burn|scald", "treat|cool|first aid|dressing"] },
-    { "q": "fix a puncture", "grades": { "bike-repair": 3 }, "pi": ["puncture|inner tube|flat tyre|flat tire"] },
+    {
+      "q": "treat a burn",
+      "grades": {
+        "burns": 3,
+        "first-aid": 3,
+        "sunburn": 1
+      },
+      "pi": ["burn|scald", "treat|cool|first aid|dressing"],
+      "sets": ["household", "everyday"]
+    },
+    {
+      "q": "fix a puncture",
+      "grades": {
+        "bike-repair": 3
+      },
+      "pi": ["puncture|inner tube|flat tyre|flat tire"]
+    },
     {
       "q": "store petrol safely",
-      "grades": { "fuel-storage": 3, "gasoline-storage": 3, "generator": 1 },
+      "grades": {
+        "fuel-storage": 3,
+        "gasoline-storage": 3,
+        "generator": 1
+      },
       "pi": ["petrol|gasoline|fuel", "stor|container|jerry"]
     },
     {
       "q": "make bread without yeast",
-      "grades": { "soda-bread": 3, "sourdough": 1, "bread-machine": 1 },
+      "grades": {
+        "soda-bread": 3,
+        "sourdough": 1,
+        "bread-machine": 1
+      },
       "pi": ["bread|soda|flatbread|damper", "yeast|soda|baking powder|unleavened"]
     },
     {
       "q": "what to do in a power cut",
-      "grades": { "power-cut": 3, "freezer": 2, "generator": 2 },
+      "grades": {
+        "power-cut": 3,
+        "freezer": 2,
+        "generator": 2,
+        "radio-setup": 0
+      },
       "pi": ["power cut|power outage|blackout|power failure|without power"]
     },
     {
       "q": "CPR on a child",
-      "grades": { "first-aid": 3, "cpr-adult": 2 },
-      "pi": ["cpr|resuscitat|chest compression", "child|infant|paediatric|pediatric"]
+      "grades": {
+        "first-aid": 3,
+        "cpr-adult": 2
+      },
+      "pi": ["cpr|resuscitat|chest compression", "child|infant|paediatric|pediatric"],
+      "sets": ["household", "everyday"]
     },
-    { "q": "jump start a car", "grades": { "jump-start": 3, "car-maint": 1 }, "pi": ["jump", "car|vehicle|batter"] },
+    {
+      "q": "jump start a car",
+      "grades": {
+        "jump-start": 3,
+        "car-maint": 1,
+        "car-wont-start": 2
+      },
+      "pi": ["jump", "car|vehicle|batter"],
+      "sets": ["household", "everyday"]
+    },
     {
       "q": "best frequency for emergency",
-      "grades": { "radio-freqs": 3, "pmr446": 2 },
+      "grades": {
+        "radio-freqs": 3,
+        "pmr446": 2
+      },
       "pi": ["frequen|channel|mhz", "emergenc|distress"]
     },
-    { "q": "how to tie a bowline", "grades": { "knots": 3 }, "pi": ["bowline"] },
-    { "q": "signs of hypothermia", "grades": { "first-aid": 3, "winter-driving": 1 }, "pi": ["hypotherm"] },
+    {
+      "q": "how to tie a bowline",
+      "grades": {
+        "knots": 3
+      },
+      "pi": ["bowline"]
+    },
+    {
+      "q": "signs of hypothermia",
+      "grades": {
+        "first-aid": 3,
+        "winter-driving": 1,
+        "nursing-book": 1
+      },
+      "pi": ["hypotherm"]
+    },
     {
       "q": "how long does food last in a freezer",
-      "grades": { "freezer": 3, "food-storage": 3 },
+      "grades": {
+        "freezer": 3,
+        "food-storage": 3
+      },
       "pi": ["freez", "food|meat|keep|store|last"]
     },
     {
       "q": "how to start a fire without matches",
-      "grades": { "fire-lighting": 3 },
+      "grades": {
+        "fire-lighting": 3
+      },
       "pi": ["fire", "friction|ferro|flint|spark|match|bow drill"]
     },
-    { "q": "treat a snake bite", "grades": { "first-aid": 3 }, "pi": ["snake|venom|adder", "bite"] },
-    { "q": "stop a nosebleed", "grades": { "first-aid": 3 }, "pi": ["nose ?bleed|epistaxis"] },
-    { "q": "how to filter water with sand", "grades": { "water-handbook": 3 }, "pi": ["filter", "sand|gravel|charcoal"] },
-    { "q": "charge phone from car", "grades": { "phone-charging": 3, "solar-charger": 1 }, "pi": ["phone|usb|mobile", "charg"] },
+    {
+      "q": "treat a snake bite",
+      "grades": {
+        "first-aid": 3
+      },
+      "pi": ["snake|venom|adder", "bite"]
+    },
+    {
+      "q": "stop a nosebleed",
+      "grades": {
+        "first-aid": 3
+      },
+      "pi": ["nose ?bleed|epistaxis"]
+    },
+    {
+      "q": "how to filter water with sand",
+      "grades": {
+        "water-handbook": 3
+      },
+      "pi": ["filter", "sand|gravel|charcoal"]
+    },
+    {
+      "q": "charge phone from car",
+      "grades": {
+        "phone-charging": 3,
+        "solar-charger": 1
+      },
+      "pi": ["phone|usb|mobile", "charg"]
+    },
     {
       "q": "how much water per person per day",
-      "grades": { "water-handbook": 3, "supplies-list": 2 },
+      "grades": {
+        "water-handbook": 3,
+        "supplies-list": 2
+      },
       "pi": ["water", "per person|per day|litre|gallon|daily"]
     },
     {
       "q": "what to put in a first aid kit",
-      "grades": { "first-aid-kit": 3, "supplies-list": 1, "first-aid": 1 },
+      "grades": {
+        "first-aid-kit": 3,
+        "supplies-list": 1,
+        "first-aid": 1
+      },
       "pi": ["first aid", "kit|bag|box"]
     },
-    { "q": "how to grow potatoes", "grades": { "potatoes": 3 }, "pi": ["potato"] },
-    { "q": "pickling vegetables", "grades": { "pickling": 3 }, "pi": ["pickl"] },
-    { "q": "how to read a compass", "grades": { "compass": 3, "map-reading": 2 }, "pi": ["compass"] },
-    { "q": "dehydration symptoms", "grades": { "first-aid": 3, "oral-rehydration": 2 }, "pi": ["dehydrat"] },
-    { "q": "carbon monoxide poisoning", "grades": { "co-alarm": 3, "generator": 1 }, "pi": ["carbon monoxide"] },
-    { "q": "purify water with bleach", "grades": { "water-handbook": 3, "pool-care": 0 }, "pi": ["water", "bleach|chlorine|hypochlorite"] },
-    { "q": "water", "grades": { "water-handbook": 3, "water-systems": 2, "water-storage": 2, "rainwater": 2 }, "pi": ["water"] },
-    { "q": "battery", "grades": { "car-maint": 2, "jump-start": 2, "radio-menu": 1, "solar-charger": 1 }, "pi": ["batter"] },
-    { "q": "bowline", "grades": { "knots": 3 }, "pi": ["bowline"] },
-    { "q": "how do I boil water", "grades": { "water-handbook": 3, "kit-list": 1 }, "pi": ["water", "boil"] },
-    { "q": "radio", "grades": { "radio-freqs": 2, "pmr446": 2, "radio-menu": 2 }, "pi": ["radio"] },
-    { "q": "stove", "grades": { "wood-stove": 3, "kit-list": 1 }, "pi": ["stove"] },
-    { "q": "first aid", "grades": { "first-aid": 3, "first-aid-kit": 3 }, "pi": ["first aid"] },
+    {
+      "q": "how to grow potatoes",
+      "grades": {
+        "potatoes": 3
+      },
+      "pi": ["potato"]
+    },
+    {
+      "q": "pickling vegetables",
+      "grades": {
+        "pickling": 3
+      },
+      "pi": ["pickl"]
+    },
+    {
+      "q": "how to read a compass",
+      "grades": {
+        "compass": 3,
+        "map-reading": 2
+      },
+      "pi": ["compass"]
+    },
+    {
+      "q": "dehydration symptoms",
+      "grades": {
+        "first-aid": 3,
+        "oral-rehydration": 2
+      },
+      "pi": ["dehydrat"],
+      "sets": ["household", "everyday"]
+    },
+    {
+      "q": "carbon monoxide poisoning",
+      "grades": {
+        "co-alarm": 3,
+        "generator": 1
+      },
+      "pi": ["carbon monoxide"]
+    },
+    {
+      "q": "purify water with bleach",
+      "grades": {
+        "water-handbook": 3,
+        "pool-care": 0
+      },
+      "pi": ["water", "bleach|chlorine|hypochlorite"]
+    },
+    {
+      "q": "water",
+      "grades": {
+        "water-handbook": 3,
+        "water-systems": 2,
+        "water-storage": 2,
+        "rainwater": 2
+      },
+      "pi": ["water"]
+    },
+    {
+      "q": "battery",
+      "grades": {
+        "car-maint": 2,
+        "jump-start": 2,
+        "radio-menu": 1,
+        "solar-charger": 1,
+        "solar-sizing": 1,
+        "car-wont-start": 2
+      },
+      "pi": ["batter"]
+    },
+    {
+      "q": "bowline",
+      "grades": {
+        "knots": 3
+      },
+      "pi": ["bowline"]
+    },
+    {
+      "q": "how do I boil water",
+      "grades": {
+        "water-handbook": 3,
+        "kit-list": 1
+      },
+      "pi": ["water", "boil"]
+    },
+    {
+      "q": "radio",
+      "grades": {
+        "radio-freqs": 2,
+        "pmr446": 2,
+        "radio-menu": 2
+      },
+      "pi": ["radio"]
+    },
+    {
+      "q": "stove",
+      "grades": {
+        "wood-stove": 3,
+        "kit-list": 1
+      },
+      "pi": ["stove"]
+    },
+    {
+      "q": "first aid",
+      "grades": {
+        "first-aid": 3,
+        "first-aid-kit": 3
+      },
+      "pi": ["first aid"]
+    },
     {
       "q": "cpr",
-      "grades": { "first-aid": 3, "cpr-adult": 3, "railway": 0 },
+      "grades": {
+        "first-aid": 3,
+        "cpr-adult": 3,
+        "railway": 0
+      },
       "pi": ["cpr|resuscitat", "compression|breath|heart|resuscitat"]
     },
-    { "q": "seasoned logs", "grades": { "wood-stove": 3 }, "pi": ["log|firewood", "season"] },
-    { "q": "smoke alarm", "grades": { "fire-safety": 3 }, "pi": ["smoke", "alarm|detector"] },
-    { "q": "\"clove hitch\"", "grades": { "knots": 3 }, "pi": ["clove hitch"] },
-    { "q": "potato blight", "grades": { "potatoes": 3 }, "pi": ["potato", "blight"] },
-    { "q": "what is pmr446", "grades": { "pmr446": 3 }, "pi": ["pmr ?446"] },
-    { "q": "how to store rice long term", "grades": { "food-storage": 3 }, "pi": ["rice", "stor|keep|shelf"] },
-    { "q": "tyre pressure", "grades": { "tyre-pressure": 3, "tire-care": 3 }, "pi": ["tyre|tire", "pressure"] },
-    { "q": "tire pressure", "grades": { "tyre-pressure": 3, "tire-care": 3 }, "pi": ["tyre|tire", "pressure"] },
+    {
+      "q": "seasoned logs",
+      "grades": {
+        "wood-stove": 3
+      },
+      "pi": ["log|firewood", "season"]
+    },
+    {
+      "q": "smoke alarm",
+      "grades": {
+        "fire-safety": 3
+      },
+      "pi": ["smoke", "alarm|detector"]
+    },
+    {
+      "q": "\"clove hitch\"",
+      "grades": {
+        "knots": 3
+      },
+      "pi": ["clove hitch"]
+    },
+    {
+      "q": "potato blight",
+      "grades": {
+        "potatoes": 3
+      },
+      "pi": ["potato", "blight"]
+    },
+    {
+      "q": "what is pmr446",
+      "grades": {
+        "pmr446": 3
+      },
+      "pi": ["pmr ?446"]
+    },
+    {
+      "q": "how to store rice long term",
+      "grades": {
+        "food-storage": 3
+      },
+      "pi": ["rice", "stor|keep|shelf"]
+    },
+    {
+      "q": "tyre pressure",
+      "grades": {
+        "tyre-pressure": 3,
+        "tire-care": 3
+      },
+      "pi": ["tyre|tire", "pressure"]
+    },
+    {
+      "q": "tire pressure",
+      "grades": {
+        "tyre-pressure": 3,
+        "tire-care": 3
+      },
+      "pi": ["tyre|tire", "pressure"]
+    },
     {
       "q": "petrol storage",
-      "grades": { "fuel-storage": 3, "gasoline-storage": 3, "generator": 1 },
+      "grades": {
+        "fuel-storage": 3,
+        "gasoline-storage": 3,
+        "generator": 1
+      },
       "pi": ["petrol|gasoline|fuel", "stor|container|can"]
     },
-    { "q": "diarrhoea", "grades": { "diarrhea": 3 }, "pi": ["diarrh"] },
+    {
+      "q": "diarrhoea",
+      "grades": {
+        "diarrhea": 3
+      },
+      "pi": ["diarrh"]
+    },
     {
       "q": "power cut",
-      "grades": { "power-cut": 3, "power-outage": 3, "freezer": 2, "generator": 1 },
+      "grades": {
+        "power-cut": 3,
+        "power-outage": 3,
+        "freezer": 2,
+        "generator": 1
+      },
       "pi": ["power cut|power outage|blackout|power failure|without power"]
     },
     {
       "q": "purifiy water",
-      "grades": { "water-handbook": 3, "kit-list": 1 },
+      "grades": {
+        "water-handbook": 3,
+        "kit-list": 1
+      },
       "pi": ["water", "purif|treat|disinfect|boil|filter|drinking"]
     },
-    { "q": "torch batteries", "grades": { "flashlight": 3, "supplies-list": 2 }, "pi": ["torch|flashlight", "batter"] },
-    { "q": "winter driving kit", "grades": { "winter-driving": 3 }, "pi": ["winter|snow|ice", "driv|car|vehicle"] },
-    { "q": "how to make oral rehydration solution", "grades": { "oral-rehydration": 3 }, "pi": ["rehydrat"] },
+    {
+      "q": "torch batteries",
+      "grades": {
+        "flashlight": 3,
+        "supplies-list": 2
+      },
+      "pi": ["torch|flashlight", "batter"]
+    },
+    {
+      "q": "winter driving kit",
+      "grades": {
+        "winter-driving": 3
+      },
+      "pi": ["winter|snow|ice", "driv|car|vehicle"]
+    },
+    {
+      "q": "how to make oral rehydration solution",
+      "grades": {
+        "oral-rehydration": 3
+      },
+      "pi": ["rehydrat"]
+    },
     {
       "q": "how to use a generator safely",
-      "grades": { "generator": 3, "co-alarm": 1, "signal-generator": 0 },
+      "grades": {
+        "generator": 3,
+        "co-alarm": 1,
+        "signal-generator": 0
+      },
       "pi": ["generator", "safe|safety|carbon monoxide|ventilat|outdoors|indoors|fumes"]
     },
-    { "q": "map grid reference", "grades": { "map-reading": 3 }, "pi": ["grid", "map|reference"] },
-    { "q": "sunburn treatment", "grades": { "sunburn": 3, "burns": 1 }, "pi": ["sunburn"] },
-    { "q": "chest compressions", "grades": { "first-aid": 3, "cpr-adult": 3 }, "pi": ["chest compression|cpr"] },
+    {
+      "q": "map grid reference",
+      "grades": {
+        "map-reading": 3
+      },
+      "pi": ["grid", "map|reference"]
+    },
+    {
+      "q": "sunburn treatment",
+      "grades": {
+        "sunburn": 3,
+        "burns": 1
+      },
+      "pi": ["sunburn"]
+    },
+    {
+      "q": "chest compressions",
+      "grades": {
+        "first-aid": 3,
+        "cpr-adult": 3
+      },
+      "pi": ["chest compression|cpr"]
+    },
     {
       "q": "rescue breaths for a child",
-      "grades": { "first-aid": 3, "cpr-adult": 1, "hiking-forum": 0 },
+      "grades": {
+        "first-aid": 3,
+        "cpr-adult": 1,
+        "hiking-forum": 0
+      },
       "pi": ["rescue breath|cpr|resuscitat|mouth.to.mouth", "child|infant|paediatric|pediatric|baby"]
     },
-    { "q": "wild yeast starter", "grades": { "sourdough": 3 }, "pi": ["sourdough|starter|yeast"] },
-    { "q": "zzqx flurble", "grades": {}, "pi": [] }
+    {
+      "q": "wild yeast starter",
+      "grades": {
+        "sourdough": 3
+      },
+      "pi": ["sourdough|starter|yeast"]
+    },
+    {
+      "q": "car battery flat",
+      "grades": {
+        "car-wont-start": 3,
+        "jump-start": 3,
+        "car-maint": 1,
+        "phone-charging": 1,
+        "radio-best-practices": 0
+      },
+      "pi": ["\\b(car|cars|vehicle|automotive|engine)\\b", "batter", "flat|dead|drain|discharg"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "car won't start",
+      "grades": {
+        "car-wont-start": 3,
+        "jump-start": 2
+      },
+      "pi": ["\\b(car|cars|vehicle|automotive|engine)\\b", "won.?t start|not start|no start|starts?\\b|crank"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "car battery dead",
+      "grades": {
+        "car-wont-start": 3,
+        "jump-start": 3,
+        "car-maint": 1
+      },
+      "pi": ["\\b(car|cars|vehicle|automotive|engine)\\b", "batter", "dead|flat|drain|discharg"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "change a tyre",
+      "grades": {
+        "tyre-change": 3,
+        "forum-digest": 1,
+        "tire-care": 1,
+        "tyre-pressure": 1
+      },
+      "pi": ["tyre|tire|wheel", "change|replac|fit|spare|puncture"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "car overheating",
+      "grades": {
+        "car-overheating": 3
+      },
+      "pi": ["\\b(car|cars|vehicle|automotive|engine)\\b", "overheat|coolant|radiator|thermostat|temperature"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "store food long term",
+      "grades": {
+        "food-storage": 3,
+        "freezer": 1
+      },
+      "pi": ["food|rice|tinned|canned|grain", "store|storage|long.term|shelf life|keep"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "bread without yeast",
+      "grades": {
+        "soda-bread": 3,
+        "sourdough": 1,
+        "bread-machine": 1
+      },
+      "pi": ["bread|soda|flatbread|damper", "yeast|soda|baking powder|unleavened"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "how long does rice keep",
+      "grades": {
+        "food-storage": 3,
+        "rice-pudding": 0
+      },
+      "pi": ["rice", "keep|last|store|storage|shelf"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "can food after power cut",
+      "grades": {
+        "freezer": 3,
+        "power-cut": 1,
+        "power-outage": 1
+      },
+      "pi": ["food|fridge|freezer", "power cut|power outage|blackout|power failure"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "ration food for a family",
+      "grades": {
+        "food-rationing": 3,
+        "food-storage": 1,
+        "supplies-list": 1
+      },
+      "pi": ["ration|food|calorie|meal", "family|person|people|household|day"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "stop bleeding",
+      "grades": {
+        "first-aid": 3
+      },
+      "pi": ["bleed|haemorrhag|hemorrhag|wound|tourniquet"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "hypothermia",
+      "grades": {
+        "first-aid": 3,
+        "winter-driving": 1,
+        "nursing-book": 1
+      },
+      "pi": ["hypotherm"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "broken arm splint",
+      "grades": {
+        "first-aid": 3,
+        "nursing-book": 1
+      },
+      "pi": ["splint|fracture|broken (arm|bone)|sling"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "make a fire without matches",
+      "grades": {
+        "fire-lighting": 3,
+        "fire-safety": 0
+      },
+      "pi": ["fire", "without matches|friction|ferro|flint|spark|bow drill|fire piston|firesteel"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "build a shelter",
+      "grades": {
+        "shelter": 3
+      },
+      "pi": ["shelter", "build|make|construct|improvis|tarp|debris|lean.to|snow"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "navigate without a compass",
+      "grades": {
+        "no-compass": 3,
+        "compass": 1,
+        "map-reading": 1,
+        "radio-setup": 0
+      },
+      "pi": ["navigat|north|direction|way.?find", "without|sun|stars|stick|watch|no compass|lose|lost"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "signal for rescue",
+      "grades": {
+        "signal-rescue": 3,
+        "radio-freqs": 1
+      },
+      "pi": ["signal|distress|sos|mayday|whistle|mirror|flare|helicopter", "rescue|search|help|distress"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "emergency radio frequencies",
+      "grades": {
+        "radio-freqs": 3,
+        "pmr446": 2
+      },
+      "pi": ["frequen|channel|mhz", "emergenc|distress"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "power cut what to do",
+      "grades": {
+        "power-cut": 3,
+        "power-outage": 3,
+        "freezer": 2,
+        "generator": 1,
+        "radio-setup": 0
+      },
+      "pi": ["power cut|power outage|blackout|power failure|without power"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "generator carbon monoxide",
+      "grades": {
+        "generator": 3,
+        "co-alarm": 2
+      },
+      "pi": ["generator|carbon monoxide", "carbon monoxide|generator|\\bco\\b"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "solar panel battery size",
+      "grades": {
+        "solar-sizing": 3,
+        "solar-charger": 1
+      },
+      "pi": ["solar", "batter|size|sizing|capacity|wh\\b|amp.?hour"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "storm warning",
+      "grades": {
+        "storm": 3,
+        "radio-setup": 0
+      },
+      "pi": ["storm|severe weather|gale|hurricane|wind", "warning|alert|prepar|safety|what to do"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "flood what to do",
+      "grades": {
+        "flood": 3
+      },
+      "pi": ["flood"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "first aid kit list",
+      "grades": {
+        "first-aid-kit": 3,
+        "kit-list": 1,
+        "supplies-list": 1
+      },
+      "pi": ["first.aid", "kit|box|supplies|items|essentials"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "snake bite",
+      "grades": {
+        "first-aid": 3
+      },
+      "pi": ["snake|venom|adder|antivenom", "bite|venom|antivenom"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "knots for climbing",
+      "grades": {
+        "knots": 3
+      },
+      "pi": ["knot|bowline|hitch|figure.(of.)?eight", "climb|rope|mountaineer|belay|knot"],
+      "sets": ["everyday"]
+    },
+    {
+      "q": "zzqx flurble",
+      "grades": {},
+      "pi": []
+    }
   ]
 }

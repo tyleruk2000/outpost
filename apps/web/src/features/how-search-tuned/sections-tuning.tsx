@@ -1,5 +1,16 @@
 /** "How search was tuned", parts 4 to 8: the changes in order, the final score, meaning, speed, the lessons and the summary. */
-import { blended, favoured, MEANING_CEILING, meaningScore, PI_STAGES, PI_SUMMARY, SCORED_EXAMPLE, WEIGHTS } from "./data";
+import {
+  blended,
+  EVERYDAY_FIGURES,
+  EVERYDAY_SEARCHES,
+  favoured,
+  MEANING_CEILING,
+  meaningScore,
+  PI_STAGES,
+  PI_SUMMARY,
+  SCORED_EXAMPLE,
+  WEIGHTS,
+} from "./data";
 import { MemoryPlate, ProgressPlate, QuantisePlate, SpeedPlate, WeightsPlate } from "./figures";
 import { Figures, Part, Prose, Step, Sub, Sum } from "./parts";
 
@@ -10,7 +21,7 @@ export function StepsSection() {
   return (
     <Part id="steps" title="The changes, in the order they were made">
       <Prose>
-        <p>The work was done in five packages. Each was measured before and after.</p>
+        <p>The work was done in six packages. Each was measured before and after.</p>
         <p>
           Some “before” figures differ from the “after” of the package before. That is because the evaluation set grew, or got harder,
           between them.
@@ -186,6 +197,64 @@ export function StepsSection() {
         }
       />
 
+      <Step
+        id="step-6"
+        title="6. One list on a phone, and everyday searches"
+        problem={
+          <p>
+            On an iPhone, “car battery flat” showed a radio manual’s advice on storing a battery, and a line saying “15 articles in
+            reference collections”. The motor mechanics answer whose title is the question was a press away, under twenty of the person’s
+            own results.
+          </p>
+        }
+        evidence={
+          <p>
+            The server already ranked it fourth when asked for one list. The screen asked for the two parts apart, so that a person’s own
+            never wait, and then never put them together. Typing “car vattery flat” started a search of the collections for each letter, and
+            offered “vatter”.
+          </p>
+        }
+        change={
+          <ul>
+            <li>
+              On Everything, the ten best articles join the person’s own results as they arrive, each where its score puts it, at 0.95 of
+              itself. Nothing moves under a pointer, focus or finger.
+            </li>
+            <li>The collections are asked a third of a second after typing stops; a search typed over is dropped.</li>
+            <li>Words held far apart count for less (“All 3 words, far apart”): up to a fifth of coverage.</li>
+            <li>A collection plainly about another subject counts 0.9 of itself: a radio manual for a car question.</li>
+            <li>
+              A whole book no longer jumps the queue for a first aid question by meaning alone: a word must be in its title or a heading.
+            </li>
+            <li>A slip of the first key is offered as the far commoner word: “vattery”, battery.</li>
+            <li>
+              When the person’s own library already holds five results with every word, the other 31 collections wait for “Search all”
+              instead of being asked: they took the Pi three to six seconds more, mostly asking titles one at a time.
+            </li>
+            <li>
+              The owner’s {EVERYDAY_SEARCHES} everyday searches joined the evaluation set as a set of their own, graded on the Pi’s
+              collections.
+            </li>
+          </ul>
+        }
+        result={
+          <ul>
+            <li>The Pi’s candidates re-ranked offline: everyday searches nDCG@5 0.848 → 0.903; household questions 0.854 → 0.877.</li>
+            <li>
+              The fixture library did not move (household 0.818 → 0.817, everyday 0.731 → 0.728): its graded answers were already near the
+              top, and the patterns grade every recorded article, most of which no list of five can show.
+            </li>
+            <li>Of the 32 searches, those asking all 37 collections: 7 → 4 by the new rule, on the Pi’s own counts.</li>
+          </ul>
+        }
+      />
+      <Figures
+        label="Package 6, before and after"
+        head={["Measure", "Before", "After"]}
+        numeric={[1, 2]}
+        rows={EVERYDAY_FIGURES.map((row) => [row.measure, row.before, row.after])}
+      />
+
       <Sub id="steps-rejected">Tried and rejected</Sub>
       <Prose>
         <p>Some changes were tried, measured, and taken out. They are as much a part of the tuning as what was kept.</p>
@@ -204,6 +273,16 @@ export function StepsSection() {
             "Meaning at full weight",
             "Fixture nDCG@5 0.838 at half weight, 0.826 at full weight, 0.836 by words alone.",
             "The library’s own items have meaning numbers and reference articles do not, so at full weight own items rose above better articles.",
+          ],
+          [
+            "Asking only the next 8 or 16 collections when the first six find too little",
+            "Fixture nDCG@5 0.790 → 0.752 with 8 and 0.766 with 16; reference success@3 83% → 78%.",
+            "The answers were often in the collections left out. Not asking at all when the person’s own library has plenty cost nothing.",
+          ],
+          [
+            "Asking the collections searched second for their full text only, not their titles",
+            "Fixture nDCG@5 0.790 → 0.758.",
+            "Titles find the articles whose title is the answer, which full text ranks low.",
           ],
           [
             "Lowering forum posts that match only by their words",

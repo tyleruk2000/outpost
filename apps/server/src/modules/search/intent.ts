@@ -19,12 +19,24 @@
  *    `OTHER_SENSE` of itself. A question that itself names the other sense ("CPR
  *    railway") is taken at its word.
  */
+import { TOPICS } from "../kiwix/routing.ts";
 import { stem } from "./stem.ts";
 
 /** The most the favoured-source priors together multiply a score by. */
 export const MOST_FAVOUR = 1.3;
 /** What a result plainly in another sense of an ambiguous word keeps of its score. */
 export const OTHER_SENSE = 0.75;
+/**
+ * What a result keeps of its score when its collection is plainly about another subject than
+ * the question: a radio manual for "car battery flat", a woodshop forum for "first aid kit
+ * list", a nursing textbook for "change a tyre". The subjects are those reference collections
+ * are routed by (kiwix/routing.ts). Collections for the whole household (preparedness,
+ * outdoors, repair, water) are about every question.
+ */
+export const OTHER_SUBJECT = 0.9;
+/** Subjects every household question may belong to: a collection about one of them is never off the subject. */
+const EVERY_SUBJECT = new Set(["preparedness", "outdoors", "repair", "water"]);
+const subjectStems = TOPICS.map((topic) => new Set(topic.query.split(" ").map((word) => stem(word))));
 
 export interface IntentQuery {
   /** The words that matter, as parsed (query.ts), each with any other ways of saying it. */
@@ -116,6 +128,8 @@ export interface Intent {
   senses: Array<{ word: string; other: RegExp }>;
   /** The question's words, stemmed. */
   stems: Set<string>;
+  /** The subjects it is about (kiwix/routing.ts `TOPICS`), by id. Empty when its words name none. */
+  subjects?: Set<string>;
 }
 
 /** What kind of question it is, from its words. */
@@ -140,12 +154,21 @@ export function intentOf(query: IntentQuery): Intent {
     safety: phrase.includes("carbon monoxide") || (has(HAZARD) && has(SAFETY)),
     senses,
     stems: new Set(stemmed),
+    subjects: new Set(TOPICS.filter((_, index) => stemmed.some((word) => subjectStems[index]!.has(word))).map((topic) => topic.id)),
   };
 }
 
 /** True when the intent asks for nothing to be adjusted. */
 export function plainIntent(intent: Intent): boolean {
-  return !intent.medical && !intent.howTo && !intent.vehicle && !intent.safety && intent.senses.length === 0;
+  return !intent.medical && !intent.howTo && !intent.vehicle && !intent.safety && intent.senses.length === 0 && !intent.subjects?.size;
+}
+
+/** True when `collection` is plainly about a subject, and none of the question's: "Radio communications" for a car question. */
+function offSubject(intent: Intent, collection: string | null): boolean {
+  if (!collection || !intent.subjects?.size) return false;
+  const about = TOPICS.filter((topic) => topic.archive.test(collection.toLowerCase())).map((topic) => topic.id);
+  if (about.length === 0 || about.some((id) => EVERY_SUBJECT.has(id))) return false;
+  return !about.some((id) => intent.subjects!.has(id));
 }
 
 /** How a result's score is adjusted for the kind of question, and why. */
@@ -184,6 +207,10 @@ export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustmen
   const notes = kinds.length > 0 ? [`favoured: ${kinds[0]}`] : [];
   let factor = Math.min(MOST_FAVOUR, favour);
   const shown = `${source.title} \n ${source.collection ?? ""} \n ${source.text ?? ""}`;
+  if (offSubject(intent, source.collection)) {
+    factor *= OTHER_SUBJECT;
+    notes.push("on another subject");
+  }
   for (const sense of intent.senses) {
     if (sense.other.test(shown)) {
       factor *= OTHER_SENSE;

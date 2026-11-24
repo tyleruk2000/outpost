@@ -216,6 +216,19 @@ export const PI_SUMMARY: Array<{ measure: string; before: string; after: string 
   { measure: "Search by meaning", before: "Off (0 vectors)", after: "On, 59,327 passages read" },
 ];
 
+/** How many everyday searches the owner tried on the Pi (24 November 2026), added to the evaluation set as a second set. */
+export const EVERYDAY_SEARCHES = 31;
+
+/** The sixth package, measured on 24 November 2026: the Pi as it ranked, and its candidates re-ranked offline by this version. */
+export const EVERYDAY_FIGURES: Array<{ measure: string; before: string; after: string }> = [
+  { measure: "Everyday searches, nDCG@5 on the Pi", before: "0.848", after: "0.903" },
+  { measure: "Household questions, nDCG@5 on the Pi", before: "0.854", after: "0.877" },
+  { measure: "Everyday searches, success@3 on the Pi", before: "100%", after: "100%" },
+  { measure: "Fixture library, household questions, nDCG@5", before: "0.818", after: "0.817" },
+  { measure: "Fixture library, everyday searches, nDCG@5", before: "0.731", after: "0.728" },
+  { measure: "Of the 32 searches, those asking all 37 collections (after: the new rule on the Pi’s own counts)", before: "7", after: "4" },
+];
+
 /** Own results' p95 on the Raspberry Pi at each point it was measured. */
 export const PI_P95 = [
   { label: "Before", ms: 888 },

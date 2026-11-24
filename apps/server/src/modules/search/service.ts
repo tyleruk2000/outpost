@@ -282,6 +282,11 @@ export interface ReferenceSearchParams {
   /** Called when the rest of the collections are searched after all, because the first found too little. */
   onWiden?(collections: number): void;
   /**
+   * False when the person's own library already holds plenty with every word: then the first
+   * collections' answer is enough even when it is thin, and the rest wait for "Search all".
+   */
+  widen?: boolean;
+  /**
    * The same question said another way ("tire pressure" for "tyre pressure"), asked of
    * each collection as well when given. Null or absent when there is none.
    */
@@ -761,6 +766,20 @@ export function createSearchService(ctx: AppContext): SearchService {
     return exact ? { parsed, also: [] } : expandQuery(parsed);
   }
 
+  /** How many of the person's own items hold every word, counted up to `FEW`: enough to know whether they have plenty. */
+  function ownWithEveryWord(parsed: ParsedQuery): number {
+    const all = toFtsQuery(parsed, "all", undefined, false);
+    if (!all) return 0;
+    const row = sqlite
+      .prepare(
+        `SELECT count(*) AS n FROM (SELECT DISTINCT c.entity_row_id FROM chunks_fts JOIN chunks c ON c.id = chunks_fts.rowid
+          JOIN search_entities e ON e.id = c.entity_row_id
+          WHERE chunks_fts MATCH ? AND e.kind <> ? LIMIT ${FEW})`,
+      )
+      .get(all, TO_DOWNLOAD) as { n: number };
+    return row.n;
+  }
+
   function keywordSearch(
     params: SearchParams,
     parsed: ParsedQuery,
@@ -867,7 +886,9 @@ export function createSearchService(ctx: AppContext): SearchService {
       if (!entity) return [];
       const key = resultKey(entity);
       if (item.everyWord) held.everyWord.add(key);
-      if (adjustments.get(item.entityRowId)?.trusted) held.trusted.add(key);
+      // Put first only when it is about the question: a word of it in the title, a heading or a tag. A whole nursing
+      // book that mentions hypothermia on one page means the same as the question too, and is not what to open first.
+      if (adjustments.get(item.entityRowId)?.trusted && item.parts.title > 0) held.trusted.add(key);
       const best = item.passages[0]!;
       const shown = item.passages.slice(0, 3).flatMap((passage) => {
         const snippet = marked.get(passage.chunkId)?.snippet ?? "";
@@ -1288,6 +1309,7 @@ export function createSearchService(ctx: AppContext): SearchService {
             q: plainQuery(forCollections) || q,
             alternate: alternateQuery(forCollections),
             parsed: forCollections,
+            widen: keyword.everyWord < FEW,
             rank: (found, options) =>
               rescore(
                 found,
@@ -1408,6 +1430,7 @@ export function createSearchService(ctx: AppContext): SearchService {
       const { onInstead: _onInstead, ...rest } = params;
       return source.searchInParts!({
         ...rest,
+        widen: ownWithEveryWord(parsed) < FEW,
         q: plainQuery(parsed) || q,
         alternate: alternateQuery(parsed),
         parsed,

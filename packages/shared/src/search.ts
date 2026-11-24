@@ -94,7 +94,7 @@ export type ReferenceSearchEvent =
       instead?: SearchSuggestion;
     }
   | {
-      /** The first collections found too little, so the rest are being searched too. */
+      /** The first collections found too little, so the rest, this many, are being searched too. */
       type: "widen";
       collections: number;
     }

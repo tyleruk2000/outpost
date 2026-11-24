@@ -192,8 +192,13 @@ function Together() {
           plenty, these wait below; when your words find little or nothing, they fill the list.
         </p>
         <p>
-          For a first aid question, a first aid or medical source that holds all your words, and whose passage means the same as your
-          question, comes first. A forum post whose title happens to match does not come before the first aid manual.
+          For a first aid question, a first aid or medical source that holds all your words, has one of them in its title or a heading, and
+          whose passage means the same as your question, comes first. A forum post whose title happens to match does not come before the
+          first aid manual. A whole nursing book that mentions the word on one page does not jump the queue either.
+        </p>
+        <p>
+          Articles in reference collections have no numbers of their own, so meaning cannot lift them. They join the same list by their
+          words alone, as they arrive.
         </p>
         <p>
           <strong>For an answer</strong>, Outpost picks passages rather than results, and combines the two lists by a method called{" "}
@@ -363,6 +368,13 @@ export default function HowMeaningWorksPage() {
             </p>
           )}
           {builtIn ? <p>Nothing you search for and nothing in your library is sent anywhere.</p> : null}
+          <p>
+            {builtIn
+              ? `${name} finds passages by meaning. It writes nothing:`
+              : "A model of this kind finds passages by meaning and writes nothing:"}{" "}
+            it turns text into numbers and cannot answer a question in words. <strong>Answer from my library</strong> needs a second,
+            separate model that writes, a language model you run yourself. Outpost does not include one.
+          </p>
           {builtIn && data ? (
             <p>It uses {plural(data.builtIn.threads, "processor thread")} on this computer, at most half of them.</p>
           ) : null}

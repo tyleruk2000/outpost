@@ -176,7 +176,10 @@ describe("the search page, with reference collections answering later", () => {
   });
 
   it("puts on a page only the articles that rank on it, when more pages of a person's own follow", async () => {
-    const many = Array.from({ length: 20 }, (_, index) => ({ ...ownResult(`d${index}`, `Water page ${index + 1}`), score: 0.9 - index * 0.01 }));
+    const many = Array.from({ length: 20 }, (_, index) => ({
+      ...ownResult(`d${index}`, `Water page ${index + 1}`),
+      score: 0.9 - index * 0.01,
+    }));
     const server = serveSearch(() => ownAnswer(many, { total: 45 }));
     show("/search?q=water");
     await screen.findByRole("link", { name: "Water page 1" });

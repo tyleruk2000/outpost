@@ -117,6 +117,16 @@ export function library() {
     ),
     doc("first-aid", "First aid manual", [
       {
+        page: 6,
+        heading: "Severe bleeding",
+        text: "To stop bleeding, press firmly on the wound with a clean pad and raise it. Keep pressing for ten minutes.",
+      },
+      {
+        page: 8,
+        heading: "Broken arm",
+        text: "Support a broken arm in a sling, or a splint padded and tied above and below the break. Do not try to straighten it.",
+      },
+      {
         page: 10,
         heading: "Burns",
         text: "Treat a burn by cooling it under cool running water for twenty minutes. Cover it loosely with cling film.",
@@ -254,6 +264,93 @@ export function library() {
       "co-alarm",
       "Carbon monoxide: symptoms and alarms",
       "Carbon monoxide poisoning causes headache, dizziness, nausea and tiredness. Fit a CO alarm near boilers and stoves.",
+    ),
+    // Everyday searches tried on a Raspberry Pi (November 2026): what answers them, and what got in the way there.
+    note(
+      "car-wont-start",
+      "Car won't start",
+      "When the car won't start and only clicks, the battery is flat or dead: jump start it or charge the battery. If it cranks but will not fire, check the fuel.",
+      { collection: "Vehicles" },
+    ),
+    note(
+      "car-overheating",
+      "Car overheating",
+      "If the engine temperature gauge climbs, the car is overheating: pull over, switch off, and let it cool before checking the coolant. Never open a hot radiator cap.",
+    ),
+    note(
+      "tyre-change",
+      "Changing a car tyre",
+      "To change a tyre: loosen the wheel nuts, jack the car up at the jacking point, swap in the spare wheel, and tighten the nuts in a star pattern.",
+    ),
+    note(
+      "food-rationing",
+      "Rationing food for a family",
+      "Ration food by calories: about 2,000 a day for each adult, less for children. Plan meals for the family from what is stored, oldest first.",
+    ),
+    note(
+      "shelter",
+      "Building an emergency shelter",
+      "Build a shelter out of the wind: a tarp strung between two trees, or a debris lean-to of branches and leaves. Insulate from the ground.",
+    ),
+    note(
+      "no-compass",
+      "Finding north without a compass",
+      "To navigate without a compass, use the sun: it rises in the east and is due south at midday. A stick's shadow, or a watch, gives the direction.",
+    ),
+    note(
+      "signal-rescue",
+      "Signalling for rescue",
+      "To signal for rescue, give six blasts on a whistle, repeated each minute; flash a mirror at aircraft; lay out SOS in large letters.",
+    ),
+    note(
+      "storm",
+      "Storm warnings",
+      "Storm warnings come yellow, amber or red. With a warning, tie down loose things, stay indoors, and keep away from trees and the coast.",
+    ),
+    note(
+      "flood",
+      "Flood: what to do",
+      "If a flood is coming: move valuables upstairs, turn off gas and electricity, and never walk or drive through flood water.",
+    ),
+    note(
+      "solar-sizing",
+      "Sizing a solar panel and battery",
+      "Size the battery for two days of use, in watt-hours, and the solar panel to refill it in one day of winter sun.",
+    ),
+    // A radio manual's page that mentions a car at the start and a flat battery at the end, as the Pi's did.
+    doc(
+      "radio-best-practices",
+      "Best practices",
+      [
+        {
+          page: 31,
+          text: "Charge from the car cigarette socket only with the engine running. Keep the antenna connector clean and dry, and the belt clip tight. Check the programmed channels after every firmware update and keep a written list. Store it part-charged: if the radio will sit unused for weeks, leave the battery at half, not full and not flat.",
+        },
+      ],
+      { collection: "Radio communications" },
+    ),
+    doc(
+      "radio-setup",
+      "The setup menu (1): display, audio, TX and RX",
+      [
+        {
+          page: 3,
+          heading: "TARGET LOCATION",
+          text: "The display can show a compass rose and navigate to a stored waypoint. Without a GPS fix the arrow stays grey. In a power cut, what to do is run it from its battery; the storm of interference from a generator shows on the scope.",
+        },
+      ],
+      { collection: "Radio communications" },
+    ),
+    // A whole nursing book, one document, that mentions everything once: the Pi's put these above the articles on them.
+    doc(
+      "nursing-book",
+      "Fundamentals of nursing",
+      [
+        { page: 210, text: "Patients exposed to cold may develop hypothermia; nurses monitor the core temperature and rewarm slowly." },
+        { page: 344, text: "A splint supports a broken arm or other fracture until it can be set; check circulation below it." },
+        { page: 512, text: "Signs of dehydration include thirst, dark urine and dizziness; nurses record fluid intake." },
+      ],
+      { collection: "Medicine and first aid" },
     ),
     // Other meanings of the same words, and the same words in the wrong kind of place.
     doc("railway", "The Canadian Pacific Railway", [

@@ -111,7 +111,7 @@ The one scale every result is put on (`score.ts`; the guide's summary is
 
 | Part | Share | What it asks |
 | --- | --- | --- |
-| Coverage | 0.50 | How much of the query it holds, each word weighed by its IDF in the library. Another form of a word counts 0.92 of it, another name for it (the synonyms) 0.85, a longer word it begins 0.6. |
+| Coverage | 0.50 | How much of the query it holds, each word weighed by its IDF in the library. Another form of a word counts 0.92 of it, another name for it (the synonyms) 0.85, a longer word it begins 0.6. Words held far apart count less (`SPREAD`): full while their closeness, scaled to the terms held, is 0.25 or more (within about four times their length, in the title or one passage), down to 0.8 of itself as it falls to 0; the reason then says "far apart". `parts.coverage` stays unscaled for the relaxed threshold. |
 | Title | 0.20 | How much of the query is in the title (a tag counts 0.75, a heading 0.6). |
 | Closeness | 0.15 | How near together the words are, stop words in between not counted. |
 | Side by side | 0.05 | All the words adjacent, in the order typed. |
@@ -121,11 +121,11 @@ BM25 column weights: title 8, tags 4, heading 3, body 1. Intent priors (`intent.
 medical × 1.25 (medical and first aid sources), safety × 1.25 (official guidance on
 generators, heaters, stoves, fuel, carbon monoxide), vehicle × 1.2, how-to × 1.1 (Q&A,
 manuals, guides); together at most × 1.3, applied so a high score rises by less (0.9 to
-0.92). Fuel alone is not a vehicle word. Another sense of an ambiguous word × 0.75.
+0.92). Fuel alone is not a vehicle word. Another sense of an ambiguous word × 0.75. A collection plainly about another subject × 0.9 ("on another subject"): the subjects are routing.ts `TOPICS`, the question's from its words, the source's from its collection name alone; preparedness, outdoors, repair and water count as every question's, and a question or collection naming no subject is left alone.
 
 "Did you mean": a word in no passage (or, when nothing holds every word, in one or two) is
 matched to the nearest library word within edit distance 2 (1 for four letters or fewer),
-same first letter preferred, then the commoner; never a stop word, the word in at least
+same first letter preferred, then the commoner, unless a word one key-slip away at the start (every other first letter, 52 whole-word lookups) is held by 20 times as many passages ("vattery" → battery, not vatter); lookups that SQLite reports as malformed give no suggestion rather than an error; never a stop word, the word in at least
 two passages; offered while fewer than five results come back (meaning-only results not
 counted). The relaxed pass adds items whose IDF-weighted coverage is at least 0.5.
 
@@ -134,7 +134,10 @@ the nearest, fused by reciprocal rank (`weight / (k + rank)`, `search.hybrid.rrf
 `keywordWeight` and `semanticWeight` 1). Up to five passages, deduplicated by text.
 
 Reference routing: six archives first, eight articles from each; the rest asked at once
-when the first find fewer than three good ones. Results kept five minutes. Time limits: 8 s
+when the first find fewer than three good ones, unless the person's own library holds five
+items with every word (`widen: false`, counted with one FTS query that stops at five).
+The screen asks `/api/search/reference` 350 ms after the last keystroke
+(`REFERENCE_SETTLE_MS`, less the screen's own wait) and aborts a superseded one. Results kept five minutes. Time limits: 8 s
 per full-text search, 3 s per title search, 30 s to be reached. An archive with no
 full-text index is tried again after a week, a failing one after half an hour.
 
@@ -215,8 +218,9 @@ vectors, pass better reference articles, which have none); one found by meaning 
 (“Similar in meaning”) must be within `SIMILARITY_WINDOW` (0.2) of the nearest (no absolute
 floor: none separates nonsense from real questions on the Pi's library), scores at most `MEANING_CEILING` (0.6) and always below the lowest result holding
 every word (`WordsHeld.everyWord`, from `RankedItem.everyWord` and, for reference articles,
-`rescore`). For a medical question, a result that is a trusted source (`adjustFor(...).trusted`),
-holds every word and is at least `SAME_MEANING` (0.6) similar is put before the rest, its
+`rescore`). For a medical question, a result that is a trusted source (`adjustFor(...).trusted`)
+with a word in its title, a heading or a tag (`parts.title > 0`: not a whole book that
+mentions it once), holds every word and is at least `SAME_MEANING` (0.6) similar is put before the rest, its
 reason ending “and means the same”. Answers still fuse passages with RRF (`searchPassages`).
 
 Reference archives (`modules/kiwix`):
@@ -237,27 +241,36 @@ Reference archives (`modules/kiwix`):
   `meta.kiwix.search`, so it is searched by titles only and not warned about.
 
 `GET /api/search` without `reference=later` merges archives by score (each at
-`OWN_FIRST`, 0.95, of its score beside the library's own) and waits at most 10 seconds.
+`OWN_FIRST`, 0.95, of its score beside the library's own) and waits at most 10 seconds. The
+search screen makes the same list as the articles stream in (`oneList` in
+`apps/web/src/lib/reference-search.ts`, `REFERENCE_BESIDE_OWN` from `@outpost/shared`): the ten
+best articles go among page 1 of the person's own, before the first own result scoring less,
+only those above the page's last own score when more pages follow; `useSteadyOrder` holds the
+order under a pointer, focus, or a finger for 1.5 s after it lifts and while the page scrolls.
 
 ### Measuring search
 
-`scripts/search-eval/queries.json` holds 56 household questions, each with graded answers
+`scripts/search-eval/queries.json` holds 82 questions in two sets (`sets`): the 56 household
+questions, and 31 everyday searches tried on a Raspberry Pi ("car battery flat", "ration food for
+a family", "storm warning"; five are in both). Each has graded answers
 in the fixture library (`library.mjs`, item id → 0–3) and patterns for grading any
 library's results. `reference.json` is what 37 reference collections answered to them,
 with each collection's description, category, tags and language, recorded from a real
 library with GET requests only (`node scripts/search-eval/record-reference.mjs
-http://host:8080`: each archive's full text and its title search, through Outpost's
+http://host:8080 [--set everyday]`: each archive's full text and its title search, through Outpost's
 per-archive endpoints; titles, paths and snippet starts: short quotations of Stack
 Exchange and Wikimedia archives, CC BY-SA, and of others under their own open licences),
 which `test/slow-kiwix.ts` replays (its title search answers with the titles holding every
 word).
 
 - `apps/server/test/search-quality.test.ts` runs the set on the fixture library and the
-  recorded collections and fails below nDCG@5 0.8, success@3 95% or any zero-result
-  question, and below success@3 80% or with any list page among the reference
+  recorded collections and fails below nDCG@5 0.81 on the household set or 0.72 on the everyday
+  set, success@3 95% or any zero-result question, when a car search's first three are not all
+  useful, and below success@3 80% or with any list page among the reference
   collections' own results. `SEARCH_EVAL_OUT=table.txt` writes both tables.
 - `node scripts/search-eval.mjs http://host:8080` runs it against a running Outpost with
-  GET requests only and grades by pattern; `--rescore` also orders that server's
+  GET requests only and grades by pattern, each set apart as well (a dropped connection is
+  asked once more); `--rescore` also orders that server's
   candidates with this checkout's scorer, offline. `--reference` measures the reference
   collections as the search screen gets them (`reference-stream.mjs`): time to the first
   article, to the first useful one and to the end, success@3 and the useful share of the

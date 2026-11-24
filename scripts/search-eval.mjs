@@ -45,7 +45,9 @@ const PLACES = new Set(["map-feature", "repeater"]);
 
 async function get(path) {
   const started = performance.now();
-  const response = await fetch(`${base}${path}`, { headers: { accept: "application/json" } });
+  // A small server under load now and then drops a connection: asked once more, after a second.
+  const ask = () => fetch(`${base}${path}`, { headers: { accept: "application/json" } });
+  const response = await ask().catch(() => new Promise((resolve) => setTimeout(resolve, 1000)).then(ask));
   if (!response.ok) throw new Error(`${path}: ${response.status}`);
   return { body: await response.json(), ms: performance.now() - started };
 }
@@ -162,6 +164,7 @@ function rows(runs, others = []) {
       grades,
       ideal,
       expects: true,
+      sets: run.query.sets ?? [],
       count: run.results.length,
       ms: run.ms,
       titles: run.results.map((result) => (result.kind === "reference" ? `[ref] ${result.title}` : result.title)),
@@ -172,10 +175,18 @@ function rows(runs, others = []) {
 const now = rows(before, after);
 console.log(formatTable(now));
 console.log(`\n${formatSummary(`${base}, as it ranks`, summarise(now))}`);
+/** The everyday searches and the first household questions (queries.json `sets`), apart. */
+const bySet = (label, list) =>
+  [
+    formatSummary(`${label}, everyday searches`, summarise(list.filter((row) => row.sets.includes("everyday")))),
+    formatSummary(`${label}, household questions`, summarise(list.filter((row) => !row.sets.length || row.sets.includes("household")))),
+  ].join("\n");
 if (rescoreToo) {
   const next = rows(after, before);
   console.log(`\n${formatTable(next)}`);
   console.log(`\n${formatSummary(`${base}, its candidates in the new order (offline)`, summarise(next))}`);
   console.log(formatSummary(`${base}, as it ranks`, summarise(now)));
+  console.log(bySet(`${base}, new order`, next));
 }
+console.log(bySet(`${base}, as it ranks`, now));
 if (jsonAt) writeFileSync(jsonAt, JSON.stringify({ before: now, after: rescoreToo ? rows(after, before) : null }, null, 1));
