@@ -389,13 +389,15 @@ hand). Cancel in **Settings → Backup** to change your mind. The replaced data 
 
 ### "Restoring is not offered on this device"
 
-Restoring is only at the computer Outpost runs on. Moving to a Pi in Docker:
-[deployment.md](deployment.md#6-bring-your-library-across).
+Restoring is only at the computer Outpost runs on. On a Pi in Docker, open Outpost
+through `deploy/pi/on-this-pi.sh`
+([deployment.md](deployment.md#10-things-kept-to-the-pi-itself)).
 
 ### "Restoring a backup can only be done on the computer Outpost runs on."
 
-Also deleting backups and keeping fewer. Open Outpost there, or start with
-`OUTPOST_ALLOW_REMOTE_ERASE=true` ([security.md](security.md#backup-and-restore)).
+Also deleting backups and keeping fewer. Open Outpost there (on a Pi in Docker, through
+`deploy/pi/on-this-pi.sh`), or start with `OUTPOST_ALLOW_REMOTE_ERASE=true`
+([security.md](security.md#backup-and-restore)).
 
 ### "The backup due … has not been made"
 
@@ -459,6 +461,10 @@ message not here, read the lines above it.
 | "A 64-bit system is needed…" or "…programs are armhf" | Write the card again with **Raspberry Pi OS (64-bit)**. |
 | "Run this as your own user, not with sudo…" | Leave `sudo` off. |
 | "Docker with the Compose plugin is not installed." | Run again with `--install-docker` (needs the internet once). |
+| HTTPS is on in Settings, but `https://…:8443` does not answer | The port is not published. Run `./deploy/pi/install.sh` again: it names `compose.override.yaml` in `COMPOSE_FILE` in `.env` beside `compose.nas.yaml`. |
+| "The streets service cannot write to /storage/nas/…" | Run `./deploy/pi/nas-share.sh` again with the options you first gave it (it keeps the password), or choose **This device's own disk** under **Where it works**. |
+| "… can only be done on the computer Outpost runs on." | `./deploy/pi/on-this-pi.sh`, then `http://localhost:8090` ([deployment.md](deployment.md#10-things-kept-to-the-pi-itself)). |
+| "Port 8090 cannot be opened here…" (`on-this-pi.sh`) | Something else uses it: `--port 8091`, and the same number in `ssh -L`. |
 | "compose.yaml was not found in …" | Run it from the `outpost` folder `git clone` made. |
 | "Outpost did not answer within five minutes…" | Read the log's last lines. A first start can be slow; try `curl http://localhost:8080/api/health` in a few minutes. |
 | `permission denied while trying to connect to the Docker daemon socket` | Sign out and in again, or use `sudo docker`. |

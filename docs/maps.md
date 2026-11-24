@@ -305,10 +305,11 @@ country's source file; nothing more is downloaded once that file is kept.
    **Walking and cycling** in **What for France?**). Where the source file is not kept yet,
    the flow downloads it first and says so ("Needs France's source file, 4.9 GB:
    downloaded first").
-2. Read what it takes before you start: for Great Britain on a Raspberry Pi 5, about an
-   hour, about 2.3 GB of memory, and about 53 GB written to the disk it works on. An SD
-   card wears with every write: under **Where it works**, choose the NAS or a USB disk to
-   spare it. The finished streets are copied back. Several countries are joined into one
+2. Read what it takes before you start: on a Raspberry Pi 5, 56 minutes for Great Britain
+   and 91 for the United Kingdom, about 2.3 GB of memory, and about 53 GB written to the
+   disk it works on. An SD card wears with every write: under **Where it works**, choose
+   the NAS or a USB disk to spare it (the streets service must be able to write there; a
+   NAS connected with `deploy/pi/nas-share.sh` can). The finished streets are copied back. Several countries are joined into one
    set, which replaces the one in use.
 3. Press the button that starts it. The row shows each stage with its progress (step 3 of 5)
    and the time left; routes keep working on what is in use meanwhile.

@@ -18,8 +18,9 @@
 #   --https           Publish the port HTTPS uses (8443), so that it can be reached once
 #                     you turn HTTPS on in Settings → HTTPS on your network. Phones need
 #                     an https address for location, recording a track and keeping
-#                     things on the phone. Writes compose.override.yaml; compose.yaml
-#                     itself is not edited.
+#                     things on the phone. Writes compose.override.yaml, and names it in
+#                     COMPOSE_FILE in .env when nas-share.sh has set that; compose.yaml
+#                     itself is not edited. HTTPS stays off until you turn it on.
 #   --no-voacap-data  Do not fetch VOACAP's coefficients (559 kB) for the HF propagation
 #                     planner once Outpost is up. They are not shipped with Outpost (see
 #                     engines/voacap/NOTICE.txt); fetched here, the Pi predicts offline at
@@ -43,8 +44,9 @@
 #                     Outpost notices and offers to set it from a phone's or laptop's
 #                     clock. The service does that and nothing else (see set-clock.sh).
 #   --clock-from-network  Let any device on the network set the clock (sets
-#                     OUTPOST_ALLOW_REMOTE_CLOCK=true). Without it only a browser on the Pi
-#                     itself may, which in Docker is the only one Outpost recognises.
+#                     OUTPOST_ALLOW_REMOTE_CLOCK=true). Without it no browser may: in
+#                     Docker even one on the Pi does not count as the Pi. On the Pi, set
+#                     it with sudo date, or open Outpost through ./deploy/pi/on-this-pi.sh.
 #   --no-updates      Do not add the service that installs Outpost updates from the app
 #                     (Settings → Updates). A container cannot replace itself; the
 #                     service loads a release Outpost has checked, checks its signature
@@ -65,13 +67,14 @@
 #                     directions, walking, cycling and reachable areas. Sets
 #                     COMPOSE_PROFILES=routes in .env and builds the streets image here (it
 #                     downloads Valhalla's image, about 700 MB, once). Streets are then built
-#                     per country from Offline maps → Map data, on this Pi: Great Britain
-#                     took about an hour on a Pi 5 (8 GB), 8 GB of free disk while
-#                     building, 2.7 GB after, and about 50 GB written to the disk.
+#                     per country from Offline maps → Add a place, on this Pi: on a Pi 5
+#                     (8 GB) Great Britain took 56 minutes and the United Kingdom 91, with
+#                     about 8 GB of free disk while building, 2.7 to 2.9 GB after, and about
+#                     50 GB written to the disk where it works.
 #   --dry-run         Print the commands instead of running them.
 #
 # It never deletes anything, and it does not touch an existing .env except the lines
-# named above (with --lan, the file as it was is kept beside it).
+# named above and COMPOSE_FILE (with --lan, the file as it was is kept beside it).
 set -euo pipefail
 
 INSTALL_DOCKER=false
@@ -106,7 +109,7 @@ for arg in "$@"; do
     --street-routes) STREET_ROUTES=true ;;
     --aprs-frequency=*) APRS_FREQUENCY="${arg#--aprs-frequency=}" ;;
     -h | --help)
-      sed -n '2,74p' "$0" | sed 's/^# \{0,1\}//'
+      awk 'NR > 1 && /^set -euo/ { exit } NR > 1' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -151,7 +154,10 @@ fi
 have_compose() { docker compose version >/dev/null 2>&1 || sudo -n docker compose version >/dev/null 2>&1; }
 
 if ! have_compose; then
-  if ! $INSTALL_DOCKER; then
+  if $DRY_RUN && ! $INSTALL_DOCKER; then
+    say "Docker with the Compose plugin is not installed. Run for real, this would stop here and
+ask for --install-docker; what --install-docker would do is shown below."
+  elif ! $INSTALL_DOCKER; then
     stop "Docker with the Compose plugin is not installed.
 Run this again with --install-docker to install it from Docker's apt repository,
 or install it yourself: https://docs.docker.com/engine/install/debian/"
@@ -326,8 +332,18 @@ if $HTTPS; then
   $LAN || say "Note: without --lan only this Pi can reach Outpost, and it already counts as secure here. HTTPS matters for other devices."
 fi
 
+# ── Compose files ────────────────────────────────────────────────────────────
+# nas-share.sh names its file in COMPOSE_FILE; once that is set, Compose no longer reads
+# compose.override.yaml by itself. This keeps every file the scripts wrote named,
+# whichever ran first.
+# shellcheck source=deploy/pi/compose-files.sh
+. "$HERE/compose-files.sh"
+if $HTTPS; then compose_files_sync "$DRY_RUN" compose.override.yaml; else compose_files_sync "$DRY_RUN"; fi
+
 # ── Build and start ──────────────────────────────────────────────────────────
-say "Building and starting Outpost. The first build downloads map fonts and the search model and can take a long time on a Pi."
+say "Building and starting Outpost. The first build downloads Node, the programs Outpost uses, map
+fonts and the search model (the images come to about 1.2 GB with walking and cycling, 0.5 GB
+without) and has not yet been timed on a fresh Pi: leave it running, however long it is quiet."
 release_image="$(grep '^OUTPOST_IMAGE=' .env 2>/dev/null | head -1 | cut -d= -f2- || true)"
 if [ -n "$release_image" ]; then
   # Set by the update service: Outpost runs a release installed from the app. Building
@@ -408,7 +424,12 @@ ExecStart=/usr/local/lib/outpost/set-clock.sh ${clock_dir}"
     fi
     run sudo systemctl daemon-reload
     run sudo systemctl enable --now outpost-clock.path
-    $CLOCK_FROM_NETWORK || say "Note: only a browser on this Pi may set the clock. To allow phones and laptops on your network, run this again with --clock-from-network."
+    if ! $CLOCK_FROM_NETWORK && ! grep -q '^OUTPOST_ALLOW_REMOTE_CLOCK=true' .env 2>/dev/null; then
+      say "Note: no browser may set the clock yet. In Docker a browser on this Pi does not count as
+the Pi either: here, set it with sudo date -s \"2026-11-24 09:30\" (your time now), or open
+Outpost through ./deploy/pi/on-this-pi.sh. To let phones and laptops on your network set it,
+run this again with --clock-from-network."
+    fi
   fi
 fi
 
@@ -428,7 +449,9 @@ if $UPDATES; then
   if [ -z "$data" ] && ! $DRY_RUN; then
     say "Outpost's data volume ($volume) was not found, so the update service was not added. Run this again once Outpost is running."
   elif [ ! -s "$REPO/deploy/release-key.pub" ]; then
-    say "This checkout has no release key (deploy/release-key.pub is empty), so the update service was not added: there is nothing to check a release with yet."
+    say "This checkout has no release key (deploy/release-key.pub is empty), so the update service was
+not added: there is nothing to check a release with yet. Update by hand instead: git pull, then
+run this script again (see \"Updating\" in docs/deployment.md)."
   else
     update_dir="${data:-/var/lib/docker/volumes/$volume/_data}/update"
     command -v minisign >/dev/null 2>&1 || run sudo apt-get install -y minisign
@@ -577,10 +600,18 @@ if $VOACAP_DATA; then
   fi
 fi
 
+# What is in force now, from .env, not only from what this run was given: running it
+# again for one option (--street-routes) keeps LAN access and HTTPS as they were.
+env_true() { $DRY_RUN && [ ! -f .env ] && return 1; grep -q "^$1=true" .env 2>/dev/null; }
+LAN_ON=$LAN
+env_true OUTPOST_LAN_ACCESS && LAN_ON=true
+HTTPS_ON=$HTTPS
+grep -qs 'OUTPOST_HTTPS_PORT' compose.override.yaml && HTTPS_ON=true
+
 say "Outpost is running."
 echo "  On this Pi:        http://localhost:${port}"
-if $LAN; then
-  [ -n "$NAME" ] && echo "  By name:           http://${NAME}.local:${port}"
+if $LAN_ON; then
+  [ -n "$NAME" ] && { $LAN || grep -q "${NAME}.local" .env 2>/dev/null; } && echo "  By name:           http://${NAME}.local:${port}"
   # Each address of this Pi, leaving out Docker's own networks, which no phone can reach.
   if command -v ip >/dev/null 2>&1; then
     while read -r interface address; do
@@ -596,7 +627,7 @@ if $LAN; then
     done
   fi
   echo "  For a Wi-Fi network of the Pi's own, with no router: sudo ./deploy/pi/hotspot.sh on"
-  if $HTTPS; then
+  if $HTTPS_ON; then
     echo "  HTTPS: open Settings → HTTPS on your network from a phone or laptop, turn it on,"
     echo "         press the button that adds the address you came by, then trust the"
     echo "         certificate on each device. The https address uses port 8443."
@@ -606,4 +637,6 @@ if $LAN; then
 else
   echo "  Only this Pi can open it. Run again with --lan to share it with your network."
 fi
+echo "  Restoring a backup, a backup passphrase and the other things kept to this Pi:"
+echo "  ./deploy/pi/on-this-pi.sh, then open http://localhost:8090 (see docs/deployment.md)."
 echo "  Large collections belong on an SSD: see \"Raspberry Pi 4 and 5\" in docs/deployment.md."

@@ -266,7 +266,7 @@ for p in r.get("extracts") or []:
       REASON="The work folder must be called outpost-streets-work."
     elif ! mkdir -p "$work_from" 2>/dev/null || ! touch "$work_from/.writable" 2>/dev/null; then
       ok=false
-      REASON="The streets service cannot write to $(dirname "$work_from"). Mount that storage read-write in the valhalla service in compose.yaml, or build on the streets' own volume."
+      REASON="The streets service cannot write to $(dirname "$work_from"). If the NAS was connected with deploy/pi/nas-share.sh, run that script again with the same options, then docker compose up -d: it now lets the streets service write there. Otherwise mount that storage read-write in the valhalla service in compose.nas.yaml or compose.override.yaml, or choose This device's own disk under Where it works."
     else
       rm -f "$work_from/.writable"
       work="$work_from/build"

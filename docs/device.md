@@ -33,11 +33,14 @@ says by how much, with **Set the server's clock from this phone** (or tablet, or
 computer). Set your own device right first; times before 2024 are refused. A browser on
 the server's computer may always press it; other devices only when Outpost was started
 with `OUTPOST_ALLOW_REMOTE_CLOCK=true` (in `.env` for Docker, then `docker compose up
--d`). Otherwise the line says why.
+-d`). Otherwise the line says why. In Docker no browser counts as the server's computer,
+not even one on it: on a Pi, open Outpost through `deploy/pi/on-this-pi.sh`
+([deployment.md](deployment.md#10-things-kept-to-the-pi-itself)), or set the clock there
+with `sudo date -s "2026-11-24 09:30"`.
 
 - **Docker on a Raspberry Pi**: `deploy/pi/install.sh` adds a small service
   (`outpost-clock.path`) that sets the clock when Outpost asks. `--clock-from-network`
-  lets phones set it; `--no-clock` leaves it out.
+  lets phones and laptops on the network set it; `--no-clock` leaves it out.
 - **Docker elsewhere, macOS, Windows**: set the clock on the computer itself.
 - **Linux without Docker**: Outpost sets it if run as root or with `CAP_SYS_TIME`.
 

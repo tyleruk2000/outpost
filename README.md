@@ -23,7 +23,7 @@ use it in their browser.
   [offline.md](docs/offline.md)).
 
 Outpost is open source under the [MIT Licence](LICENSE). It is version 0.1.0, not yet
-released, and has been tried by hand on one kind of computer (a Mac with Apple Silicon).
+released, and has been tried by hand on a Mac with Apple Silicon and one Raspberry Pi 5.
 [What has not been tried](docs/testing-status.md) lists the rest, by feature.
 
 ![Home](docs/screenshots/home.webp)
@@ -217,7 +217,10 @@ formula, its source with the date read, and the range it holds for.
 
 ## Install and run
 
-Every way to install, and every setting, is in [deployment.md](docs/deployment.md).
+**Setting up a Raspberry Pi for a household?** Follow
+[On a Raspberry Pi, step by step](docs/deployment.md#on-a-raspberry-pi-step-by-step) from
+the start ([below](#on-a-raspberry-pi) in short). Every way to install, and every
+setting, is in [deployment.md](docs/deployment.md).
 
 ### With Docker Compose
 
@@ -270,18 +273,23 @@ described in [deployment.md](docs/deployment.md).
 
 ### On a Raspberry Pi
 
-A 64-bit operating system is required; 4 GB of memory is enough for keyword search,
-reading, notes and maps. [deployment.md](docs/deployment.md) walks from a Pi in its box to
-Outpost open on a phone. The scripts in `deploy/pi/` install it, connect a NAS folder and
-make a Wi-Fi hotspot; run each with `--dry-run` first.
+**Start with [On a Raspberry Pi, step by step](docs/deployment.md#on-a-raspberry-pi-step-by-step)**:
+from writing the card to the family's phones, with a NAS, nightly backups, maps, walking
+and cycling, and a reference library, using only the Pi and a laptop. A 64-bit system and
+a card of 64 GB or more are needed; 4 GB of memory is enough for keyword search, reading,
+notes and maps. In short, signed in to the Pi:
 
 ```bash
-./deploy/pi/install.sh --dry-run
-./deploy/pi/install.sh --install-docker --lan --https   # needs the internet this once
-sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"
+sudo apt update && sudo apt install -y git
+git clone https://github.com/tyleruk2000/outpost.git && cd outpost
+./deploy/pi/install.sh --dry-run --install-docker --lan   # what it would do
+./deploy/pi/install.sh --install-docker --lan             # needs the internet this once
 ```
 
-Back up before updating (**Settings → Backup**).
+The scripts in `deploy/pi/` also connect a NAS folder (`nas-share.sh`), make a Wi-Fi
+hotspot (`hotspot.sh`) and open Outpost as the Pi for restoring a backup
+(`on-this-pi.sh`); run each with `--dry-run` or `--help` first. Back up before updating
+(**Settings → Automatic backups → Back up now**).
 
 ## What needs a download or a build first
 
@@ -294,7 +302,7 @@ size first:
 | --- | --- |
 | [Offline maps: map and hills](docs/maps.md) | Shown at Check size (an area of up to 60 GB); OpenStreetMap data for the place you choose |
 | [Offline maps: routes and nearby places](docs/road-routes.md) | Read from the country's source file (Great Britain's 2.2 GB makes 30 MB of routes), kept or deleted after, as you choose |
-| [Walking and cycling](docs/deployment.md#street-routes) | An optional add-on (`./deploy/pi/install.sh --street-routes`); Great Britain takes 2.7 GB and about an hour on a Pi 5 |
+| [Walking and cycling](docs/deployment.md#street-routes) | An optional add-on (`./deploy/pi/install.sh --street-routes`); on a Pi 5, Great Britain takes 2.7 GB and 56 minutes to build, the United Kingdom 2.9 GB and 91 minutes |
 | [Place names](docs/maps.md) | A GeoNames dataset; for Great Britain OS Open Names, 103 MB |
 | [Reference collections](docs/sources.md) | A few megabytes to many gigabytes, each under its publisher's licence |
 | [VOACAP's data](docs/hf-propagation.md) | 559 kB; the ITU has not given permission to pass it on |

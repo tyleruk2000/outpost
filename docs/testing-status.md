@@ -19,7 +19,12 @@ of what each feature does are in its own guide.
   `--install-docker`, `hotspot.sh` (only `--dry-run`), the `outpost.local` name service, the clock
   service, `--metrics` with a real Prometheus, `--decoders`, HTTPS from a phone, restoring a backup,
   NFS, reading a collection from the share, the `cgroup_enable=memory` remedy, and everyday use with a
-  real library. No feature's speed has been measured on a Pi unless its section below says so.
+  real library. No feature's speed has been measured on a Pi unless its section below says so; the
+  first image build on a fresh Pi has not been timed.
+- `on-this-pi.sh` (opening Outpost as the Pi, through SSH) was tried against the server on a Mac
+  with a stand-in for Docker, not on a Pi. Walking and cycling building on a NAS connected by
+  `nas-share.sh` (the streets service may now write there) is untried: the one Pi built its streets
+  on its own disk. The scripts' checks run with `deploy/pi/test/scripts.sh`.
 
 ### Phones and browsers
 
