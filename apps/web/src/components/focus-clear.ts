@@ -18,11 +18,29 @@ export function clearance(box: { top: number; bottom: number }, clearBelow: numb
   return 0;
 }
 
+/**
+ * Whether focus arriving on this element is one to keep clear of the bars: a control reached from the keyboard.
+ * Not focus that follows a tap or a click: Safari on an iPhone does not focus a tapped button but the nearest
+ * focusable box round it, `<main tabIndex={-1}>`, whose top is far above the window, so clearing it scrolled the
+ * page to the top on the first tap of a button (owner's review, 24 Nov 2026). Nor the screen's own box (#content),
+ * focused on purpose when a screen opens.
+ */
+export function wantsClearing(target: Element): boolean {
+  if (target.id === "content" || target.tagName === "MAIN") return false;
+  try {
+    return target.matches(":focus-visible");
+  } catch {
+    // A browser without :focus-visible: keep the old behaviour.
+    return true;
+  }
+}
+
 export function useFocusClearOfBars(top: RefObject<HTMLElement | null>, bottom: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const onFocus = (event: FocusEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      if (!wantsClearing(target)) return;
       const header = top.current;
       const bar = bottom.current;
       // The bars are drawn only on a phone; a dialog or sheet lies over them, and the bars' own controls are in them.
