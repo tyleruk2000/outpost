@@ -43,6 +43,7 @@ import { useMarkers } from "@/features/maps/data";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import type { PlaceField } from "@/features/propagation/data";
 import { PlaceInput } from "@/features/propagation/place-field";
+import { useLand } from "@/features/propagation/print/use-land";
 import { LicenceLine, useRadioLicence } from "@/features/radio/licence";
 import { useClockStyle } from "@/lib/clock";
 import { usePageVisible } from "@/lib/page-visible";
@@ -63,25 +64,22 @@ import {
   satelliteState,
   WORKABLE_ELEVATION_DEG,
 } from "./engine";
+import { sampleTrack } from "./ground-track";
+import { GroundTrack } from "./ground-track-map";
+import { byMain } from "./main-transmitter";
 import { type ManualSatellite, parseManualElements } from "./manual";
 import { useChosenSatellite } from "./map";
+import { SatellitePicker } from "./satellite-picker";
 import { SkyPlot } from "./sky-plot";
 import { usePassSchedule } from "./use-schedule";
-import {
-  alwaysUpWords,
-  bothTimes,
-  countdown,
-  dayWords,
-  frequencyWords,
-  geometryWords,
-  lightAt,
-  pathWords,
-  shiftWords,
-  utcTime,
-} from "./words";
+import { alwaysUpWords, bothTimes, countdown, dayWords, frequencyWords, geometryWords, lightAt, shiftWords, utcTime } from "./words";
 
 const PATH = "/radio/satellites";
 const BUCKET_MS = 300_000;
+/** Passes listed at a time: a week of every amateur satellite is thousands. */
+const PAGE_OF_PASSES = 40;
+/** One satellite's passes listed before "Show all". */
+const FIRST_PASSES = 5;
 const WINDOWS = [
   { value: "24", label: "24 hours" },
   { value: "48", label: "2 days" },
@@ -157,8 +155,12 @@ function ElementsStatus({ data, now }: { data: NonNullable<ReturnType<typeof use
       </EmptyState>
     );
   }
-  return (
-    <Section title="Orbital elements" className="mb-8">
+  const failed = (source: (typeof data.sources)[number] | undefined) =>
+    Boolean(source?.error && source.triedAt && source.triedAt > (source.fetchedAt ?? 0));
+  // Recent elements and nothing gone wrong: one line, opened for the detail, so the passes come first.
+  const quiet = age === "fresh" && !failed(celestrak) && !failed(satnogs) && !failed(details);
+  const content = (
+    <>
       <p className="text-body text-ink">
         {plural(data.satellites.length, "satellite")}, from CelesTrak {celestrak?.fetchedAt ? timeAgo(celestrak.fetchedAt) : ""}; newest
         elements dated {formatDate(newest)}.{" "}
@@ -198,6 +200,20 @@ function ElementsStatus({ data, now }: { data: NonNullable<ReturnType<typeof use
       ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-3">{button}</div>
       <p className="mt-2 text-small text-ink-muted">{what}</p>
+    </>
+  );
+  if (quiet)
+    return (
+      <Disclosure
+        className="mb-6 border-y border-border"
+        summary={`Orbital elements up to date: ${plural(data.satellites.length, "satellite")}, newest dated ${formatDate(newest)}`}
+      >
+        {content}
+      </Disclosure>
+    );
+  return (
+    <Section title="Orbital elements" className="mb-8">
+      {content}
     </Section>
   );
 }
@@ -222,7 +238,15 @@ function PassRowLine({ entry, now, onOpen }: { entry: ScheduledPass; now: Date; 
           </span>
           <span className="block text-small text-ink-muted">
             <Joined
-              parts={[pathWords(pass), pass.alwaysUp ? null : `${Math.round(pass.durationSeconds / 60)} min`, workable ? null : "low pass"]}
+              parts={
+                pass.alwaysUp
+                  ? [alwaysUpWords(pass), workable ? null : "low pass"]
+                  : [
+                      `${compassPoint(pass.aosAzimuthDeg)} to ${compassPoint(pass.losAzimuthDeg)}`,
+                      `${Math.round(pass.durationSeconds / 60)} min`,
+                      workable ? null : "low pass",
+                    ]
+              }
             />
           </span>
           {warning ? (
@@ -232,7 +256,12 @@ function PassRowLine({ entry, now, onOpen }: { entry: ScheduledPass; now: Date; 
           ) : null}
         </span>
         <span className="text-small sm:text-right">
-          <span className="block text-lead text-ink tabular">{Math.round(pass.maxElevationDeg)}°</span>
+          {pass.alwaysUp ? null : (
+            <span className="block text-ink tabular">
+              <span className="text-small text-ink-muted">highest </span>
+              <span className="text-lead">{Math.round(pass.maxElevationDeg)}°</span>
+            </span>
+          )}
           <span className={cn("block", inView ? "font-medium text-lamp-ink" : "text-ink-muted")}>
             {inView ? "Up now" : countdown(pass.aos, now)}
           </span>
@@ -255,7 +284,8 @@ function PassesTab({
 }) {
   const [hours, setHours] = useState<WindowValue>("24");
   const [query, setQuery] = useState("");
-  const [workableOnly, setWorkableOnly] = useState(false);
+  const [workableOnly, setWorkableOnly] = useState(true);
+  const [showing, setShowing] = useState(PAGE_OF_PASSES);
   const workableId = useId();
   const bucket = Math.floor(now.getTime() / BUCKET_MS);
   const from = useMemo(() => new Date(bucket * BUCKET_MS), [bucket]);
@@ -268,7 +298,7 @@ function PassesTab({
       (!needle || entry.satellite.name.toLowerCase().includes(needle) || String(entry.satellite.noradId).includes(needle)),
   );
   const days: Array<{ day: string; entries: ScheduledPass[] }> = [];
-  for (const entry of visible) {
+  for (const entry of visible.slice(0, showing)) {
     const day = dayWords(entry.pass.aos, now);
     if (days.at(-1)?.day === day) days.at(-1)?.entries.push(entry);
     else days.push({ day, entries: [entry] });
@@ -282,8 +312,13 @@ function PassesTab({
             <Input
               {...ids}
               type="search"
+              enterKeyHint="search"
+              autoComplete="off"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setShowing(PAGE_OF_PASSES);
+              }}
               placeholder="Name or NORAD number"
             />
           )}
@@ -291,11 +326,21 @@ function PassesTab({
         <Segmented
           label="How far ahead"
           value={hours}
-          onChange={setHours}
+          onChange={(next) => {
+            setHours(next);
+            setShowing(PAGE_OF_PASSES);
+          }}
           options={WINDOWS.map((item) => ({ value: item.value, label: item.label }))}
         />
         <div className="flex min-h-11 items-center gap-2">
-          <Checkbox id={workableId} checked={workableOnly} onCheckedChange={(next) => setWorkableOnly(next === true)} />
+          <Checkbox
+            id={workableId}
+            checked={workableOnly}
+            onCheckedChange={(next) => {
+              setWorkableOnly(next === true);
+              setShowing(PAGE_OF_PASSES);
+            }}
+          />
           <label htmlFor={workableId} className="text-small text-ink">
             Only passes {WORKABLE_ELEVATION_DEG}° high or more
           </label>
@@ -304,7 +349,9 @@ function PassesTab({
       <p className="mb-2 text-small text-ink-muted" role="status">
         {schedule.computing
           ? `Working out passes: ${schedule.done} of ${schedule.total} satellites…`
-          : `${plural(schedule.entries.length, "pass", "passes")} of amateur satellites, ${workableCount} of them ${WORKABLE_ELEVATION_DEG}° high or more. Passes that never rise ${FLOOR_ELEVATION_DEG}° above the horizon are left out.`}
+          : `${plural(schedule.entries.length, "pass", "passes")} of amateur satellites, ${workableCount} of them ${WORKABLE_ELEVATION_DEG}° high or more${
+              visible.length > showing ? `; the first ${showing} shown` : ""
+            }. Passes that never rise ${FLOOR_ELEVATION_DEG}° above the horizon are left out.`}
       </p>
       {schedule.computing && visible.length === 0 ? (
         <div className="grid gap-2">
@@ -335,7 +382,7 @@ function PassesTab({
       ) : (
         days.map((group) => (
           <section key={group.day} className="mb-6" aria-label={group.day}>
-            <h3 className="sticky top-0 z-10 bg-page py-2 text-body font-semibold text-ink">
+            <h3 className="sticky top-0 z-(--z-sticky) bg-page py-2 text-body font-semibold text-ink max-md:top-13">
               {group.day} <span className="font-normal text-ink-muted">{plural(group.entries.length, "pass", "passes")}</span>
             </h3>
             <Rows className="border-y border-border">
@@ -351,6 +398,16 @@ function PassesTab({
           </section>
         ))
       )}
+      {visible.length > showing ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => setShowing((count) => count + PAGE_OF_PASSES)}>
+            Show {Math.min(PAGE_OF_PASSES, visible.length - showing)} more
+          </Button>
+          <span className="text-small text-ink-muted">
+            {showing} of {plural(visible.length, "pass", "passes")} shown
+          </span>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -497,52 +554,120 @@ function Transmitters({
   );
 }
 
-function DopplerThroughPass({
+/** MHz to a tenth of a kHz, with no unit: the unit is in the column's name, so the figure fits a phone. */
+const mhz = (hz: number) => (hz / 1e6).toFixed(4);
+
+/**
+ * Where to point minute by minute through the pass, and, for a satellite with a downlink,
+ * what to tune to: the main transmitter at first (a transponder or repeater before a
+ * beacon), any other chosen from a list. Satellites with no live downlink keep the
+ * look angles.
+ */
+function ThroughThePass({
   path,
   transmitters,
   licensed,
+  alwaysUp = false,
 }: {
   path: SatelliteState[];
   transmitters: SatelliteTransmitter[];
   licensed: boolean;
+  /** Up all day (geostationary): a few looks through the day, not one a minute. */
+  alwaysUp?: boolean;
 }) {
-  const transmitter = transmitters.find((item) => item.downlinkLowHz !== null);
-  if (!transmitter?.downlinkLowHz) return null;
-  // About one line a minute, from rise to set.
-  const step = Math.max(1, Math.round(path.length / Math.max(1, (path.at(-1)!.at.getTime() - path[0]!.at.getTime()) / 60_000)));
-  const rows = path.filter((_, index) => index % step === 0 || index === path.length - 1);
+  const choices = useMemo(() => byMain(transmitters), [transmitters]);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const transmitter = choices.find((item) => item.id === chosenId) ?? choices[0] ?? null;
+  // One line a minute from the rise to the set, each the look nearest that minute, no minute twice.
+  const rows = useMemo(() => {
+    // Times are written to the minute (cut, not rounded), so the first look in each written minute.
+    const nearest = new Map<number, SatelliteState>();
+    const ends = new Set([Math.floor(path[0]!.at.getTime() / 60_000), Math.floor(path.at(-1)!.at.getTime() / 60_000)]);
+    for (const point of path.slice(1, -1)) {
+      const minute = Math.floor(point.at.getTime() / 60_000);
+      if (!ends.has(minute) && !nearest.has(minute)) nearest.set(minute, point);
+    }
+    if (alwaysUp) return path.filter((_, index) => index % 5 === 0);
+    return [path[0]!, ...[...nearest.values()].sort((a, b) => a.at.getTime() - b.at.getTime()), path.at(-1)!];
+  }, [path, alwaysUp]);
+  const down = transmitter?.downlinkLowHz ?? null;
+  const up = licensed ? (transmitter?.uplinkLowHz ?? null) : null;
+  const named = (item: SatelliteTransmitter) => `${item.description}${item.mode ? `, ${item.mode}` : ""}`;
   return (
-    <Disclosure summary={`What to tune to through the pass: ${transmitter.description}`} className="mt-4">
-      <Table label="Look angles and frequencies through the pass">
+    <Disclosure
+      summary={
+        alwaysUp
+          ? transmitter
+            ? "Where to point and what to tune to, through the day"
+            : "Where to point, through the day"
+          : transmitter
+            ? "Where to point and what to tune to, minute by minute"
+            : "Where to point, minute by minute"
+      }
+      className="mt-4"
+    >
+      {choices.length > 1 && transmitter ? (
+        <Field label="Transmitter" className="max-w-md">
+          {(ids) => (
+            <Select
+              id={ids.id}
+              value={transmitter.id}
+              onChange={setChosenId}
+              options={choices.map((item) => ({ value: item.id, label: named(item) }))}
+            />
+          )}
+        </Field>
+      ) : transmitter ? (
+        <p className="text-ink-muted">For {named(transmitter)}.</p>
+      ) : (
+        <p className="text-ink-muted">No downlink in use is listed for this satellite: these are where to point only.</p>
+      )}
+      <Table label={transmitter ? "Look angles and frequencies through the pass" : "Look angles through the pass"}>
         <TableHead>
           <Tr>
-            <Th numeric>UTC</Th>
-            <Th numeric>Bearing</Th>
-            <Th numeric>Elevation</Th>
-            <Th numeric>Listen on</Th>
-            {licensed && transmitter.uplinkLowHz ? <Th numeric>Send on</Th> : null}
+            <Th numeric className="px-2">
+              UTC
+            </Th>
+            <Th numeric className="px-2">
+              Bearing
+            </Th>
+            <Th numeric className="px-2">
+              Height
+            </Th>
+            {down ? (
+              <Th numeric className="px-2">
+                Listen on, MHz
+              </Th>
+            ) : null}
+            {up ? (
+              <Th numeric className="px-2">
+                Send on, MHz
+              </Th>
+            ) : null}
           </Tr>
         </TableHead>
         <tbody>
           {rows.map((point) => {
-            const tuned = dopplerTuning(point.rangeRateKmS, transmitter.downlinkLowHz, transmitter.uplinkLowHz);
+            const tuned = dopplerTuning(point.rangeRateKmS, down, up);
             return (
               <Tr key={point.at.getTime()}>
-                <Td numeric className="py-1.5">
+                <Td numeric className="px-2 py-1.5">
                   {utcTime(point.at)}
                 </Td>
-                <Td numeric className="py-1.5 whitespace-nowrap">
+                <Td numeric className="px-2 py-1.5 whitespace-nowrap">
                   {Math.round(point.azimuthDeg)}° {compassPoint(point.azimuthDeg)}
                 </Td>
-                <Td numeric className="py-1.5">
+                <Td numeric className="px-2 py-1.5">
                   {Math.max(0, Math.round(point.elevationDeg))}°
                 </Td>
-                <Td numeric className="py-1.5 whitespace-nowrap">
-                  {tuned.downlinkHz ? frequencyWords(tuned.downlinkHz) : ""}
-                </Td>
-                {licensed && transmitter.uplinkLowHz ? (
-                  <Td numeric className="py-1.5 whitespace-nowrap">
-                    {tuned.uplinkHz ? frequencyWords(tuned.uplinkHz) : ""}
+                {down ? (
+                  <Td numeric className="px-2 py-1.5">
+                    {tuned.downlinkHz ? mhz(tuned.downlinkHz) : ""}
+                  </Td>
+                ) : null}
+                {up ? (
+                  <Td numeric className="px-2 py-1.5">
+                    {tuned.uplinkHz ? mhz(tuned.uplinkHz) : ""}
                   </Td>
                 ) : null}
               </Tr>
@@ -550,6 +675,12 @@ function DopplerThroughPass({
           })}
         </tbody>
       </Table>
+      {transmitter?.downlinkHighHz && transmitter.downlinkHighHz !== transmitter.downlinkLowHz ? (
+        <p className="text-ink-muted">
+          Worked out at the low edge of its passband, {frequencyWords(transmitter.downlinkLowHz!)}; elsewhere in it the shift is nearly the
+          same.
+        </p>
+      ) : null}
     </Disclosure>
   );
 }
@@ -655,7 +786,7 @@ function PassPdfDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title="This pass as a PDF"
-        description="Where it crosses the sky, where to point minute by minute and what to tune to, to take outside. Made on this device."
+        description="Where it crosses the sky and the ground below, where to point minute by minute and what to tune to, to take outside. Made on this device."
       >
         <DialogBody className="grid gap-3">
           {made.status === "making" ? <p className="text-small text-ink-muted">Making the PDF…</p> : null}
@@ -680,6 +811,7 @@ function OneSatellite({
   onSelect,
   passAos,
   onPass,
+  focusKey,
 }: {
   satellites: SatelliteElements[];
   transmitters: SatelliteTransmitter[];
@@ -693,14 +825,25 @@ function OneSatellite({
   onSelect: (shown: Shown) => void;
   passAos: number | null;
   onPass: (aos: number | null) => void;
+  /** Changes each time a pass or satellite is opened from another tab: the heading then takes the focus. */
+  focusKey: number;
 }) {
   const now = useNow(1000);
   const licence = useRadioLicence();
   const navigate = useNavigate();
+  const { land } = useLand();
   const [, setChosen] = useChosenSatellite();
   const [group, setGroup] = useState<"all" | SatelliteGroup>("all");
   const [pasting, setPasting] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [allPasses, setAllPasses] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Opened from Passes or Weather satellites: to the satellite's name, so the place on the screen and the focus go together.
+  useEffect(() => {
+    if (focusKey === 0) return;
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.scrollIntoView({ block: "start" });
+  }, [focusKey]);
   const options = satellites.filter((satellite) => group === "all" || inGroup(satellite, group));
   const bucket = Math.floor(now.getTime() / BUCKET_MS);
   const passes = useMemo(() => {
@@ -737,34 +880,36 @@ function OneSatellite({
           epoch: selected.epoch,
           place: placeName,
           pass,
-          path: passSkyPath(selected.orbit, observer, pass, Math.max(2, Math.round(pass.durationSeconds / 60))),
-          transmitters: own,
+          path: passSkyPath(selected.orbit, observer, pass, pass.alwaysUp ? 2 : Math.max(2, Math.round(pass.durationSeconds / 60))),
+          transmitters: byMain(own).concat(own.filter((item) => item.downlinkLowHz === null)),
           written: new Date(),
           licensed: licence.licensed,
+          ground: {
+            samples: pass.alwaysUp
+              ? sampleTrack(
+                  selected.orbit,
+                  observer,
+                  new Date(pass.tca.getTime() - 45 * 60_000),
+                  new Date(pass.tca.getTime() + 45 * 60_000),
+                )
+              : sampleTrack(
+                  selected.orbit,
+                  observer,
+                  new Date(pass.aos.getTime() - 45 * 60_000),
+                  new Date(pass.los.getTime() + 45 * 60_000),
+                ),
+            home: observer,
+            land,
+          },
         }
       : null;
+  // The first few passes, and the one chosen wherever it is in the list.
+  const listed = allPasses ? live : live.filter((item, index) => index < FIRST_PASSES || item.aos.getTime() === pass?.aos.getTime());
 
   return (
     <>
       <div className="mb-4 flex flex-wrap items-end gap-4">
-        <Field label="Satellite" className="min-w-[min(16rem,100%)] flex-1">
-          {(ids) => (
-            <Select
-              id={ids.id}
-              value={selected && !selected.manual ? String(selected.noradId) : undefined}
-              placeholder={selected?.manual ? `${selected.name} (pasted)` : "Choose a satellite"}
-              onChange={(value) => {
-                const found = satellites.find((satellite) => String(satellite.noradId) === value);
-                if (found) onSelect(fromCatalogue(found));
-              }}
-              options={options.map((satellite) => ({
-                value: String(satellite.noradId),
-                label: `${satellite.name} · ${satellite.noradId}`,
-              }))}
-            />
-          )}
-        </Field>
-        <Field label="Show" className="w-56">
+        <Field label="Show" className="w-full sm:w-56">
           {(ids) => (
             <Select
               id={ids.id}
@@ -777,6 +922,24 @@ function OneSatellite({
             />
           )}
         </Field>
+        <Field label="Satellite" className="min-w-[min(16rem,100%)] flex-1">
+          {(ids) => (
+            <SatellitePicker
+              id={ids.id}
+              value={selected && !selected.manual ? String(selected.noradId) : undefined}
+              placeholder={selected?.manual ? `${selected.name} (pasted)` : "Choose a satellite"}
+              onChange={(value) => {
+                const found = satellites.find((satellite) => String(satellite.noradId) === value);
+                if (found) onSelect(fromCatalogue(found));
+              }}
+              choices={options.map((satellite) => ({
+                value: String(satellite.noradId),
+                name: satellite.name,
+                noradId: satellite.noradId,
+              }))}
+            />
+          )}
+        </Field>
         <Button onClick={() => setPasting(true)}>Paste elements</Button>
       </div>
       <PasteDialog open={pasting} onOpenChange={setPasting} onUse={(manual) => onSelect({ ...manual, groups: [], manual })} />
@@ -785,7 +948,9 @@ function OneSatellite({
         <p className="text-small text-ink-muted">Choose a satellite.</p>
       ) : (
         <>
-          <h2 className="font-title text-heading text-ink">{selected.name}</h2>
+          <h2 ref={heading} tabIndex={-1} className="scroll-mt-16 font-title text-heading text-ink focus:outline-none md:scroll-mt-4">
+            {selected.name}
+          </h2>
           <p className="text-small text-ink-muted">
             <Joined
               parts={[
@@ -805,41 +970,6 @@ function OneSatellite({
               {failure}
             </Notice>
           ) : null}
-          {state ? (
-            <Section
-              title={
-                !observer
-                  ? "Where it is now"
-                  : state.elevationDeg > 0
-                    ? `Above the horizon at ${placeName} now`
-                    : `Below the horizon at ${placeName} now`
-              }
-              className="mt-6"
-            >
-              <Readout state={state} placeKnown={observer !== null} />
-            </Section>
-          ) : null}
-          {state ? (
-            <Section title="Frequencies and modes" className="mt-6">
-              <Transmitters
-                transmitters={own}
-                state={state}
-                placeKnown={observer !== null}
-                licensed={licence.licensed}
-                metadata={selected.manual ? "manual" : transmittersFetched ? "catalogue" : "none"}
-              />
-            </Section>
-          ) : null}
-          {kept ? (
-            <AboutSatellite
-              noradId={kept.noradId}
-              about={about.find((item) => item.noradId === kept.noradId) ?? null}
-              elements={kept.elements}
-              transmitters={transmitters.filter((item) => item.noradId === kept.noradId)}
-              wikipedia={wikipedia.find((item) => item.noradId === kept.noradId) ?? null}
-              detailsFetched={detailsFetched}
-            />
-          ) : null}
 
           <Section title="Passes in the next 24 hours" className="mt-6">
             {!observer ? (
@@ -848,51 +978,18 @@ function OneSatellite({
               <p className="text-small text-ink-muted">No pass over {placeName} in the next 24 hours.</p>
             ) : (
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                <Rows className="border-y border-border" aria-label="Passes">
-                  {live.map((item) => {
-                    const chosen = pass?.aos.getTime() === item.aos.getTime();
-                    return (
-                      <li key={item.aos.getTime()}>
-                        <button
-                          type="button"
-                          aria-pressed={chosen}
-                          onClick={() => onPass(item.aos.getTime())}
-                          className={cn(
-                            "w-full py-2.5 text-left focus-visible:outline-2 focus-visible:outline-focus",
-                            chosen ? "bg-primary-soft" : "hover:bg-surface",
-                          )}
-                        >
-                          <span className="block text-body text-ink tabular">
-                            {item.alwaysUp
-                              ? "Up all the time"
-                              : item.aos <= now
-                                ? "Up now"
-                                : `${dayWords(item.aos, now)}, ${bothTimes(item.aos)}`}
-                          </span>
-                          <span className="block text-small text-ink-muted">
-                            {item.alwaysUp ? alwaysUpWords(item) : null}
-                            <Joined
-                              parts={
-                                item.alwaysUp
-                                  ? []
-                                  : [
-                                      `highest ${Math.round(item.maxElevationDeg)}°`,
-                                      `${Math.round(item.durationSeconds / 60)} min`,
-                                      `${compassPoint(item.aosAzimuthDeg)} to ${compassPoint(item.losAzimuthDeg)}`,
-                                    ]
-                              }
-                            />
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </Rows>
                 {pass ? (
-                  <div>
+                  <div className="lg:order-2">
                     <h3 className="text-body font-semibold text-ink">Sky track</h3>
                     <p className="mb-2 text-small text-ink-muted">
-                      Rises {bothTimes(pass.aos)}, highest {utcTime(pass.tca)} UTC, sets {utcTime(pass.los)} UTC.
+                      {pass.alwaysUp ? (
+                        `${alwaysUpWords(pass)}: it does not rise or set.`
+                      ) : (
+                        <>
+                          {pass.aos <= now ? "Up now. " : `${dayWords(pass.aos, now)}. `}Rises {bothTimes(pass.aos)}, highest{" "}
+                          {Math.round(pass.maxElevationDeg)}° at {utcTime(pass.tca)} UTC, sets {utcTime(pass.los)} UTC.
+                        </>
+                      )}
                     </p>
                     <SkyPlot pass={pass} path={path} now={now} />
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -914,10 +1011,96 @@ function OneSatellite({
                     </div>
                   </div>
                 ) : null}
+                <div className="lg:order-1">
+                  <Rows className="border-y border-border" aria-label="Passes">
+                    {listed.map((item) => {
+                      const chosen = pass?.aos.getTime() === item.aos.getTime();
+                      return (
+                        <li key={item.aos.getTime()}>
+                          <button
+                            type="button"
+                            aria-pressed={chosen}
+                            onClick={() => onPass(item.aos.getTime())}
+                            className={cn(
+                              "w-full border-l-4 py-2.5 pl-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-focus",
+                              chosen ? "border-primary bg-primary-soft" : "border-transparent hover:bg-surface",
+                            )}
+                          >
+                            <span className={cn("block text-body text-ink tabular", chosen && "font-semibold")}>
+                              {item.alwaysUp
+                                ? "Up all the time"
+                                : item.aos <= now
+                                  ? "Up now"
+                                  : `${dayWords(item.aos, now)}, ${bothTimes(item.aos)}`}
+                            </span>
+                            <span className="block text-small text-ink-muted">
+                              <Joined
+                                parts={
+                                  item.alwaysUp
+                                    ? [alwaysUpWords(item), chosen ? "shown" : null]
+                                    : [
+                                        `highest ${Math.round(item.maxElevationDeg)}°`,
+                                        `${Math.round(item.durationSeconds / 60)} min`,
+                                        `${compassPoint(item.aosAzimuthDeg)} to ${compassPoint(item.losAzimuthDeg)}`,
+                                        chosen ? "shown" : null,
+                                      ]
+                                }
+                              />
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </Rows>
+                  {live.length > listed.length ? (
+                    <Button variant="ghost" className="mt-2" onClick={() => setAllPasses(true)}>
+                      Show all {live.length} passes
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             )}
-            {pass && path.length > 0 ? <DopplerThroughPass path={path} transmitters={own} licensed={licence.licensed} /> : null}
+            {pass && path.length > 0 ? (
+              <ThroughThePass path={path} transmitters={own} licensed={licence.licensed} alwaysUp={pass.alwaysUp === true} />
+            ) : null}
           </Section>
+
+          {state ? (
+            <Section
+              title={
+                !observer
+                  ? "Where it is now"
+                  : state.elevationDeg > 0
+                    ? `Above the horizon at ${placeName} now`
+                    : `Below the horizon at ${placeName} now`
+              }
+              className="mt-10"
+            >
+              <Readout state={state} placeKnown={observer !== null} />
+              <GroundTrack orbit={selected.orbit} observer={observer} placeName={placeName} now={now} pass={pass} passes={live} />
+            </Section>
+          ) : null}
+          {state ? (
+            <Section title="Frequencies and modes" className="mt-10">
+              <Transmitters
+                transmitters={own}
+                state={state}
+                placeKnown={observer !== null}
+                licensed={licence.licensed}
+                metadata={selected.manual ? "manual" : transmittersFetched ? "catalogue" : "none"}
+              />
+            </Section>
+          ) : null}
+          {kept ? (
+            <AboutSatellite
+              noradId={kept.noradId}
+              about={about.find((item) => item.noradId === kept.noradId) ?? null}
+              elements={kept.elements}
+              transmitters={transmitters.filter((item) => item.noradId === kept.noradId)}
+              wikipedia={wikipedia.find((item) => item.noradId === kept.noradId) ?? null}
+              detailsFetched={detailsFetched}
+            />
+          ) : null}
           <PassPdfDialog open={printing} onOpenChange={setPrinting} sheetOf={sheetOf} />
         </>
       )}
@@ -1019,6 +1202,7 @@ export default function SatellitesPage() {
   const [chosen, setChosen] = useChosenSatellite();
   const [selected, setSelected] = useState<Shown | null>(null);
   const [passAos, setPassAos] = useState<number | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
   const satellites = data.data?.satellites ?? [];
   const amateur = useMemo(() => satellites.filter((satellite) => inGroup(satellite, "amateur")), [satellites]);
   const current =
@@ -1037,6 +1221,7 @@ export default function SatellitesPage() {
     setChosen(noradId);
     setPassAos(aos);
     setTab("one");
+    setFocusKey((key) => key + 1);
   };
 
   return (
@@ -1101,6 +1286,7 @@ export default function SatellitesPage() {
                     }}
                     passAos={passAos}
                     onPass={setPassAos}
+                    focusKey={focusKey}
                   />
                 </TabsContent>
                 <TabsContent value="weather" className="pt-4">

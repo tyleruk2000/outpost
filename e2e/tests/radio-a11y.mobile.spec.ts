@@ -176,7 +176,8 @@ test.describe("the radio screens on a phone", () => {
       // A satellite's fields.
       await oneSatellite(page);
       await page.goto("/radio/satellites");
-      await expect(page.getByText(/1 satellite, from CelesTrak/)).toBeVisible();
+      // Recent elements: what was fetched folds into one line.
+      await expect(page.getByText(/Orbital elements up to date: 1 satellite/)).toBeVisible();
       await large();
       expect(await pastTheEdge(page), "satellites at 200%").toEqual([]);
       await page.getByRole("tab", { name: "One satellite" }).click();
