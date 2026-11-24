@@ -155,7 +155,10 @@ export function MapFurniture({
       data-room={room}
       data-docked={docked && !covered ? "" : undefined}
       className={cn(
-        "outpost-furniture pointer-events-none absolute inset-x-[12px] top-[12px] z-10 flex flex-col gap-[8px]",
+        "outpost-furniture pointer-events-none absolute inset-x-[12px] top-[12px] flex flex-col gap-[8px]",
+        // With the sheet at its full height only the search box is left above it, and its list of results drops over
+        // the sheet (z 20), not under it, where nothing in it could be seen or pressed.
+        covered ? "z-[21]" : "z-10",
         docked && !covered ? "bottom-0" : "bottom-[calc(var(--sheet-height,0px)+16px)]",
       )}
     >

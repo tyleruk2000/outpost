@@ -21,7 +21,7 @@ export function Stepper({ label, value, onChange, min, max, step = 1, unit, hint
   const id = useId();
   // Icon-only, so in pixels: a finger is the same size whatever the text size (as on the map).
   const button =
-    "inline-flex size-[36px] shrink-0 items-center justify-center rounded-control border border-border-strong bg-page text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 max-md:size-[44px]";
+    "inline-flex size-[36px] shrink-0 items-center justify-center rounded-control border border-border-strong bg-page text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 max-md:size-[44px] md:pointer-coarse:size-[44px]";
   return (
     <div className={cn("grid gap-1.5", className)}>
       <span id={id} className="text-small font-medium text-ink">

@@ -480,7 +480,7 @@ function Tick({ id, label, checked, onChange }: { id: string; label: string; che
   return (
     <div className="flex min-h-11 items-center gap-2 md:min-h-8 md:pointer-coarse:min-h-11">
       <Checkbox id={id} checked={checked} onCheckedChange={(on) => onChange(on === true)} />
-      <label htmlFor={id} className="text-small text-ink">
+      <label htmlFor={id} className="flex items-center self-stretch pr-1 text-small text-ink">
         {label}
       </label>
     </div>

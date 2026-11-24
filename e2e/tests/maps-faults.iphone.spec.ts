@@ -42,6 +42,26 @@ for (const width of [320, 390]) {
       }
       expect(errors).toEqual([]);
     });
+
+    test("with the sheet at its full height, the search results lie over it, not under it", async ({ page }) => {
+      const errors = watchForErrors(page);
+      await standInPlaceNames(page);
+      await page.goto("/maps?lat=57&lon=-5&z=6");
+      await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+      const sheet = page.getByRole("region", { name: "Places, routes and offline maps" });
+      // A tap on the handle steps the sheet up: half, then full.
+      for (const height of ["half", "full"]) {
+        await sheet.getByRole("button", { name: /^Panel height/ }).tap();
+        await expect(sheet).toHaveAttribute("data-detent", height);
+      }
+      await page.getByLabel("Search the map").tap();
+      await page.keyboard.type("Rei", { delay: 40 });
+      await expect(page.getByRole("listbox", { name: "Search results" }).getByRole("option", { name: /Reinigeadal/ })).toBeVisible();
+      const rows = await rowsUnderFinger(page, '[role="listbox"][aria-label="Search results"] [role="option"]');
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) expect(row.mine, `${row.text} is what a finger presses, over the sheet`).toBe(true);
+      expect(errors).toEqual([]);
+    });
   });
 }
 

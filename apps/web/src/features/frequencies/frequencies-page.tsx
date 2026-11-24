@@ -47,6 +47,7 @@ import { useHome } from "@/features/households/home";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { LicenceLine } from "@/features/radio/licence";
+import { useAddressText } from "@/lib/use-address-text";
 import { cn, plural } from "@/lib/utils";
 import { frequenciesTitle, frequencyLine, scheduleWords, statusWords } from "./document";
 import { frequenciesPrint } from "./print";
@@ -343,8 +344,8 @@ export default function FrequenciesPage() {
   const placeIsHome = placeParam === null && home !== null;
   const band = params.get("band") || null;
   const set = params.get("set") || null;
-  const text = params.get("q") ?? "";
-  // The box shows each key at once; the list follows when the browser has a moment.
+  const [text, , setText] = useAddressText("q");
+  // The box shows each key at once; the list follows when the browser has a moment, the address after a pause.
   const query = useDeferredValue(text);
   const showUnverified = params.get("unverified") === "1";
 
@@ -426,7 +427,7 @@ export default function FrequenciesPage() {
                   {...ids}
                   type="search"
                   value={text}
-                  onChange={(event) => change("q", event.target.value)}
+                  onChange={(event) => setText(event.target.value)}
                   placeholder="A station, a frequency or a channel"
                   autoComplete="off"
                   spellCheck={false}

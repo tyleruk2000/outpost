@@ -341,7 +341,7 @@ function PassesTab({
               setShowing(PAGE_OF_PASSES);
             }}
           />
-          <label htmlFor={workableId} className="text-small text-ink">
+          <label htmlFor={workableId} className="flex items-center self-stretch text-small text-ink">
             Only passes {WORKABLE_ELEVATION_DEG}° high or more
           </label>
         </div>

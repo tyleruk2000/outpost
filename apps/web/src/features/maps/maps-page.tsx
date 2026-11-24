@@ -363,7 +363,8 @@ export default function MapsPage() {
    * in place of the search box, the sheet of tabs and the bar of screens while it is in hand. A wide screen keeps the
    * form in the panel.
    */
-  const directionsHome = useHome().home;
+  const currentHousehold = useHome();
+  const directionsHome = currentHousehold.home;
   const directions = useDirections({
     engine,
     home: directionsHome ? { name: directionsHome.name, lat: directionsHome.lat, lon: directionsHome.lon, at: directionsHome.at } : null,
@@ -415,9 +416,13 @@ export default function MapsPage() {
   );
   const startBounds = useRef(sources.data?.bounds ?? null);
   startBounds.current = sources.data?.bounds ?? null;
+  // A first visit opens on the household's home, at the scale of a county, rather than on the whole world.
+  const startHome = useRef(directionsHome);
+  startHome.current = directionsHome;
 
   // The first style needs to know what is installed; wait for that, but not for ever: a failed answer still gets the outline map.
-  const settled = !sources.isPending && !overview.isPending;
+  // A first visit waits for the household too, for its home.
+  const settled = !sources.isPending && !overview.isPending && (startView !== null || !currentHousehold.isPending);
   useEffect(() => {
     if (!settled || !container.current) return;
     let cancelled = false;
@@ -425,17 +430,21 @@ export default function MapsPage() {
     import("./map/engine")
       .then(({ MapEngine, MapUnsupportedError }) => {
         if (cancelled || !container.current) return;
+        const home = startHome.current;
+        // With a detailed map, home at the scale of a county; with only the outline of the world, at a country's,
+        // where there is still a coast to see.
+        const firstView = startView ?? (home ? { lat: home.lat, lon: home.lon, zoom: startBounds.current ? 9 : 5 } : DEFAULT_VIEW);
         try {
-          created = new MapEngine(container.current, startView ?? DEFAULT_VIEW, latestStyle.current);
+          created = new MapEngine(container.current, firstView, latestStyle.current);
         } catch (error) {
           setMapStatus(error instanceof MapUnsupportedError ? "unsupported" : "failed");
           setMapError(errorMessage(error));
           return;
         }
         appliedStyle.current = latestStyle.current;
-        // First visit with maps installed: open on them rather than on a default view.
+        // First visit with no home and maps installed: open on them rather than on a default view.
         const bounds = startBounds.current;
-        if (!startView && bounds && bounds[2] - bounds[0] < 300) created.fitBounds(bounds, { animate: false, maxZoom: 11 });
+        if (!startView && !home && bounds && bounds[2] - bounds[0] < 300) created.fitBounds(bounds, { animate: false, maxZoom: 11 });
         setEngine(created);
         setMapStatus("ready");
       })
@@ -920,7 +929,10 @@ export default function MapsPage() {
     const bottom = Math.max(0, Math.min(sheet, height - top - 96));
     // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
     // centre of the map is in the part that shows. On a wide screen nothing lies over the middle of the map.
-    engine.setPadding({ top, right: isDesktop && !compact ? 56 : 0, bottom, left: 0 }, !isDesktop || compact, spare);
+    // The column of map buttons on the right is 44 px wide, 12 px in from the edge: a phone's and a compact wide
+    // screen's camera do not keep that room (the centre stays the middle), but a fit does, so a route never ends under it.
+    const wide = isDesktop && !compact;
+    engine.setPadding({ top, right: wide ? 56 : 0, bottom, left: 0 }, !isDesktop || compact, spare, wide ? 0 : 56);
     // The cross that marks the centre is 20 px across: a card at the foot stops 12 px short of it.
     const centre = top + Math.max(0, height - top - bottom) / 2;
     setDockRoom(isDesktop && !compact ? undefined : Math.max(0, Math.round(height - centre - 22)));
@@ -1814,16 +1826,21 @@ export default function MapsPage() {
         onClose={() => setHereDismissed(true)}
       />
     ) : firstUse ? (
-      <MapCard title="No detailed maps on this device yet" onClose={() => setFirstUseDismissed(true)} closeLabel="Dismiss">
+      <MapCard
+        title="No detailed maps on this device yet"
+        onClose={() => setFirstUseDismissed(true)}
+        closeLabel="Dismiss"
+        // On the title's line, so that it is in sight however short the card is on a phone (the words under it may
+        // scroll). It opens Add a place on Offline maps: where, then what for it, then its size. Nothing starts here.
+        action={
+          <Button size="sm" variant="primary" onClick={() => navigate("/maps/data?add=1")} className="-mt-1">
+            Add a place
+          </Button>
+        }
+      >
         <p className="mt-1 text-small text-ink-muted">
           What you see is an outline of the world that comes with Outpost. Add a place, anywhere, and its map works with no connection.
         </p>
-        {/* Add a place on Offline maps: where, then what for it, then its size. Nothing starts from here. */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="primary" onClick={() => navigate("/maps/data?add=1")}>
-            Add a place
-          </Button>
-        </div>
       </MapCard>
     ) : null;
   const card = handCard ?? restingCard;

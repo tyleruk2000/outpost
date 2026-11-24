@@ -60,7 +60,7 @@ import { formatBearing } from "@/features/maps/lib/geo";
 import type { CameraView } from "@/features/maps/lib/view";
 import { LicenceLine } from "@/features/radio/licence";
 import { type HeightUnit, useHeightUnit } from "@/lib/heights";
-import { useDebounced } from "@/lib/use-debounced";
+import { useAddressText } from "@/lib/use-address-text";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn, formatDate, formatNumber, plural } from "@/lib/utils";
 import {
@@ -81,7 +81,7 @@ import { OriginPicker, REPEATERS_ORIGIN_KEY, useOrigin, useStoredOrigin } from "
 import { PrintDialog } from "./print-dialog";
 import { RepeaterFormDialog } from "./repeater-form";
 import { RepeatersMap } from "./repeaters-map";
-import { SourcesSection, useGetList } from "./sources-section";
+import { GetListDialogs, SourcesSection, useGetList } from "./sources-section";
 import { useDistanceText, withinOptions, withinText } from "./units";
 import { accessParts, ageWarning, dayText, isApproximate, shiftWords, sourceOf } from "./words";
 
@@ -596,7 +596,8 @@ export default function RepeatersPage() {
   const select = (id: string | null) => update({ sel: id });
   const camera = cameraOf(params.get("map"));
 
-  const typed = useDebounced(filters.q, 250);
+  // The box holds what is typed; the address, and so the list, follow once typing pauses.
+  const [findText, typed, setFindText] = useAddressText("q", 250);
   const { band, mode, hideOffAir, list: listId } = filters;
   const applied = useMemo<RepeaterFilters>(
     () => ({ q: typed, band, mode, hideOffAir, list: listId }),
@@ -753,7 +754,7 @@ export default function RepeatersPage() {
               for the others it gives the page and the steps to get the file by hand.
             </p>
           </EmptyState>
-          <SourcesSection lists={[]} getList={getList} className="mt-10" />
+          <SourcesSection getList={getList} className="mt-10" />
         </>
       ) : (
         <>
@@ -765,8 +766,8 @@ export default function RepeatersPage() {
                 <Input
                   {...ids}
                   type="search"
-                  value={filters.q}
-                  onChange={(event) => set("q", event.target.value)}
+                  value={findText}
+                  onChange={(event) => setFindText(event.target.value)}
                   placeholder="Callsign, town or frequency"
                   autoComplete="off"
                   autoCorrect="off"
@@ -832,7 +833,7 @@ export default function RepeatersPage() {
             </Field>
             <div className="col-span-2 flex flex-wrap items-center gap-2.5 lg:col-span-4">
               <Checkbox id={hideId} checked={filters.hideOffAir} onCheckedChange={(checked) => set("hideOffAir", checked === true)} />
-              <label htmlFor={hideId} className="text-small text-ink">
+              <label htmlFor={hideId} className="flex min-h-11 items-center text-small text-ink md:min-h-8 md:pointer-coarse:min-h-11">
                 Leave out those listed as not operational
               </label>
               {filters.list ? (
@@ -972,12 +973,13 @@ export default function RepeatersPage() {
               ) : null}
             </Section>
 
-            <SourcesSection lists={overview.data.lists} getList={getList} />
+            <SourcesSection getList={getList} />
           </Disclosure>
         </>
       )}
 
       <ImportDialog open={importing !== null} list={importing?.list} onClose={() => setImporting(null)} />
+      <GetListDialogs lists={overview.data?.lists ?? []} getList={getList} />
       <RepeaterFormDialog
         open={adding}
         onClose={() => setAdding(false)}

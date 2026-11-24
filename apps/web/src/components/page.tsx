@@ -31,7 +31,7 @@ export function BackLink({ to, children, className }: { to: string; children: Re
     <Link
       to={to}
       className={cn(
-        "-ml-1 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control px-1 text-small text-ink-muted transition-colors hover:text-ink md:min-h-8",
+        "-ml-1 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-control px-1 text-small text-ink-muted transition-colors hover:text-ink md:min-h-8 md:pointer-coarse:min-h-11",
         className,
       )}
     >

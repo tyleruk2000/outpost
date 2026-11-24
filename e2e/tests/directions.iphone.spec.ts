@@ -119,8 +119,8 @@ for (const size of [
         small.filter((finding) => !/credit|OpenStreetMap|more|©/i.test(finding.what)),
         "44 px targets",
       ).toEqual([]);
-      // Once the map has fitted the route into what the bar and the sheet leave (its move takes a moment).
-      await page.waitForTimeout(800);
+      // Once the map has fitted the route into what the bar and the sheet leave: a short ease, then still.
+      await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
       await shot("4-planned");
 
       // The steps, as a page; a line pressed drops the sheet to that step, and Next walks the route.
@@ -144,7 +144,7 @@ for (const size of [
       expect((await api<{ routes: Array<{ name: string }> }>(page, "GET", "/api/roads/routes")).routes.map((route) => route.name)).toEqual([
         "Home to Reims",
       ]);
-      await page.waitForTimeout(800);
+      await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
       await shot("7-saved");
 
       // Ended, Maps is as it was: the bar of screens back, and Directions under the thumb.

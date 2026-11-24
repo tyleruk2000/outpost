@@ -275,6 +275,30 @@ export function MobileSheet({
     return () => observer.disconnect();
   }, []);
 
+  // Lowered, the sheet shows only its first line: what is below it is out of sight under the bottom bar, so it is
+  // taken out of the Tab order and out of what a screen reader reads (WCAG 2.4.11), not left to be landed on unseen.
+  const body = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = body.current;
+    if (!root || detent !== "peek" || dragHeight !== null) return;
+    const line = [...root.querySelectorAll<HTMLElement>('[data-sheet-peek], [role="tablist"]')].find(
+      (each) => each.getClientRects().length > 0,
+    );
+    if (!line) return;
+    const put: HTMLElement[] = [];
+    for (let node: HTMLElement = line; node !== root && node.parentElement; node = node.parentElement) {
+      for (let next = node.nextElementSibling; next; next = next.nextElementSibling) {
+        if (next instanceof HTMLElement && !next.inert) {
+          next.inert = true;
+          put.push(next);
+        }
+      }
+    }
+    return () => {
+      for (const each of put) each.inert = false;
+    };
+  });
+
   // With the keyboard up for a field in the sheet, the sheet stands on the keyboard and takes what is left above it,
   // so the field being typed in is never under the keyboard (typingHeight).
   const typing = useTypingFit(sheet);
@@ -399,7 +423,9 @@ export function MobileSheet({
           />
         </button>
       )}
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      <div ref={body} className="flex min-h-0 flex-1 flex-col">
+        {children}
+      </div>
     </section>
   );
 }
