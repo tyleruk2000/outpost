@@ -35,6 +35,7 @@ import { BoardHomeLine } from "@/features/board/elsewhere";
 import { BookHomeLine } from "@/features/household-book/book-line";
 import { HouseholdHomeLine } from "@/features/households/home-line";
 import { ChecksHomeLine } from "@/features/readiness/checks-line";
+import { AnswersOffer } from "@/features/setup/answers-offer";
 import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
 import { formatNumber, timeAgo } from "@/lib/utils";
@@ -230,6 +231,8 @@ export default function HomePage() {
               className="h-12 w-full rounded-panel border border-border-strong bg-page pr-4 pl-12 text-body text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-search-cancel-button]:hidden"
             />
           </form>
+          {/* What a question could get, while no writing model is set up: in sight, not only in Settings. */}
+          <AnswersOffer className="mt-4 max-w-[34rem]" />
         </div>
       </div>
 

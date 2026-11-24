@@ -34,6 +34,13 @@ With a language model of your own set up ([ai.md](ai.md#setting-it-up)), **Answe
 library** sits above the results and writes an answer from the best passages, citing
 each. How well depends on the model ([ai.md](ai.md#tried-with-a-real-model)).
 
+Until one is set up, Home (under its search box) and the Search screen (on the empty
+screen, and after the results) say what answers would do and that they need a writing
+model, which Outpost does not include: the small model built in, all-MiniLM-L6-v2, only
+finds pages by meaning. **Set up answers** opens the three steps (find Ollama, choose a
+model, try it) in place. Ollama goes on the computer Outpost runs on; opened from a phone,
+the steps name that computer by its address.
+
 ### Which passages an answer is given
 
 Answers, conversations using the library, and the retrieval API take up to five passages:
@@ -60,7 +67,8 @@ ignored; `AND` and `OR` are just words. Up to 500 characters.
 Small words that only shape a question ("how", "to", "the", "what", "do", "I", "my" and
 the like) are left out, and the results name them: "How to change car battery" looks for
 "change", "car" and "battery". "Not", "no", "without" and "off" are kept, since they change
-the meaning. Inside quotes every word counts.
+the meaning. Inside quotes every word counts. "Wont", "dont", "cant" and the like, typed
+without the apostrophe, are read as "won't", "don't", "can't".
 
 ### Other spellings and names
 
@@ -158,6 +166,12 @@ safety guidance, a question about a car favours vehicle collections, and a "how 
 question favours manuals, guides and questions and answers. A source's kind comes from
 its collection, category, tags and title. These settle near ties; they never lift a poor
 match over a good one.
+
+For a medical question, an article in a medical collection whose title names nothing the
+question is about counts a little less, and says "about something else": asked whether
+paracetamol and ibuprofen can be taken together, the page on taking acrivastine with
+other medicines mentions both, but is about acrivastine. A book or a manual is not judged
+by its title this way.
 
 The other way round, a collection plainly about another subject than the question counts a
 little less, and says "on another subject": a radio manual for "car battery flat", a woodshop
@@ -436,8 +450,12 @@ results says which way they were found ("found by words and by meaning").
 - A result found both ways scores more than by its words alone.
 - A result found by meaning alone says **Similar in meaning**, and always comes after every
   result holding all your words: when the words find plenty these wait below them, and
-  when the words find little they fill the list. The model finds something near any
-  question, nonsense included, so these are only as good as it is.
+  when the words find little up to eight follow. Contacts are never found by meaning
+  alone. The model finds something near any question, nonsense included, so these are
+  only as good as it is.
+- When no word you typed is in your library at all ("asdfghjkl") and nothing is close in
+  meaning, the screen says **Nothing matches** and offers **Show N loosely related
+  pages** instead of listing them. **By meaning** always lists them.
 - For a first aid or medical question, a trusted source holding all your words, with one of
   them in its title, a heading or a tag, whose passage means the same as the question comes
   first, and says "means the same". A whole book that mentions the word on one page does not.

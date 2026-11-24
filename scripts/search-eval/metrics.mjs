@@ -34,14 +34,20 @@ export function gradeById(query, result) {
   return query.grades[result.entityId] ?? 0;
 }
 
-/** A real library's result: all patterns in the title 3, all anywhere 2, any in the title 1. */
+/**
+ * A real library's result: all patterns in the title 3, all anywhere 2, any in the title 1.
+ * `not` (a title in another sense) grades 0; `titleNeeds` caps a title without it at 1: a page
+ * about another medicine that mentions this one in passing is not the answer.
+ */
 export function gradeByPattern(query, result) {
   const patterns = query.pi.map((source) => new RegExp(source, "i"));
   if (patterns.length === 0) return 0;
   const title = result.title ?? "";
-  if (patterns.every((pattern) => pattern.test(title))) return 3;
+  if (query.not && new RegExp(query.not, "i").test(title)) return 0;
+  const cap = query.titleNeeds && !new RegExp(query.titleNeeds, "i").test(title) ? 1 : 3;
+  if (patterns.every((pattern) => pattern.test(title))) return Math.min(cap, 3);
   const text = resultText(result);
-  if (patterns.every((pattern) => pattern.test(text))) return 2;
+  if (patterns.every((pattern) => pattern.test(text))) return Math.min(cap, 2);
   return patterns.some((pattern) => pattern.test(title)) ? 1 : 0;
 }
 

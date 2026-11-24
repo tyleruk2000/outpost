@@ -45,8 +45,20 @@ export const STOP_WORDS: ReadonlySet<string> = new Set(
     "do does did doing done is are was were be been being am " +
     "can could should would will shall may might must " +
     "i me my mine we us our you your he him his she her it its they them their there " +
-    "this that these those if so than then also just please"
+    "this that these those if so than then also just please "
   ).split(" "),
+);
+
+/**
+ * "Won't" and the like typed without the apostrophe, as a thumb types them, are read as
+ * written with it: "bleeding wont stop" found a forum's "brakes wont bleed" by its "wont",
+ * and offered "Did you mean bleeding want stop?". They are kept, not dropped: "car won't
+ * start" is not about starting a car.
+ */
+const CONTRACTIONS: ReadonlyMap<string, string> = new Map(
+  "won't don't can't isn't doesn't didn't wouldn't couldn't shouldn't aren't wasn't weren't hasn't haven't"
+    .split(" ")
+    .map((word) => [word.replace("'", ""), word]),
 );
 
 const TOKEN = /-?"[^"]*"?|[^\s]+/g;
@@ -71,7 +83,10 @@ export function parseQuery(input: string): ParsedQuery {
     const term = clean(token.replace(/"/g, ""));
     if (!term || /^[-'’_]+$/.test(term)) continue;
     if (negative) excluded.push(term);
-    else typed.push({ term, quoted: token.includes('"') || term.includes(" ") });
+    else {
+      const quoted = token.includes('"') || term.includes(" ");
+      typed.push({ term: quoted ? term : (CONTRACTIONS.get(term.toLowerCase()) ?? term), quoted });
+    }
   }
   const endsOpen = /[\p{L}\p{N}]$/u.test(text) && !text.trimEnd().endsWith('"');
   const isStop = (item: { term: string; quoted: boolean }) => !item.quoted && STOP_WORDS.has(item.term.toLowerCase());
@@ -196,7 +211,9 @@ export const ACTION_WORDS: ReadonlySet<string> = new Set(
     "treat treating treatment fix fixing make making change changing store storing stop stopping start starting purify " +
     "filter tie tying charge charging check checking replace replacing repair repairing use using build building cook " +
     "grow growing clean cleaning remove find get keep cure prevent read boil put last tell need want best good " +
-    "signs sign symptoms way ways much many long term without per day safely safe quickly properly easily correctly"
+    "signs sign symptoms way ways much many long term without per day safely safe quickly properly easily correctly " +
+    // "Can I take paracetamol and ibuprofen together" is about paracetamol and ibuprofen: a title holds those.
+    "take taking together"
   ).split(" "),
 );
 

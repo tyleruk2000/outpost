@@ -1,5 +1,5 @@
 {
-  "about": "Household questions and what a good answer would be. `grades` grade the fixture library's items (3 the answer, 2 useful, 1 on the subject); `pi` are patterns that must all match a real library's result for it to count (all in the title: 3; all in title and text: 2; any in the title: 1). `sets` names the sets a question is in when not only the first: \"household\" (the first 56) and \"everyday\" (the searches the everyday searches the owner tried on a Raspberry Pi (November 2026), reported apart as well).",
+  "about": "Household questions and what a good answer would be. `grades` grade the fixture library's items (3 the answer, 2 useful, 1 on the subject); `pi` are patterns that must all match a real library's result for it to count (all in the title: 3; all in title and text: 2; any in the title: 1). `sets` names the sets a question is in when not only the first: \"household\" (the first 56) and \"everyday\" (the searches the everyday searches the owner tried on a Raspberry Pi (November 2026), reported apart as well). \"persona\": the questions five people asked in the persona tests of 24 November 2026 (a relative at 200% text, a parent, a stressed walker, a teenager, someone abroad), graded from the Raspberry Pi's collections. `titleNeeds`: a result whose title does not match it is graded at most 1 (a page about another medicine that mentions this one is not the answer); `not`: a result whose title matches it is graded 0 (another meaning). `nonsense`: keyboard-mashing, where nothing should be found by meaning alone.",
   "queries": [
     {
       "q": "How to change car battery",
@@ -696,6 +696,147 @@
       "q": "zzqx flurble",
       "grades": {},
       "pi": []
+    },
+    {
+      "q": "can I take paracetamol and ibuprofen together",
+      "grades": {
+        "painkillers": 3,
+        "allergy-tablets": 0
+      },
+      "pi": [
+        "paracetamol|acetaminophen|ibuprofen|painkiller",
+        "together|with other|and ibuprofen|and paracetamol|ibuprofen/|paracetamol/|/ibuprofen|/paracetamol"
+      ],
+      "titleNeeds": "paracetamol|acetaminophen|ibuprofen|painkiller",
+      "sets": ["persona"]
+    },
+    {
+      "q": "what to do for a burn",
+      "grades": {
+        "burns": 3,
+        "first-aid": 2,
+        "sunburn": 1
+      },
+      "pi": ["burn|scald", "cool|running water|first aid|treat"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "bleeding wont stop",
+      "grades": {
+        "first-aid": 3
+      },
+      "pi": ["bleed|haemorrhag|hemorrhag", "pressure|stop|control|wound|tourniquet"],
+      "not": "brake|caliper|keg|carbonat|radiator",
+      "sets": ["persona"]
+    },
+    {
+      "q": "freezer power cut",
+      "grades": {
+        "freezer": 3,
+        "power-cut": 1,
+        "power-outage": 1,
+        "food-storage": 1
+      },
+      "pi": ["freez|frozen", "power cut|power outage|blackout|power failure|without power|outage"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "how long will the freezer last in a power cut",
+      "grades": {
+        "freezer": 3,
+        "food-storage": 1,
+        "power-cut": 1,
+        "power-outage": 1
+      },
+      "pi": ["freez|frozen|fridge|refrigerat", "power cut|power outage|blackout|power failure|without power|outage|turned off"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "is the water safe to drink",
+      "grades": {
+        "water-handbook": 3,
+        "kit-list": 0
+      },
+      "pi": ["water", "safe|purif|boil|treat|disinfect|drinking"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "emergency number",
+      "grades": {
+        "power-cut": 1
+      },
+      "pi": ["emergenc", "999|112|911|number|call"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "pharmacy",
+      "grades": {},
+      "pi": ["pharmac|chemist|drugstore"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "how to pick a lock",
+      "grades": {},
+      "pi": ["lock", "pick"],
+      "titleNeeds": "lock",
+      "sets": ["persona"],
+      "not": "lock ?ring|chain lock|cassette|lockring|locknut|lock nut|lock washer|locking (pin|nut|wire)"
+    },
+    {
+      "q": "black holes",
+      "grades": {},
+      "pi": ["black hole"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "minecraft",
+      "grades": {},
+      "pi": ["minecraft"],
+      "sets": ["persona"]
+    },
+    {
+      "q": "waterloo station",
+      "grades": {},
+      "pi": ["waterloo"],
+      "titleNeeds": "waterloo",
+      "sets": ["persona"]
+    },
+    {
+      "q": "sunrise tomorrow",
+      "grades": {
+        "compass": 0
+      },
+      "pi": ["sunrise|sunset|sun rises|daylight"],
+      "sets": ["persona"],
+      "not": "before sunrise|night at the museum|tomorrow never dies|album|film|song"
+    },
+    {
+      "q": "asdfghjkl",
+      "grades": {},
+      "pi": [],
+      "nonsense": true,
+      "sets": ["persona"]
+    },
+    {
+      "q": "skibidi",
+      "grades": {},
+      "pi": [],
+      "nonsense": true,
+      "sets": ["persona"]
+    },
+    {
+      "q": "🍕",
+      "grades": {},
+      "pi": [],
+      "nonsense": true,
+      "sets": ["persona"]
+    },
+    {
+      "q": "<script>alert(1)</script>",
+      "grades": {},
+      "pi": [],
+      "nonsense": true,
+      "sets": ["persona"]
     }
   ]
 }

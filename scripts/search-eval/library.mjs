@@ -158,6 +158,17 @@ export function library() {
       "Burns and scalds",
       "Cool a burn or scald with running water for 20 minutes. Do not use ice or butter. Treat large burns in hospital.",
     ),
+    // A medicine named in the question, against another medicine's page that mentions it in passing (persona tests).
+    note(
+      "painkillers",
+      "Paracetamol and ibuprofen",
+      "Most adults can take paracetamol and ibuprofen together, or one after the other, as long as each is kept to its own dose. Check with a pharmacist first if you take other medicines.",
+    ),
+    note(
+      "allergy-tablets",
+      "Hay fever tablets",
+      "Hay fever tablets can be taken together with painkillers such as paracetamol or ibuprofen. Take one tablet a day.",
+    ),
     note("sunburn", "Sunburn", "Treat sunburn with cool showers and after-sun. A blistering burn needs a doctor."),
     note("cpr-adult", "CPR for adults", "CPR for an adult: thirty chest compressions, two rescue breaths, repeat until help comes."),
     note(

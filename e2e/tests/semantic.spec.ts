@@ -98,7 +98,9 @@ test.describe("search by meaning, built in", () => {
     const first = page.getByRole("main").getByRole("listitem").first();
     await expect(first.getByRole("link", { name: "Kennel notes" })).toBeVisible();
     await expect(first).toContainText("Trim the hair between the pads");
-    // And the ordinary search, which now uses both, finds it too.
+    // And the ordinary search, which now uses both, finds it too. On a phone the switch is folded with the
+    // explanations of the results, under "About these results", once there are results.
+    await page.getByText("About these results").click();
     await page.getByRole("radio", { name: "Best of both" }).click();
     await expect(page).toHaveURL(/mode=hybrid/);
     await expect(page.getByRole("main").getByRole("link", { name: "Kennel notes" })).toBeVisible();

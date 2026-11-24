@@ -7,7 +7,7 @@
 import { type EmergencyPlanInput, emptyPlanBody, type PlanBody } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { collapseSameTitles, sameTitleKey } from "../src/modules/search/cards.ts";
-import { adjusted, adjustFor, intentOf, MOST_FAVOUR, OTHER_SENSE, OTHER_SUBJECT } from "../src/modules/search/intent.ts";
+import { adjusted, adjustFor, intentOf, MOST_FAVOUR, NAMES_ANOTHER, OTHER_SENSE, OTHER_SUBJECT } from "../src/modules/search/intent.ts";
 import { createOwners } from "../src/modules/search/owners.ts";
 import { expandQuery, parseQuery } from "../src/modules/search/query.ts";
 import { reasonFor, scoreFields, scoringTerms } from "../src/modules/search/score.ts";
@@ -431,5 +431,49 @@ describe("what is kept in memory", () => {
     const gone = chunk("a");
     index.remove("note", "a");
     expect(vectors.query("t", Float32Array.from([1, 0]), 3).map((hit) => hit.chunkId)).not.toContain(gone);
+  });
+});
+
+describe("the persona tests' questions", () => {
+  it("reads a contraction typed without its apostrophe as written with it, and keeps it", () => {
+    expect(parseQuery("bleeding wont stop").required).toEqual(["bleeding", "won't", "stop"]);
+    expect(parseQuery("car dont start").required).toEqual(["car", "don't", "start"]);
+    expect(parseQuery('"wont"').required).toEqual(["wont"]);
+  });
+
+  it("takes bleeding on its own as a person's, and brakes as the other sense", () => {
+    const question = intent("bleeding wont stop");
+    expect(question.medical).toBe(true);
+    const forum = adjustFor(question, {
+      title: "brakes wont bleed after replacing lines",
+      collection: "Motor Vehicle Mechanics Q&A",
+      tags: [],
+      article: true,
+    });
+    expect(forum.notes).toContain("another meaning of “bleeding”");
+    expect(intent("bleeding brakes").senses).toEqual([]);
+  });
+
+  it("counts a medical article titled for another medicine for less than one titled for what was asked", () => {
+    const question = intent("can I take paracetamol and ibuprofen together");
+    const nhs = "NHS Medicines A to Z";
+    const other = adjustFor(question, {
+      title: "Taking acrivastine with other medicines and herbal supplements - NHS",
+      collection: nhs,
+      tags: [],
+      article: true,
+    });
+    const named = adjustFor(question, {
+      title: "Paracetamol for adults: painkiller for pain and high temperature - NHS",
+      collection: nhs,
+      tags: [],
+      article: true,
+    });
+    expect(other.factor).toBeCloseTo(named.factor * NAMES_ANOTHER);
+    expect(other.notes).toContain("about something else");
+    // A first aid manual's title never names the question: only articles are judged by their titles.
+    expect(adjustFor(intent("rescue breaths"), { title: "First aid manual", collection: null, tags: [] }).notes).not.toContain(
+      "about something else",
+    );
   });
 });

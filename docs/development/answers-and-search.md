@@ -121,7 +121,7 @@ BM25 column weights: title 8, tags 4, heading 3, body 1. Intent priors (`intent.
 medical × 1.25 (medical and first aid sources), safety × 1.25 (official guidance on
 generators, heaters, stoves, fuel, carbon monoxide), vehicle × 1.2, how-to × 1.1 (Q&A,
 manuals, guides); together at most × 1.3, applied so a high score rises by less (0.9 to
-0.92). Fuel alone is not a vehicle word. Another sense of an ambiguous word × 0.75. A collection plainly about another subject × 0.9 ("on another subject"): the subjects are routing.ts `TOPICS`, the question's from its words, the source's from its collection name alone; preparedness, outdoors, repair and water count as every question's, and a question or collection naming no subject is left alone.
+0.92). Fuel alone is not a vehicle word. A medical-source article whose title holds none of the question's words less its action words (`Intent.about`) × `NAMES_ANOTHER` (0.85), "about something else". "Bleeding" is in the household's sense unless the question names the other. Contractions typed without an apostrophe ("wont") are read with one (`CONTRACTIONS`, query.ts). Another sense of an ambiguous word × 0.75. A collection plainly about another subject × 0.9 ("on another subject"): the subjects are routing.ts `TOPICS`, the question's from its words, the source's from its collection name alone; preparedness, outdoors, repair and water count as every question's, and a question or collection naming no subject is left alone.
 
 "Did you mean": a word in no passage (or, when nothing holds every word, in one or two) is
 matched to the nearest library word within edit distance 2 (1 for four letters or fewer),
@@ -215,8 +215,12 @@ kind was asked for; `placesFirst` when the query looks like a name, callsign or 
 Meaning is blended by `blendMeaning`: a result found both ways scores
 `1 − (1 − words)(1 − meaningScore × MEANING_LIFT)` (0.5; full weight let own items, which have
 vectors, pass better reference articles, which have none); one found by meaning alone
-(“Similar in meaning”) must be within `SIMILARITY_WINDOW` (0.2) of the nearest (no absolute
-floor: none separates nonsense from real questions on the Pi's library), scores at most `MEANING_CEILING` (0.6) and always below the lowest result holding
+(“Similar in meaning”) must be within `SIMILARITY_WINDOW` (0.2) of the nearest and, beside words
+(`BESIDE_WORDS`), at least `MEANING_FLOOR` (0.3, as for answers) similar, at most `MEANING_ONLY_MOST`
+(8) of them, never a contact; on "By meaning" (`MEANING_ONLY`) none of these apply. When the keyword
+pass found nothing, every term's count is 0 and the nearest is below `LOOSE_BELOW` (0.6), hybrid search
+drops them and returns their number as `looseHeld`; `loose=1` keeps them. Calibrated on the Pi (24
+November 2026): keyboard-mashing's nearest 0.35 to 0.58, useful meaning results 0.29 at least. It scores at most `MEANING_CEILING` (0.6) and always below the lowest result holding
 every word (`WordsHeld.everyWord`, from `RankedItem.everyWord` and, for reference articles,
 `rescore`). For a medical question, a result that is a trusted source (`adjustFor(...).trusted`)
 with a word in its title, a heading or a tag (`parts.title > 0`: not a whole book that
@@ -250,9 +254,12 @@ order under a pointer, focus, or a finger for 1.5 s after it lifts and while the
 
 ### Measuring search
 
-`scripts/search-eval/queries.json` holds 82 questions in two sets (`sets`): the 56 household
-questions, and 31 everyday searches tried on a Raspberry Pi ("car battery flat", "ration food for
-a family", "storm warning"; five are in both). Each has graded answers
+`scripts/search-eval/queries.json` holds 99 questions in three sets (`sets`): the 56 household
+questions, 31 everyday searches tried on a Raspberry Pi ("car battery flat", "ration food for
+a family", "storm warning"; five are in both), and 17 asked in the persona tests of 24 November
+2026 ("persona": "can I take paracetamol and ibuprofen together", "bleeding wont stop", four
+keyboard-mashings marked `nonsense`). A query's `titleNeeds` caps a title without it at grade 1;
+`not` grades a title in another sense 0. Each has graded answers
 in the fixture library (`library.mjs`, item id → 0–3) and patterns for grading any
 library's results. `reference.json` is what 37 reference collections answered to them,
 with each collection's description, category, tags and language, recorded from a real
@@ -266,12 +273,14 @@ word).
 - `apps/server/test/search-quality.test.ts` runs the set on the fixture library and the
   recorded collections and fails below nDCG@5 0.81 on the household set or 0.72 on the everyday
   set, success@3 95% or any zero-result question, when a car search's first three are not all
-  useful, and below success@3 80% or with any list page among the reference
+  useful, below 0.6 on the persona set, when the medicine question's first two are not grade 3 or
+  "bleeding wont stop" shows a brake page, when keyboard-mashing finds anything by meaning alone, and below success@3 80% or with any list page among the reference
   collections' own results. `SEARCH_EVAL_OUT=table.txt` writes both tables.
 - `node scripts/search-eval.mjs http://host:8080` runs it against a running Outpost with
   GET requests only and grades by pattern, each set apart as well (a dropped connection is
   asked once more); `--rescore` also orders that server's
-  candidates with this checkout's scorer, offline. `--reference` measures the reference
+  candidates with this checkout's scorer, offline, adding what this checkout's title words
+  ("paracetamol ibuprofen") find in titles. `--reference` measures the reference
   collections as the search screen gets them (`reference-stream.mjs`): time to the first
   article, to the first useful one and to the end, success@3 and the useful share of the
   first five of the list shown, and the server's time for the person's own results.

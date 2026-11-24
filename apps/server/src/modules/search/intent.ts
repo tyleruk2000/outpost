@@ -20,6 +20,7 @@
  *    railway") is taken at its word.
  */
 import { TOPICS } from "../kiwix/routing.ts";
+import { ACTION_WORDS } from "./query.ts";
 import { stem } from "./stem.ts";
 
 /** The most the favoured-source priors together multiply a score by. */
@@ -34,6 +35,14 @@ export const OTHER_SENSE = 0.75;
  * outdoors, repair, water) are about every question.
  */
 export const OTHER_SUBJECT = 0.9;
+/**
+ * What a medical reference article keeps of its score when its title names none of what a medical question is
+ * about. Asked "can I take paracetamol and ibuprofen together", the NHS pages on taking diphenhydramine, acrivastine
+ * and loratadine with other medicines came first: each mentions both painkillers in passing, and held every word.
+ * An encyclopaedia or a medicines guide titles an article by its subject, so one titled for another medicine or
+ * condition is about that one. Only articles: a first aid manual's title never names the question.
+ */
+export const NAMES_ANOTHER = 0.85;
 /** Subjects every household question may belong to: a collection about one of them is never off the subject. */
 const EVERY_SUBJECT = new Set(["preparedness", "outdoors", "repair", "water"]);
 const subjectStems = TOPICS.map((topic) => new Set(topic.query.split(" ").map((word) => stem(word))));
@@ -116,7 +125,8 @@ const SENSES: Sense[] = [
   },
   { word: stem("stroke"), context: MEDICAL, other: /\b(two[- ]stroke|four[- ]stroke|pistons?|swimming|golf|brush ?strokes?)\b/i },
   { word: stem("shock"), context: MEDICAL, other: /\b(shock absorbers?|suspension|dampers?)\b/i },
-  { word: stem("bleeding"), context: MEDICAL, other: /\b(brakes?|brake fluid|radiators?|bleed valves?|bleed screws?|hydraulic)\b/i },
+  // Bleeding on its own is a person's ("bleeding wont stop"); "bleeding brakes" names the other sense and is taken at its word.
+  { word: stem("bleeding"), context: null, other: /\b(brakes?|brake fluid|radiators?|bleed valves?|bleed screws?|hydraulic)\b/i },
 ];
 
 export interface Intent {
@@ -128,6 +138,8 @@ export interface Intent {
   senses: Array<{ word: string; other: RegExp }>;
   /** The question's words, stemmed. */
   stems: Set<string>;
+  /** What it is about, stemmed: its words without those that say what to do ("take", "treat", "stop"). */
+  about?: Set<string>;
   /** The subjects it is about (kiwix/routing.ts `TOPICS`), by id. Empty when its words name none. */
   subjects?: Set<string>;
 }
@@ -154,6 +166,7 @@ export function intentOf(query: IntentQuery): Intent {
     safety: phrase.includes("carbon monoxide") || (has(HAZARD) && has(SAFETY)),
     senses,
     stems: new Set(stemmed),
+    about: new Set(words.filter((word) => !ACTION_WORDS.has(word)).map((word) => stem(word))),
     subjects: new Set(TOPICS.filter((_, index) => stemmed.some((word) => subjectStems[index]!.has(word))).map((topic) => topic.id)),
   };
 }
@@ -210,6 +223,18 @@ export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustmen
   if (offSubject(intent, source.collection)) {
     factor *= OTHER_SUBJECT;
     notes.push("on another subject");
+  }
+  if (
+    trusted &&
+    source.article &&
+    intent.about?.size &&
+    !source.title
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .some((word) => intent.about!.has(stem(word)))
+  ) {
+    factor *= NAMES_ANOTHER;
+    notes.push("about something else");
   }
   for (const sense of intent.senses) {
     if (sense.other.test(shown)) {

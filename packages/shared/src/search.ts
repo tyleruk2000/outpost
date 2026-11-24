@@ -165,5 +165,11 @@ export interface SearchResponse {
    * collections to search for this, which `GET /api/search/reference` does.
    */
   referenceToCome?: boolean;
+  /**
+   * Results found by meaning alone that were held back because no word of the query is in any
+   * passage of the library ("asdfghjkl"): the nearest things to nonsense are not about it. Asked
+   * for again with `loose=1`, they are shown. Absent or 0 when nothing was held back.
+   */
+  looseHeld?: number;
   tookMs: number;
 }

@@ -20,7 +20,12 @@ function show(address: string) {
 }
 
 const OWN = [ownResult("d1", "Water purification"), ownResult("n1", "Water kit", "note")];
-const titles = () => screen.getAllByRole("heading").map((heading) => heading.textContent);
+/** The headings in order, the offer of answers after the results apart (it has a test of its own). */
+const titles = () =>
+  screen
+    .getAllByRole("heading")
+    .map((heading) => heading.textContent)
+    .filter((title) => title !== "Want a written answer?");
 const tab = (name: RegExp) => screen.getByRole("tab", { name });
 
 describe("what can be opened now, and what would have to be downloaded", () => {
@@ -450,5 +455,36 @@ describe("arriving, and pressing a result", () => {
     serveSearch(() => ownAnswer([guess], { referenceToCome: false, mode: "hybrid" }));
     show("/search?q=zzqqxxyy");
     expect(await screen.findByText(/Nothing has these words/)).toBeInTheDocument();
+  });
+});
+
+describe("persona tests: nonsense, and a written answer", () => {
+  it("says nothing matches when no word typed is in the library, and shows what is nearest in meaning only when asked", async () => {
+    const server = serveSearch((query) =>
+      query.get("loose") === "1"
+        ? ownAnswer([{ ...ownResult("n9", "Phone numbers", "note"), sources: ["semantic" as const] }], {
+            referenceToCome: false,
+            query: "asdfghjkl",
+          })
+        : ownAnswer([], { referenceToCome: false, looseHeld: 6, query: "asdfghjkl" }),
+    );
+    show("/search?q=asdfghjkl");
+    expect(await screen.findByRole("heading", { name: "Nothing matches “asdfghjkl”" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Phone numbers" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show 6 loosely related pages" }));
+    expect(await screen.findByRole("link", { name: "Phone numbers" })).toBeInTheDocument();
+    expect(server.asked.at(-1)?.get("loose")).toBe("1");
+    expect(screen.getByText(/Nothing has these words/)).toBeInTheDocument();
+  });
+
+  it("offers answers from the library after the results while no writing model is set up, with one button", async () => {
+    serveSearch(() => ownAnswer(OWN, { referenceToCome: false, query: "water" }));
+    show("/search?q=water");
+    const offer = await screen.findByRole("region", { name: "Want a written answer?" });
+    expect(offer).toHaveTextContent(/Outpost does not include one/);
+    expect(offer).toHaveTextContent(/all-MiniLM-L6-v2, only finds pages by meaning and cannot write/);
+    await userEvent.click(within(offer).getByRole("button", { name: "Set up answers" }));
+    expect(await screen.findByRole("dialog", { name: "Set up answers and chat" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Look for Ollama on this computer" })).toBeEnabled();
   });
 });

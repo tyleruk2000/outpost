@@ -27,6 +27,8 @@ const query = z.object({
   offset: z.coerce.number().int().min(0).default(0),
   reference: z.enum(["include", "later"]).default("include"),
   exact,
+  /** Show results by meaning alone even when no word of the query is in the library (`looseHeld`). */
+  loose: exact,
 });
 
 export async function registerSearch(app: FastifyInstance, ctx: AppContext): Promise<void> {

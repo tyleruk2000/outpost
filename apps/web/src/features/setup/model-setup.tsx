@@ -62,12 +62,22 @@ export function inOfferOrder(models: ChatModel[]): ChatModel[] {
   );
 }
 
+const LOOPBACK = ["127.0.0.1", "localhost", "::1", "[::1]"];
+
+/**
+ * Where a model server for Outpost is looked for, as the person using this screen would say it: "this computer" when
+ * the screen is open on the computer Outpost runs on, otherwise that computer by its address. On a phone, "this
+ * computer" read as the phone.
+ */
+export function outpostComputer(): string {
+  const host = typeof window === "undefined" ? "localhost" : window.location.hostname;
+  return LOOPBACK.includes(host) ? "this computer" : `the computer Outpost runs on (${host})`;
+}
+
 const placeOf = (address: string | null): string => {
   try {
     const host = new URL(address ?? "").hostname;
-    return ["127.0.0.1", "localhost", "::1", "[::1]", "host.docker.internal"].includes(host)
-      ? "on this computer"
-      : `at ${new URL(address ?? "").host}`;
+    return [...LOOPBACK, "host.docker.internal"].includes(host) ? `on ${outpostComputer()}` : `at ${new URL(address ?? "").host}`;
   } catch {
     return "";
   }
@@ -145,7 +155,8 @@ export function ModelSetup({
           </p>
           <div className="mt-3">
             <Button variant="primary" loading={look.isPending} onClick={() => look.mutate()}>
-              {look.isPending ? null : <Radar aria-hidden />} Look for Ollama on this computer
+              {look.isPending ? null : <Radar aria-hidden />} Look for Ollama on{" "}
+              {LOOPBACK.includes(window.location.hostname) ? "this computer" : "the Outpost computer"}
             </Button>
           </div>
           {look.isError ? (
@@ -159,6 +170,11 @@ export function ModelSetup({
                 If it is not installed yet, <GuideLink part="get-ollama">the guide has the steps</GuideLink>. The model to get first is{" "}
                 <span className="font-mono text-[0.8125rem]">{STARTING_MODEL.name}</span> ({STARTING_MODEL.download}).
               </p>
+              {LOOPBACK.includes(window.location.hostname) ? null : (
+                <p className="mt-1.5">
+                  It is installed on {outpostComputer()}, not on this device: whoever looks after this Outpost can do it there.
+                </p>
+              )}
             </Notice>
           ) : null}
         </Step>

@@ -50,12 +50,14 @@ function show(current: ChatStatus) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Chat before a model server is set up", () => {
-  it("says what a language model is, links to the guide, and looks for nothing until asked", () => {
+  it("says what Chat does and that it needs a writing model, links to the guide, and looks for nothing until asked", () => {
     const calls = serve({ found: false, address: null, models: [], recommended: null, message: "" });
     show(status());
-    expect(screen.getByRole("heading", { name: "Chat needs a language model on your own computer" })).toBeVisible();
-    expect(screen.getByText(/A language model is a program that writes text. Outpost does not include one/)).toBeVisible();
-    expect(screen.getByText(/about 2 GB that needs the internet. After that nothing you write here leaves your own network/)).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Chat needs a writing model" })).toBeVisible();
+    expect(screen.getByText(/Chat is a conversation in your own words/)).toBeVisible();
+    // The model built in only finds by meaning: a person who turned that on has not set up chat.
+    expect(screen.getByText(/Outpost does not include one: the small model built in, all-MiniLM-L6-v2, only finds pages/)).toBeVisible();
+    expect(screen.getByText(/about 2 GB that needs the internet; after that nothing you write here leaves your own network/)).toBeVisible();
     expect(screen.getByRole("link", { name: "Set-up guide" })).toHaveAttribute("href", "/help/search-and-answers#answers-and-chat");
     expect(screen.getByRole("link", { name: "Open the setting" })).toHaveAttribute("href", "/settings#answers-title");
     expect(screen.getByRole("button", { name: "Look for Ollama on this computer" })).toBeEnabled();

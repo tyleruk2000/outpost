@@ -23,7 +23,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { adjusted, adjustFor, intentOf } from "../apps/server/src/modules/search/intent.ts";
-import { alternateQuery, expandQuery, parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
+import { alternateQuery, expandQuery, parseQuery, plainQuery, titleWords } from "../apps/server/src/modules/search/query.ts";
 import { inverseFrequency, reasonFor, scoreFields, scoringTerms } from "../apps/server/src/modules/search/score.ts";
 import {
   formatSummary,
@@ -67,12 +67,19 @@ async function itemsHolding(term) {
 async function rescore(q) {
   const { parsed } = expandQuery(parseQuery(q));
   const { body, ms } = await search(plainQuery(parsed) || q, 60);
-  const alternate = alternateQuery(parsed);
-  if (alternate) {
-    // The same said the other way: its candidates join the first, once each.
+  // The same said the other way, and the words a title would hold as this checkout chooses them (what its title
+  // search would ask the collections for): their candidates join the first, once each.
+  const nouns = titleWords(parsed).join(" ");
+  const titled = (result) => nouns.split(" ").every((noun) => result.title.toLowerCase().includes(noun.toLowerCase().slice(0, 5)));
+  for (const [other, keep] of [
+    [alternateQuery(parsed), () => true],
+    // Only what a title search would give: titles holding every one of those words.
+    [nouns !== plainQuery(parsed) ? nouns : null, titled],
+  ]) {
+    if (!other) continue;
     const seen = new Set(body.results.map((result) => `${result.kind}:${result.entityId}`));
-    for (const result of (await search(alternate, 60)).body.results) {
-      if (!seen.has(`${result.kind}:${result.entityId}`)) body.results.push(result);
+    for (const result of (await search(other, 60)).body.results) {
+      if (!seen.has(`${result.kind}:${result.entityId}`) && keep(result)) body.results.push(result);
     }
   }
   const stats = (await get("/api/search/stats")).body;
@@ -180,6 +187,7 @@ const bySet = (label, list) =>
   [
     formatSummary(`${label}, everyday searches`, summarise(list.filter((row) => row.sets.includes("everyday")))),
     formatSummary(`${label}, household questions`, summarise(list.filter((row) => !row.sets.length || row.sets.includes("household")))),
+    formatSummary(`${label}, persona questions`, summarise(list.filter((row) => row.sets.includes("persona")))),
   ].join("\n");
 if (rescoreToo) {
   const next = rows(after, before);
