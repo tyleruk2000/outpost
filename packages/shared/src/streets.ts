@@ -232,10 +232,37 @@ export interface StreetsRouteResult {
   /** Everything to draw, each part a line. */
   geometry: { type: "MultiLineString"; coordinates: Array<Array<[number, number]>> };
   warnings: string[];
+  /**
+   * A walk or a ride re-timed over the installed terrain: the climb, the descent, the steepest stretch and the
+   * heights along the way. Absent for a drive, and null with no terrain along the route (a warning then says so).
+   */
+  hills?: StreetsRouteHills | null;
   /** One sentence for the foot of the page: who made the data, its licence and date. */
   credit: string;
   request: StreetsRouteRequest;
   plannedAt: number;
+}
+
+/** The hills on a walk or a ride, from installed terrain (streets/hills.ts on the server). */
+export interface StreetsRouteHills {
+  /** "terrain" the whole way; "partial" where terrain runs out along it (those stretches are timed as on the flat). */
+  coverage: "terrain" | "partial";
+  /** Metres climbed and descended along the way, from heights smoothed over about 100 m. */
+  climbM: number;
+  descentM: number;
+  highestM: number;
+  lowestM: number;
+  /** The time the streets service gave, as on the flat, before the hills were counted. */
+  flatDurationS: number;
+  /**
+   * The steepest stretch of about 250 m, in the direction of travel (uphill positive), and the line of the
+   * directions it is on; null where none reaches 3%.
+   */
+  steepest: { gradePercent: number; lengthM: number; fromM: number; at: [number, number]; lineIndex: number } | null;
+  /** Distance along the way and height, both in metres: at most 200 points, for drawing a profile. */
+  profile: Array<[number, number]>;
+  /** The terrain read, as Offline maps names it. */
+  terrain: string | null;
 }
 
 // ── Reachable areas ─────────────────────────────────────────────────────────

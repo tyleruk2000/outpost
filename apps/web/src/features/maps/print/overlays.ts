@@ -44,6 +44,8 @@ import { locatorGrid, locatorLengthAt } from "../radio/locator-grid";
 import { locatorGridShown } from "../radio/use-locator-grid";
 import { REACH_LINE_WORDS, reachData, reachSentence, reachShown } from "../reach/reach-map";
 import { reachTimeText } from "../road-route/street-words";
+import { formatWalkTime, walkShown } from "../walk/walk-map";
+import { WALK_PAPER_SOURCE, walkNotes, walkPaperLayers, walkPaperShade } from "../walk/walk-paper";
 import { readable } from "./coverage";
 import { type Graticule, graticuleLines } from "./graticule";
 import { paperShades } from "./range-paper";
@@ -344,6 +346,33 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       const times = shown.areas.features.map((area) => area.properties.minutes).sort((a, b) => a - b);
       const key = times.map((minutes, step) => `${REACH_LINE_WORDS[step] ?? "dotted"}, ${reachTimeText(minutes)}`);
       draft.notes.push(`${reachSentence(shown)} Outlines: ${key.join("; ")}. ${shown.note}`);
+    },
+  },
+  {
+    // On foot in Reachable from here (walk/): the ground reached over the terrain, shaded by the hour with a ring and
+    // its time at each, and the start; in the page's notes, the key in words, the pace and what the walk leaves out.
+    id: "walk",
+    label: "Reachable on foot",
+    unavailable: () => (walkShown() ? undefined : "No walk is showing on the map."),
+    hint: () => {
+      const shown = walkShown();
+      return shown ? `${formatWalkTime(shown.minutes)} on foot, with its rings and their times.` : undefined;
+    },
+    initially: () => walkShown() !== null,
+    usesTerrain: true,
+    apply: (draft, context) => {
+      const shown = walkShown();
+      if (!shown) return;
+      const shade = walkPaperShade(shown, context.theme.walk);
+      if (shade) {
+        const style = shadeStyle({ walk: [shade] });
+        Object.assign(draft.sources, style.sources);
+        draft.layers.push(...style.layers);
+      }
+      const { source, layers } = walkPaperLayers(shown, context.theme);
+      draft.sources[WALK_PAPER_SOURCE] = source;
+      draft.layers.push(...layers);
+      draft.notes.push(...walkNotes(shown, context.regions));
     },
   },
   {

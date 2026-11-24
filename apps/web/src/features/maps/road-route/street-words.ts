@@ -9,6 +9,7 @@ import {
   roadDistanceText,
   roadDurationText,
   type StreetDirections,
+  type StreetsRouteHills,
   type StreetsRouteResult,
   type StreetsStatusResponse,
   wrapRoadText,
@@ -133,6 +134,27 @@ export function streetsTitle(result: StreetsRouteResult): string {
 export function streetsTotals(result: StreetsRouteResult): string {
   const units = result.request.units ?? "km";
   return `${roadDistanceText(result.summary.distanceM, units)}, about ${roadDurationText(result.summary.durationS)} ${WAYS[result.mode]}`;
+}
+
+/** "↑ 310 m ↓ 280 m" for the eye, "310 m of climb, 280 m of descent" for a screen reader and for paper. */
+export function climbText(hills: StreetsRouteHills): { short: string; words: string } {
+  return {
+    short: `↑ ${hills.climbM} m ↓ ${hills.descentM} m`,
+    words: `${hills.climbM} m of climb, ${hills.descentM} m of descent`,
+  };
+}
+
+/** "Steepest: 14% uphill for 250 m, on Turn left onto School Lane." — null where no stretch reaches 3%. */
+export function steepestText(result: StreetsRouteResult): string | null {
+  const steepest = result.hills?.steepest;
+  if (!steepest) return null;
+  const units = result.request.units ?? "km";
+  const way = steepest.gradePercent > 0 ? "uphill" : "downhill";
+  const line = result.streets?.lines[steepest.lineIndex];
+  const where = line && line.kind !== "start" && line.kind !== "arrive" ? ` (${line.text})` : "";
+  const length =
+    units === "km" && steepest.lengthM < 1000 ? `${Math.round(steepest.lengthM / 10) * 10} m` : roadDistanceText(steepest.lengthM, units);
+  return `Steepest: ${Math.round(Math.abs(steepest.gradePercent))}% ${way} for ${length}, ${roadDistanceText(steepest.fromM, units)} from the start${where}.`;
 }
 
 /** The text of the ends of the trip, as the door-to-door list writes them. */

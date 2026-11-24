@@ -100,6 +100,32 @@ export const WALK: StreetsRouteResult = {
   plannedAt: DOOR_TRIP.plannedAt,
 };
 
+/** The same walk re-timed over terrain, as the server gives it with terrain installed: made-up heights. */
+export const HILLY_WALK: StreetsRouteResult = {
+  ...WALK,
+  streets: { ...WALK_STREETS, lines: WALK_STREETS.lines.map((line, index) => (index === 2 ? { ...line, durationS: 2700 } : line)) },
+  summary: { distanceM: WALK_STREETS.distanceM, durationS: 4500 },
+  warnings: ["The time counts the hills over the installed terrain (Tobler's hiking function), but no stops or rests."],
+  hills: {
+    coverage: "terrain",
+    climbM: 310,
+    descentM: 280,
+    highestM: 172,
+    lowestM: 48,
+    flatDurationS: 3600,
+    steepest: { gradePercent: 14.2, lengthM: 250, fromM: 1200, at: [-0.32, 51.27], lineIndex: 2 },
+    profile: [
+      [0, 50],
+      [1000, 80],
+      [1200, 100],
+      [1450, 136],
+      [2500, 172],
+      [3800, 60],
+    ],
+    terrain: "United Kingdom, hills",
+  },
+};
+
 const NO_MODES: StreetsStatusResponse["modes"] = {
   driveDoor: false,
   walk: false,

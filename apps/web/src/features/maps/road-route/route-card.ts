@@ -10,9 +10,9 @@
  */
 import { type RoadRouteResult, roadDistanceText, roadDurationText, type StreetDirections, type StreetsRouteResult } from "@outpost/shared";
 import type { Content, TableCell } from "pdfmake/interfaces";
-import { PRINT_COLOURS as C, callout, measureOf, type PrintPaper, para, printable, printDocument } from "@/features/print-kit";
+import { PRINT_COLOURS as C, callout, chart, measureOf, type PrintPaper, para, printable, printDocument } from "@/features/print-kit";
 import type { CardRoute, RouteMap } from "./route-map";
-import { endTurnsTitle, streetsTitle, streetsTotals, turnsSummary } from "./street-words";
+import { climbText, endTurnsTitle, steepestText, streetsTitle, streetsTotals, turnsSummary } from "./street-words";
 import { countriesText, endLine, routeTitle, startLine } from "./words";
 
 export interface RouteCardInput {
@@ -132,34 +132,53 @@ export function directionsTable(route: RoadRouteResult, door?: StreetsRouteResul
   } as Content;
 }
 
-/** A walk, a ride or a short drive on streets all the way: the turns, each with a box and its distance. */
-export function streetTurnsTable(directions: StreetDirections, units: "km" | "miles"): Content {
+/**
+ * A walk, a ride or a short drive on streets all the way: the turns, each with a box, its distance and, with `times`,
+ * the time to the next (re-timed over the terrain on a walk or a ride).
+ */
+export function streetTurnsTable(directions: StreetDirections, units: "km" | "miles", times = false): Content {
+  const head = (text: string): TableCell => ({ text, bold: true, fontSize: 8, color: C.muted, alignment: "right" });
   const body: TableCell[][] = [
-    [
-      { text: "", fontSize: 8 },
-      { text: "Turn", bold: true, fontSize: 8, color: C.muted },
-      { text: "Then", bold: true, fontSize: 8, color: C.muted, alignment: "right" },
-    ],
+    [{ text: "", fontSize: 8 }, { text: "Turn", bold: true, fontSize: 8, color: C.muted }, head("Then"), ...(times ? [head("Time")] : [])],
   ];
   for (const turn of directions.lines)
     body.push([
       tickBox as TableCell,
       { text: printable(turn.text), fontSize: 12 },
       { text: turn.distanceText, alignment: "right", fontSize: 10, margin: [0, 2, 0, 0] },
+      ...(times
+        ? [
+            {
+              text: turn.durationS >= 30 ? roadDurationText(turn.durationS) : "",
+              alignment: "right",
+              fontSize: 10,
+              margin: [0, 2, 0, 0],
+            } as TableCell,
+          ]
+        : []),
     ]);
-  body.push([
-    "",
-    { text: "All told", bold: true, fontSize: 10 },
-    {
-      text: `${roadDistanceText(directions.distanceM, units)}, ${roadDurationText(directions.durationS)}`,
-      bold: true,
-      alignment: "right",
-      fontSize: 10,
-    },
-  ]);
+  body.push(
+    times
+      ? [
+          "",
+          { text: "All told", bold: true, fontSize: 10 },
+          { text: roadDistanceText(directions.distanceM, units), bold: true, alignment: "right", fontSize: 10 },
+          { text: roadDurationText(directions.durationS), bold: true, alignment: "right", fontSize: 10 },
+        ]
+      : [
+          "",
+          { text: "All told", bold: true, fontSize: 10 },
+          {
+            text: `${roadDistanceText(directions.distanceM, units)}, ${roadDurationText(directions.durationS)}`,
+            bold: true,
+            alignment: "right",
+            fontSize: 10,
+          },
+        ],
+  );
   const last = body.length - 1;
   return {
-    table: { headerRows: 1, widths: [16, "*", 96], body, dontBreakRows: true },
+    table: { headerRows: 1, widths: times ? [16, "*", 62, 62] : [16, "*", 96], body, dontBreakRows: true },
     layout: {
       hLineWidth: (index: number) => (index === 0 ? 0 : index === 1 || index === last ? 1 : 0.5),
       vLineWidth: () => 0,
@@ -175,6 +194,58 @@ export function streetTurnsTable(directions: StreetDirections, units: "km" | "mi
 
 const KIND_WORDS = { "drive-door": "Door to door", walk: "Walk", cycle: "Ride" } as const;
 
+/**
+ * The heights along a walk or a ride as a profile: distance along the bottom, height up the side, the steepest
+ * stretch shaded; in ink only, so it reads in grey.
+ */
+export function hillsProfile(route: StreetsRouteResult, width: number): Content | null {
+  const hills = route.hills;
+  if (!hills || hills.profile.length < 2) return null;
+  const units = route.request.units ?? "km";
+  const miles = units === "miles";
+  const per = miles ? 1609.344 : 1000;
+  const xs = hills.profile.map(([along]) => along / per);
+  const low = Math.max(0, Math.floor((hills.lowestM - 10) / 50) * 50);
+  const high = Math.max(low + 100, Math.ceil((hills.highestM + 10) / 50) * 50);
+  const steepest = hills.steepest;
+  const drawn = chart({
+    width,
+    height: 150,
+    xs,
+    series: [
+      { kind: "line", name: "Height above sea level", values: hills.profile.map(([, height]) => height), colour: C.ink, width: 1.4 },
+    ],
+    yDomain: [low, high],
+    xDomain: [0, xs.at(-1)!],
+    xTick: (x) => `${Math.round(x * 10) / 10}`,
+    yTick: (y) => `${Math.round(y)}`,
+    xLabel: miles ? "Miles from the start" : "Kilometres from the start",
+    yLabel: "Metres",
+    ...(steepest
+      ? {
+          spans: [
+            {
+              from: steepest.fromM / per,
+              to: (steepest.fromM + steepest.lengthM) / per,
+              words: "Steepest",
+              fill: C.rule,
+            },
+          ],
+        }
+      : {}),
+    key: false,
+  });
+  return { svg: drawn.svg, width: drawn.width, margin: [0, 2, 0, 6] } as Content;
+}
+
+/** The climb, the descent, the highest point and the steepest stretch in words, for paper. */
+export function hillsFacts(route: StreetsRouteResult): string | null {
+  const hills = route.hills;
+  if (!hills) return null;
+  const steepest = steepestText(route);
+  return `${climbText(hills).words}; highest ${hills.highestM} m, lowest ${hills.lowestM} m above sea level.${steepest ? ` ${steepest}` : ""}`;
+}
+
 /** The card for a route on streets all the way: the map, then the turns. */
 function streetsCardDocument(input: RouteCardInput & { route: StreetsRouteResult }) {
   const { route, paper } = input;
@@ -182,11 +253,13 @@ function streetsCardDocument(input: RouteCardInput & { route: StreetsRouteResult
   const units = route.request.units ?? "km";
   const planned = plannedDay(route.plannedAt);
   const directions = route.streets;
+  const hills = route.hills ?? null;
   const first: Content[] = [
     { text: KIND_WORDS[route.mode], fontSize: 8, bold: true, color: C.accent, characterSpacing: 0.4 },
     { text: printable(input.name), fontSize: 22, bold: true, margin: [0, 2, 0, 2] },
     { text: printable(streetsTitle(route)), fontSize: 11 },
     { text: printable(`${streetsTotals(route)}; planned ${planned}.`), color: C.muted, margin: [0, 2, 0, 0] },
+    ...(hills ? [{ text: printable(hillsFacts(route)!), margin: [0, 2, 0, 0] } as Content] : []),
     { canvas: [{ type: "line", x1: 0, y1: 0, x2: measure, y2: 0, lineWidth: 1.6, lineColor: C.accent }], margin: [0, 8, 0, 10] },
     input.map
       ? ({ svg: input.map.svg, width: input.map.width, margin: [0, 0, 0, 8] } as Content)
@@ -196,15 +269,31 @@ function streetsCardDocument(input: RouteCardInput & { route: StreetsRouteResult
       "Planned in advance, not live",
       para(
         printable(
-          `Planned on ${planned} from street data installed on this device, at an even pace with no stops. It knows nothing of closures, works or the weather. Follow the signs.`,
+          hills
+            ? `Planned on ${planned} from street data installed on this device, timed over the installed terrain${hills.terrain ? ` (${hills.terrain})` : ""}: ${route.mode === "walk" ? "Tobler's hiking function for a fit adult with no load" : "the streets service's own speeds for each slope"}, with no stops${route.mode === "walk" ? " or rests" : ""}. It knows nothing of closures, works or the weather. Follow the signs.`
+            : `Planned on ${planned} from street data installed on this device, at an even pace with no stops. It knows nothing of closures, works or the weather. Follow the signs.`,
         ),
       ),
     ),
   ];
+  const profile = hillsProfile(route, measure);
   const turns: Content[] = [
+    ...(profile
+      ? [
+          { text: "Heights along the way", fontSize: 16, bold: true, margin: [0, 0, 0, 2] } as Content,
+          { text: printable(hillsFacts(route)!), color: C.muted, margin: [0, 0, 0, 2] } as Content,
+          profile,
+        ]
+      : []),
     { text: "Turns", fontSize: 16, bold: true, margin: [0, 0, 0, 2] },
-    { text: "Each line is a turn, and how far to go before the next. Tick each as you go.", color: C.muted, margin: [0, 0, 0, 4] },
-    directions ? streetTurnsTable(directions, units) : para("No turns were given for this route."),
+    {
+      text: hills
+        ? "Each line is a turn, how far to go before the next and how long that takes over the hills. Tick each as you go."
+        : "Each line is a turn, and how far to go before the next. Tick each as you go.",
+      color: C.muted,
+      margin: [0, 0, 0, 4],
+    },
+    directions ? streetTurnsTable(directions, units, hills !== null) : para("No turns were given for this route."),
     ...route.warnings.map((warning) => para(printable(warning))),
     {
       text: printable(`Planned in advance, not live, on ${planned}. ${route.credit}`),

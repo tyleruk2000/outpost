@@ -1,8 +1,8 @@
 /**
  * Reachable from here with a long time: 8 hours on foot, chosen as a person does, on the
- * desktop and on an iPhone. The streets service is the stand-in (streets.ts), which
- * answers times it has no recording for with the recorded walk's outline scaled for each
- * time: made-up shapes, for checking the choice, what is asked, the legend and the words.
+ * desktop and on an iPhone. The streets service is the stand-in (streets.ts) for a drive;
+ * on foot the walk is worked out over the terrain, of which none is installed at this
+ * point here, so the card says where to get it (walking-terrain.ts walks over some).
  * Nothing reaches the internet.
  */
 import type { Locator, Page, TestInfo } from "@playwright/test";
@@ -35,21 +35,18 @@ export async function eightHoursOnFoot(
     await expect(times.getByRole("radio")).toHaveText(["15 min", "30 min", "1 h", "1½ h", "2 h"].map((t) => new RegExp(`^${t}`)));
     await expect(times.getByRole("radio", { name: "2 hours" })).toBeVisible();
 
-    // On foot, up to 8 hours: the choice is made, and three areas are asked for.
+    // On foot, up to 8 hours: the choice is made, and the walk over the terrain is asked for, not the streets.
     await press(ways.getByRole("radio", { name: "Walk" }));
     await expect(times.getByRole("radio", { name: "8 hours" })).toBeVisible();
     const asked = page.waitForRequest(
-      (request) => request.url().endsWith("/api/streets/reach") && request.postDataJSON()?.minutes?.includes(480),
+      (request) => request.url().includes("/api/maps/walk-reach?") && request.url().includes("minutes=480"),
     );
     await press(times.getByRole("radio", { name: "8 hours" }));
-    expect((await asked).postDataJSON()).toMatchObject({ mode: "walk", minutes: [120, 240, 480] });
+    expect(new URL((await asked).url()).searchParams.get("pace")).toBe("standard");
     await expect(times.getByRole("radio", { name: "8 hours" })).toHaveAttribute("aria-checked", "true");
-
-    const legend = card.getByRole("list", { name: "Legend" });
-    await expect(legend.getByRole("listitem")).toHaveText(["Within 2 hours", "Within 4 hours", "Within 8 hours"], { timeout: 20_000 });
-    await expect(card.getByText("Streets", { exact: true })).toBeVisible();
-    // Honest about what 8 hours leaves out.
-    await expect(card.getByText(/steady walking pace on the flat with no stops, and no rests counted/)).toBeVisible();
+    // No terrain here: said, with where to get it.
+    await expect(card.getByText(/No terrain is held here/)).toBeVisible({ timeout: 20_000 });
+    await expect(card.getByRole("button", { name: "Get terrain in Offline maps" })).toBeVisible();
 
     // The six times fit the card, with room for a finger on each.
     const fits = await times.evaluate((group) => {

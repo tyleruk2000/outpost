@@ -22,6 +22,7 @@ const lands: Array<[string, string | null]> = [
   ["directions", "Maps: Directions"],
   ["walking directions", "Maps: Directions"],
   ["drive time", "Maps: Reachable from here"],
+  ["how far on foot", "Maps: Reachable from here"],
   ["driving directions", "Maps: Directions"],
   ["gpx", "Maps: Routes"],
   ["sunrise", "Tools: Outdoors"],

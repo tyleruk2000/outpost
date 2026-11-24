@@ -377,7 +377,7 @@ export const mapSections: Array<{ id: string; label: string; keywords: string; t
     id: "reachable",
     label: "Reachable from here",
     to: "/maps?reach=1",
-    keywords: "reach reachable isochrone minutes drive time how far within 15 30 60 area catchment",
+    keywords: "reach reachable isochrone minutes drive time how far within 15 30 60 area catchment on foot walking distance hike hours",
   },
   { id: "print", label: "Print", to: "/maps?print=1", keywords: "printing pdf paper sheet" },
   {

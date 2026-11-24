@@ -1,7 +1,7 @@
 /**
  * "Reachable from here": the areas reachable from a point by car or bicycle (up to 2 hours)
  * or on foot (up to 8 hours), from the menu a long press or a right-click opens and from
- * the quick search. Each way keeps its own time. A time draws up to three areas, one inside
+ * the quick search (/maps?reach=1, and /maps?reach=1&mode=walk on foot). Each way keeps its own time. A time draws up to three areas, one inside
  * another (2 hours on foot: 30 minutes, 1 and 2 hours), as steps of one hue with an outline
  * of its own for each, said in a card with a legend, the source ("Streets", or "Main roads
  * only" where the optional streets service is not installed) and what the times leave out
@@ -10,7 +10,10 @@
  *
  * The server works it out (`POST /api/streets/reach`): over every street where streets are
  * built, else over Outpost's own main roads for a drive, which every installation with a
- * road network can do.
+ * road network can do. On foot it is the terrain walk instead (walk/walk-reach.tsx): over
+ * the installed terrain with Tobler's hiking function, faster on the map's paths, barred by
+ * water and cliffs, at a pace of the person's choosing. The streets service has no heights,
+ * so its walking areas would take Snowdon as flat; the terrain walk needs no streets at all.
  */
 import {
   type RoadCoverageCountry,
@@ -18,9 +21,11 @@ import {
   type StreetsReachMode,
   type StreetsReachRequest,
   type StreetsStatusResponse,
+  WALK_PACES,
+  type WalkPaceId,
 } from "@outpost/shared";
-import { CircleAlert } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { CircleAlert, Printer } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Segmented, Spinner } from "@/components/ui/misc";
@@ -34,6 +39,7 @@ import { useRoadCoverage } from "../road-route/data";
 import { AddRoadsButton, CountryProgress, progressText } from "../road-route/route-needs";
 import { addStreetsLabel, reachTimeShort, reachTimeText, streetsMissFor, unavailableLine } from "../road-route/street-words";
 import { useStreetsReach, useStreetsStatus } from "../road-route/streets-data";
+import { useWalkArea } from "../walk/walk-reach";
 import { REACH_DASHES, REACH_FILL_OPACITY, REACH_SOURCE, reachBounds, reachData, setReachShown } from "./reach-map";
 
 const PREFS_KEY = "outpost.maps.reach";
@@ -44,6 +50,8 @@ interface ReachPrefs {
   mode: StreetsReachMode;
   /** The time chosen for each way: a walk keeps its 4 hours while a drive keeps its 30 minutes. */
   minutes: ReachTimes;
+  /** The walking pace (WALK_PACES); a fit adult's when not chosen. */
+  pace?: WalkPaceId;
 }
 
 /** Half an hour by car or bicycle, an hour on foot. */
@@ -58,9 +66,20 @@ const isPrefs = (value: unknown): value is ReachPrefs => {
     (MODES as readonly string[]).includes(prefs.mode) &&
     typeof prefs.minutes === "object" &&
     prefs.minutes !== null &&
-    MODES.every((mode) => (STREETS_REACH_MINUTES[mode] as readonly number[]).includes(prefs.minutes[mode]))
+    MODES.every((mode) => (STREETS_REACH_MINUTES[mode] as readonly number[]).includes(prefs.minutes[mode])) &&
+    (prefs.pace === undefined || WALK_PACES.some((pace) => pace.id === prefs.pace))
   );
 };
+
+/** The pace chosen in How far on foot, before it was a way of Reachable from here: kept, so it is not asked again. */
+function earlierPace(): WalkPaceId {
+  try {
+    const kept = JSON.parse(localStorage.getItem("outpost.maps.walk") ?? "null") as { pace?: string } | null;
+    return WALK_PACES.find((pace) => pace.id === kept?.pace)?.id ?? "standard";
+  } catch {
+    return "standard";
+  }
+}
 
 export const REACH_MODES: Array<{ value: StreetsReachMode; label: string }> = [
   { value: "drive", label: "Drive" },
@@ -147,7 +166,8 @@ function NoRoadsHere({ country, onAdd }: { country: RoadCoverageCountry | null; 
 }
 
 export interface ReachTool {
-  start(position: LatLon, name?: string | null): void;
+  /** Shows what is reachable from a point; `mode`, when given, is the way chosen (on foot, from a link). */
+  start(position: LatLon, name?: string | null, mode?: StreetsReachMode): void;
   stop(): void;
   card: ReactNode | null;
 }
@@ -157,6 +177,8 @@ export function useReach({
   where,
   onOpenStreets,
   onOpenNetworks,
+  onOpenOffline,
+  onPrint,
 }: {
   engine: MapEngine | null;
   /** The point's coordinates in the readout's format, for the card. */
@@ -164,14 +186,18 @@ export function useReach({
   onOpenStreets: (country?: string | null) => void;
   /** Opens Map data's add flow with roads for routes for these countries (two letters each). */
   onOpenNetworks: (countries?: readonly string[]) => void;
+  /** Opens Offline maps to add terrain, which a walk needs. */
+  onOpenOffline?: () => void;
+  /** Takes up the page to print with what is shown (the map's own print, with the areas and their key). */
+  onPrint?: () => void;
 }): ReachTool {
   const [at, setAt] = useState<{ position: LatLon; name: string | null } | null>(null);
   const [prefs, setPrefs] = useStoredState<ReachPrefs>(PREFS_KEY, isPrefs, { mode: "drive", minutes: REACH_DEFAULT_MINUTES });
   const status = useStreetsStatus();
-  const installed = status.data?.installed ?? false;
-  // Without the streets service only a drive can be drawn, whatever was chosen elsewhere.
-  const mode: StreetsReachMode = installed ? prefs.mode : "drive";
+  // Without the streets service a drive (over main roads) and a walk (over terrain) can be drawn; a ride needs streets.
+  const mode: StreetsReachMode = prefs.mode;
   const minutes = prefs.minutes[mode];
+  const pace = prefs.pace ?? earlierPace();
   // The point's country and where its roads stand, worked out on this device: what to offer is for there, never home.
   const coverage = useRoadCoverage(at ? [at.position] : []);
   const here = at ? (coverage.data?.countries[0] ?? null) : null;
@@ -188,6 +214,7 @@ export function useReach({
       )
     ) : null;
   const available =
+    mode !== "walk" &&
     !(at && coverage.isPending) &&
     reachAvailable(status.data, mode) &&
     roadsHere === null &&
@@ -205,6 +232,17 @@ export function useReach({
   );
   const reach = useStreetsReach(request);
   const shown = at && request ? reach.data : undefined;
+  const card = useRef<HTMLDivElement>(null);
+  const clearBottom = useCallback(() => (card.current?.closest(".outpost-map-card")?.getBoundingClientRect().height ?? 0) + 16, []);
+  const walk = useWalkArea({
+    engine,
+    at: at && mode === "walk" ? at.position : null,
+    minutes,
+    pace,
+    onPace: (next) => setPrefs((current) => ({ ...current, pace: next })),
+    ...(onOpenOffline ? { onOpenOffline } : {}),
+    clearBottom,
+  });
 
   // On the map while the card is open, and kept for the print overlays.
   useEffect(() => {
@@ -220,14 +258,12 @@ export function useReach({
   );
 
   // Once known, the largest area is brought into view, clear of the card.
-  const card = useRef<HTMLDivElement>(null);
   const fitted = useRef<number | null>(null);
   useEffect(() => {
     if (!engine || !shown || fitted.current === shown.madeAt) return;
     fitted.current = shown.madeAt;
-    const clearBottom = (card.current?.closest(".outpost-map-card")?.getBoundingClientRect().height ?? 0) + 16;
-    engine.fitBounds(reachBounds(shown), { clearBottom, maxZoom: 14 });
-  }, [engine, shown]);
+    engine.fitBounds(reachBounds(shown), { clearBottom: clearBottom(), maxZoom: 14 });
+  }, [engine, shown, clearBottom]);
 
   const stop = () => {
     setAt(null);
@@ -237,8 +273,8 @@ export function useReach({
   const notHere = () => {
     if (!status.data) return null;
     // Cycling and walking need streets; a drive needs streets or roads for the point's country.
-    if (mode !== "drive") {
-      const { text, action } = unavailableLine(status.data, { way: mode === "walk" ? "reach-walk" : "reach-cycle", country });
+    if (mode === "cycle") {
+      const { text, action } = unavailableLine(status.data, { way: "reach-cycle", country });
       return (
         <div className="grid justify-items-start gap-2">
           <p className="text-small text-ink">{text}</p>
@@ -260,15 +296,16 @@ export function useReach({
   const content = at ? (
     <MapCard title="Reachable from here" onClose={stop} closeLabel="Stop showing what is reachable">
       <div ref={card} className="mt-1 grid grid-cols-[minmax(0,1fr)] gap-2.5" data-testid="reach-card">
-        <p className="tabular text-small text-ink-muted">From {at.name ?? where(at.position)}</p>
-        {installed ? (
-          <Segmented<StreetsReachMode>
-            label="Way of travelling"
-            value={mode}
-            onChange={(next) => setPrefs((current) => ({ ...current, mode: next }))}
-            options={REACH_MODES}
-          />
-        ) : null}
+        <p className="tabular text-small text-ink-muted">
+          From {at.name ?? where(at.position)}
+          {mode === "walk" ? walk.ground : ""}
+        </p>
+        <Segmented<StreetsReachMode>
+          label="Way of travelling"
+          value={mode}
+          onChange={(next) => setPrefs((current) => ({ ...current, mode: next }))}
+          options={REACH_MODES}
+        />
         <Segmented
           // Each way has its own times (up to 2 hours by car or bicycle, 8 on foot), and keeps the one chosen for it.
           label="Time"
@@ -277,7 +314,9 @@ export function useReach({
           options={timeOptions(mode)}
         />
         <div aria-live="polite">
-          {status.isPending || (at && coverage.isPending) || (request && reach.isPending) ? (
+          {mode === "walk" ? (
+            walk.body
+          ) : status.isPending || (at && coverage.isPending) || (request && reach.isPending) ? (
             <p className="flex items-center gap-2 text-small text-ink-muted">
               <Spinner label="Working out the areas" delay /> Working out what is reachable
             </p>
@@ -318,13 +357,20 @@ export function useReach({
             </div>
           ) : null}
         </div>
+        {mode === "walk" ? walk.details : null}
+        {onPrint && (mode === "walk" ? walk.reach.data && walk.reach.data.coverage !== "none" : shown) ? (
+          <Button size="sm" variant="ghost" className="justify-self-start max-md:min-h-11 md:pointer-coarse:min-h-11" onClick={onPrint}>
+            <Printer aria-hidden /> Print or save as PDF
+          </Button>
+        ) : null}
       </div>
     </MapCard>
   ) : null;
 
   return {
-    start(position, name = null) {
+    start(position, name = null, way) {
       fitted.current = null;
+      if (way) setPrefs((current) => ({ ...current, mode: way }));
       setAt({ position, name });
     },
     stop,

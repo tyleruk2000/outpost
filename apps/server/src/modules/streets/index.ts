@@ -10,9 +10,11 @@ import type {
   MapDataItem,
   RoadDistanceUnit,
   RoadRoutePoint,
+  StreetDirections,
   StreetsReachMode,
   StreetsReachRequest,
   StreetsReachResult,
+  StreetsRouteHills,
   StreetsRouteRequest,
   StreetsRouteResult,
   StreetsStatusResponse,
@@ -28,9 +30,10 @@ import { markers } from "../../db/schema.ts";
 import { countryOf } from "../layers/countries.ts";
 import { OSM_CREDIT } from "../maps/route-finder/sources.ts";
 import { countryLookup, roadCredit } from "../roads/plan.ts";
-import { createStreetsClient, NO_STREETS_NEAR, type StreetsClient, ValhallaRefusal } from "./client.ts";
+import { createStreetsClient, decodePolyline6, NO_STREETS_NEAR, type RouteReply, type StreetsClient, ValhallaRefusal } from "./client.ts";
 import { createStreetsConnection, type StreetsConnection } from "./connection.ts";
 import { doorToDoor, type Point } from "./door-to-door.ts";
+import { type HillsMode, retime } from "./hills.ts";
 import { mainRoadsReach } from "./main-roads-reach.ts";
 import { ferryWarnings, streetDirections } from "./narrative.ts";
 import { featuresFromMainRoads, MAIN_ROADS_NOTE, reachNote, reachSettings, streetsReach } from "./reach.ts";
@@ -133,6 +136,22 @@ const estimateSchema = z
 const countryName = (code: string) => countryOf(code)?.name ?? code;
 const VALHALLA_CREDIT = "routed by Valhalla (MIT licence)";
 
+/**
+ * What the time of a walk or a ride allows for. With terrain, hills are counted (hills.ts); without, it says so plainly.
+ */
+export function hillsWarning(mode: "walk" | "cycle", hills: StreetsRouteHills | null, terrainInstalled: boolean): string {
+  const pace = mode === "walk" ? "a steady walking pace" : "a steady cycling pace";
+  if (!hills)
+    return terrainInstalled
+      ? `No terrain is installed along this route, so hills aren't counted: the time is at ${pace} on the flat, with no stops.`
+      : `No terrain on this Outpost, so hills aren't counted: the time is at ${pace} on the flat, with no stops.`;
+  const how =
+    mode === "walk"
+      ? "The time counts the hills over the installed terrain (Tobler's hiking function), but no stops or rests."
+      : "The time counts the hills over the installed terrain, but no stops.";
+  return hills.coverage === "partial" ? `${how} Terrain runs out along part of the way; there it is timed as on the flat.` : how;
+}
+
 function streetsCredit(tileset: StreetsTileset | null): string {
   const when = tileset?.dataDate ? ` as of ${tileset.dataDate}` : "";
   return `Streets ${OSM_CREDIT.attribution}, ${OSM_CREDIT.license}${when}, from Geofabrik's extracts; ${VALHALLA_CREDIT}.`;
@@ -232,6 +251,30 @@ export function createStreetsService(ctx: AppContext): StreetsService {
     };
   }
 
+  /** A walk or a ride re-timed over the installed terrain (hills.ts); as it came, with null hills, where none covers it. */
+  async function hillsFor(mode: HillsMode, flat: StreetDirections, reply: RouteReply) {
+    const maps = ctx.services.maps;
+    const line: Array<[number, number]> = [];
+    for (const leg of reply.trip.legs) {
+      const shape = decodePolyline6(leg.shape);
+      line.push(...(line.length > 0 ? shape.slice(1) : shape));
+    }
+    const start = line[0];
+    const terrains = maps.tiles.regions().filter((region) => region.tileType === "terrain" && region.status === "installed");
+    const terrain =
+      terrains.find(
+        (region) =>
+          start &&
+          start[0] >= region.bounds[0] &&
+          start[0] <= region.bounds[2] &&
+          start[1] >= region.bounds[1] &&
+          start[1] <= region.bounds[3],
+      ) ?? terrains[0];
+    if (!terrain || !maps.tiles.sources().sources.terrain) return { directions: flat, hills: null, terrainInstalled: false };
+    const retimed = await retime(flat, line, (positions, step) => maps.elevation.sample(positions, step), mode, terrain.name);
+    return { ...retimed, terrainInstalled: true };
+  }
+
   async function route(request: StreetsRouteRequest, signal?: AbortSignal): Promise<StreetsRouteResult> {
     const words = request.mode === "walk" ? "A walking route" : request.mode === "cycle" ? "A cycling route" : "A door-to-door route";
     const tileset = await assertReady(words);
@@ -249,7 +292,9 @@ export function createStreetsService(ctx: AppContext): StreetsService {
       } catch (error) {
         refusal(error, points, tileset);
       }
-      const streets = streetDirections(reply, { units, costing, viaNames: points.slice(1, -1).map((p) => p.name) });
+      const flat = streetDirections(reply, { units, costing, viaNames: points.slice(1, -1).map((p) => p.name) });
+      // The streets carry no heights: the line is kept and its times are put right over the installed terrain.
+      const { directions: streets, hills, terrainInstalled } = await hillsFor(request.mode, flat, reply);
       return {
         mode: request.mode,
         spine: null,
@@ -261,10 +306,9 @@ export function createStreetsService(ctx: AppContext): StreetsService {
         geometry: { type: "MultiLineString", coordinates: lines(streets.geometry.coordinates) },
         warnings: [
           ...ferryWarnings([streets], request.mode === "walk" ? "This walk" : "This ride", units),
-          request.mode === "walk"
-            ? "The time is at a steady walking pace with no allowance for hills or stops."
-            : "The time is at a steady cycling pace with no allowance for hills or stops.",
+          hillsWarning(request.mode, hills, terrainInstalled),
         ],
+        hills,
         credit: streetsCredit(tileset),
         request,
         plannedAt,

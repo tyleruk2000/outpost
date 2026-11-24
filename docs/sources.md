@@ -386,7 +386,8 @@ licensees").
 | C2d | Ordnance Survey Ireland, *Active Stations* (GPS-STATION-COORDINATES.pdf, osi.ie, 2012), read 2026-11-22 from the Internet Archive's copy (the address now answers elsewhere) | **Test figures only**: the ETRS89 latitude and longitude and ITM easting and northing of five active GPS stations (Athlone, Fingal CC, Cork I.T, Kilrea, Tralee), which ITM is held to within a centimetre and typed ITM is read back to. The ITM parameters agree with Cory, Morgan, Bray and Greenway, *A New Coordinate System for Ireland* (FIG, 2001, table 1), read the same day. Not shipped. | © Ordnance Survey Ireland; facts, not reproduced text. |
 | C3 | NGA.SIG.0012_2.0.0_UTMUPS (NGA, 2014) | **Rules and test figures only** for UTM, UPS and MGRS: zones, bands, the Norway and Svalbard exceptions, 100 km square letters, polar letters. Read 2026-11-21 from the Internet Archive's copy (NGA's servers did not answer). | US Government work. |
 | C4 | DMA TM 8358.2 (1989); NGS datasheets HV4442, UW5293, AI9478, TW0515; FGDC-STD-011-2001 (USNG) | **Test figures only**: UPS examples, survey marks with UTM coordinates and convergence, the USNG truncation rule. Read 2026-11-21. A polar MGRS test uses GeographicLib's GeoConvert manual (Karney), a secondary source. | US Government works. |
-| C5 | W. Tobler, NCGIA Technical Report 93-1 (1993), [eScholarship](https://escholarship.org/uc/item/05r820mz) (read 2026-11-21) | **Formula only**, for how far on foot from a point: "W = 6 exp ( -3.5 * abs(S + 0.05))" km/h, times 0.6 off path. The slower paces and the 45° limit are Outpost's own. | Published formula, credited. |
+| C5 | W. Tobler, NCGIA Technical Report 93-1 (1993), [eScholarship](https://escholarship.org/uc/item/05r820mz) (read 2026-11-21) | **Formula only**, for Reachable from here on foot and for re-timing a walking route over the terrain: "W = 6 exp ( -3.5 * abs(S + 0.05))" km/h, times 0.6 off path. The slower paces and the 45° limit are Outpost's own. | Published formula, credited. |
+| C5a | Valhalla, `src/sif/bicyclecost.cc` (`kGradeBasedSpeedFactor`), [github.com/valhalla/valhalla](https://github.com/valhalla/valhalla/blob/master/src/sif/bicyclecost.cc) (read 2026-11-24) | **Sixteen figures only**, for re-timing a cycling route over the terrain: the speed on each slope as a share of the speed on the flat, from 2.2 down 10% to 0.3 up 15%, read between them along a straight line. | MIT licence, as the streets service itself. |
 
 ### The World Magnetic Model and the compass
 
@@ -1110,7 +1111,7 @@ For **Settings → Updates** ([updating.md](updating.md)).
   earth"), asked for with the climate averages, monthly and for the year. Checked on 21
   November 2026 against the climatology API for a point near Reading (annual 245.8°).
   The same acknowledgement as the other POWER figures.
-- **Walking pace:** Tobler's hiking function, as for the walking reach on Maps.
+- **Walking pace:** Tobler's hiking function, as for Reachable from here on foot on Maps.
 - **Not held, and said so in the book:** major hazard (COMAH) sites and their public
   information zones, and industrial sites other than nuclear ones. No openly licensed copy
   Outpost could fetch was found.

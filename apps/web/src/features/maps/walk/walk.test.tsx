@@ -1,17 +1,24 @@
 /**
- * How far on foot: the minutes the server gives made into rings and shading, and the card. Every figure is made up.
+ * On foot in Reachable from here: the minutes the server gives made into rings and shading, the card, and the printed
+ * page. Every figure is made up.
  */
 import { encodeBits, type WalkReach } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
 import type { MapEngine } from "../map/engine";
 import { ContextMenu } from "../map-chrome";
-import { formatWalkTime, minutesAt, ringAt, walkData, walkGrid, walkShade } from "./walk-map";
-import { useWalkReach, type WalkReachTool } from "./walk-reach";
+import { PRINT_OVERLAYS } from "../print/overlays";
+import { type ReachTool, useReach } from "../reach/reach-tool";
+import { formatWalkTime, minutesAt, ringAt, setWalkShown, walkData, walkGrid, walkShade, walkShown } from "./walk-map";
 
-vi.mock("@/lib/api", () => ({ api: { get: vi.fn() }, errorMessage: (error: unknown) => String(error), ApiError: class extends Error {} }));
+vi.mock("@/lib/api", () => ({
+  api: { get: vi.fn(), post: vi.fn() },
+  errorMessage: (error: unknown) => String(error),
+  ApiError: class extends Error {},
+}));
 const asked = vi.mocked(api.get);
 
 const AT = { lat: 54.43, lon: -3.01 };
@@ -82,74 +89,121 @@ describe("the walk on the map", () => {
 });
 
 const engine = { setOverlay: vi.fn(), setShades: vi.fn(), fitBounds: vi.fn() };
-let latest: WalkReachTool;
+let latest: ReachTool;
+const onPrint = vi.fn();
 function Harness() {
-  latest = useWalkReach({
+  latest = useReach({
     engine: engine as unknown as MapEngine,
     where: (position) => `${position.lat.toFixed(5)}, ${position.lon.toFixed(5)}`,
+    onOpenStreets: () => {},
+    onOpenNetworks: () => {},
+    onPrint,
   });
   return <div>{latest.card}</div>;
 }
 const show = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <Harness />
+      <MemoryRouter>
+        <Harness />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
+
+/** The walks asked of the server: only those (the streets' status and the roads are left unanswered). */
+const walks = () => asked.mock.calls.filter(([path]) => path === "/api/maps/walk-reach").map(([, query]) => query);
+const answerWalks = (answer: (minutes: number) => WalkReach) =>
+  asked.mockImplementation(((path: string, query: Record<string, string>) =>
+    path === "/api/maps/walk-reach" ? Promise.resolve(answer(Number(query.minutes))) : new Promise(() => {})) as never);
 
 beforeEach(() => {
   localStorage.clear();
   asked.mockReset();
+  vi.mocked(api.post).mockReset();
+  vi.mocked(api.post).mockReturnValue(new Promise(() => {}));
   engine.setOverlay.mockClear();
   engine.fitBounds.mockClear();
+  onPrint.mockClear();
+  setWalkShown(null);
 });
 
-describe("how far on foot from a point", () => {
-  it("asks for an hour at a fit adult's pace, says how far, draws the rings and brings them into view", async () => {
-    asked.mockImplementation((_path, query) => Promise.resolve(reach(Number((query as Record<string, string>).minutes))) as never);
+describe("on foot, in Reachable from here", () => {
+  it("walks an hour over terrain at a fit adult's pace, says how far, draws the rings and brings them into view", async () => {
+    answerWalks((minutes) => reach(minutes));
     show();
-    act(() => latest.start(AT));
-    expect(screen.getByRole("heading", { name: "How far on foot" })).toBeInTheDocument();
-    expect(asked).toHaveBeenCalledWith(
-      "/api/maps/walk-reach",
-      { at: "54.43000,-3.01000", minutes: "60", pace: "standard" },
-      expect.anything(),
+    act(() => latest.start(AT, null, "walk"));
+    expect(screen.getByRole("heading", { name: "Reachable from here" })).toBeInTheDocument();
+    expect(within(screen.getByRole("radiogroup", { name: "Way of travelling" })).getByRole("radio", { name: "Walk" })).toHaveAttribute(
+      "aria-checked",
+      "true",
     );
+    expect(walks().at(-1)).toEqual({ at: "54.43000,-3.01000", minutes: "60", pace: "standard" });
     expect(await screen.findByText("Within 1 h: as far as 3.00 km from here, straight-line.")).toBeInTheDocument();
-    expect(screen.getByText(/For a fit adult with no load\./)).toBeInTheDocument();
+    expect(screen.getByText(/Hills, paths and water counted\. For a fit adult with no load\./)).toBeInTheDocument();
+    expect(screen.getByText(/ground 52 m above sea level/)).toBeInTheDocument();
     await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     const rings = engine.setOverlay.mock.calls.filter(([source]) => source === "o-walk").at(-1)![1];
     expect(rings.features.length).toBeGreaterThan(0);
+    // Nothing is asked of the streets service on foot.
+    expect(vi.mocked(api.post).mock.calls.some(([path]) => path === "/api/streets/reach")).toBe(false);
+    // Kept for the printed page, and printed from the card.
+    expect(walkShown()?.minutes).toBe(60);
+    fireEvent.click(screen.getByRole("button", { name: "Print or save as PDF" }));
+    expect(onPrint).toHaveBeenCalledTimes(1);
 
-    // Another time, and a slower pace, asked again and remembered.
-    fireEvent.click(screen.getByRole("radio", { name: "2 h" }));
+    // 8 hours, and a slower pace, asked again and remembered.
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "8 hours" }));
     fireEvent.click(screen.getByRole("button", { name: "Pace and what this is" }));
     expect(screen.getByText(/It knows nothing of fences, walls, private land/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Slower" }));
-    await waitFor(() =>
-      expect(asked).toHaveBeenLastCalledWith(
-        "/api/maps/walk-reach",
-        { at: "54.43000,-3.01000", minutes: "120", pace: "slower" },
-        expect.anything(),
-      ),
-    );
-    expect(JSON.parse(localStorage.getItem("outpost.maps.walk")!)).toEqual({ minutes: 120, pace: "slower" });
+    await waitFor(() => expect(walks().at(-1)).toEqual({ at: "54.43000,-3.01000", minutes: "480", pace: "slower" }));
+    expect(JSON.parse(localStorage.getItem("outpost.maps.reach")!)).toMatchObject({ mode: "walk", minutes: { walk: 480 }, pace: "slower" });
+  });
+
+  it("keeps the pace chosen when How far on foot was a tool of its own", async () => {
+    localStorage.setItem("outpost.maps.walk", JSON.stringify({ minutes: 90, pace: "slowest" }));
+    answerWalks((minutes) => reach(minutes));
+    show();
+    act(() => latest.start(AT, null, "walk"));
+    expect(walks().at(-1)).toEqual({ at: "54.43000,-3.01000", minutes: "60", pace: "slowest" });
   });
 
   it("says when no map gives paths, and when no terrain is held, with where to get it", async () => {
-    asked.mockResolvedValue(reach(60, false) as never);
+    answerWalks((minutes) => reach(minutes, false));
     show();
-    act(() => latest.start(AT));
+    act(() => latest.start(AT, null, "walk"));
     expect(await screen.findByText(/No paths or roads from an installed map here/)).toBeInTheDocument();
-    asked.mockResolvedValue({ ...reach(30), coverage: "none", minutesGrid: "", groundMeters: null, furthestMeters: 0 } as never);
-    fireEvent.click(screen.getByRole("radio", { name: "30 min" }));
+    answerWalks((minutes) => ({ ...reach(minutes), coverage: "none", minutesGrid: "", groundMeters: null, furthestMeters: 0 }));
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "30 min" }));
     expect(await screen.findByText(/No terrain is held here/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Stop showing how far on foot" }));
+    // Nothing to print without terrain.
+    expect(screen.queryByRole("button", { name: "Print or save as PDF" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Stop showing what is reachable" }));
     await waitFor(() => expect(latest.card).toBeNull());
   });
 
-  it("is offered in the map's menu at a point", () => {
-    const onWalk = vi.fn();
+  it("prints the rings with the paces and what the walk leaves out", async () => {
+    const overlay = PRINT_OVERLAYS.find((each) => each.id === "walk")!;
+    const context = { theme: { walk: "#c8620f", ink: "#000", page: "#fff" }, regions: [] } as never;
+    expect(overlay.unavailable?.(context)).toMatch(/No walk is showing/);
+    setWalkShown(reach(120));
+    expect(overlay.unavailable?.(context)).toBeUndefined();
+    expect(overlay.hint?.(context)).toMatch(/2 h on foot/);
+    const draft = { data: {}, sources: {}, layers: [], notes: [] as string[] } as never as Parameters<typeof overlay.apply>[0];
+    overlay.apply(draft, context, new Set());
+    const notes = draft.notes.join(" ");
+    expect(notes).toMatch(/Reachable on foot within 2 h from 54\.43000, -3\.01000/);
+    expect(notes).toMatch(/rings every hour/);
+    expect(notes).toMatch(/fit adult with no load/);
+    expect(notes).toMatch(/Tobler's hiking function/);
+    expect(notes).toMatch(/fences, walls, private land/);
+    expect(draft.layers.map((layer) => layer.id)).toEqual(
+      expect.arrayContaining(["print-walk-ring", "print-walk-label", "print-walk-start"]),
+    );
+  });
+
+  it("is one entry in the map's menu at a point: Reachable from here, not a walk of its own", () => {
+    const onReach = vi.fn();
     render(
       <ContextMenu
         point={{ x: 10, y: 10 }}
@@ -159,11 +213,12 @@ describe("how far on foot from a point", () => {
         onMeasure={() => {}}
         onDraw={() => {}}
         onSun={() => {}}
-        onWalk={onWalk}
+        onReach={onReach}
         onClose={() => {}}
       />,
     );
-    fireEvent.click(screen.getByRole("menuitem", { name: "How far on foot from here" }));
-    expect(onWalk).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menuitem", { name: "How far on foot from here" })).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Reachable from here" }));
+    expect(onReach).toHaveBeenCalledTimes(1);
   });
 });

@@ -145,7 +145,8 @@ export function formatWalkTime(minutes: number): string {
 
 /** The rings at each half hour or hour, each labelled once at its northernmost point. */
 export function walkData(grid: WalkGrid | null): FeatureCollection {
-  if (!grid) return { type: "FeatureCollection", features: [] };
+  // Nowhere reached (the start is in water, say): nothing to ring.
+  if (!grid || grid.reach.furthestMeters <= 0) return { type: "FeatureCollection", features: [] };
   const features: FeatureCollection["features"] = [];
   const step = ringStep(grid.reach.minutes);
   for (let limit = step; limit <= grid.reach.minutes; limit += step) {
@@ -198,4 +199,11 @@ export function walkLayers(theme: MapTheme): LayerSpecification[] {
       paint: { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.6 },
     },
   ];
+}
+
+let shownWalk: WalkReach | null = null;
+/** The walk shown on the map now, for the printed page (print/overlays.ts). */
+export const walkShown = () => shownWalk;
+export function setWalkShown(reach: WalkReach | null): void {
+  shownWalk = reach;
 }
