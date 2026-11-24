@@ -1,7 +1,8 @@
 /**
  * Reachable areas on the map, apart from React: the areas from the server as fills of one
- * hue, nested so each shorter time reads darker (three steps), with an outline of its own
- * for each time (solid, dashed, dotted) and its time written along it, so the steps read
+ * hue, nested so each shorter time reads darker (up to three steps), with an outline of
+ * its own for each step (solid for the shortest time, then dashed, then dotted, whatever
+ * the times are) and its time written along it, so the steps read
  * apart in grey and on a printer with no colour. What is shown now is kept here for the
  * print overlays (print/overlays.ts), as the radio range does.
  */
@@ -16,8 +17,11 @@ export const REACH_SOURCE = "o-reach";
 /** How solid each area's fill is: three laid one over another make the three steps. */
 export const REACH_FILL_OPACITY = 0.16;
 
-/** The outline for each time: solid for the shortest, then dashed, then dotted. */
-export const REACH_DASHES: Record<number, number[] | null> = { 15: null, 30: [4, 2], 60: [1, 1.6] };
+/** The outline for each step, shortest time first: solid, then dashed, then dotted. */
+export const REACH_DASHES: ReadonlyArray<number[] | null> = [null, [4, 2], [1, 1.6]];
+
+/** The outline's words for each step, for the printed key. */
+export const REACH_LINE_WORDS = ["solid", "dashed", "dotted"] as const;
 
 const MODE_WORDS = { drive: "by car", cycle: "by bicycle", walk: "on foot" } as const;
 
@@ -32,12 +36,19 @@ export function reachSentence(result: StreetsReachResult): string {
 export function reachData(result: StreetsReachResult | null): FeatureCollection {
   if (!result) return { type: "FeatureCollection", features: [] };
   const areas = [...result.areas.features].sort((a, b) => b.properties.minutes - a.properties.minutes);
+  // Step 0 is the shortest time, whichever it is.
+  const step = (index: number) => areas.length - 1 - index;
   return {
     type: "FeatureCollection",
     features: [
-      ...areas.map((feature) => ({
+      ...areas.map((feature, index) => ({
         type: "Feature" as const,
-        properties: { kind: "area", minutes: feature.properties.minutes, label: reachTimeText(feature.properties.minutes) },
+        properties: {
+          kind: "area",
+          minutes: feature.properties.minutes,
+          step: step(index),
+          label: reachTimeText(feature.properties.minutes),
+        },
         geometry: feature.geometry,
       })),
       // Each time written at the top of its outline: an outline is too ragged for words to follow it.
@@ -82,7 +93,7 @@ export function reachBounds(result: StreetsReachResult): Bbox {
 
 export function reachLayers(theme: MapTheme): LayerSpecification[] {
   const area = ["==", ["get", "kind"], "area"] as never;
-  const of = (minutes: number) => ["all", area, ["==", ["get", "minutes"], minutes]] as never;
+  const of = (step: number) => ["all", area, ["==", ["get", "step"], step]] as never;
   return [
     {
       id: "o-reach-fill",
@@ -99,12 +110,12 @@ export function reachLayers(theme: MapTheme): LayerSpecification[] {
       layout: { "line-join": "round" },
       paint: { "line-color": theme.page, "line-width": 4, "line-opacity": 0.7 },
     },
-    ...Object.entries(REACH_DASHES).map(
-      ([minutes, dash]): LayerSpecification => ({
-        id: `o-reach-line-${minutes}`,
+    ...REACH_DASHES.map(
+      (dash, step): LayerSpecification => ({
+        id: `o-reach-line-${step}`,
         type: "line",
         source: REACH_SOURCE,
-        filter: of(Number(minutes)),
+        filter: of(step),
         layout: { "line-join": "round" },
         paint: { "line-color": theme.walk, "line-width": 2, ...(dash ? { "line-dasharray": dash } : {}) },
       }),

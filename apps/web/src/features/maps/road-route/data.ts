@@ -15,6 +15,7 @@ import type {
   RoadRouteResult,
   SavedRoadRouteDto,
   SavedRoadRoutesResponse,
+  SaveRoadRouteRequest,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "@/lib/api";
@@ -76,17 +77,18 @@ export const usePlanRoadRoute = () =>
 export const useSavedRoadRoutes = () =>
   useQuery({ queryKey: roadsKeys.routes, queryFn: () => api.get<SavedRoadRoutesResponse>("/api/roads/routes"), select: (d) => d.routes });
 
-export const useSavedRoadRoute = (id: string | null) =>
+/** A saved route. `enabled` false while it is being deleted: the change it makes would otherwise ask again for what is gone. */
+export const useSavedRoadRoute = (id: string | null, enabled = true) =>
   useQuery({
     queryKey: roadsKeys.route(id ?? ""),
     queryFn: () => api.get<SavedRoadRouteDto>(`/api/roads/routes/${encodeURIComponent(id ?? "")}`),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && enabled,
   });
 
 export function useSaveRoadRoute() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; route: RoadRouteResult }) => api.post<SavedRoadRouteDto>("/api/roads/routes", input),
+    mutationFn: (input: SaveRoadRouteRequest) => api.post<SavedRoadRouteDto>("/api/roads/routes", input),
     onSuccess: () => client.invalidateQueries({ queryKey: roadsKeys.routes }),
   });
 }

@@ -34,7 +34,13 @@ POST /api/streets/tiles ─▶ tiles.ts: task streets.build writes request.json,
   network (a loopback or private address, or a name without dots); anything else is
   refused with a sentence, so routes and places never leave for the internet.
 - **client.ts**: `POST /route` (costing `auto`, `bicycle` or `pedestrian`, `language:
-  en-GB`, kilometres) and `POST /isochrone`, each with a time limit (20 s and 30 s), the
+  en-GB`, kilometres) and `POST /isochrone`, both with `costing_options.<costing>.use_ferry:
+  0`: Valhalla's pedestrian costing defaults to 1 (a ferry at half its time), which sent a
+  Battersea to Chelsea walk by river bus; at 0 a ferry costs ten times its time plus six
+  hours to board (`valhalla/sif/dynamiccost.h`), so it is taken only for want of another
+  way. A manoeuvre of type 28 (or `ferry: true`) becomes a `ferries` entry on the
+  directions (its ends, name, length and line), a "Take the ferry … Check it is running"
+  line and a warning; the web app draws it dashed. Each with a time limit (20 s and 30 s), the
   person's request's signal (a closed browser stops the question), a size limit on the
   reply (4 MB and 8 MB) and a zod check of its shape. Valhalla's refusals keep its error
   code: 170 to 172 (no streets near a point) become "Streets are not installed for
@@ -110,21 +116,38 @@ the next line: metres and kilometres, or yards (under a quarter of a mile) and m
 
 ## Reachable areas
 
-15, 30 or 60 minutes, any one to three of them, by car, bicycle or on foot.
+Any one to three times (`STREETS_REACH_MINUTES`): by car or bicycle 15, 30, 60, 90 or
+120 minutes; on foot 30, 60, 120, 240, 360 or 480. The card asks for the time chosen and up
+to two shorter ones (120 by car: 30, 60, 120; 480 on foot: 120, 240, 480). Anything else
+is a `400` naming the times for that way.
 
 - **Streets** (`source: "streets"`): Valhalla's isochrones as GeoJSON polygons, with
   `denoise` 0.5 (pieces under half the size of the largest go) and `generalize` 100 m for
-  driving, 75 m for cycling, 50 m on foot (outlines simplified to within that).
+  driving, 75 m for cycling, 50 m on foot (outlines simplified to within that), growing
+  with the longest time over an hour (two hours on foot): 200 m for 2 hours' drive, 150 m
+  for 2 hours' ride, 200 m for 8 hours' walk. Valhalla's own grid is a 300th of the
+  furthest the time could go (70 mph by car, 20 by bicycle, 5 on foot), held between 0.001
+  and 0.005 degrees, so a long time does not grow its grid without end; the work does grow
+  with the streets inside it. Outpost waits 30 s for an hour or less, 90 s for longer.
+  The sidecar's configuration sets `service_limits.isochrone.max_time_contour` to 480
+  (Valhalla's default is 120) and `max_contours` to 4; a service started from an older
+  image refuses over 2 hours with error 151, which Outpost says plainly.
 - **Main roads only** (`source: "main-roads"`, drive only): for installations without the
   service, or asked for with `source: "main-roads"`. The point is joined to the nearest
   main road at 30 km/h; Dijkstra's method over the main roads (sea crossings left out)
   marks a grid of cells with the earliest time along each road, part-way along the last;
   each time's cells are grown by one of its own cells, enclosed gaps are filled, and the
   outline is traced and simplified to 60% of a cell. The grid is set by the shortest time
-  asked: 375 m for 15 minutes, 750 m for 30, 1.5 km for 60 (`settings.gridM`). Over Great
-  Britain's network on a Mac, an hour's area takes about 50 ms and is 4 KB.
+  asked: 375 m for 15 minutes, 750 m for 30, 1.5 km for 60, 3 km for 120
+  (`settings.gridM`), and coarsened when that would put more than 1,200 cells across the
+  grid (15 minutes with 2 hours: about 400 m), which bounds it at 1.44 million cells. Over
+  Great Britain's network on a Mac, an hour's area takes about 50 ms and is 4 KB. On the
+  test network, 15, 30 and 60 minutes took 27 ms; 2 hours alone 1 ms; 15 minutes, an hour
+  and 2 hours together (the 1,200-cell grid, the most work there is) 117 ms.
 
-Both say "Free-flowing traffic, no stops" (`note`): neither counts traffic or waits.
+A drive says "Free-flowing traffic, no stops" (`note`): neither source counts traffic or
+waits. A ride or a walk says "a steady pace on the flat with no stops" (the tiles hold no
+heights); over an hour by bicycle or 2 hours on foot it adds "no rests counted".
 
 ## API
 
@@ -132,7 +155,7 @@ Both say "Free-flowing traffic, no stops" (`note`): neither counts traffic or wa
 | --- | --- |
 | `GET /api/streets/status` | `StreetsStatusResponse`: `state` (`not-installed`, `no-streets`, `ready`, `not-answering`, `problem`), `installed`, `message`, the streets in use (`tileset`: name, regions, countries, size, data date, Valhalla's version), a build under way or the last failed one (`build`), the `modes` available now, kept `countryFiles` to build from, `reachMinutes`. |
 | `POST /api/streets/route` | `{ points (2–12: {lat, lon, name?} or {placeId}), mode: drive-door \| walk \| cycle, units?: km \| miles, crossing? }` → `StreetsRouteResult`: `spine`, `road` (Outpost's `RoadRouteResult`), `start`, `end` or `streets` (each `{ lines, distanceM, durationS, geometry }`), `summary`, `geometry`, `warnings`, `credit`. `415` not installed; `400` "Streets are not installed for France", no way, too far; `503` the service not answering; `502` a bad or late reply. |
-| `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: [15 \| 30 \| 60], source?: auto \| main-roads }` → `StreetsReachResult`: `source`, `label` ("Streets" or "Main roads only"), `note`, `areas` (a FeatureCollection, smallest time first, `properties.minutes`), `settings`, `credit`. Walking and cycling without streets: `415`. |
+| `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: [one to three of the way's times], source?: auto \| main-roads }` → `StreetsReachResult`: `source`, `label` ("Streets" or "Main roads only"), `note`, `areas` (a FeatureCollection, smallest time first, `properties.minutes`), `settings`, `credit`. Walking and cycling without streets: `415`. |
 | `POST /api/streets/tiles/estimate` | `{ regions: [Geofabrik ids of kept country files] }` → `StreetsEstimate`. |
 | `POST /api/streets/tiles` | `{ regions, workLocationId? }` builds one set from those country files, joined, replacing the set in use; `{ import: { locationId, relPath, name? } }` brings in a `.tar` from `deploy/valhalla/build-tiles.sh`. → `{ jobId, estimate }`. `409` while one is under way. |
 | `DELETE /api/streets/tiles` | Stops serving and deletes the streets in use. `409` while building. |

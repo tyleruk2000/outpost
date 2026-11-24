@@ -10,6 +10,7 @@ import type {
   MapDataItem,
   RoadDistanceUnit,
   RoadRoutePoint,
+  StreetsReachMode,
   StreetsReachRequest,
   StreetsReachResult,
   StreetsRouteRequest,
@@ -17,7 +18,7 @@ import type {
   StreetsStatusResponse,
   StreetsTileset,
 } from "@outpost/shared";
-import { STREETS_REACH_MINUTES } from "@outpost/shared";
+import { STREETS_REACH_MAX_AREAS, STREETS_REACH_MINUTES } from "@outpost/shared";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
@@ -31,8 +32,8 @@ import { createStreetsClient, NO_STREETS_NEAR, type StreetsClient, ValhallaRefus
 import { createStreetsConnection, type StreetsConnection } from "./connection.ts";
 import { doorToDoor, type Point } from "./door-to-door.ts";
 import { mainRoadsReach } from "./main-roads-reach.ts";
-import { streetDirections } from "./narrative.ts";
-import { FREE_FLOWING, featuresFromMainRoads, MAIN_ROADS_NOTE, REACH_SETTINGS, streetsReach } from "./reach.ts";
+import { ferryWarnings, streetDirections } from "./narrative.ts";
+import { featuresFromMainRoads, MAIN_ROADS_NOTE, reachNote, reachSettings, streetsReach } from "./reach.ts";
 import { createStreetsTiles, STREETS_BUILD_JOB, type StreetsBuildPayload, type StreetsTiles } from "./tiles.ts";
 
 export interface StreetsService {
@@ -65,21 +66,36 @@ export const streetsRouteSchema = z.object({
     .union([z.literal("any"), z.literal("eurotunnel"), z.string().regex(/^way\/\d{1,15}$/, "Choose a crossing from the list.")])
     .default("any"),
 });
-export const streetsReachSchema = z.object({
-  point: pointSchema,
-  mode: z.enum(["drive", "walk", "cycle"]),
-  minutes: z
-    .array(
-      z
-        .number()
-        .int()
-        .refine((m) => (STREETS_REACH_MINUTES as readonly number[]).includes(m), "Choose 15, 30 or 60 minutes."),
-    )
-    .min(1, "Choose 15, 30 or 60 minutes.")
-    .max(3)
-    .transform((m) => [...new Set(m)].sort((a, b) => a - b)),
-  source: z.enum(["auto", "main-roads"]).default("auto"),
-});
+/** "15, 30, 60, 90 or 120 minutes", "30 minutes, or 1, 2, 4, 6 or 8 hours": the times a way can be asked for. */
+export function reachChoices(mode: StreetsReachMode): string {
+  const list = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} or ${items.at(-1)}` : (items[0] ?? ""));
+  const times: readonly number[] = STREETS_REACH_MINUTES[mode];
+  const minutes = times.filter((m) => m < 60 || m % 60 !== 0);
+  const hours = times.filter((m) => m >= 60 && m % 60 === 0);
+  if (minutes.some((m) => m > 60) || hours.length === 0) return `${list(times.map(String))} minutes`;
+  return `${minutes.length > 0 ? `${list(minutes.map(String))} minutes, or ` : ""}${list(hours.map((m) => String(m / 60)))} hours`;
+}
+
+export const streetsReachSchema = z
+  .object({
+    point: pointSchema,
+    mode: z.enum(["drive", "walk", "cycle"]),
+    minutes: z
+      .array(z.number().int().positive().max(1440))
+      .min(1, "Choose a time.")
+      .max(STREETS_REACH_MAX_AREAS, `Choose up to ${STREETS_REACH_MAX_AREAS} times.`)
+      .transform((m) => [...new Set(m)].sort((a, b) => a - b)),
+    source: z.enum(["auto", "main-roads"]).default("auto"),
+  })
+  .superRefine((value, check) => {
+    const allowed: readonly number[] = STREETS_REACH_MINUTES[value.mode];
+    if (value.minutes.some((m) => !allowed.includes(m)))
+      check.addIssue({
+        // Said as a sentence of its own, without the field's name before it.
+        code: "custom",
+        message: `${value.mode === "walk" ? "On foot" : value.mode === "cycle" ? "By bicycle" : "By car"}, choose ${reachChoices(value.mode)}.`,
+      });
+  });
 const buildSchema = z.union([
   z
     .object({
@@ -184,6 +200,11 @@ export function createStreetsService(ctx: AppContext): StreetsService {
         throw badRequest("No way joins these points on the streets built (a river, a motorway on foot, or a one-way street between them).");
       if (error.code === 154 || error.code === 155)
         throw badRequest("That is too far for this way of travelling. Choose points nearer together, or drive.");
+      // 151, "Exceeded max time": a streets service started from an image older than this Outpost, which stops at 2 hours.
+      if (error.code === 151)
+        throw badRequest(
+          "The streets service on this device is older than Outpost and stops at 2 hours. Choose 2 hours or less, or rebuild and restart the streets service (see Help).",
+        );
       throw new AppError("upstream", `The streets service could not plan this: ${error.message}`);
     }
     throw error;
@@ -239,6 +260,7 @@ export function createStreetsService(ctx: AppContext): StreetsService {
         summary: { distanceM: streets.distanceM, durationS: streets.durationS },
         geometry: { type: "MultiLineString", coordinates: lines(streets.geometry.coordinates) },
         warnings: [
+          ...ferryWarnings([streets], request.mode === "walk" ? "This walk" : "This ride", units),
           request.mode === "walk"
             ? "The time is at a steady walking pace with no allowance for hills or stops."
             : "The time is at a steady cycling pace with no allowance for hills or stops.",
@@ -283,7 +305,7 @@ export function createStreetsService(ctx: AppContext): StreetsService {
       streets: parts.streets,
       summary: { distanceM, durationS },
       geometry: { type: "MultiLineString", coordinates: geometry },
-      warnings: parts.warnings,
+      warnings: [...ferryWarnings([parts.start, parts.end, parts.streets], "This drive", units), ...parts.warnings],
       credit: parts.road ? `${parts.road.credit.line} ${streetsCredit(tileset)}` : streetsCredit(tileset),
       request,
       plannedAt,
@@ -304,12 +326,12 @@ export function createStreetsService(ctx: AppContext): StreetsService {
       } catch (error) {
         refusal(error, [point!], tileset);
       }
-      const settings = REACH_SETTINGS[request.mode];
+      const settings = reachSettings(request.mode, minutes);
       return {
         mode: request.mode,
         source: "streets",
         label: "Streets",
-        note: FREE_FLOWING,
+        note: reachNote(request.mode, minutes.at(-1)!),
         point: where,
         areas: { type: "FeatureCollection", features },
         settings: { denoise: settings.denoise, generalizeM: settings.generalizeM, gridM: null },

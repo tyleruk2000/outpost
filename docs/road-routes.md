@@ -201,8 +201,18 @@ form plans a drive, as above; one line under it says the other ways exist.
 
 Choose a road or a turn to see it on the map. The route card and the condensed plain text
 carry the turns too: on a door-to-door card each end is a band with its turns in smaller
-type and a box to tick. Routes on streets are not saved: print the card or copy
-the text.
+type and a box to tick. Routes on streets are saved like a drive (see
+[Saving and printing](#saving-and-printing)).
+
+### Ferries
+
+Walks, rides and the streets of a drive avoid ferries: a river bus or a foot ferry is
+taken only where the streets built offer no other way, or only one far longer. When a
+route still takes one, it says so at the top ("This walk takes a ferry from Lombard Road
+to Cadogan Pier, 2 km on the water…"), the line in the directions reads "Take the ferry
+… Check it is running: it may not be in a power cut", and the stretch on the water is
+drawn dashed on the map, as a sea crossing is on a drive. Check the ferry before you set
+off, or plan via a bridge.
 
 A way that cannot be used yet still shows, and choosing it says why in one line with the
 step that puts it right: **Add walking and cycling for** the point's country (not built
@@ -217,10 +227,13 @@ To turn the add-on on, see [Street routes on a Raspberry Pi](deployment.md#stree
 
 Press and hold (right-click) a point on the map and choose **Reachable from here**, or
 type "reachable" in the quick search for the middle of the map. A card shows the areas you
-could reach in **15 min**, **30 min** or **1 hour**: the time you choose and each shorter
-one, as three steps of one colour, darkest nearest, each with its own outline (solid 15,
-dashed 30, dotted 60) and its time written on it, so they read apart in grey too. The
-legend says which is which and where the areas come from:
+could reach by car or bicycle in up to **2 hours** (15 min, 30 min, 1 h, 1½ h, 2 h), or on
+foot in up to **8 hours** (30 min, 1, 2, 4, 6 or 8 h); each way keeps its own time. The time
+you choose is drawn with up to two shorter ones inside it (2 hours' drive: 30 minutes,
+1 and 2 hours; 8 hours on foot: 2, 4 and 8 hours), as steps of one colour, darkest nearest,
+each with its own outline (solid for the shortest, then dashed, then dotted) and its time
+written on it, so they read apart in grey too. The legend says which is which and where
+the areas come from:
 
 - **Streets**: over every street, by car, bicycle or on foot, where walking and cycling is
   added for the place.
@@ -232,15 +245,26 @@ yet.") with **Add roads for France**; walking and cycling, where it is not added
 names that country too ("Add walking and cycling for France"). Outpost never offers
 your home country in place of where the point is.
 
-Both are for **free-flowing traffic, no stops**. Tick **Reachable areas** in **Print or
+Both are for **free-flowing traffic, no stops**; on foot and by bicycle, a steady pace on
+the flat with no stops (the streets hold no heights, so hills are not counted). Over 2 hours
+on foot, or an hour by bicycle, the card adds that no rests are counted: a real day's walk
+reaches far less than the 8 hour area. Tick **Reachable areas** in **Print or
 save as PDF** to put them on a paper map, with the legend in words under it.
 
 ## Saving and printing
 
-Give the route a name and press **Save route**. It is kept with its directions, so it opens
-and prints even if you later remove or update the routes. Saved routes are listed under
-the form, as **Saved road routes**: open one to rename it, delete it, print it or **Plan it
-again** on the routes you have now.
+Any route can be saved: a drive, door to door, a walk or a ride, with its via points.
+Give it a name and press **Save route**. It is kept exactly as it was planned, with its
+directions and the day it was planned: opening it never plans it again, so it opens and
+prints even if you later remove or update the routes or the streets. Saved routes are
+listed under the form, as **Saved routes**, each with its way of travelling: open one to
+rename it, delete it, print it, save it as GPX or **Plan it again** on what you have now.
+
+**Save GPX**, on a planned or a saved route, downloads the route as a GPX 1.1 file, made on
+this device, for a GPS, a walking app or another map: the line as a track, the start, via
+points and end as waypoints, and each line of the directions as a route point named with
+its instruction ("Turn left onto Church Street (B2450)"). The file carries the map credit
+and any warnings, such as a ferry.
 
 **Printable route card (PDF)** makes the card on this device, on A4 or US Letter: first an
 overview map of the whole route (your offline map where a place covers it, otherwise the

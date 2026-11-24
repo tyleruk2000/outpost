@@ -11,7 +11,7 @@
  *    line before, and leaving a roundabout folds into entering it;
  *  - distances are in the units asked for: metres and kilometres, or yards and miles.
  */
-import type { RoadDistanceUnit, StreetDirections, StreetLine, StreetLineKind } from "@outpost/shared";
+import type { RoadDistanceUnit, StreetDirections, StreetFerry, StreetLine, StreetLineKind } from "@outpost/shared";
 import { roadDistanceText } from "@outpost/shared";
 import { simplifyIndices } from "../roads/build.ts";
 import { type Costing, decodePolyline6, type Maneuver, type RouteReply } from "./client.ts";
@@ -66,6 +66,17 @@ interface Draft {
   durationS: number;
   at: [number, number];
 }
+
+/** Where a ferry leaves from (the street before it) and lands (the street after it). */
+function ferryEnds(previous: Draft | undefined, next: Maneuver | undefined): { from: string | null; to: string | null } {
+  return {
+    from: previous && previous.kind !== "ferry" ? previous.name : null,
+    to: next ? wayName(next.begin_street_names ?? next.street_names) : null,
+  };
+}
+
+/** A manoeuvre on the water: Valhalla's "enter the ferry", or one it marks as having a ferry (not the landing). */
+const onFerry = (m: Maneuver) => m.type === 28 || (m.ferry === true && m.type !== 29);
 
 /** One manoeuvre in words; null when it adds nothing to the line before (and its distance joins that line). */
 function lineFor(
@@ -159,10 +170,16 @@ function lineFor(
     }
     case 27:
       return previous?.kind === "roundabout" ? null : { kind: "roundabout", text: `Leave the roundabout${onto}`, name };
-    case 28:
-      return { kind: "ferry", text: name ? `Take the ferry (${name})` : "Take the ferry", name };
+    case 28: {
+      const { from, to } = ferryEnds(previous, next);
+      return {
+        kind: "ferry",
+        text: `Take the ferry${name ? ` (${name})` : ""}${from ? ` from ${from}` : ""}${to ? ` to ${to}` : ""}. Check it is running: it may not be in a power cut`,
+        name,
+      };
+    }
     case 29:
-      return { kind: "ferry", text: "Leave the ferry", name };
+      return { kind: "ferry", text: `Leave the ferry${onto}`, name };
     case 39:
       return { kind: "steps", text: "Take the lift", name: null };
     case 40:
@@ -189,6 +206,7 @@ export function streetDirections(
   options: { units: RoadDistanceUnit; costing: Costing; viaNames?: Array<string | null> },
 ): StreetDirections {
   const lines: Draft[] = [];
+  const ferries: StreetFerry[] = [];
   const coordinates: Array<[number, number]> = [];
   const legs = reply.trip.legs;
   legs.forEach((leg, legIndex) => {
@@ -198,6 +216,12 @@ export function streetDirections(
     leg.maneuvers.forEach((m, i) => {
       const at = shape[Math.min(m.begin_shape_index, shape.length - 1)] ?? shape[0] ?? [0, 0];
       const previous = lines.at(-1);
+      if (onFerry(m)) {
+        const { from, to } = ferryEnds(previous, leg.maneuvers[i + 1]);
+        const along = shape.slice(m.begin_shape_index, m.end_shape_index + 1).map(([x, y]): [number, number] => [round5(x), round5(y)]);
+        if (along.length >= 2)
+          ferries.push({ from, to, name: wayName(m.street_names), distanceM: Math.round(m.length * 1000), coordinates: along });
+      }
       let drafted = lineFor(m, leg.maneuvers[i + 1], previous, options.costing);
       if (drafted && !last && (m.type === 4 || m.type === 5 || m.type === 6)) {
         const viaName = options.viaNames?.[legIndex] ?? null;
@@ -229,7 +253,23 @@ export function streetDirections(
     distanceM: Math.round(reply.trip.summary.length * 1000),
     durationS: Math.round(reply.trip.summary.time),
     geometry: { type: "LineString", coordinates: keep.map((i) => [round5(coordinates[i]![0]), round5(coordinates[i]![1])]) },
+    ferries,
   };
+}
+
+/**
+ * What to say when a route still takes a ferry, though Outpost asks for routes without
+ * them: there is no other way on the streets built, or only a far longer one.
+ */
+export function ferryWarnings(directions: Array<StreetDirections | null>, way: string, units: RoadDistanceUnit): string[] {
+  return directions
+    .flatMap((part) => part?.ferries ?? [])
+    .map((ferry) => {
+      const what = ferry.name ? `a ferry (${ferry.name})` : "a ferry";
+      const ends = `${ferry.from ? ` from ${ferry.from}` : ""}${ferry.to ? ` to ${ferry.to}` : ""}`;
+      const far = streetDistanceText(ferry.distanceM, units);
+      return `${way} takes ${what}${ends}, ${far} on the water: Outpost avoids ferries, so there is no other way on the streets built, or only a much longer one. Check the ferry is running before you set off; it may not be in a power cut.`;
+    });
 }
 
 const round5 = (value: number) => Math.round(value * 1e5) / 1e5;

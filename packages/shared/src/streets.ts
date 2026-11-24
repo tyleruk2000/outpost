@@ -2,7 +2,7 @@
  * Streets for routes: an optional add-on (Valhalla, in its own container, the Compose
  * profile "routes") for what Outpost's own main-roads router cannot do: real streets at
  * both ends of a drive (door to door), walking and cycling routes, and the areas
- * reachable in 15, 30 or 60 minutes. Outpost's router stays the "Drive" route and the
+ * reachable in up to 2 hours by car or bicycle, 8 hours on foot. Outpost's router stays the "Drive" route and the
  * spine of a door-to-door one. Without the add-on (most installations) none of these
  * modes is offered, except a drive-time area over Outpost's own main roads, labelled so.
  *
@@ -85,7 +85,8 @@ export interface StreetsStatusResponse {
   };
   /** Kept country files streets can be built from. */
   countryFiles: StreetsCountryFile[];
-  reachMinutes: readonly number[];
+  /** The times that can be asked for each way, in minutes (STREETS_REACH_MINUTES). */
+  reachMinutes: Readonly<Record<StreetsReachMode, readonly number[]>>;
 }
 
 export interface StreetsCountryFile {
@@ -189,6 +190,18 @@ export interface StreetLine {
   at: [number, number];
 }
 
+/** A stretch of a route on a ferry: Outpost asks for routes that avoid them, so one is there only for want of another way. */
+export interface StreetFerry {
+  /** Where it leaves from and lands, as the streets name them; null when they have no name. */
+  from: string | null;
+  to: string | null;
+  /** The ferry's own name where the streets give one ("Woolwich Ferry"). */
+  name: string | null;
+  distanceM: number;
+  /** [lon, lat] pairs along the water, for drawing it dashed. */
+  coordinates: Array<[number, number]>;
+}
+
 /** Turn-by-turn directions for streets: a whole walk or ride, or one end of a drive. */
 export interface StreetDirections {
   lines: StreetLine[];
@@ -196,6 +209,8 @@ export interface StreetDirections {
   durationS: number;
   /** [lon, lat] pairs, simplified for drawing. */
   geometry: { type: "LineString"; coordinates: Array<[number, number]> };
+  /** The stretches on a ferry, in order; absent from routes saved before ferries were picked out. */
+  ferries?: StreetFerry[];
 }
 
 export interface StreetsRouteResult {
@@ -225,13 +240,22 @@ export interface StreetsRouteResult {
 
 // ── Reachable areas ─────────────────────────────────────────────────────────
 
-export const STREETS_REACH_MINUTES = [15, 30, 60] as const;
 export type StreetsReachMode = "drive" | "walk" | "cycle";
+
+/** The times that can be asked, in minutes, for each way: up to 2 hours by car or bicycle, 8 hours on foot. */
+export const STREETS_REACH_MINUTES = {
+  drive: [15, 30, 60, 90, 120],
+  cycle: [15, 30, 60, 90, 120],
+  walk: [30, 60, 120, 240, 360, 480],
+} as const satisfies Record<StreetsReachMode, readonly number[]>;
+
+/** At most this many times are drawn at once, one inside another. */
+export const STREETS_REACH_MAX_AREAS = 3;
 
 export interface StreetsReachRequest {
   point: RoadRoutePoint;
   mode: StreetsReachMode;
-  /** One to three of 15, 30 and 60. */
+  /** One to three of the times in STREETS_REACH_MINUTES for the mode. */
   minutes: number[];
   /** "auto" (default): streets when ready, else Outpost's main roads for a drive. "main-roads": always Outpost's own. */
   source?: "auto" | "main-roads";

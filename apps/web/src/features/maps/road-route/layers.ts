@@ -1,5 +1,5 @@
 /**
- * A planned road route on the map: its main roads as a bold line, a crossing dashed, the
+ * A planned road route on the map: its main roads as a bold line, a crossing or a ferry dashed, the
  * leg chosen in the directions thicker, and the start, via points and end marked.
  */
 import type { RoadRouteResult, StreetsRouteResult } from "@outpost/shared";
@@ -45,6 +45,14 @@ export function streetsRouteData(result: StreetsRouteResult, selected: number | 
     properties: { kind: "street", selected: false },
     geometry: part.geometry,
   }));
+  // A ferry on the way (taken only for want of another): dashed over the streets, as a crossing is on a drive.
+  const ferries: FeatureCollection["features"] = parts.flatMap((part) =>
+    (part.ferries ?? []).map((ferry) => ({
+      type: "Feature" as const,
+      properties: { kind: "crossing", selected: false },
+      geometry: { type: "LineString" as const, coordinates: ferry.coordinates },
+    })),
+  );
   // On streets all the way, the ends are the walk's or the ride's own; a drive's are Outpost's route's points.
   const points: FeatureCollection["features"] = [];
   const line = result.streets?.geometry.coordinates;
@@ -57,8 +65,17 @@ export function streetsRouteData(result: StreetsRouteResult, selected: number | 
       });
     end("start", line[0]!);
     end("end", line.at(-1)!);
+    // The via points of a walk or a ride, marked as a drive's are.
+    result.request.points.slice(1, -1).forEach((point, index) => {
+      if ("lat" in point)
+        points.push({
+          type: "Feature",
+          properties: { kind: "point", role: "via", label: `Via ${index + 1}` },
+          geometry: { type: "Point", coordinates: [point.lon, point.lat] },
+        });
+    });
   }
-  return { type: "FeatureCollection", features: [...streets, ...base.features, ...points] };
+  return { type: "FeatureCollection", features: [...streets, ...base.features, ...ferries, ...points] };
 }
 
 /** Whatever the route panel is showing: a road route, or one planned on streets. */
@@ -99,6 +116,15 @@ export function roadRouteLayers(theme: MapTheme): LayerSpecification[] {
       filter: kind("street"),
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": theme.primary, "line-width": 3.5 },
+    },
+    {
+      // Under the dashes, the line beneath them taken out: a ferry over a walk's streets reads as dashes, not a solid line.
+      id: "o-road-route-crossing-gap",
+      type: "line",
+      source: ROAD_ROUTE_SOURCE,
+      filter: kind("crossing"),
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: { "line-color": theme.page, "line-width": width(5, 7) },
     },
     {
       id: "o-road-route-crossing",

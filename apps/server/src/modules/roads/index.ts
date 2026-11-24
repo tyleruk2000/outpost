@@ -55,21 +55,63 @@ const coverageSchema = z.object({
 const idParams = z.object({ id: z.string().min(1).max(40) });
 const routeName = z.string().trim().min(1, "Give the route a name.").max(160);
 /** A saved route is kept as it was planned: checked for its shape, not planned again. */
+const summary = z.object({ distanceM: z.number().finite(), durationS: z.number().finite() }).passthrough();
+const roadRouteShape = z
+  .object({
+    legs: z.array(z.record(z.string(), z.unknown())).max(400),
+    summary,
+    geometry: z.object({ type: z.literal("MultiLineString"), coordinates: z.array(z.array(z.tuple([lon, lat]))).max(64) }),
+    snapped: z.array(z.record(z.string(), z.unknown())).max(12),
+    warnings: z.array(z.string().max(1000)).max(50),
+    credit: z.object({ line: z.string().max(1000) }).passthrough(),
+    request: z.record(z.string(), z.unknown()),
+    plannedAt: z.number().int(),
+    networks: z.array(z.record(z.string(), z.unknown())).max(200),
+  })
+  .passthrough();
+const streetLine = z
+  .object({
+    kind: z.string().max(20),
+    text: z.string().max(2000),
+    distanceM: z.number().finite(),
+    durationS: z.number().finite(),
+    distanceText: z.string().max(40),
+    at: z.tuple([lon, lat]),
+  })
+  .passthrough();
+const streetDirections = z
+  .object({
+    lines: z.array(streetLine).max(5000),
+    distanceM: z.number().finite(),
+    durationS: z.number().finite(),
+    geometry: z.object({ type: z.literal("LineString"), coordinates: z.array(z.tuple([lon, lat])).max(200_000) }),
+    ferries: z
+      .array(z.object({ coordinates: z.array(z.tuple([lon, lat])).max(200_000) }).passthrough())
+      .max(50)
+      .optional(),
+  })
+  .passthrough();
+/** A route planned on streets: door to door, a walk or a ride. */
+const streetsRouteShape = z
+  .object({
+    mode: z.enum(["drive-door", "walk", "cycle"]),
+    spine: z.enum(["main-roads", "streets"]).nullable(),
+    road: roadRouteShape.nullable(),
+    start: streetDirections.nullable(),
+    end: streetDirections.nullable(),
+    streets: streetDirections.nullable(),
+    summary,
+    geometry: z.object({ type: z.literal("MultiLineString"), coordinates: z.array(z.array(z.tuple([lon, lat]))).max(80) }),
+    warnings: z.array(z.string().max(1000)).max(50),
+    credit: z.string().max(2000),
+    request: z.object({ points: z.array(z.record(z.string(), z.unknown())).min(2).max(12) }).passthrough(),
+    plannedAt: z.number().int(),
+  })
+  .passthrough();
+/** A saved route is kept as it was planned: checked for its shape, not planned again. */
 const savedRouteSchema = z.object({
   name: routeName,
-  route: z
-    .object({
-      legs: z.array(z.record(z.string(), z.unknown())).max(400),
-      summary: z.object({ distanceM: z.number().finite(), durationS: z.number().finite() }).passthrough(),
-      geometry: z.object({ type: z.literal("MultiLineString"), coordinates: z.array(z.array(z.tuple([lon, lat]))).max(64) }),
-      snapped: z.array(z.record(z.string(), z.unknown())).max(12),
-      warnings: z.array(z.string().max(1000)).max(50),
-      credit: z.object({ line: z.string().max(1000) }).passthrough(),
-      request: z.record(z.string(), z.unknown()),
-      plannedAt: z.number().int(),
-      networks: z.array(z.record(z.string(), z.unknown())).max(200),
-    })
-    .passthrough(),
+  route: z.union([streetsRouteShape, roadRouteShape]),
 });
 
 export async function registerRoads(app: FastifyInstance, ctx: AppContext): Promise<void> {

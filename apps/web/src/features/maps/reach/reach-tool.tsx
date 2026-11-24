@@ -1,16 +1,24 @@
 /**
- * "Reachable from here": the areas reachable in 15, 30 or 60 minutes from a point, by car,
- * bicycle or on foot, from the menu a long press or a right-click opens and from the quick
- * search. Drawn as three steps of one hue with an outline of its own for each time, said in
- * a card with a legend, the source ("Streets", or "Main roads only" where the optional
- * streets service is not installed) and "Free-flowing traffic, no stops". Printed with the
+ * "Reachable from here": the areas reachable from a point by car or bicycle (up to 2 hours)
+ * or on foot (up to 8 hours), from the menu a long press or a right-click opens and from
+ * the quick search. Each way keeps its own time. A time draws up to three areas, one inside
+ * another (2 hours on foot: 30 minutes, 1 and 2 hours), as steps of one hue with an outline
+ * of its own for each, said in a card with a legend, the source ("Streets", or "Main roads
+ * only" where the optional streets service is not installed) and what the times leave out
+ * ("Free-flowing traffic, no stops", and no rests counted on a long walk). Printed with the
  * map (print/overlays.ts).
  *
  * The server works it out (`POST /api/streets/reach`): over every street where streets are
  * built, else over Outpost's own main roads for a drive, which every installation with a
  * road network can do.
  */
-import type { RoadCoverageCountry, StreetsReachMode, StreetsReachRequest, StreetsStatusResponse } from "@outpost/shared";
+import {
+  type RoadCoverageCountry,
+  STREETS_REACH_MINUTES,
+  type StreetsReachMode,
+  type StreetsReachRequest,
+  type StreetsStatusResponse,
+} from "@outpost/shared";
 import { CircleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
@@ -24,34 +32,64 @@ import { EMPTY } from "../map/overlays";
 import { MapCard } from "../map-chrome";
 import { useRoadCoverage } from "../road-route/data";
 import { AddRoadsButton, CountryProgress, progressText } from "../road-route/route-needs";
-import { addStreetsLabel, reachTimeText, streetsMissFor, unavailableLine } from "../road-route/street-words";
+import { addStreetsLabel, reachTimeShort, reachTimeText, streetsMissFor, unavailableLine } from "../road-route/street-words";
 import { useStreetsReach, useStreetsStatus } from "../road-route/streets-data";
 import { REACH_DASHES, REACH_FILL_OPACITY, REACH_SOURCE, reachBounds, reachData, setReachShown } from "./reach-map";
 
 const PREFS_KEY = "outpost.maps.reach";
-const TIMES = [15, 30, 60] as const;
-type ReachTime = (typeof TIMES)[number];
+
+type ReachTimes = Record<StreetsReachMode, number>;
 
 interface ReachPrefs {
   mode: StreetsReachMode;
-  minutes: ReachTime;
+  /** The time chosen for each way: a walk keeps its 4 hours while a drive keeps its 30 minutes. */
+  minutes: ReachTimes;
 }
 
-const isPrefs = (value: unknown): value is ReachPrefs =>
-  typeof value === "object" &&
-  value !== null &&
-  ["drive", "walk", "cycle"].includes((value as ReachPrefs).mode) &&
-  (TIMES as readonly number[]).includes((value as ReachPrefs).minutes);
+/** Half an hour by car or bicycle, an hour on foot. */
+export const REACH_DEFAULT_MINUTES: ReachTimes = { drive: 30, cycle: 30, walk: 60 };
+
+const MODES = ["drive", "walk", "cycle"] as const;
+
+const isPrefs = (value: unknown): value is ReachPrefs => {
+  if (typeof value !== "object" || value === null) return false;
+  const prefs = value as ReachPrefs;
+  return (
+    (MODES as readonly string[]).includes(prefs.mode) &&
+    typeof prefs.minutes === "object" &&
+    prefs.minutes !== null &&
+    MODES.every((mode) => (STREETS_REACH_MINUTES[mode] as readonly number[]).includes(prefs.minutes[mode]))
+  );
+};
 
 export const REACH_MODES: Array<{ value: StreetsReachMode; label: string }> = [
   { value: "drive", label: "Drive" },
   { value: "cycle", label: "Cycle" },
   { value: "walk", label: "Walk" },
 ];
-const TIME_OPTIONS = TIMES.map((minutes) => ({ value: String(minutes), label: reachTimeText(minutes) }));
 
-/** Each time up to the one chosen: 30 minutes draws 15 and 30, an hour all three. */
-export const timesUpTo = (minutes: number) => TIMES.filter((each) => each <= minutes);
+/**
+ * The areas drawn for the time chosen, shortest first: the time itself and up to two
+ * shorter ones that read as steps (about a half and a quarter of it).
+ */
+const AREAS: Record<StreetsReachMode, Record<number, number[]>> = {
+  drive: { 15: [15], 30: [15, 30], 60: [15, 30, 60], 90: [30, 60, 90], 120: [30, 60, 120] },
+  cycle: { 15: [15], 30: [15, 30], 60: [15, 30, 60], 90: [30, 60, 90], 120: [30, 60, 120] },
+  walk: { 30: [30], 60: [30, 60], 120: [30, 60, 120], 240: [60, 120, 240], 360: [120, 240, 360], 480: [120, 240, 480] },
+};
+export const reachAreas = (mode: StreetsReachMode, minutes: number): number[] => AREAS[mode][minutes] ?? [minutes];
+
+/** The choices for a way: short on the button ("8 h"), in full for a screen reader ("8 hours"). */
+const timeOptions = (mode: StreetsReachMode) =>
+  STREETS_REACH_MINUTES[mode].map((minutes) => ({
+    value: String(minutes),
+    label: (
+      <>
+        <span aria-hidden>{reachTimeShort(minutes)}</span>
+        <span className="sr-only">{reachTimeText(minutes)}</span>
+      </>
+    ),
+  }));
 
 /** Whether this way can be drawn here now. */
 export function reachAvailable(status: StreetsStatusResponse | undefined, mode: StreetsReachMode): boolean {
@@ -59,9 +97,9 @@ export function reachAvailable(status: StreetsStatusResponse | undefined, mode: 
   return mode === "drive" ? status.modes.reach.drive !== null : status.modes.reach[mode];
 }
 
-/** A small picture of one step: its share of the hue, and its outline. */
-export function ReachSwatch({ minutes, steps }: { minutes: number; steps: number }) {
-  const dash = REACH_DASHES[minutes];
+/** A small picture of one step (0 the shortest time): its share of the hue, and its outline. */
+export function ReachSwatch({ step, steps }: { step: number; steps: number }) {
+  const dash = REACH_DASHES[step] ?? null;
   // The nested areas lie one over another: the shortest time is covered `steps` times.
   const opacity = 1 - (1 - REACH_FILL_OPACITY) ** steps;
   return (
@@ -128,11 +166,12 @@ export function useReach({
   onOpenNetworks: (countries?: readonly string[]) => void;
 }): ReachTool {
   const [at, setAt] = useState<{ position: LatLon; name: string | null } | null>(null);
-  const [prefs, setPrefs] = useStoredState<ReachPrefs>(PREFS_KEY, isPrefs, { mode: "drive", minutes: 30 });
+  const [prefs, setPrefs] = useStoredState<ReachPrefs>(PREFS_KEY, isPrefs, { mode: "drive", minutes: REACH_DEFAULT_MINUTES });
   const status = useStreetsStatus();
   const installed = status.data?.installed ?? false;
   // Without the streets service only a drive can be drawn, whatever was chosen elsewhere.
   const mode: StreetsReachMode = installed ? prefs.mode : "drive";
+  const minutes = prefs.minutes[mode];
   // The point's country and where its roads stand, worked out on this device: what to offer is for there, never home.
   const coverage = useRoadCoverage(at ? [at.position] : []);
   const here = at ? (coverage.data?.countries[0] ?? null) : null;
@@ -159,10 +198,10 @@ export function useReach({
         ? {
             point: { lat: at.position.lat, lon: at.position.lon, ...(at.name ? { name: at.name } : {}) },
             mode,
-            minutes: timesUpTo(prefs.minutes),
+            minutes: reachAreas(mode, minutes),
           }
         : null,
-    [at, available, mode, prefs.minutes],
+    [at, available, mode, minutes],
   );
   const reach = useStreetsReach(request);
   const shown = at && request ? reach.data : undefined;
@@ -231,10 +270,11 @@ export function useReach({
           />
         ) : null}
         <Segmented
+          // Each way has its own times (up to 2 hours by car or bicycle, 8 on foot), and keeps the one chosen for it.
           label="Time"
-          value={String(prefs.minutes)}
-          onChange={(next) => setPrefs((current) => ({ ...current, minutes: Number(next) as ReachTime }))}
-          options={TIME_OPTIONS}
+          value={String(minutes)}
+          onChange={(next) => setPrefs((current) => ({ ...current, minutes: { ...current.minutes, [mode]: Number(next) } }))}
+          options={timeOptions(mode)}
         />
         <div aria-live="polite">
           {status.isPending || (at && coverage.isPending) || (request && reach.isPending) ? (
@@ -265,7 +305,7 @@ export function useReach({
               <ul aria-label="Legend" className="grid gap-1.5">
                 {shown.areas.features.map((feature, index, all) => (
                   <li key={feature.properties.minutes} className="flex items-center gap-2.5 text-small text-ink">
-                    <ReachSwatch minutes={feature.properties.minutes} steps={all.length - index} />
+                    <ReachSwatch step={index} steps={all.length - index} />
                     Within {reachTimeText(feature.properties.minutes)}
                   </li>
                 ))}

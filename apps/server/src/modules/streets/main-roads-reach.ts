@@ -15,9 +15,11 @@
  *     main road), with enclosed gaps filled, traced round into polygons and simplified.
  *
  * The grid's cell is set by the shortest time asked (`gridM`: 375 m for 15 minutes, 750 m
- * for 30, 1.5 km for an hour). Each area is grown and simplified by its own time's cell,
- * so an hour's area is the same shape whether or not a quarter of an hour is asked with
- * it, and an answer stays small.
+ * for 30, 1.5 km for an hour, 3 km for two), and never so small that the grid has more
+ * than MAX_CELLS_ACROSS cells across: 15 minutes asked with 2 hours gets cells of about
+ * 400 m over a grid about 480 km across, 1.44 million cells (some 15 MB while it works). Each area is grown and simplified by its own time's cell, so an hour's area is
+ * the same shape whether or not a quarter of an hour is asked with it, and an answer stays
+ * small; 2 hours' area is drawn at 3 km, a fiftieth of how far it reaches.
  */
 import { CLASS, simplifyIndices } from "../roads/build.ts";
 import { edgeShape, type Graph, meters } from "../roads/graph.ts";
@@ -39,6 +41,9 @@ export interface MainRoadsReach {
 
 /** The grid cell used for a reach of this many minutes. */
 export const gridFor = (minutes: number) => Math.max(250, minutes * 25);
+
+/** The most cells the grid has across, whatever the times: it bounds the memory and the work. */
+export const MAX_CELLS_ACROSS = 1200;
 
 class MinHeap {
   keys = new Float64Array(1024);
@@ -95,12 +100,13 @@ export function mainRoadsReach(graph: Graph, point: { lat: number; lon: number }
   const join = candidates.filter((c) => graph.componentSize[c.component]! === piece).sort((a, b) => a.distanceM - b.distanceM)[0]!;
   const t0 = join.distanceM / (LOCAL_KMH / 3.6);
 
-  const gridM = gridFor(minutes[0]!);
   const lat0 = point.lat;
   const lon0 = point.lon;
   const kx = Math.cos(lat0 * DEG) * 111_320;
   const ky = 110_574;
-  const reachM = Math.max(join.distanceM, 0) + longest * (MAX_KMH / 3.6) + 2 * gridM;
+  const farthest = Math.max(join.distanceM, 0) + longest * (MAX_KMH / 3.6);
+  const gridM = Math.max(gridFor(minutes[0]!), Math.ceil((2 * farthest) / (MAX_CELLS_ACROSS - 8)));
+  const reachM = farthest + 2 * gridM;
   const half = Math.ceil(reachM / gridM) + 2;
   const size = 2 * half;
   const time = new Float32Array(size * size).fill(Number.POSITIVE_INFINITY);

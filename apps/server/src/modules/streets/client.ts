@@ -9,9 +9,27 @@ import { AppError } from "../../core/errors.ts";
 
 export type Costing = "auto" | "bicycle" | "pedestrian";
 
+/**
+ * Ferries only where there is no other way. Valhalla's `use_ferry` runs 0 to 1; its
+ * pedestrian costing defaults to 1 (a ferry costs half its time), so a walk from Battersea
+ * to Chelsea took the river bus. At 0 a ferry is still allowed, but costs ten times its
+ * time and six hours to board (valhalla/sif/dynamiccost.h, read 24 Nov 2026), so a route
+ * takes one only when the streets offer nothing else: an island, a river with no bridge.
+ * Rail ferries (Le Shuttle) are a drive's own choice, made in Outpost's crossing list.
+ */
+export const COSTING_OPTIONS: Record<Costing, Record<string, number>> = {
+  pedestrian: { use_ferry: 0 },
+  bicycle: { use_ferry: 0 },
+  auto: { use_ferry: 0 },
+};
+
 const ROUTE_TIMEOUT_MS = 20_000;
-/** Measured on a Pi 5: a 60-minute drive area takes about 5 s; three areas in one ask about 4.6 s. */
-const ISOCHRONE_TIMEOUT_MS = 30_000;
+/**
+ * Measured on a Pi 5: a 60-minute drive area takes about 5 s; three areas in one ask about
+ * 4.6 s, each doubling of the time about three times the last. A 2 hour drive or a long
+ * walk covers far more streets, so it is given longer before Outpost gives up on it.
+ */
+export const isochroneTimeoutMs = (longestMinutes: number) => (longestMinutes > 60 ? 90_000 : 30_000);
 const ROUTE_MAX_BYTES = 4 * 1024 * 1024;
 const ISOCHRONE_MAX_BYTES = 8 * 1024 * 1024;
 
@@ -192,6 +210,7 @@ export function createStreetsClient(baseUrl: () => string): StreetsClient {
         {
           locations: points.map((p) => ({ lat: p.lat, lon: p.lon, type: "break" })),
           costing,
+          costing_options: { [costing]: COSTING_OPTIONS[costing] },
           units: "kilometers",
           language: "en-GB",
         },
@@ -207,13 +226,14 @@ export function createStreetsClient(baseUrl: () => string): StreetsClient {
         {
           locations: [{ lat: point.lat, lon: point.lon }],
           costing,
+          costing_options: { [costing]: COSTING_OPTIONS[costing] },
           contours: minutes.map((time) => ({ time })),
           polygons: true,
           denoise,
           generalize: generalizeM,
         },
         isochroneReplySchema,
-        ISOCHRONE_TIMEOUT_MS,
+        isochroneTimeoutMs(Math.max(...minutes)),
         ISOCHRONE_MAX_BYTES,
         signal,
       );

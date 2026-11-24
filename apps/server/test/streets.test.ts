@@ -6,11 +6,11 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { MapDataResponse, StreetsReachResult, StreetsRouteResult, StreetsStatusResponse } from "@outpost/shared";
+import type { MapDataResponse, SavedRoadRouteDto, StreetsReachResult, StreetsRouteResult, StreetsStatusResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { RouteReply } from "../src/modules/streets/client.ts";
 import { addressProblem } from "../src/modules/streets/connection.ts";
-import { traceRings } from "../src/modules/streets/main-roads-reach.ts";
+import { MAX_CELLS_ACROSS, mainRoadsReach, traceRings } from "../src/modules/streets/main-roads-reach.ts";
 import { streetDirections, streetDistanceText, wayName } from "../src/modules/streets/narrative.ts";
 import { estimateBuild } from "../src/modules/streets/tiles.ts";
 import { waitFor } from "./fixtures/downloads/file-server.ts";
@@ -30,6 +30,30 @@ const DOVER = { lat: 51.1265, lon: 1.3135, name: "Dover" };
 const LEATHERHEAD = { lat: 51.2965, lon: -0.3303, name: "Leatherhead" };
 const BOX_HILL = { lat: 51.2556, lon: -0.3106, name: "Box Hill" };
 const REIMS = { lat: 49.27, lon: 4.06, name: "Reims" };
+
+/** Valhalla's shape encoding (polyline at six decimal places) of [lon, lat] pairs. */
+function encodePolyline6(points: Array<[number, number]>): string {
+  let out = "";
+  let lastLat = 0;
+  let lastLon = 0;
+  const put = (value: number) => {
+    let v = value < 0 ? ~(value << 1) : value << 1;
+    while (v >= 0x20) {
+      out += String.fromCharCode((0x20 | (v & 0x1f)) + 63);
+      v >>= 5;
+    }
+    out += String.fromCharCode(v + 63);
+  };
+  for (const [lon, lat] of points) {
+    const la = Math.round(lat * 1e6);
+    const lo = Math.round(lon * 1e6);
+    put(la - lastLat);
+    put(lo - lastLon);
+    lastLat = la;
+    lastLon = lo;
+  }
+  return out;
+}
 
 async function installGreatBritainRoads(app: TestApp) {
   const location = app.ctx.services.storage.getDefault();
@@ -212,7 +236,7 @@ describe("without the streets service", () => {
     const build = await app.api("POST", "/api/streets/tiles", { regions: ["europe/great-britain"] });
     expect(build.status).toBe(400);
     expect(build.body.error.message).toMatch(/not installed/);
-    const walk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [15] });
+    const walk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [30] });
     expect(walk.status).toBe(415);
     expect(standIn.requests).toEqual([]);
   });
@@ -220,7 +244,19 @@ describe("without the streets service", () => {
   it("checks what is asked", async () => {
     const bad = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [20] });
     expect(bad.status).toBe(400);
-    expect(bad.body.error.message).toMatch(/15, 30 or 60/);
+    expect(bad.body.error.message).toBe("By car, choose 15, 30, 60, 90 or 120 minutes.");
+    // Each way has its own times: up to 2 hours by car or bicycle, 8 hours on foot.
+    const longDrive = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [240] });
+    expect(longDrive.body.error.message).toBe("By car, choose 15, 30, 60, 90 or 120 minutes.");
+    const longRide = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "cycle", minutes: [480] });
+    expect(longRide.body.error.message).toBe("By bicycle, choose 15, 30, 60, 90 or 120 minutes.");
+    const shortWalk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [15] });
+    expect(shortWalk.body.error.message).toBe("On foot, choose 30 minutes, or 1, 2, 4, 6 or 8 hours.");
+    const four = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [30, 60, 120, 480] });
+    expect(four.body.error.message).toMatch(/up to 3 times/);
+    // An 8 hour walk is a fair question; here it fails only for want of streets.
+    const longWalk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [120, 240, 480] });
+    expect(longWalk.body.error.message).toMatch(/need walking and cycling/);
     const one = await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD], mode: "walk" });
     expect(one.status).toBe(400);
   });
@@ -259,6 +295,30 @@ describe("without the streets service", () => {
     expect(east(reach.areas.features[0]!)).toBeLessThan(0.2);
     expect(east(reach.areas.features[1]!)).toBeGreaterThan(0.5);
     expect(standIn.requests).toEqual([]);
+  });
+
+  it("keeps a 2 hour drive over main roads bounded", async () => {
+    const graph = await app.ctx.services.roads.loadGraph();
+    const started = performance.now();
+    const both = mainRoadsReach(graph, LEATHERHEAD, [15, 60, 120])!;
+    const ms = performance.now() - started;
+    // The 15 minute cell would make a grid about 1,280 cells across for 2 hours: it is held to 1,200 across.
+    expect(both.gridM).toBeGreaterThan(375);
+    expect(Math.ceil((2 * (both.join.distanceM + 120 * 60 * (120 / 3.6))) / both.gridM)).toBeLessThanOrEqual(MAX_CELLS_ACROSS);
+    expect(ms).toBeLessThan(5_000);
+    const alone = mainRoadsReach(graph, LEATHERHEAD, [120])!;
+    expect(alone.gridM).toBe(3_000);
+    // The same 2 hours whether or not 15 minutes is asked with it: drawn at its own 3 km.
+    const extent = (reach: typeof alone) => {
+      const area = reach.areas.at(-1)!.polygons.flat();
+      return Math.max(...area.map((p) => p[0])) - Math.min(...area.map((p) => p[0]));
+    };
+    expect(Math.abs(extent(both) - extent(alone))).toBeLessThan(0.1);
+    const { status, body } = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [30, 60, 120] });
+    expect(status).toBe(200);
+    const reach = body as StreetsReachResult;
+    expect(reach.areas.features.map((f) => f.properties.minutes)).toEqual([30, 60, 120]);
+    expect(JSON.stringify(reach).length).toBeLessThan(200_000);
   });
 
   it("shows no streets row in Map data", async () => {
@@ -318,11 +378,119 @@ describe("with the streets service", () => {
     expect(ride.streets!.lines.some((l) => /miles|yards/.test(l.distanceText))).toBe(true);
   });
 
+  it("asks for routes without ferries, and says so plainly when one still takes a ferry", async () => {
+    // Battersea to Chelsea: the walk Valhalla's default pedestrian costing sent by river bus.
+    const shape: Array<[number, number]> = [
+      [-0.1854, 51.4635],
+      [-0.183, 51.4655],
+      [-0.1816, 51.4669],
+      [-0.174, 51.475],
+      [-0.1664, 51.4829],
+      [-0.165, 51.484],
+    ];
+    const reply = {
+      trip: {
+        legs: [
+          {
+            shape: encodePolyline6(shape),
+            summary: { length: 3.2, time: 1500 },
+            maneuvers: [
+              {
+                type: 1,
+                instruction: "",
+                street_names: ["Lombard Road"],
+                bearing_after: 20,
+                length: 0.5,
+                time: 360,
+                begin_shape_index: 0,
+                end_shape_index: 2,
+              },
+              {
+                type: 28,
+                instruction: "",
+                street_names: ["RB6"],
+                length: 2.0,
+                time: 600,
+                begin_shape_index: 2,
+                end_shape_index: 4,
+                ferry: true,
+                travel_mode: "pedestrian",
+              },
+              {
+                type: 29,
+                instruction: "",
+                begin_street_names: ["Cadogan Pier"],
+                street_names: ["Cheyne Walk"],
+                length: 0.7,
+                time: 540,
+                begin_shape_index: 4,
+                end_shape_index: 5,
+              },
+              { type: 4, instruction: "", length: 0, time: 0, begin_shape_index: 5, end_shape_index: 5 },
+            ],
+          },
+        ],
+        summary: { length: 3.2, time: 1500, has_ferry: true },
+      },
+    };
+    const before = standIn.requests.length;
+    standIn.override = (p) => (p === "/route" ? { status: 200, body: JSON.stringify(reply) } : null);
+    try {
+      const walk = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "walk" }))
+        .body as StreetsRouteResult;
+      const sent = standIn.requests.slice(before).find((r) => r.path === "/route")!.body!;
+      expect(sent.costing_options).toEqual({ pedestrian: { use_ferry: 0 } });
+      expect(walk.streets!.lines.map((l) => l.text)).toContain(
+        "Take the ferry (RB6) from Lombard Road to Cadogan Pier. Check it is running: it may not be in a power cut",
+      );
+      expect(walk.streets!.ferries).toEqual([
+        { from: "Lombard Road", to: "Cadogan Pier", name: "RB6", distanceM: 2000, coordinates: shape.slice(2, 5) },
+      ]);
+      expect(walk.warnings[0]).toBe(
+        "This walk takes a ferry (RB6) from Lombard Road to Cadogan Pier, 2 km on the water: Outpost avoids ferries, so there is no other way on the streets built, or only a much longer one. Check the ferry is running before you set off; it may not be in a power cut.",
+      );
+
+      await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "cycle" });
+      const ride = standIn.requests.filter((r) => r.path === "/route").at(-1)!.body!;
+      expect(ride.costing_options).toEqual({ bicycle: { use_ferry: 0 } });
+    } finally {
+      standIn.override = null;
+    }
+    // A walk with no ferry says nothing of one.
+    const plain = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "walk" }))
+      .body as StreetsRouteResult;
+    expect(plain.streets!.ferries).toEqual([]);
+    expect(plain.warnings.join(" ")).not.toMatch(/ferry/);
+  });
+
+  it("saves a walk with a via point as it was planned, and opens, renames and deletes it", async () => {
+    const via = { lat: 51.27, lon: -0.32, name: "Mickleham" };
+    const walk = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, via, BOX_HILL], mode: "walk" }))
+      .body as StreetsRouteResult;
+    const asked = standIn.requests.length;
+    const saved = (await app.api("POST", "/api/roads/routes", { name: "Box Hill walk", route: walk })).body as SavedRoadRouteDto;
+    expect(saved).toMatchObject({ name: "Box Hill walk", mode: "walk", fromTo: "Leatherhead to Box Hill", plannedAt: walk.plannedAt });
+    const listed = (await app.api("GET", "/api/roads/routes")).body.routes as SavedRoadRouteDto[];
+    expect(listed.find((r) => r.id === saved.id)).toMatchObject({ mode: "walk", distanceM: walk.summary.distanceM });
+    const back = (await app.api("GET", `/api/roads/routes/${saved.id}`)).body as SavedRoadRouteDto;
+    expect(back.route).toEqual(walk);
+    // Opening it asked nothing of the streets service: the plan as made.
+    expect(standIn.requests.length).toBe(asked);
+    expect((await app.api("PATCH", `/api/roads/routes/${saved.id}`, { name: "Downs" })).body).toMatchObject({
+      name: "Downs",
+      mode: "walk",
+    });
+    expect((await app.api("DELETE", `/api/roads/routes/${saved.id}`)).status).toBe(200);
+    // Something not a route at all is refused.
+    const odd = await app.api("POST", "/api/roads/routes", { name: "x", route: { mode: "walk" } });
+    expect(odd.status).toBe(400);
+  });
+
   it("says plainly when a point is outside the streets built", async () => {
     const { status, body } = await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, REIMS], mode: "cycle" });
     expect(status).toBe(400);
     expect(body.error.message).toBe("Walking and cycling is not added for France. Add it under Offline maps.");
-    const reach = await app.api("POST", "/api/streets/reach", { point: REIMS, mode: "walk", minutes: [15] });
+    const reach = await app.api("POST", "/api/streets/reach", { point: REIMS, mode: "walk", minutes: [30] });
     expect(reach.body.error.message).toMatch(/not added for France/);
   });
 
@@ -349,6 +517,9 @@ describe("with the streets service", () => {
       { lat: FETCHAM.lat, lon: FETCHAM.lon, type: "break" },
       { lat: trip.road!.snapped[0]!.lat, lon: trip.road!.snapped[0]!.lon, type: "break" },
     ]);
+    // The streets at each end avoid ferries too.
+    for (const r of standIn.requests.slice(before).filter((each) => each.path === "/route"))
+      expect(r.body!.costing_options).toEqual({ auto: { use_ferry: 0 } });
     expect(trip.warnings.join(" ")).not.toMatch(/straight line from the nearest main road/);
   });
 
@@ -370,10 +541,42 @@ describe("with the streets service", () => {
     expect(reach.settings).toEqual({ denoise: 0.5, generalizeM: 100, gridM: null });
     const sent = standIn.requests.filter((r) => r.path === "/isochrone").at(-1)!.body!;
     expect(sent).toMatchObject({ costing: "auto", contours: [{ time: 15 }, { time: 30 }], polygons: true, denoise: 0.5, generalize: 100 });
+    expect(reach.note).toBe("Free-flowing traffic, no stops: real journeys take longer.");
     // Asked for Outpost's own instead, it gives that.
     const own = (await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [15], source: "main-roads" }))
       .body as StreetsReachResult;
     expect(own.source).toBe("main-roads");
+  });
+
+  it("asks Valhalla for long walks and rides with outlines simplified for the distance, and says what the times leave out", async () => {
+    const isochrone = () => standIn.requests.filter((r) => r.path === "/isochrone").at(-1)!.body!;
+    const walk = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [480, 120, 240] });
+    expect(walk.status).toBe(200);
+    expect(isochrone()).toMatchObject({
+      costing: "pedestrian",
+      contours: [{ time: 120 }, { time: 240 }, { time: 480 }],
+      denoise: 0.5,
+      generalize: 200,
+    });
+    const walked = walk.body as StreetsReachResult;
+    expect(walked.areas.features.map((f) => f.properties.minutes)).toEqual([120, 240, 480]);
+    expect(walked.settings.generalizeM).toBe(200);
+    expect(walked.note).toMatch(/steady walking pace on the flat with no stops, and no rests counted/);
+    const short = (await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [30, 60] }))
+      .body as StreetsReachResult;
+    expect(isochrone()).toMatchObject({ contours: [{ time: 30 }, { time: 60 }], generalize: 50 });
+    expect(short.note).not.toMatch(/rests/);
+    await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "cycle", minutes: [30, 60, 120] });
+    expect(isochrone()).toMatchObject({ costing: "bicycle", contours: [{ time: 30 }, { time: 60 }, { time: 120 }], generalize: 150 });
+    await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "drive", minutes: [30, 60, 120] });
+    expect(isochrone()).toMatchObject({ costing: "auto", contours: [{ time: 30 }, { time: 60 }, { time: 120 }], generalize: 200 });
+    // A streets service from an older image refuses over 2 hours (Valhalla's own default): said plainly, with what to do.
+    standIn.override = (p) =>
+      p === "/isochrone" ? { status: 400, body: JSON.stringify({ error_code: 151, error: "Exceeded max time: 120" }) } : null;
+    const old = await app.api("POST", "/api/streets/reach", { point: LEATHERHEAD, mode: "walk", minutes: [480] });
+    standIn.override = null;
+    expect(old.status).toBe(400);
+    expect(old.body.error.message).toMatch(/older than Outpost and stops at 2 hours/);
   });
 
   it("stops at a reply too large or too slow", async () => {

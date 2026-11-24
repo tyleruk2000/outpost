@@ -19,6 +19,7 @@ import type {
   RoadRouteResult,
   SavedRoadRouteDto,
   SavedRoadRouteSummaryDto,
+  SavedRouteResult,
 } from "@outpost/shared";
 import { desc, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
@@ -97,7 +98,7 @@ export interface RoadsService {
   plan(request: RoadRouteRequest): Promise<RoadRouteResult>;
   savedRoutes(): SavedRoadRouteSummaryDto[];
   savedRoute(id: string): SavedRoadRouteDto;
-  saveRoute(input: { name: string; route: RoadRouteResult }): SavedRoadRouteDto;
+  saveRoute(input: { name: string; route: SavedRouteResult }): SavedRoadRouteDto;
   renameRoute(id: string, name: string): SavedRoadRouteDto;
   deleteRoute(id: string): void;
   /** Every saved route and network, for "erase everything". Returns how many saved routes there were. */
@@ -139,9 +140,13 @@ export function toNetworkDto(row: NetworkRow, available: boolean): RoadNetworkDt
 }
 
 function summaryOf(row: RouteRow): SavedRoadRouteSummaryDto {
+  const route = row.route as { mode?: unknown; plannedAt?: unknown };
+  const mode = route.mode === "drive-door" || route.mode === "walk" || route.mode === "cycle" ? route.mode : "drive";
   return {
     id: row.id,
     name: row.name,
+    mode,
+    plannedAt: typeof route.plannedAt === "number" ? route.plannedAt : row.createdAt,
     fromTo: row.fromTo,
     distanceM: row.distanceM,
     durationS: row.durationS,
@@ -469,7 +474,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     if (!row) throw notFound("That road route");
     return row;
   }
-  const savedDto = (row: RouteRow): SavedRoadRouteDto => ({ ...summaryOf(row), route: row.route as unknown as RoadRouteResult });
+  const savedDto = (row: RouteRow): SavedRoadRouteDto => ({ ...summaryOf(row), route: row.route as unknown as SavedRouteResult });
 
   return {
     installer,
@@ -550,8 +555,9 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     },
     saveRoute({ name, route }) {
       const now = Date.now();
-      const first = route.snapped[0]?.input.name;
-      const last = route.snapped.at(-1)?.input.name;
+      const names = "mode" in route ? route.request.points.map((p) => p.name) : route.snapped.map((p) => p.input.name);
+      const first = names[0]?.trim();
+      const last = names.at(-1)?.trim();
       const row: RouteRow = {
         id: newId(),
         name,

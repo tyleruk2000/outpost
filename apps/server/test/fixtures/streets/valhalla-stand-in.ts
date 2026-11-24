@@ -14,7 +14,9 @@
  *   status.json            GET /status
  *
  * Which reply is chosen by the costing and the first point; every request is kept, to
- * check what Outpost sent.
+ * check what Outpost sent. Asked for other times than those recorded (an 8 hour walk, a
+ * 2 hour drive), it answers with the recorded area's outline scaled about the point for
+ * each time: a made-up shape, only for checking how an answer is carried and drawn.
  */
 import fs from "node:fs";
 import http from "node:http";
@@ -52,10 +54,36 @@ function choose(pathName: string, body: Record<string, unknown> | null): { statu
     }
   }
   if (pathName === "/isochrone") {
-    if (costing === "pedestrian") return { status: 200, body: recorded("reach-walk.json") };
-    return { status: 200, body: recorded("reach-drive.json") };
+    const reply = recorded(costing === "pedestrian" ? "reach-walk.json" : "reach-drive.json");
+    const asked = ((body?.contours as Array<{ time: number }> | undefined) ?? []).map((c) => c.time);
+    return { status: 200, body: scaledTo(reply, asked, locations[0]) };
   }
   return { status: 404, body: JSON.stringify({ error_code: 106, error: "Try any of: '/route' '/isochrone' '/status'" }) };
+}
+
+type Position = [number, number];
+interface RecordedFeature {
+  properties: { contour: number };
+  geometry: { type: "Polygon"; coordinates: Position[][] } | { type: "MultiPolygon"; coordinates: Position[][][] };
+}
+
+/** The recorded reply, or, for other times, its largest area scaled about the point for each time asked (largest first, as Valhalla gives them). */
+function scaledTo(reply: string, asked: number[], at: Loc | undefined): string {
+  const json = JSON.parse(reply) as { features: RecordedFeature[] };
+  const have = json.features.map((f) => f.properties.contour).sort((a, b) => a - b);
+  const wanted = [...asked].sort((a, b) => b - a);
+  if (!at || wanted.length === 0 || [...wanted].reverse().join() === have.join()) return reply;
+  const largest = json.features.reduce((a, b) => (b.properties.contour > a.properties.contour ? b : a));
+  const features = wanted.map((time): RecordedFeature => {
+    const factor = time / largest.properties.contour;
+    const move = (p: Position): Position => [at.lon + (p[0] - at.lon) * factor, at.lat + (p[1] - at.lat) * factor];
+    const geometry: RecordedFeature["geometry"] =
+      largest.geometry.type === "Polygon"
+        ? { type: "Polygon", coordinates: largest.geometry.coordinates.map((ring) => ring.map(move)) }
+        : { type: "MultiPolygon", coordinates: largest.geometry.coordinates.map((polygon) => polygon.map((ring) => ring.map(move))) };
+    return { ...largest, properties: { ...largest.properties, contour: time }, geometry };
+  });
+  return JSON.stringify({ ...json, features });
 }
 
 export async function createValhallaStandIn(port = 0): Promise<ValhallaStandIn> {

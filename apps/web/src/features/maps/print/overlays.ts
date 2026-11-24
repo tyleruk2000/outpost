@@ -42,7 +42,7 @@ import { type FeatureCollection, markersData, type OverlaySource, overlayLayers,
 import { shadeStyle } from "../map/shades";
 import { locatorGrid, locatorLengthAt } from "../radio/locator-grid";
 import { locatorGridShown } from "../radio/use-locator-grid";
-import { reachData, reachSentence, reachShown } from "../reach/reach-map";
+import { REACH_LINE_WORDS, reachData, reachSentence, reachShown } from "../reach/reach-map";
 import { reachTimeText } from "../road-route/street-words";
 import { readable } from "./coverage";
 import { type Graticule, graticuleLines } from "./graticule";
@@ -327,8 +327,8 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
     },
   },
   {
-    // The areas reachable from a point (reach/), as the map on screen shows them: three steps of one hue, each time's
-    // outline its own (solid, dashed, dotted) with the time written on it, so it reads on a printer with no colour.
+    // The areas reachable from a point (reach/), as the map on screen shows them: up to three steps of one hue, each
+    // step's outline its own (solid, dashed, dotted) with the time written on it, so it reads on a printer with no colour.
     id: "reach",
     label: "Reachable areas",
     unavailable: () => (reachShown() ? undefined : "No reachable areas are showing on the map."),
@@ -341,8 +341,8 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       const shown = reachShown();
       if (!shown) return;
       draft.data["o-reach"] = reachData(shown);
-      const lines = { 15: "solid", 30: "dashed", 60: "dotted" } as Record<number, string>;
-      const key = shown.areas.features.map((area) => `${lines[area.properties.minutes]}, ${reachTimeText(area.properties.minutes)}`);
+      const times = shown.areas.features.map((area) => area.properties.minutes).sort((a, b) => a - b);
+      const key = times.map((minutes, step) => `${REACH_LINE_WORDS[step] ?? "dotted"}, ${reachTimeText(minutes)}`);
       draft.notes.push(`${reachSentence(shown)} Outlines: ${key.join("; ")}. ${shown.note}`);
     },
   },

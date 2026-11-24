@@ -47,7 +47,7 @@ export const OVERLAY_SOURCES = [
   "o-road-route",
   "o-measure",
   "o-walk",
-  // Areas reachable in 15, 30 or 60 minutes (reach/).
+  // Areas reachable from a point, up to three times at once (reach/).
   "o-reach",
   "o-range",
   "o-repeaters",

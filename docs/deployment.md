@@ -408,7 +408,16 @@ place** ([maps.md](maps.md#walking-and-cycling)). Great Britain took 56 minutes 
 8 GB, needed about 8 GB free while building, takes 2.7 GB after, and wrote about 53 GB to
 the disk: choose a NAS or USB disk as the place it works to spare the SD card (that
 location must be mounted read-write in the `valhalla` service). Drives keep planning on
-Outpost's own routes whether or not the add-on is there. To take it away, remove
+Outpost's own routes whether or not the add-on is there.
+
+Outpost's own updates do not touch the streets service. When a release changes it (its notes
+say so), rebuild and restart it from the checkout; the streets already built are kept:
+
+```bash
+git pull && docker compose --profile routes up -d --build valhalla
+```
+
+Until then, a reachable area over 2 hours says the service is older than Outpost. To take it away, remove
 walking and cycling on Offline maps, set `COMPOSE_PROFILES` back, and delete the `valhalla-tiles`
 volume.
 

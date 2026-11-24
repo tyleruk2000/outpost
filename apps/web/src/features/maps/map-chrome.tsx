@@ -987,7 +987,7 @@ export function ContextMenu({
   onRange?: () => void;
   /** Shows the ground reachable on foot from there in a set time (maps/walk/walk-reach.tsx). */
   onWalk?: () => void;
-  /** Shows the areas reachable from there in 15, 30 or 60 minutes (maps/reach/reach-tool.tsx). */
+  /** Shows the areas reachable from there, up to 2 hours by car or bicycle and 8 on foot (maps/reach/reach-tool.tsx). */
   onReach?: () => void;
   onClose: () => void;
 }) {
