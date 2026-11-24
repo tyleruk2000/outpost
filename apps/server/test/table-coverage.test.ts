@@ -165,6 +165,12 @@ const TABLES: Record<string, Decision> = {
     keptByErase: "Public Wikipedia summaries of public satellites, fetched like the catalogue's last answers: nothing of the household's.",
     drive: true,
   },
+  satellite_wikipedia_discarded: {
+    group: "radio",
+    keptByErase:
+      "Titles of public Wikipedia articles discarded for public satellites, kept like the summaries: nothing of the household's.",
+    drive: true,
+  },
   satellite_fetches: {
     group: "radio",
     keptByErase:

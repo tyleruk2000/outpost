@@ -115,6 +115,23 @@ export function carriesWords(transmitters: readonly SatelliteTransmitter[]): str
   return `SatNOGS DB lists ${count} in use${others ? ", among them" : ":"} ${listWords(named)}.`;
 }
 
+const plainName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * CelesTrak and SatNOGS DB give one catalogue number names with nothing in common: as
+ * on 24 November 2026, CelesTrak called 53109 "GREENCUBE (IO-117)" and SatNOGS DB "MTCube
+ * 2" (GREENCUBE is 53106). Either may have the wrong satellite under the number. False
+ * when they share a name, or one begins another ("DIWATA-2" and "DIWATA-2B").
+ */
+export function namesDisagree(celestrakName: string, about: Pick<SatelliteAbout, "name" | "otherNames"> | null): boolean {
+  if (!about || !celestrakName.trim()) return false;
+  const bracketed = /^(.*?)\s*\((.+)\)\s*$/.exec(celestrakName);
+  const theirs = [celestrakName, bracketed?.[1], bracketed?.[2]].map((name) => plainName(name ?? "")).filter((name) => name.length >= 2);
+  const ours = [about.name, ...about.otherNames].map(plainName).filter((name) => name.length >= 2);
+  if (theirs.length === 0 || ours.length === 0) return false;
+  return !theirs.some((a) => ours.some((b) => a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a)))));
+}
+
 /** The description's sentences, in order. `transmitters` are this satellite's. */
 export function aboutSentences(
   about: SatelliteAbout | null,

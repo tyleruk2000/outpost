@@ -870,16 +870,22 @@ one turn takes a sidereal day (86,164.09 s) to within 1%, nearly round and under
 These are textbook figures for words on screen; tracking is SGP4's.
 
 **Wikipedia summaries** are fetched for one satellite only when a person presses "Read about it
-on Wikipedia": one Action API query (`action=query&titles=…&redirects=1`, disambiguation pages
-left out) for an article under one of its names, else one search (`list=search`) for "name
-satellite", then the REST summary (`/api/rest_v1/page/summary/<title>`) of the first that is an
-article: five requests at most. Pages read 2026-11-22:
+on Wikipedia", and first from a Wikipedia copy on this Outpost when there is one (kiwix-serve's
+title suggestions and the article page; the infobox's "COSPAR ID" and "SATCAT no." rows confirm
+it). Online: one Wikidata search (`list=search`, `haswbstatement:P377=<NORAD>|P377=<zero-padded>|P247=<COSPAR>`),
+the items found (`wbgetentities`, English sitelink), and the article's REST summary
+(`/api/rest_v1/page/summary/<title>`): three requests. Only when no item carrying the number has
+an English article: one title query for the names (`action=query&titles=…&redirects=1`, OSCAR
+numbers left out), one search (`generator=search`), and their Wikidata items, each answer checked
+(seven requests at most). Requests are 6 seconds apart. Pages read 2026-11-22, and Wikidata's on 2026-11-24:
 
 | Page | What it says | What follows |
 | --- | --- | --- |
 | foundation.wikimedia.org Policy:Wikimedia Foundation User-Agent Policy (edited 27 March 2026) | All requests need a User-Agent; the form is `<client name>/<version> (<contact information>)`; generic agents ("curl", "Python-urllib") and copied browser strings are refused; automated agents are encouraged to include "bot". | Sent as `Outpost/0.1 (self-hosted offline library) bot`. It names no person or address, by choice: nobody's details leave the server. |
 | mediawiki.org Wikimedia APIs/Access policy (edited 24 April 2026) | "The API requires an HTTP User-Agent header for all requests"; licences and attribution vary per wiki. | As above. |
-| mediawiki.org Wikimedia APIs/Rate limits (edited 8 November 2026) | Unidentified requests: 10 a minute; unauthenticated requests with a compliant User-Agent (with contact details): 200 a minute; across the Action and REST APIs. | With no contact details Outpost may count as unidentified: five requests a press is within 10 a minute. |
+| mediawiki.org Wikimedia APIs/Rate limits (edited 8 November 2026) | Unidentified requests: 10 a minute; unauthenticated requests with a compliant User-Agent (with contact details): 200 a minute; across the Action and REST APIs. | With no contact details Outpost may count as unidentified: requests are spaced 6 seconds apart (10 a minute). A 429 is said in plain words with its Retry-After, and nothing is asked until then. |
+| wikidata.org Wikidata:Licensing (read 2026-11-24) | "All structured data (i.e. the main, Property, Lexeme, and EntitySchema namespaces) is released into the public domain under Creative Commons Zero." | Wikidata's items (catalogue number P377, COSPAR ID P247, instance of P31, subclass of P279, English sitelink) are read under CC0; no credit is required, the item is named on screen ("Wikidata's entry Q15261051"). |
+| The satellites review's 44 satellites (Wikidata and Wikipedia answers read 2026-11-24) | Names alone matched 21 of 44 to the wrong article (FUNCUBE-1 to USS Millicoma by "AO-73"); by catalogue number 26 right, 2 series, 16 with no English article, none wrong. Wikidata keeps some old numbers zero-padded ("07530"). | The matcher, and the test fixture that holds those answers (`apps/server/test/fixtures/satellites/wikimedia-44.json`). |
 | mediawiki.org Wikimedia REST API (edited 14 August 2026) | No deprecation notice for `/api/rest_v1` or `page/summary` (RESTBase, underneath, is being retired). Text is CC BY-SA. | The summary endpoint used; if it is retired, the press fails with Wikipedia's answer and nothing kept is lost. |
 | en.wikipedia.org Wikipedia:Reusing Wikipedia content (edited 22 August 2024) | Credit the authors by a hyperlink or URL to the page; include a notice that the work is under CC BY-SA with a link to the licence. | Each summary is shown with a link to its article, "by its contributors, under CC BY-SA 4.0" linked to the licence. |
 

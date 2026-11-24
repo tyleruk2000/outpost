@@ -67,7 +67,18 @@ import { type ManualSatellite, parseManualElements } from "./manual";
 import { useChosenSatellite } from "./map";
 import { SkyPlot } from "./sky-plot";
 import { usePassSchedule } from "./use-schedule";
-import { bothTimes, countdown, dayWords, frequencyWords, geometryWords, lightAt, pathWords, shiftWords, utcTime } from "./words";
+import {
+  alwaysUpWords,
+  bothTimes,
+  countdown,
+  dayWords,
+  frequencyWords,
+  geometryWords,
+  lightAt,
+  pathWords,
+  shiftWords,
+  utcTime,
+} from "./words";
 
 const PATH = "/radio/satellites";
 const BUCKET_MS = 300_000;
@@ -153,7 +164,10 @@ function ElementsStatus({ data, now }: { data: NonNullable<ReturnType<typeof use
         elements dated {formatDate(newest)}.{" "}
         {satnogs?.fetchedAt
           ? `${plural(satnogs.count, "transmitter")} from SatNOGS DB, ${timeAgo(satnogs.fetchedAt)}.`
-          : "No transmitters from SatNOGS DB yet."}
+          : "No transmitters from SatNOGS DB yet."}{" "}
+        {details && !details.fetchedAt
+          ? "Satellite details from SatNOGS DB (names, launch, countries) have never been fetched: the next press of Get orbital elements fetches them."
+          : null}
       </p>
       {age === "old" || age === "very-old" || age === "ahead" ? (
         <Notice tone="warning" className="mt-3" title={age === "ahead" ? "Check the clock" : "These elements are getting old"}>
@@ -207,7 +221,9 @@ function PassRowLine({ entry, now, onOpen }: { entry: ScheduledPass; now: Date; 
             {bothTimes(pass.aos)} to {utcTime(pass.los)} UTC
           </span>
           <span className="block text-small text-ink-muted">
-            <Joined parts={[pathWords(pass), `${Math.round(pass.durationSeconds / 60)} min`, workable ? null : "low pass"]} />
+            <Joined
+              parts={[pathWords(pass), pass.alwaysUp ? null : `${Math.round(pass.durationSeconds / 60)} min`, workable ? null : "low pass"]}
+            />
           </span>
           {warning ? (
             <span className="block text-small text-warning">
@@ -847,15 +863,24 @@ function OneSatellite({
                           )}
                         >
                           <span className="block text-body text-ink tabular">
-                            {item.aos <= now ? "Up now" : `${dayWords(item.aos, now)}, ${bothTimes(item.aos)}`}
+                            {item.alwaysUp
+                              ? "Up all the time"
+                              : item.aos <= now
+                                ? "Up now"
+                                : `${dayWords(item.aos, now)}, ${bothTimes(item.aos)}`}
                           </span>
                           <span className="block text-small text-ink-muted">
+                            {item.alwaysUp ? alwaysUpWords(item) : null}
                             <Joined
-                              parts={[
-                                `highest ${Math.round(item.maxElevationDeg)}°`,
-                                `${Math.round(item.durationSeconds / 60)} min`,
-                                `${compassPoint(item.aosAzimuthDeg)} to ${compassPoint(item.losAzimuthDeg)}`,
-                              ]}
+                              parts={
+                                item.alwaysUp
+                                  ? []
+                                  : [
+                                      `highest ${Math.round(item.maxElevationDeg)}°`,
+                                      `${Math.round(item.durationSeconds / 60)} min`,
+                                      `${compassPoint(item.aosAzimuthDeg)} to ${compassPoint(item.losAzimuthDeg)}`,
+                                    ]
+                              }
                             />
                           </span>
                         </button>
@@ -879,7 +904,7 @@ function OneSatellite({
                         <Button
                           onClick={() => {
                             setChosen(selected.noradId);
-                            navigate("/maps");
+                            navigate(`/maps?satellite=${selected.noradId}`);
                           }}
                         >
                           <MapIcon aria-hidden />
