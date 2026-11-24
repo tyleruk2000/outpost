@@ -132,7 +132,8 @@ export function MapFurniture({
     return (
       <>
         {/* It ends above the line of credits at the foot, so that the column of tools never runs over them or off the map. */}
-        <div className="pointer-events-none absolute inset-x-3 top-3 bottom-9 z-10 flex items-start gap-2">
+        {/* Over the cards below it, so that the search box's list of results is never under one. */}
+        <div className="pointer-events-none absolute inset-x-3 top-3 bottom-9 z-[11] flex items-start gap-2">
           {search}
           {tools}
         </div>
@@ -158,7 +159,9 @@ export function MapFurniture({
         docked && !covered ? "bottom-0" : "bottom-[calc(var(--sheet-height,0px)+16px)]",
       )}
     >
-      <div ref={head} className="grid shrink-0 grid-cols-[minmax(0,1fr)] gap-[8px]">
+      {/* Above the rest of the column: the search box's list of results drops over the tools and the cards under it (a
+          card's title row is z 1), and a finger on the end of a result pressed "Show where I am" or a card instead. */}
+      <div ref={head} className="relative z-[2] grid shrink-0 grid-cols-[minmax(0,1fr)] gap-[8px]">
         {search}
         {covered ? null : notice}
       </div>

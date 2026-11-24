@@ -84,7 +84,7 @@ export function PointField({
 
   if (value) {
     return (
-      <div className="grid gap-1">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-1">
         <span className="text-small font-medium text-ink">{label}</span>
         <div className="flex items-center gap-2 rounded-control border border-border bg-surface px-3 py-1.5">
           <MapPin aria-hidden className="size-4 shrink-0 text-ink-muted" />
@@ -108,7 +108,9 @@ export function PointField({
 
   const listed = query.length >= 2 ? results.slice(0, MAX_LISTED) : [];
   return (
-    <div ref={box} className="grid gap-1">
+    // One track no wider than the form: with an auto track the longest detail of a suggestion ("Tidal water · Na h-Eileanan
+    // an Iar, Scotland") set the width, and the rows and the middle-of-the-map button ran off the side of a phone.
+    <div ref={box} className="grid grid-cols-[minmax(0,1fr)] gap-1">
       <label htmlFor={inputId} className="text-small font-medium text-ink">
         {label}
       </label>

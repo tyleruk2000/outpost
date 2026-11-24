@@ -249,6 +249,13 @@ describe("where things sit over the map", () => {
     expect(dock.previousElementSibling).toHaveTextContent("Credits");
   });
 
+  it("on a phone keeps the search box's list of results above the tools under it", () => {
+    render(<MapFurniture phone covered={false} {...parts} />);
+    // The head of the column is stacked over the rest: a finger on the end of a result chooses it, not "Show where I am".
+    const head = screen.getByLabelText("Search the map").closest(".outpost-furniture > div")!;
+    expect(head).toHaveClass("relative", "z-[2]");
+  });
+
   it("leaves only the search box when the sheet covers the map", () => {
     render(<MapFurniture phone covered {...parts} />);
     expect(screen.getByLabelText("Search the map")).toBeInTheDocument();

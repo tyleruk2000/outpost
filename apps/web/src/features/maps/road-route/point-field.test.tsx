@@ -98,4 +98,10 @@ describe("a route point's suggestions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await vi.waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(calls));
   });
+
+  it("is one track no wider than the form, so a long detail cannot widen the list past the screen", () => {
+    const { field } = show();
+    act(() => field.focus());
+    expect(field.closest(".grid")).toHaveClass("grid-cols-[minmax(0,1fr)]");
+  });
 });

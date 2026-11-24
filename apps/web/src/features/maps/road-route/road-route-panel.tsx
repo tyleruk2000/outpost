@@ -145,6 +145,8 @@ export function RoadRoutePanel({
   const [selected, setSelected] = useState<number | null>(null);
   const [missing, setMissing] = useState(false);
   const getCenter = (): LatLon | null => engine?.getCenter() ?? null;
+  /** The form's scrolling body. */
+  const form = useRef<HTMLDivElement>(null);
 
   // A point pressed on the map: it becomes the start or the end, and the form is shown.
   useEffect(() => {
@@ -336,8 +338,12 @@ export function RoadRoutePanel({
 
   // ── The form ──
   const vias = points.slice(1, -1);
-  const setPoint = (index: number, point: RoutePointChoice | null) =>
+  const setPoint = (index: number, point: RoutePointChoice | null) => {
     setPoints((current) => current.map((each, at) => (at === index ? point : each)));
+    // With a finger, a choice leaves the form at its top: From in sight, and the next step found without looking for it.
+    // Chosen with the keyboard up, the form had been left scrolled to To, with From out of sight.
+    if (point && window.matchMedia?.("(max-width: 47.99rem), (pointer: coarse)").matches) form.current?.scrollTo?.({ top: 0 });
+  };
 
   const intro =
     mode === "drive"
@@ -346,7 +352,10 @@ export function RoadRoutePanel({
   return (
     <div key="plan" className="flex min-h-0 flex-1 flex-col">
       {header("Routes", onClose)}
-      <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4 max-md:gap-3 max-md:pt-3">
+      <div
+        ref={form}
+        className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4 max-md:gap-3 max-md:pt-3"
+      >
         <div>
           <h3 className="font-title text-lead text-ink">Plan a route</h3>
           {/* On a phone the fields come first and this is said under them: above them it pushed From below the keyboard. */}
@@ -458,10 +467,10 @@ export function RoadRoutePanel({
               <StreetsUnavailable status={streets.data!} mode={mode} country={routeCountry} onOpenStreets={onOpenStreets} />
             ) : null}
 
-            {/* Kept in view at the foot of the panel while a notice above pushes it down (1280 × 800 with the roads notice).
-                On a phone an ordinary last row of the form: kept over the foot of the sheet it lay over the suggestions
-                for To, and a finger on one pressed Plan route. */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 md:sticky md:bottom-0 md:z-10 md:-mx-4 md:-mb-1 md:border-t md:border-border md:bg-page md:px-4 md:py-2.5 max-md:pt-1">
+            {/* Kept in view at the foot of the panel while a notice above pushes it down (1280 × 800 with the roads notice),
+                where there is a mouse. Wherever there is a finger (a phone, an iPad at any width) an ordinary last row of the
+                form: kept over the foot of the panel it lay over the suggestions for To, and a finger on one pressed Plan route. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 md:pointer-fine:sticky md:pointer-fine:bottom-0 md:pointer-fine:z-10 md:pointer-fine:-mx-4 md:pointer-fine:-mb-1 md:pointer-fine:border-t md:pointer-fine:border-border md:pointer-fine:bg-page md:pointer-fine:px-4 md:pointer-fine:py-2.5 max-md:pt-1 md:pointer-coarse:pt-1">
               <Button
                 type="submit"
                 variant="primary"
