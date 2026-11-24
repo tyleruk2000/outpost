@@ -121,12 +121,14 @@ Open Names, with nothing more to choose (see below).
 
 Routes and nearby places are read from a country's whole OpenStreetMap record, a separate
 file from Geofabrik (4.9 GB for France). The first time either is added, two lines ask what
-happens to it once read:
+happens to it once read. Routes, nearby places and walking and cycling are made from it and
+keep working without it: the file is only needed to make them again.
 
-- **Keep the source file**: rebuild routes and places later with no download. Choose where
-  it is kept; the location with the most room is suggested. On a drive that is switched off,
-  routes keep working and rebuilding waits.
-- **Delete it after reading**: saves its room; every update downloads it again.
+- **Keep the source file**: add walking and cycling, update or rebuild later with no
+  download. Choose where it is kept; the location with the most room is suggested. On a
+  drive that is switched off, routes keep working and rebuilding waits.
+- **Delete it after reading**: saves its space (2.3 GB for the United Kingdom). Everything
+  made from it keeps working; adding walking and cycling or updating downloads it again.
 
 The answer is remembered, and changed under **More choices**. With the file kept, adding
 routes or nearby places reads it again with no download (**Build from the kept file**).

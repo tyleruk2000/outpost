@@ -866,6 +866,10 @@ function Flow({
     </div>
   ) : (
     <div className="grid gap-2">
+      <p className="text-small text-ink-muted">
+        Routes, places and walking and cycling are made from the source file and keep working without it. Keep it only to make them again
+        without downloading it.
+      </p>
       <ChoiceList
         label="The source file"
         value={keep === undefined ? undefined : keep ? "keep" : "delete"}
@@ -874,12 +878,12 @@ function Flow({
           {
             value: "keep",
             title: `Keep the source file${fileBytes > 0 ? ` (${formatBytes(fileBytes)})` : ""}`,
-            detail: "Rebuild routes and places later with no download",
+            detail: "Add walking and cycling, update, or rebuild later with no download",
           },
           {
             value: "delete",
             title: "Delete it after reading",
-            detail: `${fileBytes > 0 ? `Saves ${formatBytes(fileBytes)}` : "Saves its room"}; updates download it again`,
+            detail: `${fileBytes > 0 ? `Saves ${formatBytes(fileBytes)}` : "Saves the space"}. Everything made from it keeps working; adding walking and cycling or updating downloads it again`,
           },
         ]}
       />
