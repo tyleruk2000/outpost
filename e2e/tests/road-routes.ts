@@ -59,3 +59,19 @@ export async function choosePlace(page: Page, label: string, place: string, tap 
   const row = page.getByRole("list", { name: "Saved places" }).getByRole("button", { name: place });
   await (tap ? row.tap() : row.click());
 }
+
+/**
+ * Makes a saved place the current household's home, where Directions starts from, whatever tests before left there;
+ * answers how to put the household back as it was.
+ */
+export async function useAsHome(page: Page, markerId: string): Promise<() => Promise<void>> {
+  const { households, currentId } = await api<{
+    households: Array<{ id: string; kind: string; homePlaceId: string | null }>;
+    currentId: string;
+  }>(page, "GET", "/api/households");
+  const current = households.find((household) => household.id === currentId)!;
+  await api(page, "PUT", `/api/households/${current.id}`, { kind: "fixed", homePlaceId: markerId });
+  return async () => {
+    await api(page, "PUT", `/api/households/${current.id}`, { kind: current.kind, homePlaceId: current.homePlaceId });
+  };
+}

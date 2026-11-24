@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import type { Page } from "@playwright/test";
 import { api, expect } from "./fixtures";
-import { choosePlace } from "./road-routes";
+import { choosePlace, useAsHome } from "./road-routes";
 import { installStreets, removeStreets } from "./streets";
 
 // Each project its own names, so desktop and iPhone can run side by side on the one server.
@@ -29,6 +29,8 @@ export async function planSaveReopenAndDownload(page: Page, touch: boolean): Pro
   const [from, via, to] = placesFor(tag).map((p) => p.name) as [string, string, string];
   for (const place of placesFor(tag)) ids.push((await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", place)).marker.id);
   let savedId: string | null = null;
+  // On a phone Directions starts from the household's home: the station here.
+  const restoreHome = touch ? await useAsHome(page, ids[0]!) : null;
   try {
     await page.goto("/maps?lat=51.28&lon=-0.32&z=12&tab=routes");
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
@@ -112,6 +114,7 @@ export async function planSaveReopenAndDownload(page: Page, touch: boolean): Pro
     ).toHaveCount(0);
     savedId = null;
   } finally {
+    await restoreHome?.();
     if (savedId) await api(page, "DELETE", `/api/roads/routes/${savedId}`);
     for (const id of ids) await api(page, "DELETE", `/api/maps/markers/${id}`);
     removeStreets();
@@ -129,10 +132,8 @@ async function planAndSaveOnPhone(page: Page, ends: { from: string; via: string;
     .getByRole("dialog", { name: "Where to?" })
     .getByRole("option", { name: new RegExp(`^${ends.to}`) })
     .tap();
-  await page
-    .getByRole("dialog", { name: "Where from?" })
-    .getByRole("option", { name: new RegExp(`^${ends.from}`) })
-    .tap();
+  // From is the household's home: the station.
+  await expect(page.getByRole("button", { name: `From: ${ends.from}. Change` })).toBeVisible();
   const asked = page.waitForRequest((request) => request.url().endsWith("/api/streets/route"));
   await page.getByRole("radiogroup", { name: "Way of travelling" }).getByRole("radio", { name: "Walk" }).tap();
   expect((await asked).postDataJSON()).toMatchObject({ mode: "walk" });

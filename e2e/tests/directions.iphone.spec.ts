@@ -12,7 +12,7 @@ import { accessibilityInBothThemes } from "./a11y";
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { aboveKeyboard, keyboard, standInKeyboard } from "./keyboard-stand-in";
 import { auditLayout } from "./layout-audit";
-import { choosePlace, installChannelTrip, removeChannelTrip } from "./road-routes";
+import { choosePlace, installChannelTrip, removeChannelTrip, useAsHome } from "./road-routes";
 
 async function picture(page: Page, info: TestInfo, name: string): Promise<void> {
   await info.attach(name, { body: await page.screenshot(), contentType: "image/png" });
@@ -41,14 +41,17 @@ const sideways = (page: Page) => page.evaluate(() => document.documentElement.sc
 
 let places: string[] = [];
 let home: string | undefined;
+let restoreHome: (() => Promise<void>) | undefined;
 async function setUp(page: Page) {
   await page.goto("/");
   places = await installChannelTrip(page);
   // The household's home: the saved place with the home icon, as the first household takes it.
   home = (await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", { name: "Home", lat: 51.3, lon: -0.34, icon: "home" }))
     .marker.id;
+  restoreHome = await useAsHome(page, home);
 }
 async function tearDown(page: Page) {
+  await restoreHome?.();
   if (home) await api(page, "DELETE", `/api/maps/markers/${home}`);
   await removeChannelTrip(page, places);
 }

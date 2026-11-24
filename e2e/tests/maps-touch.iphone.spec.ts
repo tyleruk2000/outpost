@@ -17,7 +17,7 @@ import { KESWICK_BOX } from "../../apps/server/test/fixtures/layers/food-stand-i
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { aboveKeyboard, keyboard, standInKeyboard } from "./keyboard-stand-in";
 import { removeReferencePacks } from "./reference-layers";
-import { installChannelTrip, removeChannelTrip } from "./road-routes";
+import { installChannelTrip, removeChannelTrip, useAsHome } from "./road-routes";
 
 const SHEET = "section.outpost-sheet";
 
@@ -54,14 +54,18 @@ async function openDirections(page: Page): Promise<void> {
 test.describe("Maps by touch on an iPhone", () => {
   let places: string[] = [];
   let home: string | undefined;
+  let restoreHome: (() => Promise<void>) | undefined;
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     places = await installChannelTrip(page);
     home = (
       await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", { name: "Home", lat: 51.3, lon: -0.34, isFavorite: true })
     ).marker.id;
+    // Directions starts from the household's home: Leatherhead here, whatever tests before left.
+    restoreHome = await useAsHome(page, places[0]!);
   });
   test.afterEach(async ({ page }) => {
+    await restoreHome?.();
     if (home) await api(page, "DELETE", `/api/maps/markers/${home}`);
     await removeChannelTrip(page, places);
   });
@@ -85,7 +89,9 @@ test.describe("Maps by touch on an iPhone", () => {
     await picture(page, info, "to-suggestions");
     await touch(page, toList.getByRole("option").first());
 
-    // From: the household has no home here, so it is asked; a saved place from the list shown before anything is typed.
+    // From: the household's home at once; changed by a tap on it, to a saved place from the list shown before anything is typed.
+    await expect(page.getByRole("button", { name: "From: Leatherhead. Change" })).toBeVisible();
+    await page.getByRole("button", { name: "From: Leatherhead. Change" }).tap();
     const from = page.getByRole("dialog", { name: "Where from?" });
     await expect(page.getByRole("combobox", { name: /^From: / })).toBeFocused();
     await touch(page, from.getByRole("option", { name: /^Home/ }));
@@ -282,7 +288,7 @@ for (const size of [
       await aboveKeyboard(page, rows.first(), size.keyboard);
       await aboveKeyboard(page, rows.nth(1), size.keyboard);
       await picture(page, info, `${size.width}-${size.scheme}-keyboard`);
-      await touch(page, rows.nth(1));
+      await touch(page, page.getByRole("dialog", { name: "Where to?" }).getByRole("option", { name: /^Home/ }));
       await expect(page.getByRole("button", { name: "To: Home. Change" })).toBeVisible();
       await keyboard(page, 0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
@@ -304,7 +310,7 @@ for (const size of [
       await expect(rows.first()).toBeInViewport({ ratio: 1 });
       await expect(rows.nth(1)).toBeInViewport({ ratio: 1 });
       await picture(page, info, `${size.width}-${size.scheme}-shorter`);
-      await rows.nth(1).tap();
+      await page.getByRole("dialog", { name: "Where to?" }).getByRole("option", { name: /^Home/ }).tap();
       await expect(page.getByRole("button", { name: "To: Home. Change" })).toBeVisible();
       expect(errors).toEqual([]);
     });

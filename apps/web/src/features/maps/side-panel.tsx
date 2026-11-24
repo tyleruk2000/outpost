@@ -342,28 +342,63 @@ export function MobileSheet({
       )}
       style={{ height, bottom: lift || undefined }}
     >
-      <button
-        type="button"
-        aria-label={`Panel height: ${detent === "peek" ? "lowered" : detent === "half" ? "half" : "full"}. Drag, or press to change`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => {
-          drag.current = null;
-          setDragHeight(null);
-        }}
-        onKeyDown={onKeyDown}
-        // 44 px to take hold of, 36 of them inside the sheet: the rest reaches up over the gap above it, so that
-        // the handle and the first row of the sheet are never under the same finger.
-        className={cn(
-          "-mt-[8px] grid w-full shrink-0 touch-none rounded-t-[14px] pt-[8px] focus-visible:-outline-offset-4",
-          // With an action beside it, the row is as tall as the action's 44 px and the bar sits at its top.
-          action ? "h-[56px] place-items-start justify-center pt-[14px]" : "h-[44px] place-content-center",
-        )}
-      >
-        <span aria-hidden className="h-1 w-10 rounded-full bg-border-strong" />
-      </button>
-      {action ? <div className="absolute top-[4px] right-3 z-[1] flex">{action}</div> : null}
+      {action ? (
+        // Side by side, never one over the other: a finger meant for the handle cannot press the action.
+        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start">
+          <button
+            type="button"
+            aria-label={`Panel height: ${detent === "peek" ? "lowered" : detent === "half" ? "half" : "full"}. Drag, or press to change`}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={() => {
+              drag.current = null;
+              setDragHeight(null);
+            }}
+            onKeyDown={onKeyDown}
+            // 44 px to take hold of, 36 of them inside the sheet: the rest reaches up over the gap above it, so that
+            // the handle and the first row of the sheet are never under the same finger.
+            className={cn(
+              "-mt-[8px] grid w-full shrink-0 touch-none rounded-t-[14px] pt-[8px] focus-visible:-outline-offset-4",
+              // With an action beside it, the row is as tall as the action's 44 px; the handle takes the rest of the row and
+              // its bar stays in the middle of the sheet, at the top.
+              action ? "h-[56px] rounded-tr-none" : "h-[44px] place-content-center",
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn("h-1 w-10 rounded-full bg-border-strong", action && "absolute top-[6px] left-1/2 -translate-x-1/2")}
+            />
+          </button>
+          <div className="flex pt-[4px] pr-3">{action}</div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-label={`Panel height: ${detent === "peek" ? "lowered" : detent === "half" ? "half" : "full"}. Drag, or press to change`}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={() => {
+            drag.current = null;
+            setDragHeight(null);
+          }}
+          onKeyDown={onKeyDown}
+          // 44 px to take hold of, 36 of them inside the sheet: the rest reaches up over the gap above it, so that
+          // the handle and the first row of the sheet are never under the same finger.
+          className={cn(
+            "-mt-[8px] grid w-full shrink-0 touch-none rounded-t-[14px] pt-[8px] focus-visible:-outline-offset-4",
+            // With an action beside it, the row is as tall as the action's 44 px; the handle takes the rest of the row and
+            // its bar stays in the middle of the sheet, at the top.
+            action ? "h-[56px] rounded-tr-none" : "h-[44px] place-content-center",
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn("h-1 w-10 rounded-full bg-border-strong", action && "absolute top-[6px] left-1/2 -translate-x-1/2")}
+          />
+        </button>
+      )}
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );

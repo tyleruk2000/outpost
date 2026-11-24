@@ -7,7 +7,7 @@ import type { Page } from "@playwright/test";
 import { accessibilityInBothThemes } from "./a11y";
 import { expect, test, watchForErrors } from "./fixtures";
 import { auditLayout } from "./layout-audit";
-import { installChannelTrip, removeChannelTrip } from "./road-routes";
+import { installChannelTrip, removeChannelTrip, useAsHome } from "./road-routes";
 
 const SHEET = 'section[aria-label="Directions"]';
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -51,11 +51,8 @@ async function planOnPhone(page: Page) {
     .getByRole("dialog", { name: "Where to?" })
     .getByRole("option", { name: /^Chamonix/ })
     .tap();
-  // With no home to start from, the start is asked next.
-  await page
-    .getByRole("dialog", { name: "Where from?" })
-    .getByRole("option", { name: /^Leatherhead/ })
-    .tap();
+  // From is the household's home, Leatherhead here.
+  await expect(page.getByRole("button", { name: "From: Leatherhead. Change" })).toBeVisible();
   const sheet = page.locator(SHEET);
   await expect(sheet.getByRole("heading", { name: /\d+ km/ })).toBeVisible({ timeout: 60_000 });
   await sheet.getByRole("button", { name: "Options" }).tap();
@@ -75,6 +72,7 @@ test("a road route on a phone: 44 px targets, nothing past the edge, both themes
   const errors = watchForErrors(page);
   await page.goto("/");
   const places = await installChannelTrip(page);
+  const restoreHome = await useAsHome(page, places[0]!);
   try {
     await planOnPhone(page);
     const small = (await page.evaluate(auditLayout, { scope: SHEET })).filter((finding) => finding.kind === "small-target");
@@ -84,6 +82,7 @@ test("a road route on a phone: 44 px targets, nothing past the edge, both themes
     expect(await accessibilityInBothThemes(page, "/maps (road route, phone)")).toEqual([]);
     expect(errors).toEqual([]);
   } finally {
+    await restoreHome();
     await removeChannelTrip(page, places);
   }
 });
@@ -97,11 +96,13 @@ test("a road route on a phone with the text at 200%", async ({ page }) => {
   });
   await page.goto("/");
   const places = await installChannelTrip(page);
+  const restoreHome = await useAsHome(page, places[0]!);
   try {
     await planOnPhone(page);
     expect(await sideways(page)).toBeLessThanOrEqual(0);
     expect(await pastTheEdge(page)).toEqual([]);
   } finally {
+    await restoreHome();
     await removeChannelTrip(page, places);
   }
 });
