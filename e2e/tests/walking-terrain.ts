@@ -152,7 +152,9 @@ export async function walkingRouteOverHills(page: Page, info: TestInfo, press: (
     await page.goto("/maps?lat=51.28&lon=-0.32&z=12");
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
     await press(page.getByRole("tab", { name: /Routes/ }));
-    await press(page.getByRole("button", { name: "Plan a route" }).first());
+    // Plan a route is called Directions in the Routes tab (Maps redesign, part 1).
+    await press(page.getByRole("button", { name: "Directions", exact: true }).first());
+    await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
     await press(page.getByRole("radiogroup", { name: "Way of travelling" }).getByRole("radio", { name: "Walk" }));
     const tap = info.project.name === "iphone";
     await choosePlace(page, "From", "Leatherhead", tap);
