@@ -229,6 +229,13 @@ function LoadedNote({
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the page is left
   useEffect(() => showPage(client, note.id), []);
 
+  // A page just made blank opens with its title ready to type into. With nothing focused, the words typed went to
+  // the screen's own shortcuts instead ("g" then "h" went Home) and were lost.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the page opens
+  useEffect(() => {
+    if (editable && madeBlank.has(note.id) && !note.title) titleRef.current?.focus({ preventScroll: true });
+  }, []);
+
   // The phone's changes are held as a conflict at once, and leave the phone once the person has chosen.
   const settling = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the page opens

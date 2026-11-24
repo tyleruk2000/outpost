@@ -257,6 +257,17 @@
   flex: 1;
   min-width: 0;
 }
+/* On a touch screen the box is pressed through a label 46 px across round it (44 and a little over, whatever the rounding), the box drawn the same size: an 18 px
+   box alone was too small for a finger. The margins take back the room the padding adds. */
+@media (pointer: coarse) {
+  .prose ul[data-type="taskList"] > li > label {
+    --tick-pad: max(0px, calc(23px - 0.525em));
+    padding: var(--tick-pad);
+    margin: calc(0.36em - var(--tick-pad)) calc(-1 * var(--tick-pad)) calc(-1 * var(--tick-pad));
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
 .prose ul[data-type="taskList"] input[type="checkbox"] {
   appearance: none;
   width: 1.05em;

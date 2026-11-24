@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { oneList, REFERENCE_SETTLE_MS, useReferenceSearch } from "./reference-search";
-import { ownAnswer, ownResult, referenceResult, serveSearch } from "./search-stand-in";
+import { collectionLine, ownAnswer, ownResult, referenceResult, serveSearch } from "./search-stand-in";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -43,6 +43,22 @@ describe("searching reference collections while a person types", () => {
     await waitFor(() => expect(server.reference).toHaveLength(1), { timeout: REFERENCE_SETTLE_MS * 4 });
     expect(server.reference[0]!.q).toBe("car battery");
     await new Promise((resolve) => setTimeout(resolve, REFERENCE_SETTLE_MS + 50));
+    expect(server.reference).toHaveLength(1);
+  });
+
+  it("shows a search just finished at once when it is come back to, without asking again", async () => {
+    const server = serveSearch(() => ownAnswer([]));
+    const first = renderHook(() => useReferenceSearch("lamp oil", true, false, false, 0));
+    await waitFor(() => expect(server.reference).toHaveLength(1));
+    await server.send({ type: "start", collections: 1 }, collectionLine("Wikipedia", "Lamp oil"));
+    await server.end({ searched: 1 });
+    await waitFor(() => expect(first.result.current.status).toBe("done"));
+    first.unmount();
+    // Back to the search: the same articles in the first frame, and nothing asked.
+    const again = renderHook(() => useReferenceSearch("lamp oil", true, false, false, 0));
+    expect(again.result.current.status).toBe("done");
+    expect(again.result.current.results.map((result) => result.title)).toEqual(["Lamp oil"]);
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(server.reference).toHaveLength(1);
   });
 

@@ -22,6 +22,14 @@ describe("clearance: how far to scroll so that a focused control is not under a 
     expect(clearance({ top: 100, bottom: 1400 }, BELOW, ABOVE)).toBe(100 - 52 - 8);
     expect(clearance({ top: 55, bottom: 1400 }, BELOW, ABOVE)).toBe(0);
   });
+
+  it("leaves alone a control wholly outside the window, which the browser did not scroll to", () => {
+    // The search field, 2786 px above the window once Back has put the results where they were.
+    expect(clearance({ top: -2786, bottom: -2734 }, BELOW, ABOVE, 844)).toBe(0);
+    expect(clearance({ top: 900, bottom: 944 }, BELOW, ABOVE, 844)).toBe(0);
+    // Partly in sight, as after Tab: cleared as before.
+    expect(clearance({ top: 20, bottom: 64 }, BELOW, ABOVE, 844)).toBe(20 - 52 - 8);
+  });
 });
 
 describe("wantsClearing: only focus reached from the keyboard moves the page", () => {

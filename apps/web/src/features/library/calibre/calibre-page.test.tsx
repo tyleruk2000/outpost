@@ -136,6 +136,13 @@ describe("importing from Calibre", () => {
     expect(await screen.findByText("The library is in")).toBeInTheDocument();
     expect(screen.getByText(/1 book added, 1 book already there and left as they were/)).toBeInTheDocument();
   });
+
+  it("says plainly when nothing new was added", async () => {
+    renderAt({ ...ready, state: "completed", report: { added: 0, alreadyThere: 2, failed: [], stopped: false } });
+    expect(await screen.findByText("Nothing new to add")).toBeInTheDocument();
+    expect(screen.queryByText("The library is in")).not.toBeInTheDocument();
+    expect(screen.getByText(/No book was added, 2 books already there/)).toBeInTheDocument();
+  });
 });
 
 describe("the Calibre screen's helpers", () => {

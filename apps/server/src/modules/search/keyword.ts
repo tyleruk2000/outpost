@@ -224,8 +224,10 @@ export function rankKeyword(
     Number(begun.has(a.entityRowId)) - Number(begun.has(b.entityRowId)) ||
     b.parts.score - a.parts.score;
 
+  // Whether to widen the search (a word only begun, results with most words) is decided on every kind, not on the
+  // kinds asked for: so each kind's count is the same on every tab, and a tab lists as many as its count says.
   let strictAll = group(strictMatch + tagClause);
-  if (parsed.prefixLast && strictAll.filter((item) => wanted(item.kind)).length < FEW) {
+  if (parsed.prefixLast && strictAll.length < FEW) {
     // "batt" while it is being typed: items holding a word it begins follow those holding the word itself.
     const held = new Set(strictAll.map((item) => item.entityRowId));
     const more = group(toFtsQuery(parsed, "all", undefined, true)! + tagClause).filter((item) => !held.has(item.entityRowId));
@@ -241,7 +243,7 @@ export function rankKeyword(
 
   let relaxed = false;
   let added = 0;
-  if (strict.length < FEW && parsed.required.length > 1) {
+  if (strictAll.length < FEW && parsed.required.length > 1) {
     // Words as typed: any one of them matched as a beginning would read every passage of every word
     // it begins ("sand*" with "water": tens of thousands), for items that hold too little anyway.
     const anyMatch = toFtsQuery(parsed, "any", undefined, false)!;

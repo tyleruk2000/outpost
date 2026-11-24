@@ -16,6 +16,7 @@ import { RouteAnnouncer } from "./route-announcer";
 import { ScreenErrorBoundary } from "./screen-error";
 import { useScrollMemory } from "./scroll-memory";
 import { Sidebar } from "./sidebar";
+import { useFocusReturn } from "./ui/dialog";
 import { Skeleton, Spinner } from "./ui/misc";
 import { UpdateNotice } from "./update-notice";
 
@@ -74,11 +75,15 @@ function PaletteLoading({ open, onOpenChange }: { open: boolean; onOpenChange: (
     const timer = window.setTimeout(() => setSlow(true), PALETTE_SLOW_MS);
     return () => window.clearTimeout(timer);
   }, [open]);
+  // Closed before the code came (Escape at once, the first time): focus goes back where it was, as from quick search.
+  const focusReturn = useFocusReturn();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-(--z-overlay) bg-overlay data-[state=open]:animate-fade" />
         <Dialog.Content
+          ref={focusReturn.ref}
+          onCloseAutoFocus={focusReturn.onCloseAutoFocus}
           aria-describedby={undefined}
           className="fixed top-[12dvh] left-1/2 z-(--z-dialog) w-[calc(100vw-1.5rem)] max-w-[40rem] -translate-x-1/2 overflow-hidden rounded-panel border border-border bg-raised shadow-dialog focus:outline-none data-[state=open]:animate-enter max-md:top-3"
         >

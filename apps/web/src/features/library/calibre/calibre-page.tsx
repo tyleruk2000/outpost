@@ -81,7 +81,8 @@ function ChooseStep({ onStarted }: { onStarted: (dto: CalibreImportDto) => void 
         <div>
           <h2 className="font-title text-heading text-ink">Where is the library?</h2>
           <p className="mt-1 text-body text-ink-muted">
-            Open the folder Calibre keeps its books in, the one that holds metadata.db. A folder of one author works too.
+            Open the folder Calibre keeps its books in, the one that holds Calibre's own list of the library. A folder of one author works
+            too.
           </p>
         </div>
         <FolderPicker label="Calibre library folder" onChange={setFolder} pickOnly />
@@ -183,7 +184,7 @@ function WorkingStep({ dto, onLeave }: { dto: CalibreImportDto; onLeave: () => v
       <p className="mt-4 text-small text-ink-muted">
         {importing
           ? "Keep the drive connected. You can leave this page; the work carries on. If you stop it, the books added so far stay, and trying again adds the rest without adding any twice."
-          : "Nothing is added yet. Outpost is reading each book's metadata.opf to tell you what is there."}
+          : "Nothing is added yet. Outpost is reading Calibre's own record of each book to tell you what is there."}
       </p>
       {actions.stop.isError ? (
         <Notice tone="danger" icon={<CircleAlert />} className="mt-4">
@@ -217,8 +218,8 @@ function PlanSummary({ dto, plan }: { dto: CalibreImportDto; plan: CalibrePlan }
       </div>
       {!plan.hasCalibreDatabase ? (
         <Notice tone="info">
-          There is no metadata.db at the top of this folder, so it may be part of a library rather than all of it. The books found are
-          listed below.
+          Calibre's own list of the library is not at the top of this folder, so it may be part of a library rather than all of it. The
+          books found are listed below.
         </Notice>
       ) : null}
       {plan.beyondLimit > 0 ? (
@@ -320,8 +321,8 @@ function PreviewStep({ dto, plan, onDiscarded }: { dto: CalibreImportDto; plan: 
           )
         ) : null}
         <p className="text-small text-ink-muted">
-          Either way the Calibre folder is only read. Authors, series, tags and the description come from each book's metadata.opf, and the
-          cover is kept by Outpost. A book already in the library is recognised by its contents and left as it is.
+          Either way the Calibre folder is only read. Authors, series, tags and the description come from Calibre's own record of each book,
+          and the cover is kept by Outpost. A book already in the library is recognised by its contents and left as it is.
         </p>
       </div>
       {failed ? (
@@ -358,8 +359,9 @@ function ReportStep({ dto }: { dto: CalibreImportDto }) {
           {dto.error}
         </Notice>
       ) : (
-        <Notice tone="success" icon={<CircleCheck />} title="The library is in">
-          {plural(report.added, "book")} added
+        // A heading that says only what happened: with nothing new, "The library is in" claimed more than was done.
+        <Notice tone="success" icon={<CircleCheck />} title={report.added === 0 ? "Nothing new to add" : "The library is in"}>
+          {report.added === 0 ? "No book was added" : `${plural(report.added, "book")} added`}
           {report.alreadyThere > 0 ? `, ${plural(report.alreadyThere, "book")} already there and left as they were` : ""}.
         </Notice>
       )}

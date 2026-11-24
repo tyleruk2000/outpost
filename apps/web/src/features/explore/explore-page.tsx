@@ -7,7 +7,7 @@ import {
 } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, RefreshCw, Search, WifiOff, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { useServerEvent } from "@/lib/events";
 import { notify } from "@/lib/notify";
 import { plural, timeAgo } from "@/lib/utils";
 import { useLibrivoxShelf } from "../audiobooks/audiobook-data";
@@ -151,6 +152,21 @@ export default function ExplorePage() {
   const setShow = (next: ShowFilter) => setParam("show", next, "all");
   const setSort = (next: SortOrder) => setParam("sort", next, "name");
   const [downloading, setDownloading] = useState<{ entry: CatalogEntryDto; open: boolean }>();
+  // Downloads started here, by id, with their names: said when they start and when they end, where before the
+  // entry only changed quietly (and a screen reader heard nothing at all).
+  const started = useRef(new Map<string, string>());
+  useServerEvent("download.updated", (payload) => {
+    const { id, state } = (payload ?? {}) as { id?: string; state?: string };
+    const name = id ? started.current.get(id) : undefined;
+    if (!id || !name) return;
+    if (state === "completed") {
+      started.current.delete(id);
+      toast.success(`“${name}” is installed`);
+    } else if (state === "failed") {
+      started.current.delete(id);
+      notify.error(`“${name}” did not download`, { description: "Downloads says why, and can try it again." });
+    }
+  });
   // Pages shown of the list below, counted afresh whenever the list itself changes.
   const [pages, setPages] = useState({ list: "", count: 1 });
   // After "Show all" at the foot of a long page, the category's own list starts at its heading.
@@ -347,7 +363,11 @@ export default function ExplorePage() {
               {packs.length > 0 && category === "all" && !filtered ? (
                 <p className="mb-4 text-small text-ink-muted">
                   Not sure where to start?{" "}
-                  <button type="button" onClick={() => setCategory("packs")} className="text-primary underline underline-offset-2">
+                  <button
+                    type="button"
+                    onClick={() => setCategory("packs")}
+                    className="inline-flex min-h-6 items-center text-primary underline underline-offset-2 pointer-coarse:min-h-11"
+                  >
                     Packs
                   </button>{" "}
                   gather the usual things for a purpose, such as home preparedness, the hills, or radio.
@@ -493,6 +513,11 @@ export default function ExplorePage() {
         entry={downloading?.entry}
         open={Boolean(downloading?.open)}
         onOpenChange={(open) => setDownloading((current) => (current ? { ...current, open } : current))}
+        onStarted={(response) => {
+          const name = downloading?.entry.name ?? "The download";
+          started.current.set(response.download.id, name);
+          toast(`Downloading “${name}”`, { description: "Its progress shows on the entry and in Downloads." });
+        }}
       />
     </Page>
   );

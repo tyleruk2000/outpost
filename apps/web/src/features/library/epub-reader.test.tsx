@@ -73,6 +73,7 @@ const arriving: DocumentEpubChapterResponse = {
       ],
     },
     { t: "paragraph", c: [{ t: "anchor", id: "lone" }] },
+    { t: "paragraph", c: [...words("See "), { t: "link", href: "https://example.org/huts", c: words("the hut society") }] },
     { t: "figure", src: "OEBPS/images/hut plan.svg", alt: "Plan of the hut", caption: words("One room.") },
     { t: "table", plain: true, rows: [[words("Pine"), words("1")]] },
     { t: "quote", kind: "note", c: [{ t: "paragraph", c: [{ t: "anchor", id: "n1" }, ...words("Boots dry best away from the stove.")] }] },
@@ -210,11 +211,28 @@ describe("a chapter", () => {
     expect(screen.getByText("no fires")).toBeInTheDocument();
   });
 
-  it("turns the page", async () => {
+  it("says a link to the web leaves the library before anything is opened", async () => {
+    const opened = vi.spyOn(window, "open").mockImplementation(() => null);
+    open(`/library/documents/${ID}?chapter=1`);
+    await userEvent.click(await screen.findByRole("link", { name: "the hut society" }));
+    expect(await screen.findByText(/That link leaves your library and needs the internet/)).toBeInTheDocument();
+    expect(screen.getByText("https://example.org/huts")).toBeInTheDocument();
+    expect(opened).not.toHaveBeenCalled();
+    opened.mockRestore();
+  });
+
+  it("gives a note's mark a target a finger can press", async () => {
+    open(`/library/documents/${ID}?chapter=1`);
+    await screen.findByRole("heading", { name: "Arriving" });
+    expect(screen.getByRole("link", { name: "1" }).className).toMatch(/after:size-6/);
+  });
+
+  it("turns the page, and focus goes to the new chapter's text", async () => {
     open(`/library/documents/${ID}?chapter=1`);
     await screen.findByRole("heading", { name: "Arriving" });
     await userEvent.click(screen.getByRole("link", { name: /Next.*The stove/ }));
     expect(await screen.findByText("Open the damper.")).toBeInTheDocument();
+    await waitFor(() => expect(window.document.activeElement).toBe(screen.getByRole("region", { name: /^Text of / })));
     expect(address()).toBe(`/library/documents/${ID}?chapter=2`);
     expect(readPlace(ID)).toMatchObject({ chapter: 2 });
   });

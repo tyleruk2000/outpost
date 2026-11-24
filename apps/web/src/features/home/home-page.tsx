@@ -37,7 +37,7 @@ import { HouseholdHomeLine } from "@/features/households/home-line";
 import { ChecksHomeLine } from "@/features/readiness/checks-line";
 import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
-import { timeAgo } from "@/lib/utils";
+import { formatNumber, timeAgo } from "@/lib/utils";
 import { homeSummary } from "./home-summary";
 import { PreparedLines } from "./prepared-lines";
 
@@ -112,6 +112,9 @@ const firstSteps = [
   },
 ];
 
+/** The order of kinds in Home's short list of collections: what is read first, data for the map last. */
+const READING_FIRST: Partial<Record<string, number>> = { zim: 0, file: 0, dataset: 1, model: 2, map: 3, places: 3, extract: 3 };
+
 export default function HomePage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -121,6 +124,12 @@ export default function HomePage() {
     queryKey: ["notes", "tree"],
     queryFn: () => api.get<NoteTreeResponse>("/api/notes/tree"),
     select: (data) => data.notes.length,
+  });
+  // The title of each page, for naming the page a recent one sits in where two recent pages share a name.
+  const titles = useQuery({
+    queryKey: ["notes", "tree"],
+    queryFn: () => api.get<NoteTreeResponse>("/api/notes/tree"),
+    select: (data) => new Map(data.notes.map((note) => [note.id, note.title])),
   });
   const recent = useQuery({
     queryKey: ["notes", "recent", 6],
@@ -138,7 +147,14 @@ export default function HomePage() {
     queryFn: () => api.get<CollectionsResponse>("/api/collections"),
     // Home counts things as a person would: a PDF fetched from the catalogue is one of
     // their documents (listed above), and terrain is part of the map it shades.
-    select: (data) => data.collections.filter((item) => item.kind !== "terrain" && !(item.kind === "file" && item.meta?.documentId)),
+    // Things to read first (archives, books and files), then data for the map and the rest: a list led by "Country
+    // file: United Kingdom" and an OpenStreetMap extract of 626 bytes was not what a person reads.
+    select: (data) =>
+      data.collections
+        .filter((item) => item.kind !== "terrain" && !(item.kind === "file" && item.meta?.documentId))
+        .map((item, index) => ({ item, index }))
+        .sort((a, b) => (READING_FIRST[a.item.kind] ?? 2) - (READING_FIRST[b.item.kind] ?? 2) || a.index - b.index)
+        .map(({ item }) => item),
   });
   // The sentence at the top counts every collection, as the Library's Collections tab does.
   const collectionCount = useQuery({
@@ -310,15 +326,25 @@ export default function HomePage() {
                 {recent.data && recent.data.length > 0 ? (
                   <Block title="Pick up where you left off" more={{ to: "/notes", label: "All pages" }}>
                     <ul className="divide-y divide-border border-y border-border">
-                      {recent.data.map((note) => (
-                        <RowLink
-                          key={note.id}
-                          to={`/notes/${note.id}`}
-                          icon={note.icon ? <span className="text-[1.0625rem] leading-none">{note.icon}</span> : <NotebookText />}
-                          title={note.title || <span className="text-ink-muted">Untitled</span>}
-                          meta={timeAgo(note.lastViewedAt ?? note.updatedAt)}
-                        />
-                      ))}
+                      {recent.data.map((note) => {
+                        // Two pages of one name ("Notes" under two trips) are told apart by the page each is in.
+                        const twin = recent.data.some((other) => other.id !== note.id && other.title.trim() === note.title.trim());
+                        const parent = twin && note.parentId ? titles.data?.get(note.parentId) : undefined;
+                        return (
+                          <RowLink
+                            key={note.id}
+                            to={`/notes/${note.id}`}
+                            icon={note.icon ? <span className="text-[1.0625rem] leading-none">{note.icon}</span> : <NotebookText />}
+                            title={
+                              <>
+                                {note.title || <span className="text-ink-muted">Untitled</span>}
+                                {twin ? <span className="font-sans text-small text-ink-muted"> in {parent || "Notes"}</span> : null}
+                              </>
+                            }
+                            meta={timeAgo(note.lastViewedAt ?? note.updatedAt)}
+                          />
+                        );
+                      })}
                     </ul>
                   </Block>
                 ) : null}
@@ -362,10 +388,14 @@ export default function HomePage() {
                         />
                       ))}
                     </ul>
-                    {collections.data.length > 6 ? (
+                    {/* The same count as the sentence at the top and the Library's Collections tab, which this opens. */}
+                    {(collectionCount.data ?? 0) > 6 ? (
                       <p className="mt-2 text-small">
-                        <Link to="/library?tab=collections" className="text-primary hover:underline">
-                          See all {collections.data.length}
+                        <Link
+                          to="/library?tab=collections"
+                          className="inline-flex min-h-6 items-center text-primary hover:underline pointer-coarse:min-h-11"
+                        >
+                          See all {formatNumber(collectionCount.data ?? 0)}
                         </Link>
                       </p>
                     ) : null}

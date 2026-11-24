@@ -22,9 +22,9 @@ import {
   type ReferenceSearchResponse,
   type ReferenceSuggestion,
 } from "@outpost/shared";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Files, House, Search, X } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { ErrorState, Notice, Page } from "@/components/page";
 import { Highlighted } from "@/components/search-hit";
@@ -34,12 +34,15 @@ import { ReaderLearning } from "@/features/learning/reader-controls";
 import { useLearningTracker } from "@/features/learning/tracker";
 import { api } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
-import { keepFieldFocus } from "@/lib/use-dismiss";
+import { keepFieldFocus, useDismiss } from "@/lib/use-dismiss";
 import { cn, formatNumber } from "@/lib/utils";
 import { ArchiveFile } from "./archive-file";
 import { ArchiveMedia } from "./archive-media";
 import { DocumentList } from "./document-list";
 import { ExternalLinkNotice, LinkedFiles } from "./linked-files";
+
+/** How many full-text results are asked for at once (the server gives at most 50). */
+const RESULTS_AT_ONCE = 30;
 
 const encodePath = (path: string) => path.split("/").map(encodeURIComponent).join("/");
 
@@ -83,6 +86,13 @@ export default function ReaderPage() {
   }, [asked]);
   const [searchFor, setSearchFor] = useState<string>();
   const [focused, setFocused] = useState(false);
+  /** The title marked with the arrow keys in the list under the field; -1 for none, when Enter searches the full text. */
+  const [active, setActive] = useState(-1);
+  const searchBox = useRef<HTMLFormElement>(null);
+  const listId = useId();
+  // Closed by a press or focus outside the field and its list, not by the field's blur: Tab into the list, or a tap on
+  // a row on an iPhone, used to lose the list before it could be used (lib/use-dismiss.ts).
+  useDismiss(searchBox, focused, () => setFocused(false));
   const debounced = useDebounced(query.trim(), 160);
 
   const book = useQuery({
@@ -243,18 +253,37 @@ export default function ReaderPage() {
     placeholderData: keepPreviousData,
     select: (data) => data.suggestions,
   });
-  const results = useQuery({
+  // Thirty at a time, and "Show more" for the next thirty: "217 articles, showing the first 30" was a dead end.
+  const results = useInfiniteQuery({
     queryKey: ["kiwix", "search", collectionId, searchFor],
-    queryFn: () => api.get<ReferenceSearchResponse>(`/api/kiwix/books/${collectionId}/search`, { q: searchFor, limit: 30 }),
+    queryFn: ({ pageParam }) =>
+      api.get<ReferenceSearchResponse>(`/api/kiwix/books/${collectionId}/search`, {
+        q: searchFor,
+        offset: pageParam,
+        limit: RESULTS_AT_ONCE,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => {
+      const shown = pages.reduce((sum, page) => sum + page.results.length, 0);
+      return last.results.length > 0 && shown < last.total ? shown : undefined;
+    },
     enabled: Boolean(searchFor),
   });
+  const found = results.data?.pages.flatMap((page) => page.results) ?? [];
+  const foundTotal = results.data?.pages[0]?.total ?? 0;
 
-  const open = (path: string) => {
+  /** The reader's address of an article. */
+  const articleHref = (path: string) => `/library/read/${collectionId}/${encodePath(path)}`;
+  /** Leaving the search and the list for an article opened in this tab. */
+  const leaveSearch = () => {
     setSearchFor(undefined);
     setFocused(false);
     setQuery("");
     setExternal(undefined);
-    navigate(`/library/read/${collectionId}/${encodePath(path)}`);
+  };
+  const open = (path: string) => {
+    leaveSearch();
+    navigate(articleHref(path));
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -293,6 +322,36 @@ export default function ReaderPage() {
   }
 
   const showSuggestions = focused && !searchFor && !listMode && debounced.length > 1 && (suggestions.data?.length ?? 0) > 0;
+  const titles = showSuggestions ? suggestions.data! : [];
+  const marked = active >= 0 && active < titles.length ? active : -1;
+  const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      // First the list goes, then the words.
+      if (showSuggestions) {
+        // A search field's own Escape empties it: here the first one only closes the list.
+        event.preventDefault();
+        setFocused(false);
+      } else {
+        setSearchFor(undefined);
+        setQuery("");
+      }
+      setActive(-1);
+      return;
+    }
+    if (titles.length === 0) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      // From the field down to the first title and round again; up from the first back to the field.
+      setActive((current) => {
+        const next = (current < 0 && step < 0 ? titles.length : current) + step;
+        return next >= titles.length || next < 0 ? -1 : next;
+      });
+    } else if (event.key === "Enter" && marked >= 0) {
+      event.preventDefault();
+      open(titles[marked]!.path);
+    }
+  };
   const searchLabel = listMode ? `Search the documents in ${title}` : `Search in ${title}`;
   const openKind = openFile && !openFile.split("/").includes("..") ? archiveFileKind(openFile) : undefined;
   const openLabel = openFile
@@ -320,22 +379,27 @@ export default function ReaderPage() {
           {pageTitle ? <p className="truncate text-micro text-ink-muted">{title}</p> : null}
         </div>
         {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
-        <form onSubmit={submit} role="search" className="relative order-last w-full md:order-none md:w-80">
+        <form ref={searchBox} onSubmit={submit} role="search" className="relative order-last w-full md:order-none md:w-80">
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
           <input
             type="search"
+            // A combobox whose list of titles drops under it; over a list of documents it filters the list instead.
+            role="combobox"
+            aria-expanded={showSuggestions}
+            aria-controls={showSuggestions ? listId : undefined}
+            aria-autocomplete={listMode ? "none" : "list"}
+            aria-activedescendant={marked >= 0 ? `${listId}-${marked}` : undefined}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
               setSearchFor(undefined);
+              setFocused(true);
+              setActive(-1);
             }}
             onFocus={() => setFocused(true)}
-            onBlur={() => window.setTimeout(() => setFocused(false), 150)}
-            onKeyDown={(event) => {
-              if (event.key !== "Escape") return;
-              setSearchFor(undefined);
-              setQuery("");
-            }}
+            // Still focused after a press elsewhere closed the list: a press on the field opens it again.
+            onClick={() => setFocused(true)}
+            onKeyDown={onSearchKey}
             placeholder={listMode ? "Search these documents" : searchLabel}
             aria-label={searchLabel}
             enterKeyHint="search"
@@ -344,26 +408,38 @@ export default function ReaderPage() {
             className="h-9 w-full rounded-control border border-border-strong bg-page pr-3 pl-9 text-small text-ink placeholder:text-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11 max-md:text-body md:pointer-coarse:h-11 md:pointer-coarse:text-body [&::-webkit-search-cancel-button]:hidden"
           />
           {showSuggestions ? (
-            <ul
+            <div
               className="absolute inset-x-0 top-full z-(--z-dropdown) mt-1.5 max-h-80 overflow-y-auto rounded-panel border border-border bg-raised p-1 shadow-float"
-              aria-label="Article titles"
-              // A press anywhere on the list leaves focus in the field, so the field's blur does not take the list away
-              // before the tap's click lands (Safari on an iPhone focuses nothing it taps).
+              // A press anywhere on the list leaves focus in the field, so the keyboard stays up on a phone and the row's
+              // click lands (Safari on an iPhone focuses nothing it taps).
               {...keepFieldFocus}
             >
-              {suggestions.data!.map((item) => (
-                <li key={item.path}>
-                  <button
-                    type="button"
+              {/* A combobox's list (WAI-ARIA): focus stays in the field, the arrow keys mark a title, Enter opens it. */}
+              <div id={listId} role="listbox" aria-label="Article titles">
+                {titles.map((item, index) => (
+                  // biome-ignore lint/a11y/useFocusableInteractive: focus stays in the field; the list is driven through aria-activedescendant
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: arrow keys and Enter are handled by the field
+                  <div
+                    key={item.path}
+                    id={`${listId}-${index}`}
+                    role="option"
+                    aria-selected={index === marked}
                     onClick={() => open(item.path)}
-                    className="block w-full truncate rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong max-md:py-2.5"
+                    onMouseMove={() => setActive(index)}
+                    className={cn(
+                      "flex min-h-9 cursor-pointer items-center rounded-[4px] px-2.5 py-1.5 text-small text-ink [overflow-wrap:anywhere] max-md:min-h-11 max-md:py-2.5 md:pointer-coarse:min-h-11",
+                      index === marked && "bg-surface-strong",
+                    )}
                   >
                     {item.title}
-                  </button>
-                </li>
-              ))}
-              <li className="border-t border-border px-2.5 pt-1.5 pb-1 text-micro text-ink-muted">Press Enter to search the full text</li>
-            </ul>
+                  </div>
+                ))}
+              </div>
+              <p className="border-t border-border px-2.5 pt-1.5 pb-1 text-micro text-ink-muted">
+                <span className="pointer-coarse:hidden">Up and down choose a title; Enter alone searches the full text</span>
+                <span className="hidden pointer-coarse:inline">The keyboard's Search key searches the full text</span>
+              </p>
+            </div>
           ) : null}
         </form>
         {ready && !deciding && !listMode && collectionId ? (
@@ -488,24 +564,32 @@ export default function ReaderPage() {
                     <div className="mt-6">
                       <ErrorState error={results.error} onRetry={() => results.refetch()} />
                     </div>
-                  ) : results.data.results.length === 0 ? (
+                  ) : found.length === 0 ? (
                     <p className="mt-4 text-ink-muted">Nothing in {title} matches those words. Try fewer or different ones.</p>
                   ) : (
                     <>
-                      <p className="tabular mt-1 text-small text-ink-muted">
-                        {formatNumber(results.data.total)} article{results.data.total === 1 ? "" : "s"} in {title}
-                        {results.data.total > results.data.results.length ? `, showing the first ${results.data.results.length}` : ""}
+                      <p className="tabular mt-1 text-small text-ink-muted" role="status">
+                        {formatNumber(foundTotal)} article{foundTotal === 1 ? "" : "s"} in {title}
+                        {foundTotal > found.length ? `, showing ${formatNumber(found.length)}` : ""}
                       </p>
                       <ol className="mt-3 divide-y divide-border">
-                        {results.data.results.map((result) => (
-                          <li key={result.path} className="py-4">
-                            <button
-                              type="button"
-                              onClick={() => open(result.path)}
-                              className="font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline"
+                        {found.map((result) => (
+                          // The whole row opens the article: the title's link is stretched over it. A link, so that it
+                          // can be opened in a new tab as well.
+                          <li
+                            key={result.path}
+                            className="group/row relative isolate py-4 [overflow-wrap:anywhere] before:absolute before:-inset-x-2 before:inset-y-0 before:-z-10 before:rounded-control before:transition-colors before:duration-(--duration-fast) hover:before:bg-surface has-[a:active]:before:bg-surface-strong"
+                          >
+                            <Link
+                              to={articleHref(result.path)}
+                              onClick={(event) => {
+                                if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0)
+                                  leaveSearch();
+                              }}
+                              className="font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] after:absolute after:-inset-x-2 after:inset-y-0 after:rounded-control group-hover/row:underline focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-focus"
                             >
                               {result.title}
-                            </button>
+                            </Link>
                             {result.segments.length > 0 ? (
                               <p className="mt-1 line-clamp-3 text-small leading-relaxed text-ink-muted">
                                 <Highlighted segments={result.segments} />
@@ -514,6 +598,18 @@ export default function ReaderPage() {
                           </li>
                         ))}
                       </ol>
+                      {results.hasNextPage ? (
+                        <Button className="mt-4" disabled={results.isFetchingNextPage} onClick={() => void results.fetchNextPage()}>
+                          {results.isFetchingNextPage
+                            ? "Finding more…"
+                            : `Show ${Math.min(RESULTS_AT_ONCE, foundTotal - found.length)} more`}
+                        </Button>
+                      ) : null}
+                      {results.isFetchNextPageError ? (
+                        <p className="mt-2 text-small text-danger" role="alert">
+                          The next results did not come. Try Show more again.
+                        </p>
+                      ) : null}
                     </>
                   )}
                 </Page>

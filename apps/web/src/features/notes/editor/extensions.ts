@@ -8,6 +8,7 @@ import { Highlight } from "@tiptap/extension-highlight";
 import { OrderedList, TaskItem, TaskList } from "@tiptap/extension-list";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { Placeholder } from "@tiptap/extensions";
+import type { EditorView } from "@tiptap/pm/view";
 import { Extension, type Extensions } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { duplicateBlock, moveBlock, selectedTopBlock } from "./blocks";
@@ -89,6 +90,60 @@ const BlockShortcuts = Extension.create({
   },
 });
 
+/**
+ * Ticking a to-do changes only the to-do. The tick box's own handler also put the caret in the text, which on an
+ * iPhone raised the keyboard over the list being ticked off. Its change is caught first, on the way down, and made
+ * here without moving focus; Space on the box from the keyboard leaves focus on the box too.
+ */
+export function tickWithoutFocus(view: EditorView, event: Event): boolean {
+  const box = event.target;
+  if (!(box instanceof HTMLInputElement) || box.type !== "checkbox" || !view.editable) return false;
+  const item = box.closest('ul[data-type="taskList"] > li');
+  if (!item || !view.dom.contains(item)) return false;
+  let at: number;
+  try {
+    at = view.posAtDOM(item, 0);
+  } catch {
+    return false;
+  }
+  const $at = view.state.doc.resolve(at);
+  let pos = $at.nodeAfter?.type.name === "taskItem" ? at : -1;
+  for (let depth = $at.depth; pos < 0 && depth > 0; depth -= 1) {
+    if ($at.node(depth).type.name === "taskItem") pos = $at.before(depth);
+  }
+  const node = pos >= 0 ? view.state.doc.nodeAt(pos) : null;
+  if (!node) return false;
+  view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: box.checked }));
+  return true;
+}
+
+const QuietTicks = Extension.create<unknown, { off?: () => void }>({
+  name: "quietTicks",
+  addStorage() {
+    return {};
+  },
+  onCreate() {
+    const view = this.editor.view;
+    const onChange = (event: Event) => {
+      if (tickWithoutFocus(view, event)) event.stopPropagation();
+    };
+    // A press on the room round the box (its label) would otherwise focus the text, as Safari focuses the nearest
+    // thing that takes focus: the press still ticks the box, and focus stays where it was.
+    const onPress = (event: MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest('ul[data-type="taskList"] > li > label')) event.preventDefault();
+    };
+    view.dom.addEventListener("change", onChange, true);
+    view.dom.addEventListener("mousedown", onPress, true);
+    this.storage.off = () => {
+      view.dom.removeEventListener("change", onChange, true);
+      view.dom.removeEventListener("mousedown", onPress, true);
+    };
+  },
+  onDestroy() {
+    this.storage.off?.();
+  },
+});
+
 export const EMPTY_PAGE_PLACEHOLDER = "Write, or press / for blocks";
 
 export function buildExtensions(host: HostRef | null): Extensions {
@@ -109,6 +164,7 @@ export function buildExtensions(host: HostRef | null): Extensions {
     Highlight,
     TaskList,
     TaskItem.configure({ nested: true }),
+    QuietTicks,
     NoteCodeBlock,
     Table.configure({ resizable: true, cellMinWidth: 96, lastColumnResizable: false, allowTableNodeSelection: true }),
     TableRow,

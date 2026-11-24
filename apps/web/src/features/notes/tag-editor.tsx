@@ -92,7 +92,7 @@ export function TagEditor({
                   onChange(tags.filter((existing) => existing !== tag));
                   inputRef.current?.focus();
                 }}
-                className="grid h-6 w-6 place-content-center rounded-full text-ink-muted hover:text-ink max-md:size-8"
+                className="relative grid h-6 w-6 place-content-center rounded-full text-ink-muted hover:text-ink max-md:size-8 md:pointer-coarse:size-8 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 pointer-coarse:after:rounded-full"
               >
                 <X aria-hidden className="size-3" strokeWidth={2.25} />
               </button>
@@ -119,7 +119,7 @@ export function TagEditor({
             aria-label="Add a tag"
             aria-describedby={hintId}
             placeholder={full ? "No more tags fit" : tags.length === 0 ? "Add tags" : "Add tag"}
-            className="h-6 min-w-24 flex-1 rounded-control bg-transparent text-small text-ink placeholder:text-ink-faint max-md:h-8 max-md:text-body"
+            className="h-6 min-w-24 flex-1 rounded-control bg-transparent text-small text-ink placeholder:text-ink-faint max-md:h-8 max-md:text-body md:pointer-coarse:h-8 md:pointer-coarse:text-body"
           />
           <span id={hintId} className="sr-only">
             Press Enter or a comma to add the tag. Backspace removes the last one.

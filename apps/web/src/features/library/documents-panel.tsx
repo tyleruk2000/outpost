@@ -137,13 +137,13 @@ function NameFilter({ value, onChange }: { value: string; onChange: (value: stri
         autoCapitalize="none"
         placeholder="Filter by name"
         aria-label="Filter documents by name"
-        className="pr-9 pl-9 text-small md:h-8 [&::-webkit-search-cancel-button]:hidden"
+        className="pr-11 pl-9 text-body md:h-8 md:pr-9 md:pointer-fine:text-small md:pointer-coarse:h-11 [&::-webkit-search-cancel-button]:hidden"
       />
       {draft ? (
         <button
           type="button"
           aria-label="Clear the name filter"
-          className="absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-content-center rounded-control text-ink-muted hover:text-ink max-md:size-9"
+          className="absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-content-center rounded-control text-ink-muted hover:text-ink max-md:right-0 max-md:size-11 md:pointer-coarse:right-0 md:pointer-coarse:size-11"
           onClick={() => {
             setDraft("");
             sent.current = "";
@@ -371,7 +371,7 @@ export default function DocumentsPanel() {
               {filtered && documents.length > 0 ? (
                 <button
                   type="button"
-                  className="ml-3 font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
+                  className="ml-2 inline-flex min-h-6 items-center px-1 font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 pointer-coarse:min-h-11"
                   onClick={() => setParams((current) => clearFilters(current))}
                 >
                   Clear filters

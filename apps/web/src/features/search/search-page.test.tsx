@@ -417,3 +417,38 @@ describe("the answer, repeated titles and whose plans", () => {
     expect(screen.getByText(/Also showing results for/)).toHaveTextContent("Also showing results for purify sandbags.");
   });
 });
+
+describe("arriving, and pressing a result", () => {
+  it("has the field ready to type into when the screen opens, without moving the page to it", async () => {
+    serveSearch(() => ownAnswer(OWN, { referenceToCome: false }));
+    const focus = vi.spyOn(HTMLInputElement.prototype, "focus");
+    show("/search?q=water");
+    const field = screen.getByRole("searchbox", { name: "Search your library" });
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    focus.mockRestore();
+  });
+
+  it("names places on the map in words, and makes each result's passage part of what opens it", async () => {
+    const place = { ...ownResult("f1", "Water", "map-feature"), url: "/maps?feature=1", subtitle: "Drinking water, GB" };
+    const long = {
+      ...ownResult("d1", "Keys"),
+      passages: [{ chunkId: 1, page: 2, heading: null, segments: [{ text: "x".repeat(400), hit: false }] }],
+    };
+    serveSearch(() => ownAnswer([long, place], { referenceToCome: false }));
+    show("/search?q=water&kind=map-feature");
+    expect(await screen.findByRole("tab", { name: /^Places on the map/ })).toBeInTheDocument();
+    expect(screen.queryByText("map-feature")).not.toBeInTheDocument();
+    // The row holds the passage, and breaks an unbroken string rather than pushing the page sideways.
+    const row = screen.getByRole("link", { name: "Keys" }).closest("li")!;
+    expect(row).toHaveTextContent("x".repeat(400));
+    expect(row.className).toMatch(/overflow-wrap:anywhere/);
+  });
+
+  it("says nothing has the words when every result was found only by meaning", async () => {
+    const guess = { ...ownResult("n9", "Phone numbers", "note"), sources: ["semantic" as const] };
+    serveSearch(() => ownAnswer([guess], { referenceToCome: false, mode: "hybrid" }));
+    show("/search?q=zzqqxxyy");
+    expect(await screen.findByText(/Nothing has these words/)).toBeInTheDocument();
+  });
+});

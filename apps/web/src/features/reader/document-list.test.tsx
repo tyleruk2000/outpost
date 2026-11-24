@@ -263,7 +263,7 @@ describe("the reader, for a collection that lists documents", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Documents in this collection" })).toBeInTheDocument();
     expect(frame()).toBeNull();
     // The search box looks through the documents; nothing is asked of the collection's own search.
-    await userEvent.type(screen.getByRole("searchbox", { name: "Search the documents in Field library" }), "water{Enter}");
+    await userEvent.type(screen.getByRole("combobox", { name: "Search the documents in Field library" }), "water{Enter}");
     expect(await screen.findByRole("heading", { level: 1, name: "Documents matching “water”" })).toBeInTheDocument();
     await waitFor(() => expect(server.calls).toContain("GET /api/kiwix/books/c1/documents?q=water&offset=0&limit=100"));
     expect(server.calls.some((call) => call.includes("/suggest") || call.includes("/search"))).toBe(false);
@@ -309,7 +309,7 @@ describe("the reader, for a collection that lists documents", () => {
     reader("/library/read/c1/Bowline");
     await waitFor(() => expect(frame()).not.toBeNull());
     expect(frame()).toHaveAttribute("src", `${BASE}Bowline`);
-    expect(screen.getByRole("searchbox", { name: "Search in Field library" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Search in Field library" })).toBeInTheDocument();
     expect(screen.queryByText(/Documents in this collection/)).not.toBeInTheDocument();
     // The screen is named by what it shows: here the collection, there being no list or results over it.
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Field library");

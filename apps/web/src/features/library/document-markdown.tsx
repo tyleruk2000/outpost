@@ -1,4 +1,5 @@
 import type { MarkdownBlock, MarkdownInline, MarkdownListItem, MarkdownRef } from "@outpost/shared";
+import { ExternalLink } from "lucide-react";
 import { createContext, lazy, type ReactNode, Suspense, useContext, useEffect, useRef, useState } from "react";
 import { Link, type To, useLocation } from "react-router";
 import { DataTable } from "./document-table";
@@ -29,6 +30,8 @@ export interface BookLinks {
   picture(src: string): string | null;
   /** Where a chapter is, counted from 1; 0 is the contents. */
   chapter(chapter: number, anchor?: string): To | null;
+  /** A link to the web pressed: the reader says it leaves the library first (as the archive reader does). */
+  external?(href: string): void;
 }
 export const BookLinksContext = createContext<BookLinks | null>(null);
 
@@ -138,11 +141,15 @@ function scrollToHeading(root: ParentNode | null, elementId: string): boolean {
 }
 
 /** A link to a place in this document. The rest of the address stays as it is, so a chapter of a book stays that chapter. */
-function Jump({ to, children }: { to: string; children: ReactNode }) {
+function Jump({ to, short, children }: { to: string; short?: boolean; children: ReactNode }) {
   const { search } = useLocation();
   if (!HEADING_ID.test(to)) return children;
   return (
-    <Link to={{ search, hash: `#${headingElementId(to)}` }} onClick={() => scrollToHeading(null, headingElementId(to))}>
+    <Link
+      to={{ search, hash: `#${headingElementId(to)}` }}
+      onClick={() => scrollToHeading(null, headingElementId(to))}
+      className={short ? SHORT_LINK : undefined}
+    >
       {children}
     </Link>
   );
@@ -177,14 +184,49 @@ function BookPicture({ src, alt, standing }: { src: string; alt: string; standin
   );
 }
 
+/**
+ * A link of a mark or two (a note's number, "*"): padded to a 24 px target, 44 on a touch screen, without moving the
+ * words round it. A note's mark was 5 px wide.
+ */
+const SHORT_LINK =
+  "relative after:absolute after:top-1/2 after:left-1/2 after:size-6 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] pointer-coarse:after:size-11";
+const isShort = (runs: readonly MarkdownInline[]) => plainText(runs).trim().length <= 3;
+
 /** A link to another chapter of the same book. It stays in this tab: it is part of the book. */
-function ChapterLink({ chapter, anchor, children }: { chapter: number; anchor?: string; children: ReactNode }) {
+function ChapterLink({ chapter, anchor, short, children }: { chapter: number; anchor?: string; short?: boolean; children: ReactNode }) {
   const to = useContext(BookLinksContext)?.chapter(chapter, anchor) ?? null;
   if (!to) return children;
   return (
-    <Link to={to} className="[overflow-wrap:anywhere]">
+    <Link to={to} className={short ? `${SHORT_LINK} [overflow-wrap:anywhere]` : "[overflow-wrap:anywhere]"}>
       {children}
     </Link>
+  );
+}
+
+/**
+ * A link to the web or a mail address. In a book it first says it leaves the library (`BookLinks.external`); the
+ * mark after it says so before it is pressed.
+ */
+function WebLink({ href, runs }: { href: string; runs: readonly MarkdownInline[] }) {
+  const external = useContext(BookLinksContext)?.external;
+  const web = /^https?:/i.test(href);
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      // Said as the link's description, so that its name stays its words.
+      title={web ? "On the internet" : undefined}
+      className="[overflow-wrap:anywhere]"
+      onClick={(event) => {
+        if (!external || !web) return;
+        event.preventDefault();
+        external(href);
+      }}
+    >
+      <Inline runs={runs} />
+      {web ? <ExternalLink aria-hidden className="ml-0.5 inline size-[0.8em] align-baseline" /> : null}
+    </a>
   );
 }
 
@@ -237,7 +279,7 @@ function Inline({ runs }: { runs: readonly MarkdownInline[] }): ReactNode {
       case "jump":
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
-          <Jump key={index} to={run.to}>
+          <Jump key={index} to={run.to} short={isShort(run.c)}>
             <Inline runs={run.c} />
           </Jump>
         );
@@ -251,7 +293,7 @@ function Inline({ runs }: { runs: readonly MarkdownInline[] }): ReactNode {
       case "chapter":
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
-          <ChapterLink key={index} chapter={run.chapter} anchor={run.anchor}>
+          <ChapterLink key={index} chapter={run.chapter} anchor={run.anchor} short={isShort(run.c)}>
             <Inline runs={run.c} />
           </ChapterLink>
         );
@@ -264,12 +306,8 @@ function Inline({ runs }: { runs: readonly MarkdownInline[] }): ReactNode {
         return <Picture key={index} run={run} />;
       case "link":
         // The server sends a link only for a web or mail address; it opens away from Outpost.
-        return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
-          <a key={index} href={run.href} target="_blank" rel="noreferrer noopener" className="[overflow-wrap:anywhere]">
-            <Inline runs={run.c} />
-          </a>
-        );
+        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+        return <WebLink key={index} href={run.href} runs={run.c} />;
       default:
         return null;
     }

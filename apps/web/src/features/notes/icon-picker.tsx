@@ -39,7 +39,7 @@ export function IconPicker({
           {emojiGroups.map((group) => (
             <section key={group.label} aria-label={group.label}>
               <h3 className="px-1 pt-2 pb-1 text-micro font-medium text-ink-faint">{group.label}</h3>
-              <div className="grid grid-cols-8">
+              <div className="grid grid-cols-8 pointer-coarse:grid-cols-6">
                 {group.emoji.map((emoji) => (
                   <button
                     key={emoji.char}

@@ -15,6 +15,15 @@ const SETTLE_MS = 1000;
 
 const remembered = new Map<string, number>();
 
+/**
+ * Whether this entry of history is one being returned to at a place further down than its top (Back or Forward to
+ * a screen that was scrolled). A screen that would focus a field as it opens leaves focus alone then: focusing a
+ * field far above the window moved the page back up to it (Search on an iPhone, Nov 2026).
+ */
+export function returnsToPlace(key: string, kind: string): boolean {
+  return kind === "POP" && (remembered.get(key) ?? 0) > 0;
+}
+
 /** For tests. */
 export function forgetScrollPositions(): void {
   remembered.clear();

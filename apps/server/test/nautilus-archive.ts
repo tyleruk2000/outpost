@@ -46,6 +46,10 @@ export const SLOW_DELAY_MS = 2500;
 /** Searching for both these words finds, at once, one article with both in its title: for the test of one ranked list. */
 export const QUICK_WORDS = ["lantern", "wick"];
 export const QUICK_ARTICLE = "Lantern wick trimming";
+/** Titles that begin with "kin" are suggested as they are typed; the full text of "kindling" finds `MANY_FOUND` articles, a page at a time. */
+export const SUGGESTED = ["Kindling and tinder", "Kindling a fire in the wet", "King post trusses"];
+export const MANY_WORD = "kindling";
+export const MANY_FOUND = 45;
 
 export interface ListedDocument {
   title: string;
@@ -342,6 +346,21 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
           `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>1</opensearch:totalResults><item><title>${QUICK_ARTICLE}</title><link>${root}/guide</link><description>...trim the <b>lantern</b> <b>wick</b> square before lighting...</description></item></channel></rss>`,
         );
       }
+      if (pattern === MANY_WORD) {
+        const asked = new URL(url, "http://kiwix").searchParams;
+        const start = Number(asked.get("start") ?? 0);
+        const length = Number(asked.get("pageLength") ?? 25);
+        const items = Array.from({ length: Math.max(0, Math.min(length, MANY_FOUND - start)) }, (_, index) => start + index + 1)
+          .map(
+            (n) =>
+              `<item><title>Kindling, part ${n}</title><link>${root}/guide</link><description>...dry <b>kindling</b>, part ${n}...</description></item>`,
+          )
+          .join("");
+        return send(
+          "application/xml",
+          `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>${MANY_FOUND}</opensearch:totalResults>${items}</channel></rss>`,
+        );
+      }
       // One word is found, slowly, as an archive on a network share is: for the tests of search answering in two parts.
       if (pattern !== SLOW_WORD) return send("application/xml", nothing);
       setTimeout(() => {
@@ -353,7 +372,11 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
       }, SLOW_DELAY_MS);
       return;
     }
-    if (url.startsWith("/suggest?")) return send("application/json", "[]");
+    if (url.startsWith("/suggest?")) {
+      const term = new URL(url, "http://kiwix").searchParams.get("term")?.toLowerCase() ?? "";
+      const found = term.length >= 2 ? SUGGESTED.filter((title) => title.toLowerCase().startsWith(term)) : [];
+      return send("application/json", JSON.stringify(found.map((value) => ({ value, path: "guide", kind: "path" }))));
+    }
     if (url === root || url === `${root}/`) {
       response.statusCode = 302;
       response.setHeader("Location", `${root}/home`);
