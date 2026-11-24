@@ -22,12 +22,15 @@ export type { ElevationSampler, GridHeights, SampledHeights } from "@outpost/sha
 export { terrainCellMeters, terrariumHeights } from "@outpost/shared";
 
 /**
- * Decoded tiles kept from one request to the next, for the height at a single point,
- * which is asked for again and again over the same few tiles as a pointer rests here and
- * there. Each is about 1 MB at 512 px. Kept by the archive that served them, so a tile
- * from terrain that has since been replaced is never read again.
+ * Decoded tiles kept from one request to the next: for the height at a single point,
+ * asked again and again over the same few tiles as a pointer rests here and there, and
+ * for an estimated range, which reads about 40 tiles (decoding them was most of its two
+ * seconds on a Raspberry Pi), so that a range from a point nearby, or the relay planner's
+ * second end, reads most of them from here. Each is about 1 MB at 512 px, so this is
+ * about 48 MB at most. Kept by the archive that served them, so a tile from terrain that
+ * has since been replaced is never read again.
  */
-const KEPT_TILES = 4;
+const KEPT_TILES = 48;
 
 function decodeTile(tile: ServedTile): HeightTile | null {
   let data: Uint8Array = tile.data;

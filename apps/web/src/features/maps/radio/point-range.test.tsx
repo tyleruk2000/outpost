@@ -2,7 +2,7 @@
  * "Estimated radio range from here": the repeaters' estimate for any point, from the long-press and right-click menu.
  * Every figure here is made up for the test.
  */
-import type { SightRange, TerrainProfile } from "@outpost/shared";
+import type { SightRange, SightRangeEvent, TerrainProfile } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
@@ -13,11 +13,47 @@ import type { MapEngine } from "../map/engine";
 import { ContextMenu } from "../map-chrome";
 import { type PointRange, pointRangePath, readPointRangePath, usePointRange } from "./point-range";
 
-vi.mock("@/lib/api", () => ({ api: { get: vi.fn() }, errorMessage: (error: unknown) => String(error), ApiError: class extends Error {} }));
+vi.mock("@/lib/api", () => ({
+  api: { get: vi.fn(), lines: vi.fn() },
+  errorMessage: (error: unknown) => String(error),
+  ApiError: class extends Error {},
+}));
 const asked = vi.mocked(api.get);
+/** The range is asked a line at a time. */
+const streamed = vi.mocked(api.lines);
+const rangeCalls = () => streamed.mock.calls.filter(([path]) => path === "/api/maps/sight-range");
 
 /** In sight to 18 km on the eastern half of the compass and to 6 km on the western; along any path, a valley. */
+function rangeAt(coverage: SightRange["coverage"], query?: Record<string, unknown>) {
+  const [lat, lon] = String(query?.at).split(",").map(Number) as [number, number];
+  return rangeFixture(
+    coverage,
+    { seen: (bearing, meters) => meters <= (bearing < 180 ? 18_000 : 6_000), groundMeters: 978 },
+    { lat, lon },
+    { aerialMeters: Number(query?.aerial), stationMeters: Number(query?.station) },
+  );
+}
+
+/**
+ * The server's lines for a range: how long the last took, the share done, the range to 25 km, then the whole. With
+ * `hold`, it stops after the part and waits until it is given up (what the server does while it reads the far ground).
+ */
+function lines(coverage: SightRange["coverage"], options: { hold?: (query: Record<string, unknown>) => boolean } = {}) {
+  return async (_path: string, query: Record<string, unknown> | undefined, onLine: (line: never) => void, signal?: AbortSignal) => {
+    const range = rangeAt(coverage, query);
+    const say = (line: SightRangeEvent) => onLine(line as never);
+    say({ type: "start", done: 0, expectMs: 2100 });
+    say({ type: "progress", done: 0.07 });
+    if (options.hold?.(query ?? {})) {
+      say({ type: "part", done: 0.32, range: { ...range, maxMeters: 25_000 } });
+      await new Promise((_, reject) => signal?.addEventListener("abort", () => reject(new DOMException("Given up", "AbortError"))));
+    }
+    say({ type: "end", done: 1, range });
+  };
+}
+
 function answer(coverage: SightRange["coverage"]) {
+  streamed.mockImplementation(lines(coverage) as never);
   return (path: string, query?: Record<string, unknown>) => {
     if (path === "/api/maps/terrain-profile") {
       // A valley between the two ends: the line of sight passes over it.
@@ -30,15 +66,7 @@ function answer(coverage: SightRange["coverage"]) {
         gaps: [],
       } as unknown as TerrainProfile) as never;
     }
-    const [lat, lon] = String(query?.at).split(",").map(Number) as [number, number];
-    return Promise.resolve(
-      rangeFixture(
-        coverage,
-        { seen: (bearing, meters) => meters <= (bearing < 180 ? 18_000 : 6_000), groundMeters: 978 },
-        { lat, lon },
-        { aerialMeters: Number(query?.aerial), stationMeters: Number(query?.station) },
-      ),
-    ) as never;
+    return Promise.resolve(rangeAt(coverage, query)) as never;
   };
 }
 
@@ -61,6 +89,7 @@ const show = () =>
 
 beforeEach(() => {
   asked.mockReset();
+  streamed.mockReset();
   fitBounds.mockReset();
   localStorage.clear();
 });
@@ -73,6 +102,7 @@ describe("an estimated radio range from any point", () => {
     expect(asked).not.toHaveBeenCalled();
     expect(latest.card).toBeNull();
     expect(latest.outline).toBeNull();
+    expect(streamed).not.toHaveBeenCalled();
   });
 
   it("works out the range from the point with a handheld at both ends, says it in the repeaters' words, and brings it into view", async () => {
@@ -83,9 +113,10 @@ describe("an estimated radio range from any point", () => {
     // Folded to the answer in a few words, so that the shading has the map; opened out with one press.
     expect(await screen.findByText(/^\d+% in sight within 10 km/)).toBeInTheDocument();
     unfold();
-    expect(asked).toHaveBeenCalledWith(
+    expect(streamed).toHaveBeenCalledWith(
       "/api/maps/sight-range",
       { at: "54.45420,-3.21160", aerial: "1.5", station: "1.5" },
+      expect.any(Function),
       expect.anything(),
     );
     expect(await screen.findByText(/^In sight: \d+% of the ground within 10 km, \d+% within 25 km\.$/)).toBeInTheDocument();
@@ -111,9 +142,10 @@ describe("an estimated radio range from any point", () => {
     fireEvent.change(screen.getByLabelText("Your aerial"), { target: { value: "10" } });
     fireEvent.click(screen.getByRole("radio", { name: "Roof aerial" }));
     await waitFor(() =>
-      expect(asked).toHaveBeenLastCalledWith(
+      expect(streamed).toHaveBeenLastCalledWith(
         "/api/maps/sight-range",
         { at: "54.45420,-3.21160", aerial: "10", station: "8" },
+        expect.any(Function),
         expect.anything(),
       ),
     );
@@ -162,6 +194,95 @@ describe("an estimated radio range from any point", () => {
   });
 });
 
+describe("while the range is worked out", () => {
+  const SCAFELL = { lat: 54.4542, lon: -3.2116 };
+  const openHeights = () => {
+    unfold();
+    fireEvent.click(screen.getByRole("button", { name: /^Heights and details/ }));
+  };
+
+  it("shows how far along it is and how long the last took here, and draws the near ground first", async () => {
+    asked.mockImplementation(answer("terrain"));
+    streamed.mockImplementation(lines("terrain", { hold: () => true }) as never);
+    show();
+    act(() => latest.start({ position: SCAFELL }));
+    unfold();
+    const bar = await screen.findByRole("progressbar", { name: "Working out the range" });
+    await waitFor(() => expect(bar).toHaveAttribute("aria-valuenow", "32"));
+    // The ground in sight out to 25 km is on the map before the rest is known, and the card says so.
+    expect(latest.outline?.range.maxMeters).toBe(25_000);
+    expect(latest.outline?.dim).toBe(false);
+    expect(screen.getByText("The ground in sight out to 25 km is drawn; working out the ground further out.")).toBeInTheDocument();
+    // Said politely, in the region the answer will be read out from.
+    expect(screen.getByText(/out to 25 km is drawn/).closest("[aria-live]")).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("before anything is drawn, says what it is doing and about how long it took here last time", async () => {
+    asked.mockImplementation(answer("terrain"));
+    streamed.mockImplementation((async (_path: string, _query: unknown, onLine: (line: never) => void, signal?: AbortSignal) => {
+      onLine({ type: "start", done: 0, expectMs: 2100 } as never);
+      await new Promise((_, reject) => signal?.addEventListener("abort", () => reject(new DOMException("Given up", "AbortError"))));
+    }) as never);
+    show();
+    act(() => latest.start({ position: SCAFELL }));
+    expect(await screen.findByText("Working out the range, about 2 s")).toBeInTheDocument();
+    unfold();
+    expect(screen.getByText("Working out the range from the ground's shape, about 2 s on this Outpost.")).toBeInTheDocument();
+    expect(latest.outline).toBeNull();
+  });
+
+  it("asks once for heights stepped through quickly, not once for each", async () => {
+    asked.mockImplementation(answer("terrain"));
+    show();
+    act(() => latest.start({ position: SCAFELL }));
+    await screen.findByText(/in sight within 10 km/);
+    openHeights();
+    const field = screen.getByLabelText("Your aerial");
+    for (const value of ["1", "1.5", "5", "10"]) fireEvent.change(field, { target: { value } });
+    fireEvent.click(screen.getByRole("radio", { name: "Car" }));
+    await waitFor(() => expect(rangeCalls()).toHaveLength(2));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(rangeCalls().map(([, query]) => query)).toEqual([
+      { at: "54.45420,-3.21160", aerial: "1.5", station: "1.5" },
+      { at: "54.45420,-3.21160", aerial: "10", station: "2" },
+    ]);
+  });
+
+  it("keeps the last answer on the map, faded, while other heights are worked out, and gives up what is no longer wanted", async () => {
+    asked.mockImplementation(answer("terrain"));
+    const signals: AbortSignal[] = [];
+    const held = lines("terrain", { hold: (query) => query.aerial !== "1.5" });
+    streamed.mockImplementation(((path: string, query: Record<string, unknown>, onLine: never, signal: AbortSignal) => {
+      signals.push(signal);
+      return held(path, query, onLine, signal);
+    }) as never);
+    show();
+    act(() => latest.start({ position: SCAFELL }));
+    await screen.findByText(/in sight within 10 km/);
+    const first = latest.outline!;
+    expect(first.dim).toBe(false);
+    openHeights();
+    // Asked for 10 m: the answer is held back, as a far read would be.
+    streamed.mockImplementationOnce(((_path: string, _query: Record<string, unknown>, onLine: never, signal: AbortSignal) => {
+      signals.push(signal);
+      return (async () => {
+        (onLine as (line: SightRangeEvent) => void)({ type: "start", done: 0, expectMs: 2100 });
+        await new Promise((_, reject) => signal.addEventListener("abort", () => reject(new DOMException("Given up", "AbortError"))));
+      })();
+    }) as never);
+    fireEvent.change(screen.getByLabelText("Your aerial"), { target: { value: "10" } });
+    await waitFor(() => expect(rangeCalls()).toHaveLength(2));
+    // Never a blank map: the last answer stays, faded, and the card says why.
+    await waitFor(() => expect(latest.outline?.dim).toBe(true));
+    expect(latest.outline?.range).toBe(first.range);
+    expect(await screen.findByText(/The last answer stays on the map, faded, until this one is ready\./)).toBeInTheDocument();
+    // Changed again before it came: the question for 10 m is given up, so the server stops working on it.
+    fireEvent.change(screen.getByLabelText("Your aerial"), { target: { value: "1.5" } });
+    await waitFor(() => expect(signals[1]!.aborted).toBe(true));
+    await waitFor(() => expect(latest.outline?.dim).toBe(false));
+  });
+});
+
 describe("a shared estimated range", () => {
   it("is an address with the point, the name and both heights, read back as it was", () => {
     const path = pointRangePath({ position: { lat: 54.4542, lon: -3.2116 }, name: "Scafell Pike" }, { aerial: 10, station: "roof" });
@@ -187,10 +308,15 @@ describe("a shared estimated range", () => {
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 }, heights: { aerial: 10, station: "car" } }));
     await screen.findByText(/^\d+% in sight within 10 km/);
-    expect(asked).toHaveBeenCalledWith("/api/maps/sight-range", { at: "54.45420,-3.21160", aerial: "10", station: "2" }, expect.anything());
+    expect(streamed).toHaveBeenCalledWith(
+      "/api/maps/sight-range",
+      { at: "54.45420,-3.21160", aerial: "10", station: "2" },
+      expect.any(Function),
+      expect.anything(),
+    );
     // Not first with the heights remembered here: the phone asks once.
     await new Promise((resolve) => setTimeout(resolve, 700));
-    expect(asked.mock.calls.filter(([path]) => path === "/api/maps/sight-range")).toHaveLength(1);
+    expect(rangeCalls()).toHaveLength(1);
     // Remembered here as the heights now in use, as any change of them is.
     expect(JSON.parse(localStorage.getItem("outpost.maps.pointRange")!)).toEqual({ aerial: 10, station: "car" });
   });

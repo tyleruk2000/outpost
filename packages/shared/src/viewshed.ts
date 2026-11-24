@@ -27,7 +27,7 @@ import {
   smoothRangeMeters,
   typicalRangeMeters,
 } from "./radio-range.ts";
-import type { ElevationSampler } from "./terrain-sampler.ts";
+import type { ElevationSampler, StopSignal } from "./terrain-sampler.ts";
 
 const DEG = Math.PI / 180;
 
@@ -161,41 +161,61 @@ export function viewshedOf(input: {
   };
 }
 
-export async function computeViewshed(
+/**
+ * The ground a range is worked out over: the heights on every bearing out to the maximum distance, read once for a
+ * place. It does not depend on the heights of the two aerials, so the server keeps it for a place and another pair of
+ * heights there costs only the sums (`rangeFromGround`), not reading the terrain again.
+ */
+export interface RangeGround {
+  at: RoutePoint;
+  /** Ground height under the aerial. */
+  groundMeters: number;
+  /** Distances of the samples on every bearing, in metres. */
+  distances: Float64Array;
+  /** Ground height at every sample of every bearing, bearing by bearing; NaN where none is known. */
+  heights: Float32Array;
+  /** Samples on each bearing read so far: all of them once the ground is read. */
+  filled: number;
+  /** How fine the terrain read so far is, as in `SightRange.terrain`; null where none was. */
+  terrain: SightRange["terrain"];
+}
+
+/** Each band as it is read: how many of the bands are done, and the ground read so far. */
+export interface RangeBandRead {
+  done: number;
+  total: number;
+  ground: RangeGround;
+}
+
+/**
+ * The bands' share of the time the ground takes to read, as measured over the UK terrain Outpost installs (most of it
+ * decoding tiles; the far band reads the most): for a progress bar, not a promise.
+ */
+export const RANGE_BAND_WORK = [0.07, 0.25, 0.23, 0.45] as const;
+
+/** The share of the work done once `done` bands are read, from 0 to 1. */
+export function rangeWorkDone(done: number): number {
+  let sum = 0;
+  for (let index = 0; index < Math.min(done, RANGE_BAND_WORK.length); index += 1) sum += RANGE_BAND_WORK[index]!;
+  return done >= RANGE_BAND_WORK.length ? 1 : round(sum, 3);
+}
+
+/**
+ * Reads the ground out to the maximum distance on every bearing, band by band, near first: null where no terrain is
+ * held under the aerial. `onBand` is told as each band is read, so that the near ground can be drawn while the far is
+ * still being read. Stops with the signal's reason once it is aborted, between one tile and the next.
+ */
+export async function readRangeGround(
   sampler: ElevationSampler,
   terrain: { maxzoom: number } | null,
   at: RoutePoint,
-  aerialMeters: number,
-  stationMeters: number,
-): Promise<Viewshed> {
-  const horizonMeters = Math.round(smoothRangeMeters(aerialMeters, stationMeters));
-  const base = {
-    at,
-    aerialMeters,
-    stationMeters,
-    maxMeters: RANGE_MAX_METERS,
-    bands: RANGE_BANDS.map((band) => ({ ...band })),
-    horizonMeters,
-  };
-  const empty = { distances: new Float64Array(0), heights: new Float32Array(0), bits: new Uint8Array(0) };
-  const none: Viewshed = {
-    ...empty,
-    range: {
-      ...base,
-      coverage: "none",
-      groundMeters: null,
-      bearingCount: 0,
-      seen: "",
-      shares: RANGE_SHARE_WITHIN_METERS.map((withinMeters) => ({ withinMeters, share: null })),
-      bearings: [],
-      typicalMeters: null,
-      hiddenShare: null,
-      terrain: null,
-    },
-  };
-  if (!terrain) return none;
-  const [ground] = await sampler.sample([[at.lon, at.lat]], RANGE_BANDS[0]!.stepMeters * 2);
-  if (ground == null) return none;
+  options: { signal?: StopSignal; onBand?: (read: RangeBandRead) => void } = {},
+): Promise<RangeGround | null> {
+  const { signal, onBand } = options;
+  signal?.throwIfAborted();
+  if (!terrain) return null;
+  const [groundMeters] = await sampler.sample([[at.lon, at.lat]], RANGE_BANDS[0]!.stepMeters * 2);
+  if (groundMeters == null) return null;
 
   const distances = Float64Array.from(rangeDistances());
   const samples = distances.length;
@@ -203,22 +223,80 @@ export async function computeViewshed(
   let finest = Number.POSITIVE_INFINITY;
   let coarsest = 0;
   let from = 0;
-  for (const band of RANGE_BANDS) {
+  const snapshot = (filled: number): RangeGround => ({
+    at,
+    groundMeters,
+    distances,
+    heights,
+    filled,
+    terrain:
+      coarsest > 0
+        ? { finestCellMeters: round(finest, 1), coarsestCellMeters: round(coarsest, 1), installedMaxZoom: terrain.maxzoom }
+        : null,
+  });
+  for (const [index, band] of RANGE_BANDS.entries()) {
+    signal?.throwIfAborted();
     let to = from;
     while (to < samples && distances[to]! <= band.toMeters + 1e-6) to += 1;
     if (to === from) continue;
     const { lons, lats } = positionsAlong(at, RANGE_BEARINGS, distances, from, to);
     // As for a profile, the sampler is told twice the step, so that its cells are between half a step and a step wide;
     // the far band is read from tiles no coarser than the band before it, where they are installed.
-    const read = await sampler.sampleGrid(lons, lats, Math.min(band.stepMeters, RANGE_FAR_READ_METERS) * 2);
+    const read = await sampler.sampleGrid(lons, lats, Math.min(band.stepMeters, RANGE_FAR_READ_METERS) * 2, signal);
     const width = to - from;
     for (let b = 0; b < RANGE_BEARINGS; b += 1) heights.set(read.heights.subarray(b * width, (b + 1) * width), b * samples + from);
     if (read.finestCellMeters !== null) finest = Math.min(finest, read.finestCellMeters);
     if (read.coarsestCellMeters !== null) coarsest = Math.max(coarsest, read.coarsestCellMeters);
     from = to;
+    if (to < samples) onBand?.({ done: index + 1, total: RANGE_BANDS.length, ground: snapshot(to) });
   }
+  return snapshot(samples);
+}
 
-  const shed = viewshedOf({ groundMeters: ground, aerialMeters, stationMeters, bearings: RANGE_BEARINGS, distances, heights });
+/**
+ * The range for a pair of heights over ground already read (`readRangeGround`); null ground gives the answer for no
+ * terrain, the smooth-Earth horizon. Over ground read only part of the way out (`filled` short of every sample) it is
+ * the range out to there: the same answer for that ground as the whole would give, since each bearing is worked
+ * outward, with `maxMeters` and `bands` saying how far it goes.
+ */
+export function rangeFromGround(ground: RangeGround | null, at: RoutePoint, aerialMeters: number, stationMeters: number): Viewshed {
+  const horizonMeters = Math.round(smoothRangeMeters(aerialMeters, stationMeters));
+  const samples = ground?.distances.length ?? 0;
+  const filled = ground ? Math.min(ground.filled, samples) : 0;
+  const maxMeters = ground && filled < samples ? ground.distances[filled - 1]! : RANGE_MAX_METERS;
+  const bands: SightRange["bands"] = [];
+  for (const band of RANGE_BANDS) {
+    if (bands.length > 0 && bands.at(-1)!.toMeters >= maxMeters) break;
+    bands.push({ ...band });
+  }
+  const base = { at, aerialMeters, stationMeters, maxMeters, bands, horizonMeters };
+  if (!ground || filled === 0) {
+    return {
+      distances: new Float64Array(0),
+      heights: new Float32Array(0),
+      bits: new Uint8Array(0),
+      range: {
+        ...base,
+        coverage: "none",
+        groundMeters: null,
+        bearingCount: 0,
+        seen: "",
+        shares: RANGE_SHARE_WITHIN_METERS.map((withinMeters) => ({ withinMeters, share: null })),
+        bearings: [],
+        typicalMeters: null,
+        hiddenShare: null,
+        terrain: null,
+      },
+    };
+  }
+  let { distances, heights } = ground;
+  if (filled < samples) {
+    // The near part of every bearing, laid out bearing by bearing as the whole is.
+    distances = ground.distances.slice(0, filled);
+    heights = new Float32Array(RANGE_BEARINGS * filled);
+    for (let b = 0; b < RANGE_BEARINGS; b += 1) heights.set(ground.heights.subarray(b * samples, b * samples + filled), b * filled);
+  }
+  const shed = viewshedOf({ groundMeters: ground.groundMeters, aerialMeters, stationMeters, bearings: RANGE_BEARINGS, distances, heights });
   return {
     distances,
     heights,
@@ -226,17 +304,25 @@ export async function computeViewshed(
     range: {
       ...base,
       coverage: shed.bearings.some((bearing) => bearing.unknownFromMeters !== null) ? "partial" : "terrain",
-      groundMeters: ground,
+      groundMeters: ground.groundMeters,
       bearingCount: RANGE_BEARINGS,
       seen: encodeBits(shed.bits),
       shares: shed.shares,
       bearings: shed.bearings,
       typicalMeters: typicalRangeMeters(shed.bearings),
       hiddenShare: shed.hiddenShare,
-      terrain:
-        coarsest > 0
-          ? { finestCellMeters: round(finest, 1), coarsestCellMeters: round(coarsest, 1), installedMaxZoom: terrain.maxzoom }
-          : null,
+      terrain: ground.terrain,
     },
   };
+}
+
+export async function computeViewshed(
+  sampler: ElevationSampler,
+  terrain: { maxzoom: number } | null,
+  at: RoutePoint,
+  aerialMeters: number,
+  stationMeters: number,
+  options: { signal?: StopSignal; onBand?: (read: RangeBandRead) => void } = {},
+): Promise<Viewshed> {
+  return rangeFromGround(await readRangeGround(sampler, terrain, at, options), at, aerialMeters, stationMeters);
 }

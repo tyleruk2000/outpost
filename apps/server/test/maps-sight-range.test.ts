@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 import {
   analyseSight,
   computeViewshed,
@@ -32,7 +33,7 @@ import {
 } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
-import { viewshedOf } from "../src/modules/maps/sight-range.ts";
+import { createSightRanger, viewshedOf } from "../src/modules/maps/sight-range.ts";
 import { buildArchive, type FixtureTile } from "./fixtures/maps/archive.ts";
 import { type Ground, groundTiles, positionOf } from "./fixtures/maps/terrain.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -487,5 +488,162 @@ describe("the relay planner", () => {
     const far = await relayOf({ lat: 53, lon: -4 }, { lat: 56, lon: -4 });
     expect(far.status).toBe(400);
     expect(far.body.error.message).toMatch(/200 km apart/);
+  });
+});
+
+// ── Worked out a band at a time, kept, and stopped ──────────────────────────
+
+describe("the ground read once for a place, near first", () => {
+  /** Flat ground at 100 m with a hill to the north, from tiles of one zoom, counting the tiles read. */
+  function countingSampler(options: { wait?: () => Promise<void> } = {}) {
+    const read = { tiles: 0 };
+    const hill = { size: 256, heights: new Float32Array(256 * 256) };
+    for (let row = 0; row < 256; row += 1) hill.heights.fill(row < 40 ? 400 : 100, row * 256, (row + 1) * 256);
+    const sampler = createTileSampler({
+      terrain: () => ({ minzoom: 9, maxzoom: 9, bounds: [-180, -85, 180, 85] }),
+      getTile: async () => {
+        read.tiles += 1;
+        await options.wait?.();
+        return hill;
+      },
+    });
+    const terrain = { maxzoom: 9 };
+    const tiles = { sources: () => ({ sources: { terrain } }), regions: () => [] } as unknown as Parameters<typeof createSightRanger>[1];
+    return { read, sampler, ranger: createSightRanger(sampler, tiles), terrain };
+  }
+  const HERE = { lat: 53, lon: -4.06 };
+
+  it("gives the same answer as reading it whole, and other heights there read no terrain again", async () => {
+    const { read, sampler, ranger, terrain } = countingSampler();
+    const first = await ranger(HERE, 10, 1.5);
+    const tilesRead = read.tiles;
+    expect(tilesRead).toBeGreaterThan(0);
+    expect(first).toEqual((await computeViewshed(sampler, terrain, HERE, 10, 1.5)).range);
+    for (const [aerial, station] of [
+      [1, 2],
+      [1.5, 2],
+      [5, 2],
+      [10, 8],
+    ] as const) {
+      const before = read.tiles;
+      const other = await ranger(HERE, aerial, station);
+      // Worked out over the ground already read.
+      expect(read.tiles).toBe(before);
+      expect(other).toEqual((await computeViewshed(sampler, terrain, HERE, aerial, station)).range);
+    }
+  });
+
+  it("tells of each band as it is read, the near ground first, each part the same as the whole out to there", async () => {
+    const { ranger } = countingSampler();
+    const parts: Array<{ done: number; range?: SightRange }> = [];
+    const whole = await ranger(HERE, 10, 1.5, { onPart: (part) => parts.push(part) });
+    expect(parts.map((part) => part.done)).toEqual([...parts.map((part) => part.done)].sort((a, b) => a - b));
+    expect(parts.every((part) => part.done > 0 && part.done < 1)).toBe(true);
+    const drawn = parts.flatMap((part) => (part.range ? [part.range] : []));
+    expect(drawn.map((range) => range.maxMeters)).toEqual([25_000, 50_000]);
+    const full = rangeGrid(whole);
+    for (const range of drawn) {
+      expect(range.bands.at(-1)!.toMeters).toBe(range.maxMeters);
+      const grid = rangeGrid(range);
+      expect(grid.distances).toEqual(full.distances.slice(0, grid.distances.length));
+      for (const bearing of [0, 90, 180, 359, 540]) {
+        for (let index = 0; index < grid.distances.length; index += 7)
+          expect(grid.seen(bearing, index), `${bearing}, ${grid.distances[index]} m`).toBe(full.seen(bearing, index));
+      }
+    }
+    // An answer already known is sent at once, with nothing to tell along the way.
+    const again: unknown[] = [];
+    expect(await ranger(HERE, 10, 1.5, { onPart: (part) => again.push(part) })).toBe(whole);
+    expect(again).toEqual([]);
+  });
+
+  it("stops reading once nobody waits for it, keeps nothing, and reads it afresh when asked again", async () => {
+    const { read, ranger } = countingSampler({ wait: () => new Promise<void>((resolve) => setTimeout(resolve, 2)) });
+    const controller = new AbortController();
+    const asked = ranger(HERE, 10, 1.5, {
+      signal: controller.signal,
+      onPart: () => controller.abort(),
+    });
+    await expect(asked).rejects.toThrow(/abort/i);
+    const atStop = read.tiles;
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    // At most the tile being read when it stopped.
+    expect(read.tiles - atStop).toBeLessThanOrEqual(1);
+    // Not kept: asked again, the whole ground is read.
+    const before = read.tiles;
+    const range = await ranger(HERE, 10, 1.5);
+    expect(range.bearingCount).toBe(RANGE_BEARINGS);
+    expect(read.tiles - before).toBeGreaterThan(atStop);
+  });
+
+  it("goes on for the others waiting when one of them stops waiting", async () => {
+    const { ranger } = countingSampler({ wait: () => new Promise<void>((resolve) => setTimeout(resolve, 1)) });
+    const leaving = new AbortController();
+    const one = ranger(HERE, 10, 1.5, { signal: leaving.signal });
+    const other = ranger(HERE, 5, 2);
+    leaving.abort();
+    await expect(one).rejects.toThrow(/abort/i);
+    expect((await other).bearingCount).toBe(RANGE_BEARINGS);
+  });
+});
+
+describe("a range sent a line at a time", () => {
+  type Line = { type: string; done?: number; expectMs?: number | null; range?: SightRange };
+  const linesOf = (text: string) =>
+    text
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Line);
+
+  it("says how long the last took, the share done, the range to 25 km and 50 km, then the whole answer", async () => {
+    await installTerrain(
+      "ridge",
+      groundTiles(ridgeGround, { minZoom: 11, maxZoom: 11, bbox: [-4.4, 52.8, -3.7, 53.2] }),
+      [-4.4, 52.8, -3.7, 53.2],
+    );
+    const url = `/api/maps/sight-range?at=${AT.lat},${AT.lon}&aerial=10&station=1.5`;
+    const response = await app.app.inject({
+      method: "GET",
+      url,
+      headers: { host: "localhost", "x-outpost-request": "1", accept: "application/x-ndjson, application/json" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/x-ndjson");
+    const lines = linesOf(response.body);
+    expect(lines[0]).toEqual({ type: "start", done: 0, expectMs: null });
+    expect(lines.map((line) => line.type)).toEqual(["start", "progress", "part", "part", "end"]);
+    const done = lines.map((line) => line.done!);
+    expect(done).toEqual([...done].sort((a, b) => a - b));
+    expect(done.at(-1)).toBe(1);
+    expect(lines.filter((line) => line.type === "part").map((line) => line.range!.maxMeters)).toEqual([25_000, 50_000]);
+    // The last line is the plain answer.
+    const plain = await rangeOf(AT, 10, 1.5);
+    expect(lines.at(-1)!.range).toEqual(plain.body);
+
+    // Elsewhere, the time the first took is given as what to expect.
+    const elsewhere = await app.app.inject({
+      method: "GET",
+      url: `/api/maps/sight-range?at=53.01,-4.1&aerial=10&station=1.5`,
+      headers: { host: "localhost", "x-outpost-request": "1", accept: "application/x-ndjson" },
+    });
+    expect(linesOf(elsewhere.body)[0]!.expectMs).toBeGreaterThan(0);
+  });
+
+  it("is compressed when the browser takes it, a tenth of the size or less", async () => {
+    await installTerrain(
+      "ridge",
+      groundTiles(ridgeGround, { minZoom: 11, maxZoom: 11, bbox: [-4.4, 52.8, -3.7, 53.2] }),
+      [-4.4, 52.8, -3.7, 53.2],
+    );
+    const response = await app.app.inject({
+      method: "GET",
+      url: `/api/maps/sight-range?at=${AT.lat},${AT.lon}&aerial=10&station=1.5`,
+      headers: { host: "localhost", "x-outpost-request": "1", accept: "application/x-ndjson", "accept-encoding": "br, gzip" },
+    });
+    expect(response.headers["content-encoding"]).toBe("br");
+    const text = zlib.brotliDecompressSync(response.rawPayload).toString("utf8");
+    const lines = linesOf(text);
+    expect(lines.at(-1)!.type).toBe("end");
+    expect(response.rawPayload.length).toBeLessThan(text.length / 10);
   });
 });

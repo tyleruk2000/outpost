@@ -16,7 +16,7 @@ export function useShades(engine: MapEngine | null, group: ShadeGroup, pictures:
       if (!current) return;
       const shades = pictures.flatMap((picture, index) => {
         const png = encoded[index];
-        return png ? [{ url: keepShade(png), coordinates: picture.coordinates, opacity }] : [];
+        return png ? [{ url: keepShade(png), coordinates: picture.coordinates, opacity: opacity * (picture.fade ?? 1) }] : [];
       });
       shown = shades.map((shade) => shade.url);
       engine.setShades(group, shades);

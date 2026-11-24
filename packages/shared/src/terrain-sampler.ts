@@ -34,9 +34,20 @@ export interface ElevationSampler {
   /**
    * The same for many positions given as two arrays (a viewshed): heights are NaN where none is known, and the widths
    * of the cells read are summed up as the finest and the coarsest. Neighbours in the arrays should be neighbours on
-   * the ground, so that each tile is decoded once.
+   * the ground, so that each tile is decoded once. With a signal, it stops with the signal's reason once aborted,
+   * between one tile and the next.
    */
-  sampleGrid(lons: Float64Array, lats: Float64Array, spacingMeters: number): Promise<GridHeights>;
+  sampleGrid(lons: Float64Array, lats: Float64Array, spacingMeters: number, signal?: StopSignal): Promise<GridHeights>;
+}
+
+/**
+ * What an AbortSignal offers that the readings use, written out here because this package uses no Node or browser
+ * types: an AbortSignal from either is one.
+ */
+export interface StopSignal {
+  readonly aborted: boolean;
+  /** Throws the reason it was aborted with, once it is. */
+  throwIfAborted(): void;
 }
 
 export interface GridHeights {
@@ -114,6 +125,7 @@ export function createTileSampler(source: TileHeightSource): ElevationSampler {
     lonAt: (index: number) => number,
     latAt: (index: number) => number,
     spacingMeters: number,
+    signal?: StopSignal,
   ): Promise<{ heights: Float32Array; cells: Float32Array }> {
     const heights = new Float32Array(count).fill(Number.NaN);
     const cells = new Float32Array(count).fill(Number.NaN);
@@ -133,6 +145,7 @@ export function createTileSampler(source: TileHeightSource): ElevationSampler {
     const cache = new Map<string, HeightTile | null>();
     let decoded = 0;
     const load = async (key: string, z: number, x: number, y: number): Promise<HeightTile | null> => {
+      signal?.throwIfAborted();
       let tile: HeightTile | null = null;
       try {
         tile = await source.getTile(z, x, y);
@@ -152,7 +165,11 @@ export function createTileSampler(source: TileHeightSource): ElevationSampler {
       }
       return tile;
     };
-    let lastKey = "";
+    // The tile the last position fell on: compared as numbers, since most positions fall on the same tile as the one
+    // before, and making its key for each of a viewshed's 800,000 positions was a tenth of the time it took.
+    let lastZ = -1;
+    let lastX = -1;
+    let lastY = -1;
     let lastTile: HeightTile | null = null;
 
     for (let index = 0; index < count; index += 1) {
@@ -166,17 +183,19 @@ export function createTileSampler(source: TileHeightSource): ElevationSampler {
         const scale = 2 ** z;
         const x = Math.min(scale - 1, Math.floor(worldX * scale));
         const y = Math.min(scale - 1, Math.floor(worldY * scale));
-        const key = `${z}/${x}/${y}`;
         let tile: HeightTile | null;
-        if (key === lastKey) tile = lastTile;
+        if (z === lastZ && x === lastX && y === lastY) tile = lastTile;
         else {
+          const key = `${z}/${x}/${y}`;
           const cached = cache.get(key);
           if (cached !== undefined) {
             cache.delete(key);
             cache.set(key, cached);
             tile = cached;
           } else tile = await load(key, z, x, y);
-          lastKey = key;
+          lastZ = z;
+          lastX = x;
+          lastY = y;
           lastTile = tile;
         }
         if (!tile) continue;
@@ -204,12 +223,13 @@ export function createTileSampler(source: TileHeightSource): ElevationSampler {
       const known = (value: number) => (Number.isNaN(value) ? null : value);
       return { heights: Array.from(heights, known), cells: Array.from(cells, known) };
     },
-    async sampleGrid(lons, lats, spacingMeters) {
+    async sampleGrid(lons, lats, spacingMeters, signal) {
       const { heights, cells } = await read(
         lons.length,
         (index) => lons[index]!,
         (index) => lats[index]!,
         spacingMeters,
+        signal,
       );
       let finest = Number.POSITIVE_INFINITY;
       let coarsest = 0;

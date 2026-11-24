@@ -45,14 +45,33 @@ class BitReader {
     return (this.data[position >> 3]! >> (position & 7)) & 1;
   }
 
+  /** The next `count` bits (at most 24) without reading past them; bits beyond the end of the data are 0. */
+  peek(count: number): number {
+    const position = this.position;
+    const at = position >> 3;
+    const data = this.data;
+    const word = (data[at] ?? 0) | ((data[at + 1] ?? 0) << 8) | ((data[at + 2] ?? 0) << 16) | ((data[at + 3] ?? 0) << 24);
+    return (word >>> (position & 7)) & ((1 << count) - 1);
+  }
+
+  skip(count: number): void {
+    if (this.position + count > this.limit) throw new ImageDecodeError("The image ends before its data does.");
+    this.position += count;
+  }
+
   bits(count: number): number {
+    if (count <= 24) {
+      const value = this.peek(count);
+      this.skip(count);
+      return value;
+    }
     let value = 0;
     for (let index = 0; index < count; index += 1) value |= this.bit() << index;
     return value >>> 0;
   }
 }
 
-/** A canonical prefix code, decoded a bit at a time. */
+/** A canonical prefix code: decoded from a table for codes up to `LOOKUP_BITS` long, a bit at a time beyond. */
 interface PrefixCode {
   /** Set when the code has one symbol, which then costs no bits at all. */
   only: number;
@@ -60,9 +79,17 @@ interface PrefixCode {
   counts: Uint16Array;
   /** Symbols in order of code length, then value. */
   symbols: Uint16Array;
+  /**
+   * For each value of the next `LOOKUP_BITS` bits, the symbol whose code they start with and its length, as
+   * symbol × 16 + length; -1 where the code is longer. Reading a symbol from it was most of the time a terrain tile
+   * took to decode, a bit at a time.
+   */
+  table: Int32Array;
 }
 
 const MAX_CODE_LENGTH = 15;
+const LOOKUP_BITS = 9;
+const NO_TABLE = new Int32Array(0);
 
 function buildCode(lengths: Uint8Array | number[]): PrefixCode {
   const counts = new Uint16Array(MAX_CODE_LENGTH + 1);
@@ -79,7 +106,7 @@ function buildCode(lengths: Uint8Array | number[]): PrefixCode {
   const symbols = new Uint16Array(used);
   if (used === 1) {
     symbols[0] = last;
-    return { only: last, counts, symbols };
+    return { only: last, counts, symbols, table: NO_TABLE };
   }
   const offsets = new Uint16Array(MAX_CODE_LENGTH + 2);
   for (let length = 1; length <= MAX_CODE_LENGTH; length += 1) offsets[length + 1] = offsets[length]! + counts[length]!;
@@ -89,11 +116,32 @@ function buildCode(lengths: Uint8Array | number[]): PrefixCode {
     symbols[offsets[length]!] = symbol;
     offsets[length] = offsets[length]! + 1;
   }
-  return { only: -1, counts, symbols };
+  // The canonical codes, as `readSymbol` reads them: by length, then by symbol, the first bit read the highest.
+  const table = new Int32Array(1 << LOOKUP_BITS).fill(-1);
+  let code = 0;
+  let index = 0;
+  for (let length = 1; length <= LOOKUP_BITS; length += 1) {
+    for (let n = 0; n < counts[length]!; n += 1) {
+      // The bits come least significant first, so the code is looked up reversed.
+      let reversed = 0;
+      for (let bit = 0; bit < length; bit += 1) reversed |= ((code >> (length - 1 - bit)) & 1) << bit;
+      const entry = (symbols[index]! << 4) | length;
+      for (let fill = reversed; fill < 1 << LOOKUP_BITS; fill += 1 << length) table[fill] = entry;
+      code += 1;
+      index += 1;
+    }
+    code <<= 1;
+  }
+  return { only: -1, counts, symbols, table };
 }
 
 function readSymbol(reader: BitReader, code: PrefixCode): number {
   if (code.only >= 0) return code.only;
+  const entry = code.table[reader.peek(LOOKUP_BITS)]!;
+  if (entry >= 0) {
+    reader.skip(entry & 15);
+    return entry >> 4;
+  }
   let value = 0;
   let first = 0;
   let index = 0;

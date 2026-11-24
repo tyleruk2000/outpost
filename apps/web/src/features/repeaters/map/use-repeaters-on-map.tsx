@@ -142,7 +142,7 @@ export function useRepeatersOnMap({
   extraRange,
 }: {
   /** A point's estimated range, drawn with the repeaters' outlines by the same layers. */
-  extraRange?: { range: SightRange; name: string } | null;
+  extraRange?: { range: SightRange; name: string; dim?: boolean } | null;
   engine: MapEngine | null;
   /** No tool is in hand, so a press on the map can open a repeater. */
   browsing: boolean;

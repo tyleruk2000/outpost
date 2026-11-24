@@ -81,6 +81,8 @@ export interface ShadePicture {
   /** RGBA, row by row from the top. */
   pixels: Uint8ClampedArray;
   coordinates: Shade["coordinates"];
+  /** How much of the group's opacity it is drawn with: less than 1 for a picture shown faded. 1 when not said. */
+  fade?: number;
 }
 
 /**

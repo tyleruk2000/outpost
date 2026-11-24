@@ -48,7 +48,7 @@ import { createPointHeight, pointHeightQuery } from "./point-height.ts";
 import { createRegionsService, estimateSchema, importSchema, type RegionsService, startRegionSchema } from "./regions.ts";
 import { createRelayPlanner, relayQuery } from "./relay.ts";
 import { registerRouteFinder } from "./route-finder/index.ts";
-import { createSightRanger, sightRangeQuery } from "./sight-range.ts";
+import { createSightRanger, goneSignal, sendRangeLines, sightRangeQuery, wantsLines } from "./sight-range.ts";
 import { createSourceResolver } from "./source.ts";
 import { createTerrainProfiler, type TerrainProfiler, terrainProfileQuery } from "./terrain-profile.ts";
 import { createTileServer, type TileServer } from "./tile-server.ts";
@@ -305,9 +305,18 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   // How far out a station stays in sight of an aerial, bearing by bearing, from installed terrain: a repeater's estimated range.
-  app.get("/api/maps/sight-range", async (request) => {
+  // Asked with `Accept: application/x-ndjson`, a line at a time as the ground is read, near first (`SightRangeEvent`).
+  app.get("/api/maps/sight-range", async (request, reply) => {
     const query = sightRangeQuery.parse(request.query);
-    return sightRange(query.at, query.aerial, query.station);
+    if (wantsLines(request)) return sendRangeLines(request, reply, sightRange, query);
+    const signal = goneSignal(reply);
+    try {
+      return await sightRange(query.at, query.aerial, query.station, { signal });
+    } catch (error) {
+      // The person asked something else instead, or left: there is nobody to answer, and nothing went wrong.
+      if (signal.aborted) return reply.code(499).send();
+      throw error;
+    }
   });
 
   // High ground in sight of two places, for a relay between them: the two places' viewsheds read together.

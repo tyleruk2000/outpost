@@ -179,6 +179,9 @@ The same rings and circle appear in the disc of **Why this shape** (which reache
 far as the last ring) and, with **Estimated radio range** ticked, on a printed map, in the
 light map's colours.
 
+Working out a range at a new place takes a second or two on a Raspberry Pi; another
+height at the same place comes back at once, since the ground read there is kept.
+
 The aerial height is as listed, or an assumed **10 m** (changeable; low so the estimate
 errs small). The other station is **Handheld 1.5 m**, **Car 2 m** or **Roof aerial 8 m**.
 With no terrain you get the smooth-Earth radio horizon, about 4.12 × (√h1 + √h2) km, and
