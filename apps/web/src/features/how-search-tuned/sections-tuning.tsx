@@ -6,6 +6,7 @@ import {
   favoured,
   MEANING_CEILING,
   meaningScore,
+  PERSONA_FIGURES,
   PI_STAGES,
   PI_SUMMARY,
   SCORED_EXAMPLE,
@@ -253,6 +254,80 @@ export function StepsSection() {
         head={["Measure", "Before", "After"]}
         numeric={[1, 2]}
         rows={EVERYDAY_FIGURES.map((row) => [row.measure, row.before, row.after])}
+      />
+
+      <Step
+        id="step-7"
+        title="7. Questions five people asked"
+        problem={
+          <>
+            <p>
+              Five people used Outpost for a day: a relative with her text at 200%, a parent in a power cut, a man walking home in a hurry,
+              a teenager, and a family abroad. Their questions showed what the evaluation set did not.
+            </p>
+            <ul>
+              <li>
+                “can I take paracetamol and ibuprofen together” gave the NHS pages on taking diphenhydramine, acrivastine and loratadine
+                with other medicines first. Each mentions both painkillers in passing.
+              </li>
+              <li>“bleeding wont stop”, typed with a thumb, gave a forum on brakes that “wont bleed”, and offered “bleeding want stop”.</li>
+              <li>
+                “asdfghjkl”, “skibidi”, a pizza emoji and a script tag each gave 15 to 20 of the household’s own notes and contacts,
+                “Similar in meaning”, one of them a page named for a password.
+              </li>
+            </ul>
+          </>
+        }
+        evidence={
+          <ul>
+            <li>
+              The painkillers’ own pages were never asked for. A collection’s titles are searched for the words a title would hold, and
+              those were “take paracetamol ibuprofen together”: no title has “together”.
+            </li>
+            <li>“Wont” is a word of its own to an index; the forum held it, and “bleeding” beside it was read in no particular sense.</li>
+            <li>
+              The model finds something nearest to anything. On the Pi the nearest passages to keyboard-mashing were 0.35 to 0.58 similar;
+              of the 286 useful passages it found for the evaluation set, 5 in 100 were less than 0.36 similar, one less than 0.30. No floor
+              tells the two apart. What does: no word of “asdfghjkl” is in any passage of the library.
+            </li>
+          </ul>
+        }
+        change={
+          <ul>
+            <li>
+              The 17 questions joined the evaluation set as a set of their own, graded on the Pi’s collections, with two new rules: a page
+              titled for another medicine is worth at most 1, and a title in another sense (brakes, a film called Before Sunrise) 0.
+            </li>
+            <li>“Take” and “together” say what to do, not what about: titles are now searched for “paracetamol ibuprofen”.</li>
+            <li>
+              A medical article whose title names nothing the question is about counts 0.85 of itself, and says “about something else”. Only
+              articles: a first aid manual’s title never names the question.
+            </li>
+            <li>“Wont”, “dont”, “cant” and the like are read as “won’t”, “don’t”, “can’t”. “Bleeding” alone is a person’s.</li>
+            <li>
+              When no word of a search is in the library and nothing is at least 0.6 similar, results by meaning alone are held back: the
+              screen says “Nothing matches” and offers them with a press. Beside results found by words, they need 0.3, at most eight are
+              shown, and never a contact, whose passage is a name and a number near any short nonsense.
+            </li>
+          </ul>
+        }
+        result={
+          <ul>
+            <li>The Pi’s candidates re-ranked offline: persona questions nDCG@5 0.742 → 0.859, success@3 77% → 92%.</li>
+            <li>The other sets held: everyday 0.917 → 0.926, household 0.881 → 0.886, and on the fixture library 0.818 → 0.820.</li>
+            <li>Keyboard-mashing, with search by meaning on: 20, 20, 20 and 11 results by meaning alone, now none.</li>
+            <li>
+              Not fixed by ranking: “what to do for a burn” still puts encyclopaedia articles titled “Burn” above a first aid leaflet on the
+              Pi. The word is the whole question, and the article is titled for it.
+            </li>
+          </ul>
+        }
+      />
+      <Figures
+        label="Package 7, before and after"
+        head={["Measure", "Before", "After"]}
+        numeric={[1, 2]}
+        rows={PERSONA_FIGURES.map((row) => [row.measure, row.before, row.after])}
       />
 
       <Sub id="steps-rejected">Tried and rejected</Sub>

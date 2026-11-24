@@ -96,7 +96,8 @@ export function PageHeader({
     ) : null;
   return (
     <header className={cn("mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4", className)}>
-      <div className="min-w-0 max-w-[60ch]">
+      {/* Grows into the room there is: sized to a short title ("Pairs"), it cut the way back to "← Gam…". */}
+      <div className="min-w-0 max-w-[60ch] grow">
         {backLink ? <div>{backLink}</div> : null}
         {/* A long word ("Communication") in the title's size is wider than a narrow phone with large text: it is broken. */}
         <h1 className="font-title text-title text-ink hyphens-auto break-words">{title}</h1>

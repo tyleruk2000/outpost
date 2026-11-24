@@ -22,6 +22,7 @@ interface Query {
   grades: Record<string, number>;
   pi: string[];
   sets?: string[];
+  nonsense?: boolean;
 }
 interface Row {
   q: string;
@@ -32,6 +33,8 @@ interface Row {
   ms: number;
   titles: string[];
   sets: string[];
+  /** Results found by meaning alone ("Similar in meaning"). */
+  byMeaningAlone: number;
 }
 interface Recorded {
   collections: Array<{
@@ -54,6 +57,8 @@ const { formatSummary, formatTable, foundByWords, gradeById, gradeByPattern, loa
 /** The first household questions, and the everyday searches tried on a Raspberry Pi (queries.json `sets`). */
 const household = (rows: Row[]) => rows.filter((row) => !row.sets.length || row.sets.includes("household"));
 const everyday = (rows: Row[]) => rows.filter((row) => row.sets.includes("everyday"));
+/** What five people asked in the persona tests of 24 November 2026, keyboard-mashing included. */
+const persona = (rows: Row[]) => rows.filter((row) => row.sets.includes("persona"));
 const modelPresent = builtInInstallation(defaultModelDir()).installed;
 
 describe("search quality on the household evaluation set", () => {
@@ -100,7 +105,7 @@ describe("search quality on the household evaluation set", () => {
         // Nothing found by the words and a word offered in its place: a person would take the offer, so that is what is graded.
         const followed = !foundByWords(body.results) && body.didYouMean ? (body.didYouMean.query as string) : null;
         if (followed) ({ body } = await app.api("GET", `/api/search?q=${encodeURIComponent(followed)}&limit=20`));
-        const results = body.results as Array<{ kind: string; entityId: string; title: string }>;
+        const results = body.results as Array<{ kind: string; entityId: string; title: string; sources: string[] }>;
         const ideal = [...Object.values(query.grades), ...pool.map((hit) => gradeByPattern(query, hit))].filter((value) => value > 0);
         into.push({
           q: followed ? `${query.q} → ${followed}` : query.q,
@@ -111,6 +116,7 @@ describe("search quality on the household evaluation set", () => {
           ms,
           titles: results.map((result) => (result.kind === "reference" ? `[ref] ${result.title}` : result.title)),
           sets: query.sets ?? [],
+          byMeaningAlone: results.filter((result) => result.sources.every((source) => source === "semantic")).length,
         });
       }
     };
@@ -134,11 +140,16 @@ describe("search quality on the household evaluation set", () => {
     // A file, not the console: the test runner keeps a passing test's output to itself.
     if (process.env.SEARCH_EVAL_OUT) {
       const withMeaning = modelPresent
-        ? `${formatTable(meaningRows)}\n\n${formatSummary("fixture library, keyword again", summarise(keywordAgain))}\n${formatSummary("fixture library, with search by meaning", summarise(meaningRows))}\n${formatSummary("fixture library, with search by meaning, household questions", summarise(household(meaningRows)))}\n${formatSummary("fixture library, with search by meaning, everyday searches", summarise(everyday(meaningRows)))}\n\n`
+        ? `${formatTable(meaningRows)}\n\n${formatSummary("fixture library, keyword again", summarise(keywordAgain))}\n${formatSummary("fixture library, with search by meaning", summarise(meaningRows))}\n${formatSummary("fixture library, with search by meaning, household questions", summarise(household(meaningRows)))}\n${formatSummary("fixture library, with search by meaning, everyday searches", summarise(everyday(meaningRows)))}\n${formatSummary("fixture library, with search by meaning, persona questions", summarise(persona(meaningRows)))}\nFound by meaning alone for keyboard-mashing: ${persona(
+            meaningRows,
+          )
+            .filter((row) => !row.expects)
+            .map((row) => `${row.q} ${row.byMeaningAlone}`)
+            .join(", ")}\n\n`
         : "";
       writeFileSync(
         process.env.SEARCH_EVAL_OUT,
-        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
+        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n${formatSummary("fixture library, persona questions", summarise(persona(rows)))}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
       );
     }
   }, 120_000);
@@ -185,6 +196,23 @@ describe("search quality on the household evaluation set", () => {
       expect(meaningRows.find((row) => row.q === "rescue breaths for a child")!.titles[0]).toBe("First aid manual");
     },
   );
+
+  it("answers the persona tests' medicine and first aid questions with pages about them", () => {
+    const medicine = rows.find((row) => row.q === "can I take paracetamol and ibuprofen together")!;
+    // The painkillers' own page and the encyclopaedia's article on the two together, before a page on another medicine.
+    expect(medicine.grades.slice(0, 2), medicine.titles.join(" | ")).toEqual([3, 3]);
+    const bleeding = rows.find((row) => row.q === "bleeding wont stop")!;
+    expect(bleeding.titles.slice(0, 5).filter((title) => /brake|keg/i.test(title))).toEqual([]);
+    expect(bleeding.titles.slice(0, 3)).toContain("First aid manual");
+    // Low beside the others: "how to pick a lock" and "sunrise tomorrow" have no answer in the recorded collections.
+    expect(summarise(persona(rows)).ndcg5).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it.skipIf(!modelPresent)("finds nothing by meaning alone for keyboard-mashing, with search by meaning on", () => {
+    const mashing = persona(meaningRows).filter((row) => !row.expects);
+    expect(mashing.length).toBeGreaterThanOrEqual(4);
+    for (const row of mashing) expect(row.byMeaningAlone, `${row.q}: ${row.titles.join(" | ")}`).toBe(0);
+  });
 
   it("answers the owner's question with the car battery page first", () => {
     const row = rows.find((candidate) => candidate.q === "How to change car battery")!;

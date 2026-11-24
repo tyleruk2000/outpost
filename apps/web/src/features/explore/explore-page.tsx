@@ -353,6 +353,20 @@ export default function ExplorePage() {
             </div>
           ) : (
             <div className="min-w-0 max-lg:mt-3">
+              {/* What can be read now, first: on a phone the first thing to open was four screens down, under downloads. */}
+              {category === "all" && !filtered && entries.some((entry) => entry.status === "installed") ? (
+                <p className="mb-5 text-body text-ink">
+                  Already here, to read now:{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShow("installed")}
+                    className="inline-flex min-h-6 items-center font-medium text-primary underline underline-offset-2 pointer-coarse:min-h-11"
+                  >
+                    {plural(entries.filter((entry) => entry.status === "installed").length, "collection")}
+                  </button>
+                  .
+                </p>
+              ) : null}
               {category === "all" && !filtered ? (
                 <SuggestedForHome
                   suggestions={suggested.suggestions}

@@ -4,8 +4,8 @@ Small games for when the internet is out, under **Games** in the navigation, in 
 phone's More sheet and in the quick search. None of them reaches the internet; there is
 no sound.
 
-Allotment, Steading, Solitaire, Peg solitaire, Sudoku, Draughts, Chess, Pairs, Snake and
-Skerry.
+Quick games first: Chess, Snake, Pairs, Sudoku, Solitaire, Draughts, Peg solitaire and
+Skerry; then the two the household builds over weeks, Allotment and Steading.
 
 ## What is kept, and where
 

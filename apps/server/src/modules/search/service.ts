@@ -111,6 +111,8 @@ export interface SearchParams {
   reference?: "include" | "later";
   /** Search only for what was typed: no other spellings or ways of saying it (synonyms.ts). */
   exact?: boolean;
+  /** Results by meaning alone even when no word of the query is in any passage (`SearchResponse.looseHeld`). */
+  loose?: boolean;
   signal?: AbortSignal;
 }
 
@@ -541,6 +543,47 @@ export const SAME_MEANING = 0.6;
  */
 export const MEANING_LIFT = 0.5;
 
+/**
+ * The least similarity a result found by meaning alone needs beside results found by words, the same as a passage
+ * given to an answer (`SIMILARITY_FLOOR`). On the Raspberry Pi's library (59,000 passages, 24 November 2026), of the
+ * 286 useful results (grade 2 or 3) the model found for the 95 questions of the evaluation set, one was less similar
+ * (0.29); a floor at the 5th of 100 of them, 0.36, cut "skibidi" (0.36) and a script tag (0.35) but also the note
+ * that answers "dog paws snow ice". No floor tells all nonsense from a question ("asdfghjkl" came within 0.45 of a
+ * two-letter note, the pizza emoji within 0.58 of another): no word of those is in the library, and `looseHeld`
+ * does that part. "By meaning", chosen by the person, has no floor.
+ */
+export const MEANING_FLOOR = SIMILARITY_FLOOR;
+
+/** How results found by meaning alone are let in: beside words, or on "By meaning", where they are all there is. */
+export interface MeaningAlone {
+  floor: number;
+  most: number;
+  never: ReadonlySet<string>;
+}
+
+/**
+ * The most results found by meaning alone in one list. They fill a list when the words find little, and in a
+ * household's library most of them are its own notes: twenty of them for a word mistyped was a tour of everyone's
+ * pages, not an answer.
+ */
+export const MEANING_ONLY_MOST = 8;
+
+/**
+ * When no word of a query is in the library, results by meaning alone are held back (`looseHeld`) unless one is at
+ * least this similar. On the Pi the nearest passages to keyboard-mashing were 0.35 to 0.58 similar ("asdfghjkl"
+ * 0.45, the pizza emoji 0.58), and to "bowline", which no page there holds, 0.32: none of them about it.
+ */
+export const LOOSE_BELOW = 0.6;
+
+/**
+ * Kinds never shown found by meaning alone. A contact's passage is a name and a number, near in meaning to any short
+ * nonsense ("Bpjk" for "asdfghjkl", "Goldern Bowl" for "bowline"); its words find it.
+ */
+const NEVER_BY_MEANING_ALONE: ReadonlySet<string> = new Set(["contact"]);
+
+export const BESIDE_WORDS: MeaningAlone = { floor: MEANING_FLOOR, most: MEANING_ONLY_MOST, never: NEVER_BY_MEANING_ALONE };
+export const MEANING_ONLY: MeaningAlone = { floor: 0, most: Number.POSITIVE_INFINITY, never: new Set() };
+
 /** Which results hold every word that matters, and which are trusted sources for the question (intent.ts). */
 export interface WordsHeld {
   everyWord: Set<string>;
@@ -553,17 +596,18 @@ export const resultKey = (result: { kind: string; entityId: string }) => `${resu
  * Words and meaning on one scale. A result found both ways scores 1 - (1 - words)(1 - meaning
  * × `MEANING_LIFT`): more than by words alone, never above 1. Found by meaning alone ("Similar in meaning"), it
  * scores its meaning, always less than every result holding every word, and is left out when
- * it is more than `SIMILARITY_WINDOW` behind the nearest. No floor of similarity is set: none
- * tells nonsense from a real question. In a library of 59,000 passages "zzqx flurble" comes
- * within 0.45 of one, while the note that answers "dog paws snow ice" ("Trim the hair between
- * the pads and rinse off grit and road salt") is 0.19 from it. So when the words find plenty, results by meaning alone wait
- * below them; when the words find little or nothing, these fill the list.
+ * it is more than `SIMILARITY_WINDOW` behind the nearest or less similar than `MEANING_FLOOR`.
+ * No floor tells all nonsense from a real question: in a library of 59,000 passages "zzqx flurble"
+ * comes within 0.45 of one. So when the words find plenty, results by meaning alone wait below
+ * them; when they find little, at most `MEANING_ONLY_MOST` of these follow; and when no word of
+ * the query is in the library at all, they are held back unless asked for (`looseHeld`).
  */
 export function blendMeaning(
   byWords: SearchResult[],
   byMeaning: SearchResult[],
   weights: { keywordWeight: number; semanticWeight: number },
   held: WordsHeld = { everyWord: new Set(), trusted: new Set() },
+  alone: MeaningAlone = BESIDE_WORDS,
 ): SearchResult[] {
   const meaning = new Map(byMeaning.map((result) => [resultKey(result), result]));
   const confirmed = new Set<string>();
@@ -585,8 +629,11 @@ export function blendMeaning(
   });
   const lowestWithEveryWord = Math.min(...blended.filter((result) => held.everyWord.has(resultKey(result))).map((result) => result.score));
   const nearest = Math.max(0, ...byMeaning.map((result) => result.score));
+  let shownAlone = 0;
   for (const near of meaning.values()) {
-    if (near.score < nearest - SIMILARITY_WINDOW) continue;
+    if (near.score < nearest - SIMILARITY_WINDOW || near.score < alone.floor || alone.never.has(near.kind)) continue;
+    if (shownAlone >= alone.most) break;
+    shownAlone += 1;
     const score = Math.min(meaningScore(near.score) * weights.semanticWeight, MEANING_CEILING, lowestWithEveryWord - 0.001);
     blended.push({ ...near, score: Math.max(0, Math.round(score * 1000) / 1000), why: "Similar in meaning" });
   }
@@ -1376,7 +1423,25 @@ export function createSearchService(ctx: AppContext): SearchService {
             semanticWeight: ctx.services.settings.get("search.hybrid.semanticWeight"),
           },
           keyword.held,
+          mode === "semantic" ? MEANING_ONLY : BESIDE_WORDS,
         );
+      }
+      // No word of the query is in any passage, and nothing is close in meaning: what is nearest to it is not about
+      // it. Held back, and counted, so that the screen can say "Nothing matches" and offer them with a press. Not when
+      // the person chose "By meaning", and not when a passage is plainly near ("purification" for a page on making
+      // water safe).
+      let looseHeld = 0;
+      if (
+        !params.loose &&
+        mode === "hybrid" &&
+        keyword.total === 0 &&
+        parsed.required.length > 0 &&
+        Math.max(0, ...meaning.map((result) => result.score)) < LOOSE_BELOW &&
+        countTerms(sqlite, parsed).every((count) => count === 0)
+      ) {
+        const kept = results.filter((result) => result.sources.some((source) => source !== "semantic"));
+        looseHeld = results.length - kept.length;
+        results = kept;
       }
       results = onDeviceFirst(results);
       // One title once: a collection, the document made from it and its catalogue entry are one row.
@@ -1402,6 +1467,7 @@ export function createSearchService(ctx: AppContext): SearchService {
           results.filter((result) => result.sources.some((source) => source !== "semantic")).length < FEW ? keyword.didYouMean : null,
         // Results found another way can only add to what the words found.
         total: Math.max(results.length, keyword.total - collapsed),
+        looseHeld,
         results: results.slice(offset, offset + limit),
         places: places.slice(0, PLACES_SHOWN),
         placesFirst: looksLikeAName(q, places),

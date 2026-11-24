@@ -229,6 +229,21 @@ export const EVERYDAY_FIGURES: Array<{ measure: string; before: string; after: s
   { measure: "Of the 32 searches, those asking all 37 collections (after: the new rule on the Pi’s own counts)", before: "7", after: "4" },
 ];
 
+/**
+ * Package 7, the persona tests (24 November 2026). The Pi: its candidates in the earlier and the new order, offline,
+ * graded against one pool of everything any run found. The fixture: the same recorded collections, old code and new.
+ */
+export const PERSONA_FIGURES: Array<{ measure: string; before: string; after: string }> = [
+  { measure: "Persona questions, nDCG@5 on the Pi", before: "0.742", after: "0.859" },
+  { measure: "Persona questions, success@3 on the Pi", before: "77%", after: "92%" },
+  { measure: "Everyday searches, nDCG@5 on the Pi", before: "0.917", after: "0.926" },
+  { measure: "Household questions, nDCG@5 on the Pi", before: "0.881", after: "0.886" },
+  { measure: "Fixture library, persona questions, nDCG@5", before: "0.616", after: "0.626" },
+  { measure: "Fixture library, household questions, nDCG@5", before: "0.818", after: "0.820" },
+  { measure: "Fixture library, everyday searches, nDCG@5", before: "0.729", after: "0.730" },
+  { measure: "Keyboard-mashing (4 searches), results by meaning alone", before: "20, 20, 20, 11", after: "0, 0, 0, 0" },
+];
+
 /** Own results' p95 on the Raspberry Pi at each point it was measured. */
 export const PI_P95 = [
   { label: "Before", ms: 888 },

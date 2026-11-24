@@ -30,7 +30,9 @@ The step-by-step set-up is [setup-guide.md](setup-guide.md), also under Help.
 ## Setting it up
 
 The steps are in [setup-guide.md](setup-guide.md). Under **Settings → Answers from your
-library** there are three presses:
+library**, on the Chat screen, and from **Set up answers** on Home and the Search screen
+there are three presses (opened from another device, the first names the computer Outpost
+runs on, by its address, instead of "this computer"):
 
 1. **Look for Ollama on this computer** asks the address in Settings, then
    `127.0.0.1:11434`, then `host.docker.internal:11434`. Nothing is saved.
@@ -240,7 +242,7 @@ everything** removes them. None of it goes to the log.
 
 | The screen says | What to do |
 | --- | --- |
-| Chat needs a language model on your own computer | Follow [setup-guide.md](setup-guide.md), then the three presses. |
+| Chat needs a writing model | Follow [setup-guide.md](setup-guide.md), then the three presses. On a phone, whoever looks after the Outpost does this on its computer. |
 | The model server is not answering | Start it, check the address, **Look again**. |
 | Waiting for the model to start writing / loading the model | Wait, or **Stop**. Outpost gives up after 3 minutes. |
 | The model reached its length limit | **Ask it to continue**. |

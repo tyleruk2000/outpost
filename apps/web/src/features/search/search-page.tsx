@@ -1,7 +1,7 @@
 import type { SearchCard, SearchMode, SearchResponse, SearchResult, SearchSuggestion } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, ClipboardList, LoaderCircle, MapPin, Search as SearchIcon, Wrench, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigationType, useSearchParams } from "react-router";
 import { findPlaces, type Place } from "@/components/find-places";
 import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
@@ -9,8 +9,9 @@ import { ScreensUnder } from "@/components/screens-under";
 import { returnsToPlace } from "@/components/scroll-memory";
 import { Highlighted, kindMeta, kindOf, resultHref } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
-import { Segmented, Skeleton } from "@/components/ui/misc";
+import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { findGuides, useGuideIndex } from "@/features/help/guide-places";
+import { AnswersOffer } from "@/features/setup/answers-offer";
 import { api } from "@/lib/api";
 import {
   oneList,
@@ -381,6 +382,54 @@ function ReferenceLine({ reference, inList, firstPage }: { reference: ReferenceS
   );
 }
 
+/**
+ * True when the column is narrower than 48 of the root's ems: a phone, or a tablet with its text at 200%. Then the
+ * filters are one drop-down instead of a row of tabs, and the explanations of the results fold under "About these
+ * results", so that the first screen holds results: at 200% on an upright iPad the first title was 1,589 px down a
+ * 1,180 px screen. Measured from the column, and again when the text size changes (a 1rem sentinel is watched too).
+ */
+function useNarrow() {
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  const [narrow, setNarrow] = useState(false);
+  useLayoutEffect(() => {
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const sentinel = document.createElement("span");
+    sentinel.setAttribute("aria-hidden", "true");
+    sentinel.style.cssText = "position:absolute;visibility:hidden;width:1rem;height:0;pointer-events:none";
+    element.append(sentinel);
+    const check = () => {
+      const width = element.getBoundingClientRect().width;
+      const rem = sentinel.getBoundingClientRect().width || 16;
+      setNarrow(width > 0 && width < 48 * rem);
+    };
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(element);
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+      sentinel.remove();
+    };
+  }, [element]);
+  return [setElement, narrow] as const;
+}
+
+/** On a narrow column, what explains the results, folded into one line under the count. */
+function AboutTheseResults({ children }: { children: ReactNode }) {
+  return (
+    <details className="group mt-1 text-small">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-primary [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-4 transition-transform duration-(--duration-fast) group-open:rotate-90 motion-reduce:transition-none"
+        />
+        About these results
+      </summary>
+      <div className="grid gap-1 pb-2 pl-5">{children}</div>
+    </details>
+  );
+}
+
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const q = params.get("q") ?? "";
@@ -391,7 +440,10 @@ export default function SearchPage() {
   const exact = params.get("exact") === "1";
   /** Every reference collection, not only those likeliest to hold the answer. */
   const allCollections = params.get("collections") === "all";
+  /** What is nearest in meaning even when no word typed is in the library: asked for with a press. */
+  const loose = params.get("loose") === "1";
   const [draft, setDraft] = useState(q);
+  const [frame, narrow] = useNarrow();
   const inputRef = useRef<HTMLInputElement>(null);
   const arrival = useNavigationType();
   const { key: entry } = useLocation();
@@ -419,6 +471,7 @@ export default function SearchPage() {
           // Searching only for what was typed, or every collection, belongs to the words it was asked for.
           next.delete("exact");
           next.delete("collections");
+          next.delete("loose");
           return next;
         },
         { replace: true },
@@ -428,7 +481,7 @@ export default function SearchPage() {
   }, [draft, q, setParams]);
 
   const search = useQuery({
-    queryKey: ["search", "page", q, kind, mode ?? "", page, exact],
+    queryKey: ["search", "page", q, kind, mode ?? "", page, exact, loose],
     queryFn: ({ signal }) =>
       api.get<SearchResponse>(
         "/api/search",
@@ -441,6 +494,7 @@ export default function SearchPage() {
           offset: kind === "reference" ? 0 : (page - 1) * PAGE_SIZE,
           reference: "later",
           exact: exact ? "1" : undefined,
+          loose: loose ? "1" : undefined,
         },
         signal,
       ),
@@ -475,6 +529,7 @@ export default function SearchPage() {
     next.delete("page");
     next.delete("exact");
     next.delete("collections");
+    next.delete("loose");
     return `/search?${next}`;
   };
   const facets = Object.entries(data?.facets ?? {})
@@ -550,11 +605,13 @@ export default function SearchPage() {
             </Button>
           ) : null}
         </div>
-        {/* On a phone, once there are results, these give way to them: "How were these found?" leads to the same place. */}
-        <ScreensUnder parent="/search" className={q.trim() ? "max-md:hidden" : undefined} />
+        {/* Once there are results, these give way to them: "How were these found?" leads to the same place. */}
+        <ScreensUnder parent="/search" className={q.trim() ? "hidden" : undefined} />
       </div>
 
       <AnswerArea q={q} mode={mode} referenceResults={q.trim() ? reference.results.length : 0} />
+      {/* With no writing model, what a question could get and the button to set it up: here, and after the results. */}
+      {!q.trim() ? <AnswersOffer className="mt-6" /> : null}
 
       {!q.trim() ? (
         <EmptyState title="One search for everything you keep" seed={11} className="mt-8">
@@ -578,56 +635,91 @@ export default function SearchPage() {
         </EmptyState>
       ) : (
         <>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border">
-            <div
-              role="tablist"
-              aria-label="Filter results"
-              // One stop for Tab, and the arrow keys move along it, as tabs do everywhere else (WAI-ARIA tabs).
-              onKeyDown={(event) => {
-                const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-                const at = tabs.indexOf(event.target as HTMLButtonElement);
-                if (at < 0) return;
-                const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[event.key];
-                if (to === undefined) return;
-                event.preventDefault();
-                const next = tabs[(to + tabs.length) % tabs.length];
-                next?.focus();
-                next?.click();
-              }}
-              // Wraps rather than scrolling: on a phone the names past the right edge were filters nobody found.
-              className="-mb-px flex flex-wrap gap-x-5 gap-y-0"
-            >
-              {[
-                ["", "Everything", undefined] as const,
-                ...facets.map(([key, count]) => [key, kindMeta[key]?.plural ?? key, count] as const),
-                ...(referenceTab ? [["reference", kindMeta.reference!.plural, referenceCount] as const] : []),
-              ].map(([key, label, count]) => (
-                <button
-                  key={key || "all"}
-                  type="button"
-                  role="tab"
-                  aria-selected={kind === key}
-                  tabIndex={kind === key ? 0 : -1}
-                  onClick={() => setParam("kind", key || undefined)}
-                  className={cn(
-                    "relative flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted transition-colors duration-(--duration-fast) hover:text-ink max-md:min-h-11 md:pointer-coarse:min-h-11",
-                    kind === key && "border-primary text-ink",
-                  )}
-                >
-                  {label}
-                  {count !== undefined ? (
-                    <span className="tabular text-micro text-ink-faint">
-                      <span className="sr-only">, </span>
-                      {count}
-                    </span>
-                  ) : null}
-                  {key === "reference" && reference.status === "searching" ? (
-                    <LoaderCircle aria-hidden className="size-3 animate-spin text-ink-faint" />
-                  ) : null}
-                </button>
-              ))}
-            </div>
-            {semanticOffered || mode ? (
+          <div ref={frame} className="relative mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border">
+            {narrow ? (
+              <div className="flex w-full items-center gap-3 pb-3">
+                <label htmlFor="search-show" className="shrink-0 text-small text-ink-muted">
+                  Show
+                </label>
+                <Select
+                  id="search-show"
+                  value={kind || "all"}
+                  onChange={(next) => setParam("kind", next === "all" ? undefined : next)}
+                  className="min-w-0 flex-1 text-body"
+                  options={[
+                    { value: "all", label: "Everything" },
+                    ...facets.map(([key, count]) => ({ value: key, label: `${kindMeta[key]?.plural ?? key} (${count})` })),
+                    ...(referenceTab
+                      ? [
+                          {
+                            value: "reference",
+                            label:
+                              referenceCount === undefined
+                                ? kindMeta.reference!.plural
+                                : `${kindMeta.reference!.plural} (${referenceCount})`,
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+                {reference.status === "searching" ? (
+                  <LoaderCircle
+                    aria-label="Still searching reference collections"
+                    className="size-4 shrink-0 animate-spin text-ink-faint"
+                  />
+                ) : null}
+              </div>
+            ) : (
+              <div
+                role="tablist"
+                aria-label="Filter results"
+                // One stop for Tab, and the arrow keys move along it, as tabs do everywhere else (WAI-ARIA tabs).
+                onKeyDown={(event) => {
+                  const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+                  const at = tabs.indexOf(event.target as HTMLButtonElement);
+                  if (at < 0) return;
+                  const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[event.key];
+                  if (to === undefined) return;
+                  event.preventDefault();
+                  const next = tabs[(to + tabs.length) % tabs.length];
+                  next?.focus();
+                  next?.click();
+                }}
+                // Wraps rather than scrolling: on a phone the names past the right edge were filters nobody found.
+                className="-mb-px flex flex-wrap gap-x-5 gap-y-0"
+              >
+                {[
+                  ["", "Everything", undefined] as const,
+                  ...facets.map(([key, count]) => [key, kindMeta[key]?.plural ?? key, count] as const),
+                  ...(referenceTab ? [["reference", kindMeta.reference!.plural, referenceCount] as const] : []),
+                ].map(([key, label, count]) => (
+                  <button
+                    key={key || "all"}
+                    type="button"
+                    role="tab"
+                    aria-selected={kind === key}
+                    tabIndex={kind === key ? 0 : -1}
+                    onClick={() => setParam("kind", key || undefined)}
+                    className={cn(
+                      "relative flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted transition-colors duration-(--duration-fast) hover:text-ink max-md:min-h-11 md:pointer-coarse:min-h-11",
+                      kind === key && "border-primary text-ink",
+                    )}
+                  >
+                    {label}
+                    {count !== undefined ? (
+                      <span className="tabular text-micro text-ink-faint">
+                        <span className="sr-only">, </span>
+                        {count}
+                      </span>
+                    ) : null}
+                    {key === "reference" && reference.status === "searching" ? (
+                      <LoaderCircle aria-hidden className="size-3 animate-spin text-ink-faint" />
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!narrow && (semanticOffered || mode) ? (
               <Segmented
                 label="How to search"
                 value={mode ?? data?.mode ?? "keyword"}
@@ -695,6 +787,29 @@ export default function SearchPage() {
             <div className="mt-8 max-w-[52ch]">
               <h2 className="font-title text-heading">Nothing matches “{data.query}”</h2>
               {data.didYouMean ? <DidYouMean suggestion={data.didYouMean} to={searchFor(data.didYouMean.query)} /> : null}
+              {/* On a narrow column the switch is folded with the results' explanations; with no results it is here. */}
+              {narrow && (semanticOffered || mode) ? (
+                <Segmented
+                  label="How to search"
+                  value={mode ?? data.mode}
+                  onChange={(next) => setParam("mode", next)}
+                  className="mt-3"
+                  options={[
+                    { value: "hybrid", label: "Best of both" },
+                    { value: "keyword", label: "Exact words" },
+                    { value: "semantic", label: "By meaning" },
+                  ]}
+                />
+              ) : null}
+              {data.looseHeld ? (
+                <p className="mt-2 text-ink-muted">
+                  No word of it is in your library.{" "}
+                  <Button variant="link" className="align-baseline" onClick={() => setParam("loose", "1")}>
+                    Show {plural(data.looseHeld, "loosely related page")}
+                  </Button>
+                  , nearest in meaning but probably not about it.
+                </p>
+              ) : null}
               <AlsoSearched also={data.alsoSearched} exact={exact} onExact={(only) => setParam("exact", only ? "1" : undefined)} />
               <p className="mt-2 text-ink-muted">
                 Check the spelling, try fewer or different words, or clear the filter. If you expected a document here, its text may still
@@ -711,6 +826,14 @@ export default function SearchPage() {
                 {own.length === 0 ? (
                   <p className="mt-4 text-small text-ink-muted" aria-live="polite">
                     Nothing of your own matches “{data.query}”.
+                    {data.looseHeld ? (
+                      <>
+                        {" "}
+                        <Button variant="link" size="sm" className="align-baseline" onClick={() => setParam("loose", "1")}>
+                          Show {plural(data.looseHeld, "loosely related page")}
+                        </Button>
+                      </>
+                    ) : null}
                   </p>
                 ) : (
                   <p className="tabular mt-4 text-small text-ink-muted" aria-live="polite">
@@ -732,14 +855,40 @@ export default function SearchPage() {
                     Nothing has these words. These are only the nearest in meaning, and may not be about it at all.
                   </p>
                 ) : null}
-                {own.length > 0 && data.ignored.length > 0 ? (
-                  <p className="mt-1 text-small text-ink-muted">
-                    Left out of the search, as words that only shape a question: {data.ignored.map((word) => `“${word}”`).join(", ")}.
-                  </p>
-                ) : null}
-                {own.length > 0 ? (
-                  <AlsoSearched also={data.alsoSearched} exact={exact} onExact={(only) => setParam("exact", only ? "1" : undefined)} />
-                ) : null}
+                {(() => {
+                  const ignored =
+                    own.length > 0 && data.ignored.length > 0 ? (
+                      <p className="mt-1 text-small text-ink-muted">
+                        Left out of the search, as words that only shape a question: {data.ignored.map((word) => `“${word}”`).join(", ")}.
+                      </p>
+                    ) : null;
+                  const also =
+                    own.length > 0 ? (
+                      <AlsoSearched also={data.alsoSearched} exact={exact} onExact={(only) => setParam("exact", only ? "1" : undefined)} />
+                    ) : null;
+                  if (!narrow) return [ignored, also];
+                  const modes =
+                    semanticOffered || mode ? (
+                      <Segmented
+                        label="How to search"
+                        value={mode ?? data.mode}
+                        onChange={(next) => setParam("mode", next)}
+                        className="mt-2 justify-self-start"
+                        options={[
+                          { value: "hybrid", label: "Best of both" },
+                          { value: "keyword", label: "Exact words" },
+                          { value: "semantic", label: "By meaning" },
+                        ]}
+                      />
+                    ) : null;
+                  return ignored || modes || data.alsoSearched.length > 0 ? (
+                    <AboutTheseResults key="about">
+                      {ignored}
+                      {also}
+                      {modes}
+                    </AboutTheseResults>
+                  ) : null;
+                })()}
                 {data.didYouMean ? <DidYouMean suggestion={data.didYouMean} to={searchFor(data.didYouMean.query)} /> : null}
                 {data.householdShown ? (
                   <p className="mt-1 text-small text-ink-muted">
@@ -790,6 +939,7 @@ export default function SearchPage() {
                   <Pager page={page} pages={Math.ceil(data.total / PAGE_SIZE)} onPage={(next) => setParam("page", String(next))} />
                 ) : null}
                 {!data.placesFirst && data.places.length > 0 ? <PlacesStrip places={data.places} /> : null}
+                {everything && page === 1 ? <AnswersOffer question={data.query} className="mt-8" /> : null}
               </div>
               {toDownloadShown ? (
                 <section aria-labelledby="download-results" className="mt-8 border-t border-border pt-5">

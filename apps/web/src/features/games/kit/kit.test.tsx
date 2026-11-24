@@ -219,17 +219,18 @@ describe("the Games page", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Games" })).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(gameScreens.map((game) => game.to));
+    // Quick games first; the slow ones the household builds over weeks last.
     expect(gameScreens.map((game) => game.label)).toEqual([
+      "Chess",
+      "Snake",
+      "Pairs",
+      "Sudoku",
+      "Solitaire",
+      "Draughts",
+      "Peg solitaire",
+      "Skerry",
       "Allotment",
       "Steading",
-      "Solitaire",
-      "Peg solitaire",
-      "Sudoku",
-      "Draughts",
-      "Chess",
-      "Pairs",
-      "Snake",
-      "Skerry",
     ]);
     expect(screen.getByText(/stays on the device it is being played on/)).toBeInTheDocument();
   });
