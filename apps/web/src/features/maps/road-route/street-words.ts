@@ -222,5 +222,14 @@ export function geometryBounds(result: StreetsRouteResult): [number, number, num
 export const addStreetsLabel = (country: { name: string } | null | undefined) =>
   country ? `Add walking and cycling for ${country.name}` : "Add walking and cycling";
 
-/** Words for a time on the map: "15 min", "1 hour". */
-export const reachTimeText = (minutes: number) => (minutes >= 60 ? `${minutes / 60} hour${minutes > 60 ? "s" : ""}` : `${minutes} min`);
+const hoursText = (minutes: number) => {
+  const whole = Math.floor(minutes / 60);
+  return minutes % 60 === 30 ? `${whole}½` : String(minutes / 60);
+};
+
+/** Words for a time on the map: "15 min", "1 hour", "1½ hours", "8 hours". */
+export const reachTimeText = (minutes: number) =>
+  minutes >= 60 ? `${hoursText(minutes)} hour${minutes > 60 ? "s" : ""}` : `${minutes} min`;
+
+/** The same, short, for a choice where room is tight: "15 min", "1 h", "1½ h". */
+export const reachTimeShort = (minutes: number) => (minutes >= 60 ? `${hoursText(minutes)} h` : `${minutes} min`);

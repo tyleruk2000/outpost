@@ -79,7 +79,10 @@ EOF
 }
 
 # write_config DIR: a Valhalla configuration reading DIR/tiles.tar, with nothing fetched:
-# no timezones, no elevation, no traffic.
+# no timezones, no elevation, no traffic. Reachable areas go up to 8 hours on foot, so the
+# longest isochrone allowed is 480 minutes (Valhalla's default is 120), at most 4 at once
+# (Outpost asks for 3). Written again every time the service starts, so a rebuilt image
+# takes it up over the tiles already built.
 write_config() {
   local dir="$1"
   valhalla_build_config \
@@ -95,6 +98,8 @@ write_config() {
     --httpd-service-interrupt "ipc:///tmp/interrupt" \
     --httpd-service-drain-seconds 1 \
     --httpd-service-shutdown-seconds 1 \
+    --service-limits-isochrone-max-time-contour 480 \
+    --service-limits-isochrone-max-contours 4 \
     >"$dir/valhalla.json"
 }
 

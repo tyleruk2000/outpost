@@ -10,8 +10,12 @@ import { AppError } from "../../core/errors.ts";
 export type Costing = "auto" | "bicycle" | "pedestrian";
 
 const ROUTE_TIMEOUT_MS = 20_000;
-/** Measured on a Pi 5: a 60-minute drive area takes about 5 s; three areas in one ask about 4.6 s. */
-const ISOCHRONE_TIMEOUT_MS = 30_000;
+/**
+ * Measured on a Pi 5: a 60-minute drive area takes about 5 s; three areas in one ask about
+ * 4.6 s, each doubling of the time about three times the last. A 2 hour drive or a long
+ * walk covers far more streets, so it is given longer before Outpost gives up on it.
+ */
+export const isochroneTimeoutMs = (longestMinutes: number) => (longestMinutes > 60 ? 90_000 : 30_000);
 const ROUTE_MAX_BYTES = 4 * 1024 * 1024;
 const ISOCHRONE_MAX_BYTES = 8 * 1024 * 1024;
 
@@ -213,7 +217,7 @@ export function createStreetsClient(baseUrl: () => string): StreetsClient {
           generalize: generalizeM,
         },
         isochroneReplySchema,
-        ISOCHRONE_TIMEOUT_MS,
+        isochroneTimeoutMs(Math.max(...minutes)),
         ISOCHRONE_MAX_BYTES,
         signal,
       );
