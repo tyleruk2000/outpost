@@ -226,6 +226,11 @@ function keepRouteDraft(draft: RouteDraft | null): void {
 
 /** The toast that asks for a press on the map while saving a place. */
 const ADD_PLACE_HINT = "add-place-hint";
+/**
+ * Where a form opens the sheet on a phone. At half height Plan a route had 74 px for its fields at 390 px (31 at
+ * 320) under the tabs, its intro and the Plan route bar, and the keyboard then covered those.
+ */
+const FORM_DETENT: Detent = "full";
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLInputElement ||
@@ -484,6 +489,9 @@ export default function MapsPage() {
       setMoving(null);
       setDraft(draftOf(marker));
       showPanel("places");
+      // On a phone the form takes the whole sheet (FORM_DETENT), unless the place was pressed on the map, which is
+      // then still to be seen above it.
+      if (fly) setDetent(FORM_DETENT);
       if (fly) engine?.flyTo({ lat: marker.lat, lon: marker.lon });
     },
     [engine, showPanel],
@@ -512,6 +520,8 @@ export default function MapsPage() {
       setContextMenu(null);
       setTool("browse");
       setDraft({ name, note: "", color: "teal", icon: "pin", isFavorite: false, lat: position.lat, lon: position.lon });
+      // At half height: the new place is shown on the map above the form (the sheet stands on the keyboard when its name
+      // is typed). The form has the sheet without the tabs.
       showPanel("places");
       setReveal(position);
     },
@@ -608,6 +618,7 @@ export default function MapsPage() {
       setRoadRouting(true);
     }
     if (tab && (PANEL_TABS as readonly string[]).includes(tab)) showPanel(tab as PanelTab);
+    if (tab === "routes" && params.get("road") === "1") setDetent(FORM_DETENT);
     if (params.get("print") === "1") setPrintAsked(true);
     // /maps?offline=region&preset=… opens Offline maps at that region, offline=draw at drawing one, offline=imagery at
     // satellite pictures. Place names and roads for routes are on Map data now: the older links lead there.
@@ -1050,7 +1061,7 @@ export default function MapsPage() {
     setRoadRouting(true);
     setRoadIntent({ role, point, at: Date.now() });
     setPanel({ open: true, tab: "routes" });
-    setDetent((current) => (current === "peek" ? "half" : current));
+    setDetent(FORM_DETENT);
   };
 
   const changeTool = (next: Tool) => {
@@ -1233,6 +1244,8 @@ export default function MapsPage() {
       const fromLink = new URLSearchParams(window.location.search).get("reference") === "manage";
       navigate(fromLink ? "/maps/data" : "/maps/data?get=places", { replace: fromLink });
     }, [navigate]),
+    // On a phone the raised sheet hid the map that moved to the record, and its card with it.
+    onFound: useCallback(() => setDetent("peek"), []),
   });
 
   /**
@@ -1409,6 +1422,13 @@ export default function MapsPage() {
   const contextPlace =
     placesMovable && contextMenu?.hit?.type === "marker" ? markers.data?.find((marker) => marker.id === contextMenu.hit?.id) : undefined;
 
+  /**
+   * On a phone, whether a form has the sheet: Plan a route, a place being added or changed, Find a route. The row of
+   * tabs is put away while it does, so that the form's first line (its way back) and first field are at the top.
+   */
+  const formInSheet =
+    !isDesktop && ((panel.tab === "places" && draft !== null) || (panel.tab === "routes" && !routeDraft && (roadRouting || finding)));
+
   const tabs = (
     <PanelTabs
       tab={panel.tab}
@@ -1418,6 +1438,7 @@ export default function MapsPage() {
       }}
       onTabPress={() => setDetent((current) => (current === "peek" ? "half" : current))}
       counts={{ places: markers.data?.length, routes: tracks.data?.length }}
+      hideTabs={formInSheet}
     >
       {{
         places: draft ? (
@@ -1516,8 +1537,14 @@ export default function MapsPage() {
             onOpen={(track) => openTrack(track)}
             onImport={setImportFiles}
             onDraw={() => startDrawing()}
-            onFind={() => setFinding(true)}
-            onRoadRoute={() => setRoadRouting(true)}
+            onFind={() => {
+              setFinding(true);
+              setDetent(FORM_DETENT);
+            }}
+            onRoadRoute={() => {
+              setRoadRouting(true);
+              setDetent(FORM_DETENT);
+            }}
             canDraw={Boolean(engine)}
           />
         ),
@@ -2052,7 +2079,7 @@ export default function MapsPage() {
             onDetentChange={setDetent}
             onPeekHeight={setPeekHeight}
             hidden={docked}
-            first={tool === "sight" ? "sight" : tool === "print" && printInSheet ? "print" : "tabs"}
+            first={tool === "sight" ? "sight" : tool === "print" && printInSheet ? "print" : formInSheet ? "form" : "tabs"}
           >
             {panelBody}
           </MobileSheet>

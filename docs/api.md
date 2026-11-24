@@ -680,7 +680,7 @@ server on the internet.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/maps/places` | `q`, `limit` (≤50), `near` → `PlaceSearchResponse`. A position (coordinates, grid reference, locator) fills `coordinate`; `otherReadings` when the text could mean two. |
+| `GET /api/maps/places` | `q`, `limit` (≤50), `near`, `country` (two letters: the household's, put first with the country `near` is in) → `PlaceSearchResponse`. A position (coordinates, grid reference, locator) fills `coordinate`; `otherReadings` when the text could mean two. |
 | `GET /api/maps/places/datasets`, `POST`, `DELETE …/:id` | Place-name datasets: `{ dataset: cities500 \| cities15000 \| country, country?, locationId? }`. |
 | `POST /api/maps/places/os-names/check` | Asks `api.os.uk` for the current OS Open Names edition (`OsNamesCheck`); kept half an hour. |
 | `POST /api/maps/places/os-names` | `{ locationId?, roads? }`: downloads that edition. `409` without a recent check or if installed. |

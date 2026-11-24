@@ -51,6 +51,8 @@ export function measureArea(bbox: Bbox, maxZoom: number, terrain: boolean, signa
     "/api/maps/area-size",
     { bbox: bbox.map((value) => value.toFixed(5)).join(","), maxZoom, terrain: terrain ? 1 : 0 },
     signal,
+    // Every tile in the box is counted: a large area takes a while on a small computer.
+    { timeoutMs: 120_000 },
   );
 }
 

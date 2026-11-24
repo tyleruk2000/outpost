@@ -74,7 +74,8 @@ function LayerRow({
   const info = REFERENCE_LAYER_INFO[layer];
   return (
     <li className="py-2.5">
-      <div className="flex items-start gap-3">
+      {/* The whole row switches the layer: the switch alone was 40 × 24 and the name 18 px tall. */}
+      <label htmlFor={id} className="flex cursor-pointer items-start gap-3 max-md:min-h-11 md:pointer-coarse:min-h-11">
         {info.areas && (layer === "boundaries" || layer === "regions" || layer === "planning-zones" || layer === "flood-zones") ? (
           <AreaMark colour={colour} />
         ) : layer === "routes" || layer === "rights-of-way" ? (
@@ -84,14 +85,23 @@ function LayerRow({
         ) : (
           <ProvenanceMark provenance={layer === "historical" ? "historical" : "public-infrastructure"} colour={colour} />
         )}
-        <div className="min-w-0 flex-1">
-          <label htmlFor={id} className="text-small font-medium text-ink">
+        <span className="min-w-0 flex-1">
+          <span id={`${id}-name`} className="block text-small font-medium text-ink">
             {info.label}
-          </label>
-          <p className="tabular text-small text-ink-muted">{formatNumber(count)} held</p>
-        </div>
-        <Switch id={id} checked={on} onCheckedChange={onChange} className="mt-0.5 max-md:my-[10px]" />
-      </div>
+          </span>
+          <span id={`${id}-held`} className="tabular block text-small text-ink-muted">
+            {formatNumber(count)} held
+          </span>
+        </span>
+        <Switch
+          id={id}
+          checked={on}
+          onCheckedChange={onChange}
+          aria-labelledby={`${id}-name`}
+          aria-describedby={`${id}-held`}
+          className="mt-0.5 max-md:my-[10px]"
+        />
+      </label>
       {below}
     </li>
   );

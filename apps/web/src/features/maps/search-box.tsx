@@ -10,6 +10,7 @@ import { searchRowFocus } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
+import { keepFieldFocus, useDismiss } from "@/lib/use-dismiss";
 import { cn } from "@/lib/utils";
 import { usePlaceSearch } from "./data";
 import { formatDistance, type LatLon } from "./lib/geo";
@@ -75,6 +76,9 @@ export function SearchBox({
   useEffect(() => setActive(0), [query]);
 
   const showList = open && query.length >= 2;
+  const box = useRef<HTMLDivElement>(null);
+  // Closed by a press or focus elsewhere, not by the field's blur: on an iPhone that came before the tap's click.
+  useDismiss(box, open, () => setOpen(false));
   const choose = (result: SearchResult) => {
     setOpen(false);
     setText(result.title);
@@ -106,7 +110,7 @@ export function SearchBox({
   const nothing = !waiting && results.length === 0;
 
   return (
-    <div className={cn("relative", className)}>
+    <div ref={box} className={cn("relative", className)}>
       {/* Tall enough that the field inside its border is the 44 px a finger needs. */}
       <div
         className={cn(
@@ -135,7 +139,8 @@ export function SearchBox({
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+          // Still focused after a press elsewhere closed the list: a press on the field opens it again.
+          onClick={() => setOpen(true)}
           onKeyDown={onKeyDown}
           autoComplete="off"
           spellCheck={false}
@@ -159,7 +164,10 @@ export function SearchBox({
       </div>
 
       {showList ? (
-        <div className={cn(mapSurface, "scroll-quiet absolute inset-x-0 top-full mt-1.5 max-h-[min(60dvh,26rem)] overflow-y-auto p-1")}>
+        <div
+          className={cn(mapSurface, "scroll-quiet absolute inset-x-0 top-full mt-1.5 max-h-[min(60dvh,26rem)] overflow-y-auto p-1")}
+          {...keepFieldFocus}
+        >
           <div id={listId} role="listbox" aria-label="Search results">
             {results.map((result, index) => {
               const Icon = icons[result.kind];

@@ -14,7 +14,7 @@ import "./styles/base.css";
 const queryClient = createQueryClient();
 
 /**
- * Toasts: above the phone's bottom bar (taller by the home indicator on some phones), six
+ * Toasts: above the phone's bottom bar (taller by the home indicator on some phones) and the map's sheet, six
  * seconds to read (held while pointed at or touched, and while the page is hidden), each
  * with a close button, three at most in view. Colours come from tokens (base.css).
  * One look for all of them: words and no icon (a tick on one screen and none on the next
@@ -28,7 +28,9 @@ function ThemedToaster() {
       theme={resolved}
       position="bottom-right"
       offset={{ bottom: 20, right: 20 }}
-      mobileOffset={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom))" }}
+      // On Maps the sheet over the foot of the map says how tall it is (--sheet-toast-lift), and messages stand above it
+      // rather than over its handle and tabs.
+      mobileOffset={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom) + var(--sheet-toast-lift, 0px))" }}
       duration={6000}
       closeButton
       icons={{ success: null, info: null, warning: null }}

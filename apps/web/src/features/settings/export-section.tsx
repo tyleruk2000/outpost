@@ -30,7 +30,10 @@ export const exportKeys = { estimate: ["export-all", "estimate"], status: ["expo
 export function ExportSection() {
   const client = useQueryClient();
   const storage = useStorage();
-  const estimate = useQuery({ queryKey: exportKeys.estimate, queryFn: () => api.get<ExportEstimate>("/api/export-all/estimate") });
+  const estimate = useQuery({
+    queryKey: exportKeys.estimate,
+    queryFn: () => api.get<ExportEstimate>("/api/export-all/estimate", undefined, undefined, { timeoutMs: 120_000 }),
+  });
   const status = useQuery({ queryKey: exportKeys.status, queryFn: () => api.get<ExportStatus>("/api/export-all") });
   const [where, setWhere] = useState<string>(DOWNLOAD);
 

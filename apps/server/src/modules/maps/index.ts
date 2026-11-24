@@ -14,6 +14,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { registerMultipart } from "../../core/multipart.ts";
+import { countryOfPoint } from "../roads/countries.ts";
 import {
   type AnnotationsService,
   createAnnotationsService,
@@ -90,6 +91,12 @@ const placesQuery = z.object({
       const [lat, lon] = value.split(",").map(Number) as [number, number];
       return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : undefined;
     }),
+  /** The country to put first, as two letters: the household's own (the web app sends it). */
+  country: z
+    .string()
+    .regex(/^[A-Za-z]{2}$/, "Give `country` as two letters, for example GB.")
+    .optional()
+    .transform((value) => value?.toUpperCase()),
 });
 
 type IdParams = { Params: { id: string } };
@@ -334,7 +341,12 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
 
   app.get("/api/maps/places", async (request) => {
     const query = placesQuery.parse(request.query);
-    return places.search(query.q, { limit: query.limit, near: query.near });
+    // Among places of the same name, those in the household's country and in the country the map is over come first:
+    // with the whole world in view, Olney in England had come after three in the United States.
+    const prefer = [query.country, query.near ? countryOfPoint(query.near.lat, query.near.lon) : null].filter((code): code is string =>
+      Boolean(code),
+    );
+    return places.search(query.q, { limit: query.limit, near: query.near, prefer });
   });
 
   // ── Markers ──

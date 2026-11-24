@@ -24,6 +24,11 @@ export class ApiError extends Error {
   get isUnreachable(): boolean {
     return this.code === "unreachable";
   }
+
+  /** A GET had no answer in time (`GET_TIMEOUT_MS`): asked again only when the person says so. */
+  get isTimeout(): boolean {
+    return this.code === "timeout";
+  }
 }
 
 type Query = Record<string, string | number | boolean | null | undefined | string[]>;
@@ -64,7 +69,7 @@ interface RequestOptions {
 async function request<T>(
   method: string,
   path: string,
-  options: { query?: Query; body?: unknown; signal?: AbortSignal } & RequestOptions = {},
+  options: { query?: Query; body?: unknown; signal?: AbortSignal; timeoutMs?: number } & RequestOptions = {},
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json", "X-Outpost-Request": "1" };
   let body: BodyInit | undefined;
@@ -75,21 +80,69 @@ async function request<T>(
     body = JSON.stringify(options.body);
   }
   const keepalive = options.keepalive === true && typeof body === "string" && body.length <= KEEPALIVE_LIMIT;
-  let response: Response;
+  // A GET that has had no answer in 15 s is given up, so a screen says so and offers Try again rather than waiting
+  // for ever. A change (POST, PATCH, PUT, DELETE) is left to finish: planning a route or adding files takes longer.
+  const timeout = method === "GET" ? timeoutSignal(options.timeoutMs ?? GET_TIMEOUT_MS, options.signal) : null;
   try {
-    response = await fetch(withQuery(path, options.query), {
-      method,
-      headers,
-      body,
-      signal: options.signal,
-      credentials: "same-origin",
-      ...(keepalive ? { keepalive } : {}),
-    });
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") throw error;
-    throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
+    let response: Response;
+    try {
+      response = await fetch(withQuery(path, options.query), {
+        method,
+        headers,
+        body,
+        signal: timeout?.signal ?? options.signal,
+        credentials: "same-origin",
+        ...(keepalive ? { keepalive } : {}),
+      });
+    } catch (error) {
+      if (timeout?.timedOut()) throw new ApiError(0, "timeout", TIMEOUT_MESSAGE);
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
+    }
+    try {
+      return await parse<T>(response);
+    } catch (error) {
+      // The answer began but did not finish in time.
+      if (timeout?.timedOut()) throw new ApiError(0, "timeout", TIMEOUT_MESSAGE);
+      throw error;
+    }
+  } finally {
+    timeout?.done();
   }
-  return parse<T>(response);
+}
+
+/** How long a GET waits for its answer before it is given up. */
+export const GET_TIMEOUT_MS = 15_000;
+
+const TIMEOUT_MESSAGE =
+  "The Outpost server took too long to answer. It may be busy, or this browser may have many Outpost tabs open: close the ones not in use and try again.";
+
+/**
+ * A signal that aborts after `ms`, or when `outer` does, and can say which it was. The browser's own timeout where it
+ * has one (Safari 17.4 and later): no timer of the page's is held for each request.
+ */
+function timeoutSignal(ms: number, outer: AbortSignal | undefined) {
+  if (typeof AbortSignal.timeout === "function" && typeof AbortSignal.any === "function") {
+    const timer = AbortSignal.timeout(ms);
+    return { signal: outer ? AbortSignal.any([outer, timer]) : timer, timedOut: () => timer.aborted, done: () => {} };
+  }
+  const controller = new AbortController();
+  let timedOut = false;
+  const onOuter = () => controller.abort(outer?.reason);
+  if (outer?.aborted) controller.abort(outer.reason);
+  else outer?.addEventListener("abort", onOuter, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort(new DOMException("The request took too long.", "TimeoutError"));
+  }, ms);
+  return {
+    signal: controller.signal,
+    timedOut: () => timedOut,
+    done: () => {
+      clearTimeout(timer);
+      outer?.removeEventListener("abort", onOuter);
+    },
+  };
 }
 
 /**
@@ -163,7 +216,9 @@ async function lines<T>(path: string, query: Query, onLine: (line: T) => void, s
 }
 
 export const api = {
-  get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>("GET", path, { query, signal }),
+  /** `timeoutMs` for the few answers that are worked out at length (a whole disk measured): 15 s otherwise. */
+  get: <T>(path: string, query?: Query, signal?: AbortSignal, options?: { timeoutMs?: number }) =>
+    request<T>("GET", path, { query, signal, ...options }),
   post: <T>(path: string, body?: unknown, query?: Query, signal?: AbortSignal) =>
     request<T>("POST", path, { body: body ?? {}, query, signal }),
   patch: <T>(path: string, body: unknown, options?: RequestOptions) => request<T>("PATCH", path, { body, ...options }),

@@ -549,7 +549,8 @@ export default function SearchPage() {
                 next?.focus();
                 next?.click();
               }}
-              className="scroll-quiet -mb-px flex gap-5 overflow-x-auto"
+              // Wraps rather than scrolling: on a phone the names past the right edge were filters nobody found.
+              className="-mb-px flex flex-wrap gap-x-5 gap-y-0"
             >
               {[
                 ["", "Everything", undefined] as const,

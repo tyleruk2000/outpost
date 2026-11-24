@@ -34,6 +34,7 @@ import { ReaderLearning } from "@/features/learning/reader-controls";
 import { useLearningTracker } from "@/features/learning/tracker";
 import { api } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
+import { keepFieldFocus } from "@/lib/use-dismiss";
 import { cn, formatNumber } from "@/lib/utils";
 import { ArchiveFile } from "./archive-file";
 import { ArchiveMedia } from "./archive-media";
@@ -346,12 +347,14 @@ export default function ReaderPage() {
             <ul
               className="absolute inset-x-0 top-full z-(--z-dropdown) mt-1.5 max-h-80 overflow-y-auto rounded-panel border border-border bg-raised p-1 shadow-float"
               aria-label="Article titles"
+              // A press anywhere on the list leaves focus in the field, so the field's blur does not take the list away
+              // before the tap's click lands (Safari on an iPhone focuses nothing it taps).
+              {...keepFieldFocus}
             >
               {suggestions.data!.map((item) => (
                 <li key={item.path}>
                   <button
                     type="button"
-                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => open(item.path)}
                     className="block w-full truncate rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong max-md:py-2.5"
                   >

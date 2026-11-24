@@ -226,8 +226,9 @@ export function FindRoutePanel({
   };
 
   const header = (label: string, onBack: () => void) => (
-    <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
-      <Button variant="ghost" size="sm" onClick={onBack}>
+    // The sheet's first line on a phone while this has the sheet: what shows when it is lowered.
+    <div data-sheet-peek className="flex items-center gap-1 border-b border-border px-2 py-1.5">
+      <Button variant="ghost" size="sm" onClick={onBack} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
         <ArrowLeft /> {label}
       </Button>
     </div>

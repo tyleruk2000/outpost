@@ -6,11 +6,13 @@
  */
 import { formatDecimal, type MarkerDto } from "@outpost/shared";
 import { Crosshair, MapPin, Star, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/misc";
+import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
+import { keepFieldFocus, useDismiss } from "@/lib/use-dismiss";
 import { usePlaceSearch } from "../data";
 import type { LatLon } from "../lib/geo";
 import { buildSearchResults } from "../lib/search";
@@ -46,16 +48,9 @@ export function PointField({
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  // The list closes when the keyboard or a press leaves the field and its list for somewhere else.
-  useEffect(() => {
-    const element = box.current;
-    if (!element) return;
-    const onLeave = (event: FocusEvent) => {
-      if (!element.contains(event.relatedTarget as Node | null)) setOpen(false);
-    };
-    element.addEventListener("focusout", onLeave);
-    return () => element.removeEventListener("focusout", onLeave);
-  });
+  // The list closes on a choice, on Escape, and on a press or focus somewhere else; not on the field's blur,
+  // which on an iPhone closed it under the finger (lib/use-dismiss.ts).
+  useDismiss(box, open, () => setOpen(false));
   const query = useDebounced(text.trim(), 200);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the centre is read once per query, so the list does not reshuffle
   const centre = useMemo(() => getCenter(), [query]);
@@ -125,7 +120,15 @@ export function PointField({
             setText(event.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            // On a phone the field goes to the top of the panel, its suggestions straight under it and clear of
+            // the keyboard, once the keyboard has come up and the sheet has settled on it.
+            if (window.matchMedia?.("(max-width: 47.99rem)").matches)
+              window.setTimeout(() => box.current?.scrollIntoView?.({ block: "start" }), 300);
+          }}
+          // Still focused after a press elsewhere closed the list: a press on the field opens it again.
+          onClick={() => setOpen(true)}
           onKeyDown={(event) => {
             if (event.key === "Escape" && open) {
               event.stopPropagation();
@@ -162,9 +165,16 @@ export function PointField({
         ) : null}
       </div>
       {open ? (
-        <div id={listId} className="rounded-control border border-border bg-page">
+        <div id={listId} className="rounded-control border border-border bg-page" {...keepFieldFocus}>
           {query.length >= 2 ? (
-            search.isFetching && listed.length === 0 ? (
+            search.isError && listed.length === 0 ? (
+              <div className="grid justify-items-start gap-2 px-3 py-2" role="alert">
+                <p className="text-small text-danger">{errorMessage(search.error)}</p>
+                <Button size="sm" onClick={() => void search.refetch()}>
+                  Try again
+                </Button>
+              </div>
+            ) : search.isFetching && listed.length === 0 ? (
               <p className="flex items-center gap-2 px-3 py-2 text-small text-ink-muted" role="status">
                 <Spinner label="Searching" /> Searching
               </p>

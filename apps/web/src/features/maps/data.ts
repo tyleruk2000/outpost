@@ -19,6 +19,7 @@ import type {
   TrackWithGeometryDto,
 } from "@outpost/shared";
 import { keepPreviousData, type UseQueryResult, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useHome } from "@/features/households/home";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 
@@ -29,7 +30,7 @@ export const mapsKeys = {
   markers: ["maps", "markers"] as const,
   tracks: ["maps", "tracks"] as const,
   track: (id: string) => ["maps", "track", id] as const,
-  places: (query: string, near: string) => ["maps", "places", query, near] as const,
+  places: (query: string, near: string, country = "") => ["maps", "places", query, near, country] as const,
 };
 
 export const useMapSources = () => useQuery({ queryKey: mapsKeys.sources, queryFn: () => api.get<MapSources>("/api/maps/sources") });
@@ -72,11 +73,21 @@ export function useTrackGeometries(ids: string[]): TrackWithGeometryDto[] {
   return useQueries({ queries: ids.map(trackQuery), combine: loadedTracks });
 }
 
+/**
+ * Places found by name. The household's country goes with the words, so that its places come before others of the same
+ * name elsewhere; the server puts the country the map is over first too.
+ */
 export function usePlaceSearch(query: string, near: { lat: number; lon: number } | undefined) {
   const nearText = near ? `${near.lat.toFixed(3)},${near.lon.toFixed(3)}` : "";
+  const country = useHome().country ?? "";
   return useQuery({
-    queryKey: mapsKeys.places(query, nearText),
-    queryFn: ({ signal }) => api.get<PlaceSearchResponse>("/api/maps/places", { q: query, near: nearText || undefined, limit: 8 }, signal),
+    queryKey: mapsKeys.places(query, nearText, country),
+    queryFn: ({ signal }) =>
+      api.get<PlaceSearchResponse>(
+        "/api/maps/places",
+        { q: query, near: nearText || undefined, country: country || undefined, limit: 8 },
+        signal,
+      ),
     enabled: query.length >= 2,
     placeholderData: keepPreviousData,
     staleTime: 60_000,

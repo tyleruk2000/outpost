@@ -74,12 +74,15 @@ export function useReferenceLayers({
   engine,
   browsing,
   onManage,
+  onFound,
 }: {
   engine: MapEngine | null;
   /** No tool is in hand, so a press on the map can open a record. */
   browsing: boolean;
   /** Opens the place where reference data is downloaded and imported. */
   onManage: () => void;
+  /** A record found by name in the panel was opened: on a phone the sheet is lowered, so the map and its card show. */
+  onFound?: () => void;
 }): ReferenceLayersOnMap {
   const location = useLocation();
   const [choice, setChoice] = useStoredState<LayerChoice>(KEY, isChoice, NONE);
@@ -286,7 +289,10 @@ export function useReferenceLayers({
       onChoice={setChoice}
       colours={colours}
       shades={shades}
-      onOpen={open}
+      onOpen={(id, layer, at) => {
+        open(id, layer, at);
+        onFound?.();
+      }}
       floodZones={overlay.data?.floodZones ?? null}
       lines={overlay.data?.lines ?? null}
       centre={centre}

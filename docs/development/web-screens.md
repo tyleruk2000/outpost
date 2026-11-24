@@ -160,7 +160,7 @@ their parents.
   refreshes by prefix. Add the event to its `invalidations` map, listing only keys it
   can change.
 - **Do not poll what an event reports.** A screen following one job may poll while it
-  runs. Hidden tabs refetch nothing; the stream closes after a minute hidden. Job
+  runs. Hidden tabs refetch nothing; the stream closes the moment a tab is hidden. Job
   progress is patched into `useActiveJobs` from the event.
 - Types from `@outpost/shared`; never redeclared.
 - `useMutation`, invalidate on success, `notify.error` on error.

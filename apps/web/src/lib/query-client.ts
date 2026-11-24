@@ -25,7 +25,8 @@ export function createQueryClient(): QueryClient {
         staleTime: 30_000,
         refetchOnWindowFocus: false,
         networkMode: "always",
-        // Retrying helps when the server is restarting; it does not help a 4xx.
+        // Retrying helps when the server is restarting; it does not help a 4xx, nor a GET that had no answer in 15 s
+        // (lib/api.ts), which would only keep the screen waiting three times as long before it said so.
         retry: (count, error) => count < 2 && (!(error instanceof ApiError) || error.isUnreachable || error.status >= 500),
       },
       mutations: { networkMode: "always" },
