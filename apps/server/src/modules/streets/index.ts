@@ -32,7 +32,7 @@ import { createStreetsClient, NO_STREETS_NEAR, type StreetsClient, ValhallaRefus
 import { createStreetsConnection, type StreetsConnection } from "./connection.ts";
 import { doorToDoor, type Point } from "./door-to-door.ts";
 import { mainRoadsReach } from "./main-roads-reach.ts";
-import { streetDirections } from "./narrative.ts";
+import { ferryWarnings, streetDirections } from "./narrative.ts";
 import { featuresFromMainRoads, MAIN_ROADS_NOTE, reachNote, reachSettings, streetsReach } from "./reach.ts";
 import { createStreetsTiles, STREETS_BUILD_JOB, type StreetsBuildPayload, type StreetsTiles } from "./tiles.ts";
 
@@ -260,6 +260,7 @@ export function createStreetsService(ctx: AppContext): StreetsService {
         summary: { distanceM: streets.distanceM, durationS: streets.durationS },
         geometry: { type: "MultiLineString", coordinates: lines(streets.geometry.coordinates) },
         warnings: [
+          ...ferryWarnings([streets], request.mode === "walk" ? "This walk" : "This ride", units),
           request.mode === "walk"
             ? "The time is at a steady walking pace with no allowance for hills or stops."
             : "The time is at a steady cycling pace with no allowance for hills or stops.",
@@ -304,7 +305,7 @@ export function createStreetsService(ctx: AppContext): StreetsService {
       streets: parts.streets,
       summary: { distanceM, durationS },
       geometry: { type: "MultiLineString", coordinates: geometry },
-      warnings: parts.warnings,
+      warnings: [...ferryWarnings([parts.start, parts.end, parts.streets], "This drive", units), ...parts.warnings],
       credit: parts.road ? `${parts.road.credit.line} ${streetsCredit(tileset)}` : streetsCredit(tileset),
       request,
       plannedAt,

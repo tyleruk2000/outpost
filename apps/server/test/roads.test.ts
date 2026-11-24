@@ -497,7 +497,8 @@ describe("the road routes API", () => {
     for (const n of (await networks()).networks) await app.api("DELETE", `/api/roads/networks/${n.id}`);
     expect((await networks()).networks).toEqual([]);
     const back = (await app.api("GET", `/api/roads/routes/${saved.id}`)).body as SavedRoadRouteDto;
-    expect(back.route.legs).toEqual(route.legs);
+    expect((back.route as RoadRouteResult).legs).toEqual(route.legs);
+    expect(back).toMatchObject({ mode: "drive", plannedAt: route.plannedAt });
     expect((await app.api("PATCH", `/api/roads/routes/${saved.id}`, { name: "Alps" })).body.name).toBe("Alps");
     expect((await app.api("DELETE", `/api/roads/routes/${saved.id}`)).status).toBe(200);
     expect((await app.api("GET", `/api/roads/routes/${saved.id}`)).status).toBe(404);

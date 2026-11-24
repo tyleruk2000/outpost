@@ -66,6 +66,7 @@ function serve(status: StreetsStatusResponse, answers: Record<string, unknown> =
       const path = String(input).split("?")[0]!;
       const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
       if (init?.method === "POST") sent.push({ path, body });
+      if (init?.method === "POST" && `POST ${path}` in answers) return json(answers[`POST ${path}`]);
       if (path in answers) return json(answers[path]);
       if (path === "/api/streets/status") return json(status);
       if (path === "/api/roads/networks") return json({ networks: [{ id: "n1", name: "Great Britain", country: "GB" }], building: [] });
@@ -257,6 +258,42 @@ describe("a walk", () => {
     expect(streetsAsPlainText(WALK)).toContain("Continue onto Downs Lane, 3.2 km");
     const card = contentText(routeCardDocument({ route: WALK, name: "Box Hill", paper: "a4", map: null, made: new Date(0) }).content);
     expect(card).toContain("Take the steps");
+  });
+
+  it("saves under a name like a drive, and opens again as planned, with Save GPX", async () => {
+    const saved = {
+      id: "r1",
+      name: "Fetcham to Chamonix",
+      mode: "walk",
+      plannedAt: WALK.plannedAt,
+      fromTo: "Leatherhead to Box Hill",
+      distanceM: WALK.summary.distanceM,
+      durationS: WALK.summary.durationS,
+      createdAt: WALK.plannedAt,
+      updatedAt: WALK.plannedAt,
+      route: WALK,
+    };
+    serve(READY, { "/api/streets/route": WALK, "POST /api/roads/routes": saved, "/api/roads/routes/r1": saved });
+    panel();
+    await userEvent.click(
+      within(await screen.findByRole("radiogroup", { name: "Way of travelling" })).getByRole("radio", { name: "Walk" }),
+    );
+    await choosePlace("From", "Fetcham");
+    await choosePlace("To", "Chamonix");
+    await userEvent.click(screen.getByRole("button", { name: "Plan route" }));
+    expect(await screen.findByRole("button", { name: "Save GPX" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Name to save it under")).toHaveValue("Leatherhead to Box Hill");
+    await userEvent.click(screen.getByRole("button", { name: "Save route" }));
+    await waitFor(() =>
+      expect(sent.find((each) => each.path === "/api/roads/routes")?.body).toEqual({ name: "Leatherhead to Box Hill", route: WALK }),
+    );
+    // The saved walk: its own directions, the date it was planned, and nothing planned again.
+    expect(await screen.findByRole("heading", { name: "Fetcham to Chamonix" })).toBeInTheDocument();
+    expect(screen.getByText("Walk")).toBeInTheDocument();
+    expect(screen.getByText(/Kept as it was planned/)).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Directions" })).getByText("Take the steps")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save GPX" })).toBeInTheDocument();
+    expect(sent.filter((each) => each.path === "/api/streets/route")).toHaveLength(1);
   });
 });
 
