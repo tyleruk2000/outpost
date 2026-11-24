@@ -51,6 +51,7 @@ import {
   RANGE_MOST,
   RANGE_SHADE_OPACITY,
   RANGE_SOURCE,
+  RANGE_STALE_FADE,
   type RangePrefs,
   rangeFitBounds,
   rangeShade,
@@ -138,8 +139,11 @@ export function useRepeaterRange({
   onClose,
   extra,
 }: {
-  /** One more outline drawn with the repeaters', whether or not they are switched on: a point's range (maps/radio/point-range.tsx). */
-  extra?: { range: SightRange; name: string } | null;
+  /**
+   * One more outline drawn with the repeaters', whether or not they are switched on: a point's range
+   * (maps/radio/point-range.tsx). `dim` while it is the last answer, kept on the map as other heights are worked out.
+   */
+  extra?: { range: SightRange; name: string; dim?: boolean } | null;
   engine: MapEngine | null;
   /** The map's repeaters are switched on: the chosen ranges are drawn only then, as the dots are. */
   visible: boolean;
@@ -169,7 +173,9 @@ export function useRepeaterRange({
   const names = placedChosen.map((one) => one.callsign).join("\n");
   const drawn = useMemo(() => {
     const callsigns = names.split("\n");
-    const repeaters = outlines.flatMap((range, index) => (range ? [{ range, name: callsigns[index] ?? "" }] : []));
+    const repeaters: Array<{ range: SightRange; name: string; dim?: boolean }> = outlines.flatMap((range, index) =>
+      range ? [{ range, name: callsigns[index] ?? "" }] : [],
+    );
     return extra ? [...repeaters, extra] : repeaters;
   }, [outlines, names, extra]);
   useEffect(() => {
@@ -186,7 +192,17 @@ export function useRepeaterRange({
   // The ground in sight, one picture for each range, painted once for each answer and theme.
   const colour = useShadeColour("range");
   const pictures = useMemo(
-    () => (engine && canShade() ? drawn.flatMap(({ range: one }) => rangeShade(one, colour, drawn.length > 2 ? 1024 : 1536) ?? []) : []),
+    () =>
+      engine && canShade()
+        ? drawn.flatMap(({ range: one, dim }) => {
+            // The near part of a range still being worked out (to 25 km, then 50 km) is painted coarser: it is replaced
+            // within a second or two, and painting it in full took a quarter of a second each time on a laptop.
+            const pixels = one.maxMeters < RANGE_MAX_METERS ? 768 : drawn.length > 2 ? 1024 : 1536;
+            const picture = rangeShade(one, colour, pixels);
+            // The last answer, kept while other heights are worked out: faded, so it reads as not the answer yet.
+            return picture ? [dim ? { ...picture, fade: RANGE_STALE_FADE } : picture] : [];
+          })
+        : [],
     [engine, drawn, colour],
   );
   useShades(engine, "range", pictures, RANGE_SHADE_OPACITY);

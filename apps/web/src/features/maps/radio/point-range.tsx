@@ -7,6 +7,10 @@
  * layers and read out in the same words (`repeaters/map/range.ts`). Only the aerial is the person's: how high it is
  * above the ground here, a handheld's 1.5 m unless told otherwise. One point at a time; the heights are remembered on
  * this device.
+ *
+ * A fresh point takes the server a second or two (reading the terrain out to 100 km), so it is asked a line at a time
+ * (`use-range-lines.ts`): the card shows how far along it is, and the map draws the near ground first. Other heights
+ * at the same point are quick, and while they are worked out the last answer stays on the map, faded.
  */
 import {
   RANGE_BEARINGS,
@@ -20,11 +24,12 @@ import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, Download, X } from "
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Segmented, Spinner } from "@/components/ui/misc";
+import { Progress, Segmented } from "@/components/ui/misc";
 import { ShareCodeButton } from "@/features/qr/share-code";
 import {
   describeRangeTerrain,
   formatHeight,
+  formatKm,
   formatReach,
   RANGE_ACCURACY,
   rangeFitBounds,
@@ -32,7 +37,6 @@ import {
   stationOf,
 } from "@/features/repeaters/map/range";
 import { RangeKey } from "@/features/repeaters/map/range-key";
-import { useSightRange } from "@/features/repeaters/map/use-repeater-range";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
 import { cn } from "@/lib/utils";
@@ -44,9 +48,16 @@ import { mapCard } from "../ui";
 import { downloadText, rangeFileName, rangeGpx, rangeKml } from "./range-files";
 import { RangeWhy } from "./range-why";
 import { NumberField } from "./sight-panel";
+import { type RangeWork, useStreamedSightRange } from "./use-range-lines";
 
 /** A radio held in the hand: the height the other end is assumed at too, unless chosen otherwise. */
 export const POINT_AERIAL_DEFAULT_METERS = 1.5;
+/**
+ * Heights are asked about once they have stopped changing for this long: a height typed or stepped through (1, 1.5,
+ * 5, 10) or the other station tapped twice asks once, not once for each. What was asked and is no longer wanted is
+ * given up, and the server stops working on it.
+ */
+export const POINT_RANGE_SETTLE_MS = 300;
 const PREFS_KEY = "outpost.maps.pointRange";
 
 interface PointRangePrefs {
@@ -105,8 +116,11 @@ export interface PointRange {
   start(at: PointRangeAt): void;
   /** The card while a range is shown, or null. */
   card: ReactNode | null;
-  /** The outline to draw with the repeaters' outlines, once it is known. */
-  outline: { range: SightRange; name: string } | null;
+  /**
+   * The outline to draw with the repeaters' outlines, once it is known: the near part while the rest is worked out,
+   * and the last answer, faded (`dim`), while other heights are.
+   */
+  outline: { range: SightRange; name: string; dim?: boolean } | null;
 }
 
 export function usePointRange({
@@ -136,50 +150,60 @@ export function usePointRange({
     aerial: POINT_AERIAL_DEFAULT_METERS,
     station: "handheld",
   });
-  // A height being typed is asked about once the typing stops; one that came with a shared range, at once.
-  const typed = useDebounced(prefs.aerial, 600);
-  const [given, setGiven] = useState<number | null>(null);
-  const aerial = given !== null && given === prefs.aerial ? given : typed;
+  // Heights being typed or tapped through are asked about once they settle; ones that came with a shared range, at once.
+  const settled = useDebounced(prefs, POINT_RANGE_SETTLE_MS);
+  const [given, setGiven] = useState<PointRangePrefs | null>(null);
+  const asked = given !== null && given.aerial === prefs.aerial && given.station === prefs.station ? given : settled;
   const station = stationOf(prefs.station);
-  const range = useSightRange(at?.position ?? null, aerial, station.meters);
+  const range = useStreamedSightRange(at?.position ?? null, asked.aerial, stationOf(asked.station).meters);
+  // The answer for the heights asked, not one kept on the map while they are worked out.
+  const answer = range.stale ? undefined : range.data;
 
   // Once the outline is known, all of it is brought into view, clear of the card.
   const card = useRef<HTMLDivElement>(null);
   const fitted = useRef<string | null>(null);
   useEffect(() => {
-    if (!engine || !range.data || !at) return;
+    if (!engine || !answer || !at) return;
     const key = `${at.position.lat},${at.position.lon}`;
     if (fitted.current === key) return;
     fitted.current = key;
     const clearBottom = (card.current?.closest(".outpost-map-card")?.getBoundingClientRect().height ?? 0) + 16;
-    engine.fitBounds(rangeFitBounds(range.data), { clearBottom, maxZoom: 13 });
-  }, [engine, range.data, at]);
+    engine.fitBounds(rangeFitBounds(answer), { clearBottom, maxZoom: 13 });
+  }, [engine, answer, at]);
 
   const name = at?.name ?? "Estimated range";
-  // The same object until the answer or the name changes, so the outlines are not drawn again on every render.
-  const outline = useMemo(() => (at && range.data ? { range: range.data, name } : null), [at, range.data, name]);
-  const reading = range.data ? readRange(range.data, "here") : null;
-  const terrain = range.data ? describeRangeTerrain(range.data) : null;
-  const ground = range.data?.groundMeters;
+  // What the map draws: the near part while the rest is read, else the answer, or the last one faded while other
+  // heights are worked out. The same object until that or the name changes, so it is not drawn again on every render.
+  const part = range.working?.part ?? null;
+  const drawn = part ?? range.data;
+  const dim = !part && range.stale;
+  const outline = useMemo(() => (at && drawn ? { range: drawn, name, dim } : null), [at, drawn, name, dim]);
+  const reading = answer ? readRange(answer, "here") : null;
+  const terrain = answer ? describeRangeTerrain(answer) : null;
+  const ground = (answer ?? drawn)?.groundMeters;
   // Worked out with the answer, not on each render: the outline has one corner per bearing.
   const files = useMemo(() => {
-    if (!range.data) return null;
+    if (!answer) return null;
     const input = {
-      range: range.data,
+      range: answer,
       name,
-      aerialMeters: range.data.aerialMeters,
-      station: `${station.name.toLowerCase()}, ${formatHeight(range.data.stationMeters)}`,
+      aerialMeters: answer.aerialMeters,
+      station: `${station.name.toLowerCase()}, ${formatHeight(answer.stationMeters)}`,
     };
     const gpx = rangeGpx(input);
     const kml = rangeKml(input);
     return gpx && kml ? { gpx, kml } : null;
-  }, [range.data, name, station.name]);
+  }, [answer, name, station.name]);
 
   const close = () => {
     setAt(null);
     fitted.current = null;
   };
-  const short = range.isPending ? "Working out the range" : range.isError ? "The range could not be worked out" : (reading?.short ?? "");
+  const short = range.isError
+    ? "The range could not be worked out"
+    : range.working
+      ? workingWords(range.working)
+      : (reading?.short ?? "Working out the range");
   const content = !at ? null : folded ? (
     <section aria-label="Estimated radio range" className={cn(mapCard, "py-1.5")}>
       <div ref={card} className="flex items-center gap-2">
@@ -194,6 +218,9 @@ export function usePointRange({
       <p className="tabular text-small text-ink-muted" aria-live="polite">
         {short}
       </p>
+      {range.working ? (
+        <Progress value={range.working.done} label="Working out the range" className="mt-1 mb-0.5 h-1 animate-reveal" />
+      ) : null}
     </section>
   ) : (
     <MapCard
@@ -214,10 +241,8 @@ export function usePointRange({
         </p>
 
         <div aria-live="polite">
-          {range.isPending ? (
-            <p className="flex items-center gap-2 text-small text-ink-muted">
-              <Spinner label="Working out the range" /> Working out the range from the terrain
-            </p>
+          {range.working ? (
+            <RangeWorking work={range.working} stale={range.stale} />
           ) : range.isError ? (
             <Notice
               tone="danger"
@@ -236,7 +261,7 @@ export function usePointRange({
               <p className="font-medium text-ink">{reading.title}</p>
               {reading.furthest ? <p className="text-ink">{reading.furthest}</p> : null}
               {reading.typicalMeans ? <p className="text-ink-muted">{reading.typicalMeans}</p> : null}
-              {range.data && range.data.coverage !== "none" ? <RangeKey typical={Boolean(reading.typicalMeans)} /> : null}
+              {answer && answer.coverage !== "none" ? <RangeKey typical={Boolean(reading.typicalMeans)} /> : null}
               {reading.note ? (
                 <p className="text-ink-muted">
                   {reading.note}{" "}
@@ -255,7 +280,7 @@ export function usePointRange({
           ) : null}
         </div>
 
-        {range.data && range.data.coverage !== "none" ? (
+        {answer && answer.coverage !== "none" ? (
           <>
             <button
               type="button"
@@ -268,7 +293,7 @@ export function usePointRange({
             </button>
             {why ? (
               <div ref={whyDrawing} className="scroll-mb-3">
-                <RangeWhy range={range.data} />
+                <RangeWhy range={answer} />
               </div>
             ) : null}
           </>
@@ -365,7 +390,7 @@ export function usePointRange({
                   terrain it is the smooth-Earth radio horizon, a plain dashed circle, and says so.
                 </p>
                 {terrain ? <p>{terrain}</p> : null}
-                {range.data && range.data.coverage !== "none" ? <p>{RANGE_ACCURACY}</p> : null}
+                {answer && answer.coverage !== "none" ? <p>{RANGE_ACCURACY}</p> : null}
               </div>
             </details>
           </>
@@ -381,7 +406,7 @@ export function usePointRange({
       setWhy(false);
       setFolded(true);
       const { heights, ...point } = next;
-      setGiven(heights ? heights.aerial : null);
+      setGiven(heights ?? null);
       if (heights) setPrefs(heights);
       setAt(point);
     },
@@ -392,4 +417,34 @@ export function usePointRange({
     card: content,
     outline,
   };
+}
+
+/** How long the last fresh answer took on this server, in whole seconds, when it was a second or more. */
+const expectSeconds = (work: RangeWork) => (work.expectMs !== null && work.expectMs >= 1000 ? Math.round(work.expectMs / 1000) : null);
+
+/** The work in a few words, for the folded card. */
+function workingWords(work: RangeWork): string {
+  if (work.part) return `Drawn out to ${formatKm(work.part.maxMeters)}, working out further`;
+  const seconds = expectSeconds(work);
+  return seconds ? `Working out the range, about ${seconds} s` : "Working out the range";
+}
+
+/**
+ * How far along the work is: a bar that fills band by band as the server reads the ground (near first), and what it
+ * is doing in words. Seen only once it has taken longer than a moment, so a quick answer shows no flicker; the words
+ * are read out as they change (politely, by the region round it), the bar's every step is not.
+ */
+function RangeWorking({ work, stale }: { work: RangeWork; stale: boolean }) {
+  const seconds = expectSeconds(work);
+  return (
+    <div className="grid gap-1.5 animate-reveal">
+      <Progress value={work.done} label="Working out the range" />
+      <p className="tabular text-small text-ink-muted">
+        {work.part
+          ? `The ground in sight out to ${formatKm(work.part.maxMeters)} is drawn; working out the ground further out.`
+          : `Working out the range from the ground's shape${seconds ? `, about ${seconds} s on this Outpost` : ""}.`}
+        {stale && !work.part ? " The last answer stays on the map, faded, until this one is ready." : ""}
+      </p>
+    </div>
+  );
 }

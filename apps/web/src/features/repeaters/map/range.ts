@@ -280,6 +280,8 @@ export const RANGE_RINGS = [10_000, 25_000, 50_000, 100_000] as const;
  * size in sunlight; at the 0.42 it once was, specks and narrow fingers of ground in sight were lost in hill shading.
  */
 export const RANGE_SHADE_OPACITY = 0.55;
+/** A range kept on the map while another is worked out in its place is shaded at this share of that opacity. */
+export const RANGE_STALE_FADE = 0.45;
 
 const EARTH = 6_371_008.8;
 const DEG = Math.PI / 180;

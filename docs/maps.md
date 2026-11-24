@@ -503,7 +503,13 @@ lines, the answer in a few words, so the map stays clear; **Show the details** o
 Set your aerial's height and the other station's (handheld, car, roof)
 under **Heights and details**. **Why this shape: look along one direction** shows the
 ground along any bearing. It counts only line of sight: power, aerials, woods and buildings
-are not counted, and radio often reaches less. It works the same way as a repeater's
+are not counted, and radio often reaches less.
+
+A new point takes a second or two on a Raspberry Pi, since the ground is read out to 100 km.
+A bar on the card fills as it goes, and the ground in sight is drawn out to 25 km first, then
+50 km, then all of it. Other heights at the same point come back at once. While they are
+worked out, the last answer stays on the map, faded. Heights are asked for once you stop
+changing them. It works the same way as a repeater's
 [estimated range](radio.md#the-estimated-range). In the **Night (red)** map style the
 shading, its edge and the circles are drawn in reds, the typical-range circle the brightest.
 

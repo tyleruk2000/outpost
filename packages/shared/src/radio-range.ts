@@ -456,6 +456,21 @@ export interface SightRange {
   terrain: { finestCellMeters: number; coarsestCellMeters: number; installedMaxZoom: number } | null;
 }
 
+/**
+ * `GET /api/maps/sight-range` asked with `Accept: application/x-ndjson`: the same answer a line of JSON at a time, so
+ * that the near ground is drawn while the far is still being read. `start` says how long the last fresh answer took
+ * on this server; each `part` is the range out to as far as the ground is read so far (`maxMeters` says how far: 25
+ * km, then 50 km), the same answer for that ground as the whole gives; `end` is the whole answer, the plain request's.
+ * `done` is the share of the work done, 0 to 1. A server that answers in plain JSON (or a phone's worker, out of reach
+ * of it) sends the whole answer as the one line, with no `type`.
+ */
+export type SightRangeEvent =
+  | { type: "start"; done: number /** Null when the answer is already known, or none has been worked out yet. */; expectMs: number | null }
+  | { type: "progress"; done: number }
+  | { type: "part"; done: number; range: SightRange }
+  | { type: "end"; done: 1; range: SightRange }
+  | { type: "error"; error: { code: string; message: string } };
+
 // ── The relay planner ───────────────────────────────────────────────────────
 
 /** The most places the relay planner names. */
