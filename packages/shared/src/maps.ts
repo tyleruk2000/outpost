@@ -383,9 +383,18 @@ export interface PlaceSearchResponse {
   places: PlaceDto[];
   /** The credits of the sources the places listed came from, as their publishers ask for them. */
   credits?: string[];
-  /** Something to say about the text: a Northern Ireland postcode, which no installed source covers. */
+  /**
+   * Something to say about the text: a Northern Ireland postcode, which no installed source covers;
+   * or how the words were read when no place had them all ("showing places called Waterloo, stations first").
+   */
   notice?: string;
+  /** The text asks for the nearest of a kind ("pharmacy", "A&E", "petrol near me"): Maps' Nearest list answers it. */
+  nearest?: NearestKind;
 }
+
+/** The kinds of place Maps' "Nearest…" lists, from the reference layers the household holds (`/maps?nearest=<kind>`). */
+export const NEAREST_KINDS = ["hospital", "pharmacy", "shelter", "water", "fuel"] as const;
+export type NearestKind = (typeof NEAREST_KINDS)[number];
 
 // ── Coordinates ─────────────────────────────────────────────────────────────
 

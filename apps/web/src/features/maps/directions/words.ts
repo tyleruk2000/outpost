@@ -183,3 +183,57 @@ export function endsData(points: ReadonlyArray<RoutePointChoice | null>): Featur
     ),
   };
 }
+
+/** A view of the map close enough in to say where someone was looking: a town, not a country. */
+export const NEAR_ZOOM = 11;
+
+/** The last point chosen on the map or taken from the device, kept on this device. */
+export interface LastPoint {
+  lat: number;
+  lon: number;
+  /** When it was chosen (ms). */
+  at: number;
+}
+
+export const LAST_POINT_KEY = "outpost.maps.directions.lastPoint";
+
+export function isLastPoint(value: unknown): value is LastPoint {
+  if (!value || typeof value !== "object") return false;
+  const point = value as Partial<LastPoint>;
+  return typeof point.lat === "number" && typeof point.lon === "number" && typeof point.at === "number";
+}
+
+/**
+ * Where the person last was, for the start of a route when the device cannot say: the map's
+ * view when Directions was opened, if it was close in; else the last point chosen on the map
+ * or taken from the device; else nothing (the caller falls back to the other end).
+ */
+export function lastWhere(input: {
+  started: { lat: number; lon: number; zoom: number } | null;
+  lastPoint: LastPoint | null;
+}): { lat: number; lon: number; zoom: number } | null {
+  if (input.started && input.started.zoom >= NEAR_ZOOM) return input.started;
+  if (input.lastPoint) return { lat: input.lastPoint.lat, lon: input.lastPoint.lon, zoom: 15 };
+  return null;
+}
+
+/** Saved places, nearest first to a point; with nothing to measure from, favourites first, then by name. */
+export function nearestFirst<T extends { lat: number; lon: number; name: string; isFavorite?: boolean }>(
+  places: readonly T[],
+  near: { lat: number; lon: number } | null,
+): T[] {
+  return [...places].sort((a, b) =>
+    near
+      ? haversineMeters(near.lat, near.lon, a.lat, a.lon) - haversineMeters(near.lat, near.lon, b.lat, b.lon)
+      : Number(b.isFavorite ?? false) - Number(a.isFavorite ?? false) || a.name.localeCompare(b.name),
+  );
+}
+
+/** Whether "Where I am" can be used here, and if not, why, in one line. */
+export type WhereIAm = { state: "ready" | "finding" } | { state: "unavailable"; reason: string };
+
+export function whereIAmState(input: { supported: boolean; secure: boolean; finding: boolean }): WhereIAm {
+  if (!input.secure) return { state: "unavailable", reason: "Needs Outpost over HTTPS — Settings › HTTPS" };
+  if (!input.supported) return { state: "unavailable", reason: "This browser does not share where the device is" };
+  return { state: input.finding ? "finding" : "ready" };
+}

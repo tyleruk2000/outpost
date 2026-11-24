@@ -404,6 +404,16 @@ describe("the contact log", () => {
       powerWatts: 5,
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    // The next entry starts from where your station was, and a locator given for the other is sent as that locator.
+    fireEvent.click(screen.getByRole("button", { name: "Log an entry" }));
+    const again = screen.getByRole("dialog", { name: "Log an entry" });
+    expect(within(again).getByLabelText("Your station: where")).toHaveValue("51.5074, -0.1278");
+    fireEvent.change(within(again).getByLabelText("Frequency, MHz"), { target: { value: "7.15" } });
+    fireEvent.change(within(again).getByLabelText("The other station: where"), { target: { value: "JO62qm" } });
+    fireEvent.click(within(again).getByRole("button", { name: "Add to the log" }));
+    await waitFor(() => expect(server.posted).toHaveLength(2));
+    expect((server.posted[1]!.body as ObservationInput).rx).toMatchObject({ locator: "JO62qm" });
   });
 
   it("names the ends by who is transmitting when a station was only heard, and says when an entry is already there", async () => {

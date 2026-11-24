@@ -273,7 +273,9 @@ function Where({
         results.length === 0 && !found.isFetching ? (
           <p className="text-small text-ink-muted">
             Nothing is called that. Try a country's name in English, or tap it on the map.
-            {found.data && !found.data.regionsListed ? " Regions are found once Geofabrik's list is read, at the first Check size." : ""}
+            {found.data && !found.data.regionsListed
+              ? " For a smaller part, choose its country first: its parts can be picked once you have pressed Check size."
+              : ""}
           </p>
         ) : (
           <ul aria-label="Places found" className="-mx-2 grid gap-0.5">
@@ -561,6 +563,13 @@ function Flow({
   const startOthers = useStartDownloads();
   /** Parts left out, by country: none left out means the whole country's one file. */
   const [leftOut, setLeftOut] = useState<Set<string>>(new Set());
+  /**
+   * Countries whose one whole file Geofabrik sends from a mirror on another host (Germany's), which Outpost does not
+   * download from: their parts are fetched, each its own file, without the person having to choose them.
+   */
+  const [split, setSplit] = useState<Set<string>>(new Set());
+  /** The result of Check size, where the person is looking: scrolled to when it comes, and said aloud. */
+  const resultRef = useRef<HTMLDivElement>(null);
   const [sizes, setSizes] = useState<{ key: string; sizes: Sizes } | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<unknown>(null);
@@ -683,7 +692,7 @@ function Flow({
     const whole = wholeRegion(place);
     const parts = partsOf(place);
     const ticked = parts.filter((part) => !leftOut.has(part.id));
-    if (parts.length > 0 && ticked.length < parts.length) return ticked.map((part) => part.id);
+    if (parts.length > 0 && (ticked.length < parts.length || (whole !== null && split.has(whole)))) return ticked.map((part) => part.id);
     return whole ? [whole] : [];
   };
   const keptFor = (regionId: string) => keptFileFor(data, regionId);
@@ -693,16 +702,19 @@ function Flow({
   const zoomOf = (place: Chosen) => zoom ?? (boxOf(place) ? defaultZoom(boxOf(place)!, presetOf(place)) : 10);
   const wantsOsNames = ticks.has("map") && countries.some((place) => place.code === "GB");
 
-  const signature = JSON.stringify({
-    places: places.map(placeKey),
-    ticks: [...ticks].sort(),
-    hills,
-    zoom,
-    leftOut: [...leftOut].sort(),
-    world: ticks.has("imagery") ? (worldOption?.id ?? null) : null,
-    nearby: chosenKinds.map((kind) => kind.id),
-    others,
-  });
+  const signatureOf = (splitSet: ReadonlySet<string>) =>
+    JSON.stringify({
+      places: places.map(placeKey),
+      ticks: [...ticks].sort(),
+      hills,
+      zoom,
+      leftOut: [...leftOut].sort(),
+      split: [...splitSet].sort(),
+      world: ticks.has("imagery") ? (worldOption?.id ?? null) : null,
+      nearby: chosenKinds.map((kind) => kind.id),
+      others,
+    });
+  const signature = signatureOf(split);
   const found = sizes?.key === signature ? sizes.sizes : null;
 
   const checkSize = async () => {
@@ -720,37 +732,58 @@ function Flow({
         void client.invalidateQueries({ queryKey: mapDataKeys.all });
       }
       const result: Sizes = { map: {}, file: {}, names: null, hosts, regions, others: [] };
+      const splitNow = new Set(split);
       if (fromFile) {
-        const ids: string[] = [];
-        for (const place of countries) {
-          const whole = place.regionId ?? regions.find((region) => region.depth === 0 && region.country === place.code)?.id ?? null;
-          const resolved = { ...place, regionId: whole };
-          const parts = place.part || !whole ? [] : regions.filter((region) => region.parent === whole && region.depth === 1);
-          const ticked = parts.filter((part) => !leftOut.has(part.id));
-          const files = place.part
-            ? [place.part.regionId]
-            : parts.length > 0 && ticked.length < parts.length
-              ? ticked.map((p) => p.id)
-              : whole
-                ? [whole]
-                : [];
-          if (files.length === 0)
-            throw new Error(`Geofabrik has no file for ${resolved.name}. Draw an area instead, or choose one of its parts.`);
-          for (const id of files) {
-            if (keptFor(id)) result.file[id] = null;
-            else ids.push(id);
+        /** The files to read for each place, and the wholes that could be fetched as their parts instead. */
+        const plan = () => {
+          const ids: string[] = [];
+          const kept: string[] = [];
+          const wholes: string[] = [];
+          for (const place of countries) {
+            const whole = place.regionId ?? regions.find((region) => region.depth === 0 && region.country === place.code)?.id ?? null;
+            if (place.part && !regions.some((region) => region.id === place.part!.regionId) && regions.length > 0)
+              throw new Error(
+                `Geofabrik's list has no part called ${place.part.name} now. Choose ${place.countryName ?? "its country"} instead.`,
+              );
+            const parts = place.part || !whole ? [] : regions.filter((region) => region.parent === whole && region.depth === 1);
+            const ticked = parts.filter((part) => !leftOut.has(part.id));
+            const files = place.part
+              ? [place.part.regionId]
+              : parts.length > 0 && (ticked.length < parts.length || (whole !== null && splitNow.has(whole)))
+                ? ticked.map((p) => p.id)
+                : whole
+                  ? [whole]
+                  : [];
+            if (files.length === 0)
+              throw new Error(`Geofabrik has no file for ${place.name}. Draw an area instead, or choose one of its parts.`);
+            if (whole && files.length === 1 && files[0] === whole && parts.length > 0) wholes.push(whole);
+            for (const id of files) (keptFor(id) ? kept : ids).push(id);
           }
+          return { ids, kept, wholes };
+        };
+        let { ids, kept, wholes } = plan();
+        let estimate: ReferenceEstimate | null = null;
+        try {
+          estimate =
+            ids.length > 0
+              ? await api.post<ReferenceEstimate>("/api/reference/estimate", { provider: "osm-extract", scope: { regions: ids } })
+              : null;
+        } catch (error) {
+          // A whole country Geofabrik sends from a mirror: its parts instead, each its own file, without asking.
+          if (wholes.length === 0 || !/mirror/i.test(errorMessage(error))) throw error;
+          for (const whole of wholes) splitNow.add(whole);
+          setSplit(new Set(splitNow));
+          ({ ids, kept, wholes } = plan());
+          estimate =
+            ids.length > 0
+              ? await api.post<ReferenceEstimate>("/api/reference/estimate", { provider: "osm-extract", scope: { regions: ids } })
+              : null;
         }
-        if (ids.length > 0) {
-          const estimate = await api.post<ReferenceEstimate>("/api/reference/estimate", {
-            provider: "osm-extract",
-            scope: { regions: ids },
-          });
-          estimate.items.forEach((item, index) => {
-            if (item.host) hosts.push(item.host);
-            result.file[ids[index] ?? item.key] = item.bytes || null;
-          });
-        }
+        for (const id of kept) result.file[id] = null;
+        estimate?.items.forEach((item, index) => {
+          if (item.host) hosts.push(item.host);
+          result.file[ids[index] ?? item.key] = item.bytes || null;
+        });
       }
       if (ticks.has("map")) {
         for (const place of places) {
@@ -780,11 +813,13 @@ function Flow({
         for (const item of estimate.items) if (item.host) hosts.push(item.host);
         result.others.push(estimate);
       }
-      setSizes({ key: signature, sizes: { ...result, hosts: [...new Set(hosts)] } });
+      setSizes({ key: signatureOf(splitNow), sizes: { ...result, hosts: [...new Set(hosts)] } });
     } catch (error) {
       setCheckError(error);
     } finally {
       setChecking(false);
+      // The answer is at the foot of a long dialog: brought into view, where the person is looking.
+      window.setTimeout(() => resultRef.current?.scrollIntoView?.({ block: "nearest" }), 0);
     }
   };
 
@@ -993,6 +1028,7 @@ function Flow({
         ? ["map", "nearby", ...(worldOptions.length > 0 ? (["imagery"] as const) : [])]
         : ["map", "nearby", "imagery"];
   const partsNote = countries.length === 1 && !countries[0]!.part ? partsOf(countries[0]!) : [];
+  const splitWhole = countries.length === 1 && split.has(wholeRegion(countries[0]!) ?? "");
   const wholeSize = found && countries.length === 1 ? found.file[wholeRegion(countries[0]!) ?? ""] : undefined;
 
   const fileSize = fileBytes > 0 ? ` (${formatBytes(fileBytes)})` : "";
@@ -1204,8 +1240,14 @@ function Flow({
               <p className="text-ink">
                 {countries[0]!.name} comes in {partsNote.length} parts
                 {wholeSize ? `, ${formatBytes(wholeSize)} together` : ""}.{" "}
-                {leftOut.size === 0 ? "All are ticked." : `${partsNote.length - leftOut.size} are ticked.`}
+                {leftOut.size === 0 ? "All are ticked." : `${partsNote.length - leftOut.size} of them are ticked.`}
               </p>
+              {splitWhole ? (
+                <p className="text-ink-muted">
+                  Geofabrik sends {countries[0]!.name}'s one whole file from another server, which Outpost does not download from, so each
+                  part is fetched as its own file instead.
+                </p>
+              ) : null}
               <Disclosure summary="Choose parts">
                 <ul aria-label={`Parts of ${countries[0]!.name}`} className="grid gap-0.5">
                   {partsNote.map((part) => (
@@ -1272,14 +1314,14 @@ function Flow({
           </div>
         </Disclosure>
 
-        <div aria-live="polite" className="grid gap-2">
+        <div ref={resultRef} aria-live="polite" className="grid scroll-mb-4 gap-2">
           {checking ? (
             <div role="status" className="grid gap-2">
               <Progress label="Checking the size" tone="lamp" />
               <p className="text-small text-ink-muted">Checking size. It needs a connection and takes a few seconds.</p>
             </div>
           ) : checkError ? (
-            <Notice tone="danger" icon={<CircleAlert />} title="Failed">
+            <Notice tone="danger" icon={<CircleAlert />} title="Could not check the size">
               {errorMessage(checkError)}
             </Notice>
           ) : found ? (

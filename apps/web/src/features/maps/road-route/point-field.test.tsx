@@ -99,6 +99,41 @@ describe("a route point's suggestions", () => {
     await vi.waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(calls));
   });
 
+  it("says why Where I am cannot be used over plain http, and takes the device's position where it can", () => {
+    vi.stubGlobal("isSecureContext", false);
+    const { field, onChange } = show();
+    act(() => field.focus());
+    expect(screen.getByText("Needs Outpost over HTTPS — Settings › HTTPS")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Where I am" })).not.toBeInTheDocument();
+    fireEvent.pointerDown(document.body);
+    vi.stubGlobal("isSecureContext", true);
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      geolocation: {
+        getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude: 51.1, longitude: -0.2 } } as GeolocationPosition),
+      },
+    });
+    fireEvent.click(field);
+    fireEvent.click(screen.getByRole("button", { name: "Where I am" }));
+    expect(onChange).toHaveBeenCalledWith({ name: "Where you are", lat: 51.1, lon: -0.2, from: "map" });
+  });
+
+  it("takes the first suggestion on Return, and keeps what was typed until there is one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ query: "Allot", coordinate: null, places: [] }), { status: 200 })),
+    );
+    const { field, onChange } = show();
+    act(() => field.focus());
+    fireEvent.change(field, { target: { value: "Allot" } });
+    // Before the list has caught up with the typing, Return does nothing, and the words stay.
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(field).toHaveValue("Allot");
+    await screen.findByRole("list", { name: "Places for from" });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith({ name: "Allotment", lat: 52.15, lon: -0.7, from: "place" });
+  });
+
   it("is one track no wider than the form, so a long detail cannot widen the list past the screen", () => {
     const { field } = show();
     act(() => field.focus());

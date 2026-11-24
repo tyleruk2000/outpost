@@ -61,7 +61,8 @@ test("Show on the map, tapped on an iPhone, switches the satellites on, fits the
   await show.scrollIntoViewIfNeeded();
   await show.tap();
 
-  await expect(page).toHaveURL(/\/maps\?satellite=25544$/);
+  // The pass chosen, and the place it was worked out for, go with it.
+  await expect(page).toHaveURL(/\/maps\?satellite=25544&aos=\d+&from=51\.5074%2C-0\.1278&place=/);
   await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 20_000 });
   expect(await page.evaluate(() => localStorage.getItem("outpost.maps.satellites"))).toBe("true");
   // The map moved off the bare world view it was left at (20° N, 0°, zoom 1.5) to the satellite, and was kept there.
@@ -75,16 +76,22 @@ test("Show on the map, tapped on an iPhone, switches the satellites on, fits the
     )
     .not.toMatchObject({ lat: 20, lon: 0 });
   const view = JSON.parse((await page.evaluate(() => localStorage.getItem("outpost.maps.view"))) ?? "{}") as { lat: number; zoom: number };
-  expect(view.zoom).toBeLessThanOrEqual(5);
-  expect(Math.abs(view.lat)).toBeLessThan(70);
-  await info.attach("fitted to the ISS", { body: await page.screenshot(), contentType: "image/png" });
+  // Fitted to the pass over London, not the world: within the pass's reach of the place.
+  expect(view.zoom).toBeLessThanOrEqual(7);
+  expect(Math.abs(view.lat - 51.5)).toBeLessThan(25);
+  await info.attach("fitted to the ISS's pass", { body: await page.screenshot(), contentType: "image/png" });
 
   await page.getByRole("tab", { name: "Layers" }).tap();
   const layer = page.getByRole("region", { name: "Satellites" });
   await expect(layer.getByRole("switch")).toBeChecked();
   await expect(layer).toContainText("The track drawn is ISS (ZARYA)'s");
   await expect(layer).toContainText("The others are drawn small, without names.");
+  await expect(layer).toContainText("it goes off again when you leave Maps");
   await layer.getByRole("button", { name: "Show every satellite alike" }).tap();
   await expect(layer).not.toContainText("The others are drawn small");
+  // Leaving Maps: the layer "Show on the map" switched on is off again, so the map is not left shaded.
+  await page.goto("/radio/satellites");
+  await expect(page.getByRole("heading", { level: 1, name: "Satellites" })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("outpost.maps.satellites"))).toBe("false");
   expect(errors).toEqual([]);
 });

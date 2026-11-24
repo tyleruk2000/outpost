@@ -156,8 +156,23 @@ const isPending = (row: typeof observationImports.$inferSelect) => (row.skipped 
 
 const coordinate = (limit: number) => z.number().min(-limit).max(limit).nullable();
 const end = z
-  .object({ call: z.string().trim().max(20).default(""), lat: coordinate(90), lon: coordinate(180) })
+  .object({
+    call: z.string().trim().max(20).default(""),
+    lat: coordinate(90),
+    lon: coordinate(180),
+    /** The locator the position was typed as, so the log can say it back as given: "IO84NE". */
+    locator: z
+      .string()
+      .trim()
+      .max(10)
+      .refine((value) => parseMaidenhead(value) !== null, "That is not a Maidenhead locator.")
+      .optional(),
+  })
   .refine((value) => (value.lat === null) === (value.lon === null), "Give both the latitude and the longitude of a place, or neither.");
+
+/** Where an end's position came from, for an entry typed in: the locator it was given as, or coordinates. */
+const typedFrom = (value: z.infer<typeof end>) =>
+  value.lat === null ? "" : value.locator ? `locator ${parseMaidenhead(value.locator)!.locator}` : "coordinates";
 const observation = z.object({
   at: z
     .string()
@@ -712,11 +727,11 @@ export async function registerObservations(
         txCall: input.tx.call.toUpperCase(),
         txLat: input.tx.lat,
         txLon: input.tx.lon,
-        txFrom: input.tx.lat === null ? "" : "coordinates",
+        txFrom: typedFrom(input.tx),
         rxCall: input.rx.call.toUpperCase(),
         rxLat: input.rx.lat,
         rxLon: input.rx.lon,
-        rxFrom: input.rx.lat === null ? "" : "coordinates",
+        rxFrom: typedFrom(input.rx),
         powerWatts: input.powerWatts,
         antenna: input.antenna,
         reportSent: input.reportSent,

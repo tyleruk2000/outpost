@@ -281,6 +281,32 @@ export function antennaSummary(spec: AntennaSpec): string {
   return parts.join(", ");
 }
 
+/**
+ * What a prediction assumed of the two stations, said before its answer: "5 W into a half-wave
+ * dipole, 5 m up, average ground, at Home; heard on the same at Berlin."
+ */
+export function stationWords(request: Pick<PredictionRequest, "powerWatts" | "txAntenna" | "rxAntenna" | "tx" | "rx">): string {
+  const tx = antennaSummary(request.txAntenna);
+  const rx = antennaSummary(request.rxAntenna);
+  const same = tx === rx ? "the same" : rx.charAt(0).toLowerCase() + rx.slice(1);
+  return `For ${request.powerWatts} W into ${tx.charAt(0).toLowerCase()}${tx.slice(1)} at ${request.tx.name}, heard on ${same} at ${request.rx.name}. Change the power or antennas in the form above.`;
+}
+
+/** The planner's fields as the line under Predict names them, when one needs putting right. */
+export const FIELD_NAMES: Partial<Record<keyof PlannerForm, string>> = {
+  tx: "Transmitter",
+  rx: "Receiver",
+  powerWatts: "Transmitter power",
+  frequencyMhz: "Frequency",
+  txAntennaId: "Transmitting antenna",
+  rxAntennaId: "Receiving antenna",
+  requiredSnrDb: "Signal-to-noise needed",
+  referenceBandwidthHz: "Bandwidth",
+  ssn: "Smoothed sunspot number",
+  fof2Mhz: "foF2",
+  replyPowerWatts: "Their power",
+};
+
 export function antennaOf(
   id: string,
   profiles: AntennaProfile[],

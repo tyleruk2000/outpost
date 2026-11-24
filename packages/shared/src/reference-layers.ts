@@ -599,6 +599,10 @@ export interface LayerSearchHit {
   country: string | null;
   lat: number | null;
   lon: number | null;
+  /** Asked from a point (`near`): how far it is, in metres. */
+  distanceMeters?: number | null;
+  /** Asked from a point: the town or village it is in or near, from the Towns layer where it is held. */
+  place?: string | null;
 }
 
 export interface LayerSearchResponse {

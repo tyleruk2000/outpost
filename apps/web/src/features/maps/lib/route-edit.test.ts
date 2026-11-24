@@ -5,6 +5,7 @@ import {
   canRedo,
   canSave,
   canUndo,
+  closeLoop,
   EDITABLE_POINTS,
   editablePoints,
   HISTORY_LIMIT,
@@ -248,5 +249,19 @@ describe("an unsaved route kept in the browser", () => {
     expect(isStoredRouteDraft({ name: "Ridge", color: "teal", points: [{ lat: 95, lon: 0 }] })).toBe(false);
     expect(isStoredRouteDraft({ name: "Ridge", color: "teal", points: [{ lat: "53", lon: 0 }] })).toBe(false);
     expect(isStoredRouteDraft({ name: 4, color: "teal", points: [] })).toBe(false);
+  });
+});
+
+describe("a round walk", () => {
+  it("closes the loop when the first point is pressed, once there are three", () => {
+    const a = { lat: 53.06, lon: -4.07 };
+    const b = { lat: 53.07, lon: -4.07 };
+    const c = { lat: 53.07, lon: -4.06 };
+    expect(closeLoop(drawn(a, b), 0)).toBeNull();
+    const closed = closeLoop(drawn(a, b, c), 0);
+    expect(closed?.points).toHaveLength(4);
+    expect(closed?.points.at(-1)).toEqual(closed?.points[0]);
+    expect(closeLoop(closed!, 0)).toBeNull();
+    expect(closeLoop(drawn(a, b, c), 1)).toBeNull();
   });
 });

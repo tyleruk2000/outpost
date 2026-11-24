@@ -163,6 +163,12 @@ describe("imports a person brings", () => {
     // 530268, 179640 is in Westminster.
     expect(hit.lat).toBeCloseTo(51.5, 1);
     expect(hit.lon).toBeCloseTo(-0.12, 1);
+    // Asked from a point: how far each is, nearest first, and the town where the Towns layer is held (here it is not).
+    const near = await app.api("GET", "/api/reference/search?q=town%20hall&near=51.5,-0.2");
+    expect(near.body.hits[0]).toMatchObject({ id: hit.id, place: null });
+    expect(near.body.hits[0].distanceMeters).toBeGreaterThan(4_000);
+    expect(near.body.hits[0].distanceMeters).toBeLessThan(7_000);
+    expect((await app.api("GET", "/api/reference/search?q=town%20hall&near=here")).status).toBe(400);
     const detail = (await app.api("GET", `/api/reference/features/${hit.id}`)).body.feature as ReferenceFeatureDetail;
     expect(detail.provenance).toBe("public-infrastructure");
     expect(detail.source).toMatchObject({

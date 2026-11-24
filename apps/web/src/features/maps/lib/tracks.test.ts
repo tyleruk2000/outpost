@@ -11,6 +11,7 @@ describe("track figures", () => {
     expect(trackFacts({ distanceMeters: 20_921, ascentMeters: 838, pointCount: 13 })).toEqual([
       { label: "Distance", value: "20.9 km (13.0 mi)" },
       { label: "Ascent", value: "838 m" },
+      { label: "Walking time", value: "about 5 h 35 min" },
       { label: "Points", value: "13 points" },
     ]);
   });
@@ -19,6 +20,7 @@ describe("track figures", () => {
     expect(trackFacts({ distanceMeters: 640, ascentMeters: null, pointCount: 1 })).toEqual([
       { label: "Distance", value: "640 m (0.40 mi)" },
       { label: "Ascent", value: "No heights in this file" },
+      { label: "Walking time", value: "about 8 min on the flat; the climbing is not known" },
       { label: "Points", value: "1 point" },
     ]);
   });

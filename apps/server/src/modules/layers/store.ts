@@ -284,7 +284,14 @@ export interface ReferenceStore {
    * The nearest records of a layer to a point, from what is held: of one kind (by any of
    * its roles), or the nearest of each kind. Within `NEAREST_WITHIN_METRES` only.
    */
-  nearest(query: { lat: number; lon: number; layer: ReferenceLayerId; kind: string | null; limit: number }): NearestResponse;
+  nearest(query: {
+    lat: number;
+    lon: number;
+    layer: ReferenceLayerId;
+    kind: string | null;
+    limit: number;
+    anyKind?: boolean;
+  }): NearestResponse;
   /** Historical records for the records browser, by period and then name. */
   historical(query: { recordType: HistoricalRecordType | null; limit: number; offset: number }): HistoricalRecordsResponse;
   owners(): string[];
@@ -967,14 +974,18 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       return rows;
     },
 
-    nearest({ lat, lon, layer, kind, limit }) {
-      const kinds = kind ? [kind] : layer === "food" ? FOOD_KINDS.map((entry) => entry.kind as string) : [];
+    nearest({ lat, lon, layer, kind, limit, anyKind: asked }) {
+      // With no kind: the nearest of each kind; or, asked for `anyKind`, the nearest `limit` of the whole layer
+      // whatever each is tagged as (Maps' Nearest hospital or shelter).
+      const anyKind = !kind && asked === true;
+      const ANY = "*";
+      const kinds = kind ? [kind] : anyKind ? [ANY] : layer === "food" ? FOOD_KINDS.map((entry) => entry.kind as string) : [];
       const where = filterSql({ layers: [layer], ...(kind ? { kinds: [kind] } : {}) });
       const statement = prepared(
         `SELECT f.id AS id, f.name AS name, f.kind AS kind, f.provider AS provider, f.lat AS lat, f.lon AS lon, f.props AS props
            ${rtreeJoin} WHERE ${rtreeWhere} AND ${where.sql} LIMIT 20000`,
       );
-      const wanted = kind ? limit : 1;
+      const wanted = kind || anyKind ? limit : 1;
       type Row = { id: number; name: string; kind: string; provider: string; lat: number; lon: number; props: string };
       let best = new Map<string, Array<{ row: Row; metres: number }>>();
       // Look close first, and further only while a kind wanted has fewer than it should.
@@ -987,8 +998,9 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
           const metres = haversineMeters(lat, lon, row.lat, row.lon);
           if (metres > radius) continue;
           // Every kind the record is: a fuel station with a shop is the nearest shop too.
-          const roles =
-            layer === "food" && row.provider !== "fsa"
+          const roles = anyKind
+            ? [ANY]
+            : layer === "food" && row.provider !== "fsa"
               ? [row.kind, ...(classifyFood(JSON.parse(row.props) as Record<string, string>)?.kinds ?? [])]
               : [row.kind];
           for (const role of new Set(roles)) {
@@ -1009,8 +1021,8 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
           hits.push({
             id: row.id,
             name: row.name,
-            kind: role,
-            kindLabel: kindLabel(role),
+            kind: role === ANY ? row.kind : role,
+            kindLabel: kindLabel(role === ANY ? row.kind : role),
             provider: row.provider,
             lat: row.lat,
             lon: row.lon,

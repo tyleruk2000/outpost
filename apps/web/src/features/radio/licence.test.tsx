@@ -48,6 +48,12 @@ describe("the licence line", () => {
     expect(screen.queryByText(/needs an amateur licence/)).toBeNull();
   });
 
+  it("is one short line for a licensed household, with the rules a press away", async () => {
+    withSettings({ "radio.licensed": true }, <LicenceLine use="listen-and-transmit" />);
+    expect(await screen.findByRole("link", { name: "The rules" })).toHaveAttribute("href", "/help/radio-licences");
+    expect(screen.queryByText(/UK law and Ofcom/)).toBeNull();
+  });
+
   it("is the listen-only wording until the settings say otherwise", () => {
     withSettings(null, <LicenceLine use="transmit" />);
     expect(screen.getByText(/Transmitting: needs an amateur licence/)).toBeInTheDocument();

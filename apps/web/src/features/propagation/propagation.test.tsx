@@ -13,7 +13,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HourGrid, HourLines, percent, ShareBars, shareFill } from "./charts";
-import { AS_SAVED, emptyForm, exampleForm, formOf, openSaved, rememberedForm, rememberForm, requestOf } from "./data";
+import { AS_SAVED, emptyForm, exampleForm, formOf, openSaved, rememberedForm, rememberForm, requestOf, stationWords } from "./data";
 import { Planner } from "./planner";
 import { BasisNotice, bestHour, tableAge, windows } from "./results";
 
@@ -222,6 +222,28 @@ describe("a saved prediction", () => {
     const notice = screen.getByText("Saved prediction: Garden to Birmingham").closest('[role="status"]')!;
     expect(notice.textContent).toContain("9 March 2026");
     expect(notice.textContent).toContain("as it was saved");
+  });
+});
+
+describe("Predict with something to put right", () => {
+  it("names the field, and takes the cursor to it however far up it is", async () => {
+    const posted = showPlanner([]);
+    fireEvent.click(await screen.findByRole("button", { name: "Predict" }));
+    const alert = await screen.findByText(/^Not sent:/);
+    expect(alert.textContent).toContain("Not sent: Transmitter needs putting right.");
+    await waitFor(() => expect(document.activeElement?.getAttribute("aria-invalid")).toBe("true"));
+    expect(screen.getByRole("button", { name: "Go to transmitter" })).toBeTruthy();
+    expect(posted).toHaveLength(0);
+  });
+});
+
+describe("what a prediction assumed", () => {
+  it("says the power and antennas before the answer", () => {
+    const built = requestOf(exampleForm(), []);
+    if (!("request" in built)) throw new Error("the example should build");
+    const words = stationWords(built.request);
+    expect(words).toMatch(/^For 5 W into .+ at London, heard on the same at Birmingham\./);
+    expect(words).toContain("5 m up");
   });
 });
 

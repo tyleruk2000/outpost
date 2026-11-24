@@ -35,7 +35,7 @@ import {
 } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, FileDown, Info } from "lucide-react";
-import { memo, type ReactNode, useDeferredValue, useId, useMemo, useState } from "react";
+import { memo, type ReactNode, useDeferredValue, useId, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Disclosure, EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ import { LicenceLine } from "@/features/radio/licence";
 import { useAddressText } from "@/lib/use-address-text";
 import { cn, plural } from "@/lib/utils";
 import { frequenciesTitle, frequencyLine, scheduleWords, statusWords } from "./document";
+import { distressCount, emergencyFirst, splitClosed } from "./first";
 import { frequenciesPrint } from "./print";
 
 const ANY = "any";
@@ -349,8 +350,14 @@ export default function FrequenciesPage() {
   const query = useDeferredValue(text);
   const showUnverified = params.get("unverified") === "1";
 
-  const change = (key: string, value: string | null) =>
-    setParams(
+  const listRef = useRef<HTMLDivElement>(null);
+  /** On a phone the filters are folded away: open once a filter is chosen from the address. */
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const change = (key: string, value: string | null) => {
+    // On a phone the list is a screen below the filters: a filter chosen brings the list into view.
+    if (key !== "unverified" && window.matchMedia?.("(max-width: 47.99rem)").matches)
+      window.requestAnimationFrame(() => listRef.current?.scrollIntoView?.({ block: "start" }));
+    return setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
         if (value === null || value === "") next.delete(key);
@@ -359,6 +366,7 @@ export default function FrequenciesPage() {
       },
       { replace: true },
     );
+  };
 
   const entries = data.data?.entries ?? NONE;
   const guides = data.data?.guides ?? [];
@@ -371,6 +379,14 @@ export default function FrequenciesPage() {
     () => ordered(heardFromAfar(entries, { kind, place, band, receiver: set, text: query, showUnverified }), null),
     [entries, kind, place, band, set, query, showUnverified],
   );
+  // Closed stations are kept so that nobody hunts for them, under their own heading after what can be heard.
+  const { live, closed } = useMemo(() => splitClosed(shown), [shown]);
+  // What to tune to in an emergency where home is (or the place chosen), before anything else on the screen.
+  const emergency = useMemo(() => emergencyFirst(entries, place), [entries, place]);
+  const distress = useMemo(() => distressCount(entries, place), [entries, place]);
+  const filtersSet = [kind, placeParam && placeParam !== ANY ? placeParam : null, band, set].filter(Boolean).length;
+  /** A phone shows the four filters once asked for, or once one is in use. */
+  const folded = filtersOpen || filtersSet > 0 ? "" : "max-md:hidden";
   const places = useMemo(() => placesIn(entries), [entries]);
   const bands = useMemo(() => {
     const used = new Set(entries.flatMap((entry) => entry.bands));
@@ -390,6 +406,35 @@ export default function FrequenciesPage() {
         title="Frequencies to listen to"
         description="Where to tune to hear the time, news, warnings, weather and other people when the internet is out. The list comes with Outpost; nothing is fetched."
       />
+      {emergency.length > 0 && place ? (
+        <section
+          aria-labelledby="frequencies-emergency"
+          className="mb-6 rounded-panel border border-border bg-surface px-4 pt-3 pb-1"
+          data-testid="emergency-first"
+        >
+          <h2 id="frequencies-emergency" className="text-lead font-semibold text-ink">
+            In an emergency, tune to
+          </h2>
+          <p className="text-small text-ink-muted">For {placeName(place)}. Press a name for why, and where the figures come from.</p>
+          <Rows>
+            {emergency.map((entry) => (
+              <FrequencyRow key={entry.id} entry={entry} today={today} />
+            ))}
+          </Rows>
+          {distress > 0 ? (
+            <p className="border-t border-border py-3 text-small">
+              <button
+                type="button"
+                className={cn(linkClass, "rounded-control max-md:-my-3 max-md:py-3")}
+                onClick={() => change("kind", "distress")}
+              >
+                Distress and calling frequencies
+              </button>{" "}
+              <span className="text-ink-muted">({distress}): to call for help, or to listen for those who do.</span>
+            </p>
+          ) : null}
+        </section>
+      ) : null}
       <LicenceLine use="listen" className="mb-6" />
       <FirstUseGuide
         slug="radio-quick-start"
@@ -434,7 +479,7 @@ export default function FrequenciesPage() {
                 />
               )}
             </Field>
-            <Field label="Kind" className="max-sm:col-span-2">
+            <Field label="Kind" className={cn("max-sm:col-span-2", folded)}>
               {(ids) => (
                 <Select
                   {...ids}
@@ -444,7 +489,7 @@ export default function FrequenciesPage() {
                 />
               )}
             </Field>
-            <Field label="Country or region" className="max-sm:col-span-2">
+            <Field label="Country or region" className={cn("max-sm:col-span-2", folded)}>
               {(ids) => (
                 <Select
                   {...ids}
@@ -460,7 +505,7 @@ export default function FrequenciesPage() {
                 />
               )}
             </Field>
-            <Field label="Band">
+            <Field label="Band" className={folded}>
               {(ids) => (
                 <Select
                   {...ids}
@@ -470,7 +515,7 @@ export default function FrequenciesPage() {
                 />
               )}
             </Field>
-            <Field label="A set like mine">
+            <Field label="A set like mine" className={folded}>
               {(ids) => (
                 <Select
                   {...ids}
@@ -484,6 +529,17 @@ export default function FrequenciesPage() {
               )}
             </Field>
           </section>
+          {/* On a phone the four filters fold under one button, so that the list is not a screen below them. */}
+          <Button
+            variant="ghost"
+            className="mt-2 md:hidden"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((was) => !was)}
+            hidden={filtersSet > 0}
+          >
+            <ChevronRight aria-hidden className={cn("transition-transform", filtersOpen && "rotate-90")} />
+            {filtersOpen ? "Fewer filters" : "Kind, place, band and set"}
+          </Button>
           <div className="mt-2 grid gap-1 text-small text-ink-muted">
             {placeIsHome && place ? (
               <p>
@@ -510,6 +566,7 @@ export default function FrequenciesPage() {
             </Section>
           ) : null}
 
+          <div ref={listRef} className="scroll-mt-16 md:scroll-mt-4" />
           <Section
             className="mt-8"
             title={
@@ -539,11 +596,30 @@ export default function FrequenciesPage() {
                   : "No entry matches all of these filters. Fewer filters, or every place, will find more."}
               </EmptyState>
             ) : (
-              <Rows>
-                {shown.map((entry) => (
-                  <FrequencyRow key={entry.id} entry={entry} today={today} />
-                ))}
-              </Rows>
+              <>
+                {live.length > 0 ? (
+                  <Rows>
+                    {live.map((entry) => (
+                      <FrequencyRow key={entry.id} entry={entry} today={today} />
+                    ))}
+                  </Rows>
+                ) : (
+                  <p className="py-3 text-small text-ink-muted">Every entry that matches has closed: they are listed below.</p>
+                )}
+                {closed.length > 0 ? (
+                  <Disclosure
+                    summary={`Closed: ${plural(closed.length, "station", "stations")}, kept so that nobody hunts for them`}
+                    className="mt-4"
+                  >
+                    <p className="text-ink-muted">Each says when it closed and the page that says so.</p>
+                    <Rows data-testid="closed-entries">
+                      {closed.map((entry) => (
+                        <FrequencyRow key={entry.id} entry={entry} today={today} />
+                      ))}
+                    </Rows>
+                  </Disclosure>
+                ) : null}
+              </>
             )}
           </Section>
 

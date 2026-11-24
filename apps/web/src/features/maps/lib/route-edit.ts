@@ -54,6 +54,17 @@ export function addPoint(edit: RouteEdit, position: LatLon): RouteEdit {
   return commit(edit, [...edit.points, point]);
 }
 
+/**
+ * A press on the first point of a line of three or more closes the loop: the start is added
+ * again at the end. Null when the press is not that (it then selects the point, as before).
+ */
+export function closeLoop(edit: RouteEdit, index: number): RouteEdit | null {
+  const first = edit.points[0];
+  if (index !== 0 || !first || edit.points.length < 3 || samePoint(edit.points.at(-1), first)) return null;
+  const closed = addPoint(edit, first);
+  return closed === edit ? null : closed;
+}
+
 export function movePoint(edit: RouteEdit, index: number, position: LatLon): RouteEdit {
   if (!edit.points[index]) return edit;
   const point = roundPoint(position);

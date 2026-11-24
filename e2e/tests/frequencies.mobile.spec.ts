@@ -24,6 +24,9 @@ test.describe("Frequencies to listen to on a phone", () => {
     await expect(page.getByTestId("frequency-row").first()).toBeVisible();
     expect(await overflow()).toBeLessThanOrEqual(1);
 
+    // On a phone the four filters are folded under one button, so the list is not a screen below them.
+    await expect(page.getByRole("combobox", { name: "Kind" })).toBeHidden();
+    await page.getByRole("button", { name: "Kind, place, band and set" }).tap();
     // Every place, so that what is shown does not hang on a home place; then time signals from the drop-down.
     await page.getByRole("combobox", { name: "Country or region" }).tap();
     await page.getByRole("option", { name: "Every place" }).tap();

@@ -219,6 +219,68 @@ describe("the Layers panel", () => {
     expect(screen.getByText(/The server did not answer/)).toBeVisible();
   });
 
+  it("finds in the layers nearest the middle of the map first, each with its kind, town and distance", async () => {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        asked.push(url);
+        return url.includes("/api/reference/search")
+          ? Response.json({
+              query: "pharmacy",
+              hits: [
+                {
+                  id: 1,
+                  layer: "military",
+                  provenance: "public-infrastructure",
+                  name: "",
+                  kindLabel: "Pharmacy",
+                  country: "GB",
+                  lat: 54.51,
+                  lon: -3,
+                  distanceMeters: 1_200,
+                  place: "Keswick",
+                },
+                {
+                  id: 2,
+                  layer: "military",
+                  provenance: "public-infrastructure",
+                  name: "Boots",
+                  kindLabel: "Pharmacy",
+                  country: "GB",
+                  lat: 54.6,
+                  lon: -3,
+                  distanceMeters: 11_000,
+                  place: null,
+                },
+              ],
+            })
+          : Response.json({ error: { message: "Not here." } }, { status: 404 });
+      }),
+    );
+    render(
+      wrap(
+        <LayersPanel
+          summary={query(SUMMARY)}
+          choice={CHOICE}
+          onChoice={vi.fn()}
+          colours={layerColours()}
+          shades={["a", "b", "c", "d", "e"]}
+          onOpen={vi.fn()}
+          centre={{ lat: 54.5, lon: -3 }}
+        />,
+      ),
+    );
+    await userEvent.type(screen.getByRole("searchbox", { name: "Find in the reference layers" }), "pharmacy");
+    const list = await screen.findByRole("list", { name: "Found in the reference layers, nearest the middle of the map first" });
+    const rows = within(list).getAllByRole("button");
+    expect(rows[0]).toHaveTextContent("Pharmacynear Keswick1.20 km from the middle of the map");
+    expect(rows[1]).toHaveTextContent("BootsPharmacy11.0 km");
+    expect(asked.find((url) => url.includes("/api/reference/search"))).toContain("near=54.500%2C-3.000");
+    vi.unstubAllGlobals();
+  });
+
   it("lists each installed layer with a switch, the population scale, filters, and the legend of where things come from", async () => {
     const onChoice = vi.fn();
     render(
@@ -312,6 +374,37 @@ describe("the record's card", () => {
     expect(screen.getByRole("link", { name: /Open The scanned list/ })).toHaveAttribute("href", "/library/documents/doc1");
     expect(screen.getByRole("link", { name: /The document at its archive/ })).toHaveAttribute("href", "https://example.org/doc.pdf");
     expect(screen.getByText("Source, dates, licence and accuracy")).toBeVisible();
+    // History is not somewhere to go: no Directions.
+    expect(screen.queryByRole("button", { name: "Directions" })).toBeNull();
+  });
+
+  it("says how far a place is from home, and gives Directions to it", async () => {
+    const onDirections = vi.fn();
+    const hospital: ReferenceFeatureDetail = {
+      ...historical,
+      layer: "hospitals",
+      kind: "amenity=hospital",
+      kindLabel: "Hospital",
+      name: "St Helier Hospital",
+      historical: null,
+      provenance: "public-infrastructure",
+      lat: 51.38,
+      lon: -0.18,
+    };
+    render(
+      wrap(
+        <FeatureCard
+          query={query(hospital)}
+          alsoHere={[]}
+          onOpen={vi.fn()}
+          onClose={vi.fn()}
+          way={{ from: { name: "Home", lat: 51.36, lon: -0.2 }, onDirections }}
+        />,
+      ),
+    );
+    expect(screen.getByText(/^2\.62 km \(1\.63 mi\) NNE of Home, in a straight line$/)).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Directions" }));
+    expect(onDirections).toHaveBeenCalledWith({ name: "St Helier Hospital", lat: 51.38, lon: -0.18 });
   });
 
   it("shows loading, and a record that is gone", () => {

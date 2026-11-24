@@ -33,7 +33,8 @@ satellite whose own elements are old. A wrong clock makes every time wrong: set 
 Passes are for the current household's home: its saved place (with one household, the saved
 place with the home icon), or, for a portable household, where it was last said to be, with
 how old that is. Nothing is worked out again because it moved until you open the screen. Under
-**Seen from**, type coordinates or a locator, choose a saved place, or choose a point on the map.
+**Seen from**, type a place's name (from the place names on this Outpost), coordinates, a grid
+reference or a locator, choose a saved place, or choose a point on the map.
 
 ## Passes
 
@@ -43,8 +44,10 @@ highest point. At first only passes 10° high or more are listed (untick **Only 
 more** for the low ones too); a pass under 10° is a low pass, here, under **Weather satellites**
 and on the PDF alike, and under 2° is left out. A geostationary satellite above your horizon is
 not a pass but **always up**: the row says where to point (how high, and which way). The list
-shows 40 at a time, with **Show 40 more** under it. Press a pass to open it under **One
-satellite**, at the satellite's name.
+shows 40 at a time, with **Show 40 more** under it. **Find a satellite** matches the start of a
+word of the name or the NORAD number (`ISS` finds ISS (ZARYA), not SWISSCUBE), and the line above
+the list then counts what matches. Press a pass to open it under **One satellite**, at the
+satellite's name, with that pass chosen, however many days ahead it is.
 
 When the elements are recent and nothing has gone wrong, what was fetched and when folds into
 one line above **Seen from**; open it to fetch again.
@@ -54,7 +57,7 @@ one line above **Seen from**; open it to fetch again.
 Choose what to **Show** (every kept satellite, or one group), then the **Satellite**: type part of
 its name or its NORAD number in the list and press Enter for the first match.
 
-- **Passes in the next 24 hours**, first. The pass shown is marked with a bar and "shown"; choose
+- **Passes in the next 24 hours** (or as many days as reach the pass opened from **Passes**), first. The pass shown is marked with a bar and "shown"; choose
   another for its **sky track** (as if lying on your back, head to the north, horizon as the outer
   ring): an open circle where it rises, a diamond at its highest, a square where it sets, and a
   large ring where it is now during a pass. **Where to point and what to tune to, minute by
@@ -139,9 +142,11 @@ is not offered for this satellite again (**Offer it again** undoes that). The su
 to Wikipedia's contributors under CC BY-SA 4.0, with a link to the article.
 
 **This pass as a PDF** writes the sky track as on screen, where to point and what to tune to, to save, print or add to the
-library. **Show on the map** opens Maps with **Satellites now** switched on, fitted to where the
-satellite is and its next pass over home, the other satellites drawn small and without names
-(**Show every satellite alike** in **Layers** puts them back). **Paste elements** takes one element set from
+library. **Show on the map** opens Maps fitted to the pass chosen and the place it was worked out for,
+with that pass drawn heavier and labelled with its day and time, and the other satellites drawn
+small and without names (**Show every satellite alike** in **Layers** puts them back). If
+**Satellites now** was off, it is switched on for that visit to Maps only and goes off again
+when you leave. **Paste elements** takes one element set from
 elsewhere (a two-line TLE, or one OMM object as JSON or KEY = VALUE lines), checked strictly, used
 in this tab only and never kept.
 
@@ -154,9 +159,10 @@ decoding software; Outpost only says when and where to listen.
 ## On the map
 
 On the Maps screen, **Layers**, **Satellites now** draws the amateur satellites and crewed
-stations where they are, moving every 10 seconds. A shaded
+stations where they are, moving every 10 seconds. A dashed
 ring is the ground that can hear a satellite: always the ISS's, the chosen satellite's, and any
-above the household's home's horizon now.
+above the household's home's horizon now. Only the chosen satellite's ring is lightly shaded, so
+rings laid over one another (a geostationary satellite's covers all of Europe) never darken the map.
 
 ## What it does not do
 

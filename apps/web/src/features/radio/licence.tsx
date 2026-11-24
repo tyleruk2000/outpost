@@ -55,6 +55,19 @@ export function LicenceLine({ use, className }: { use: RadioUse; className?: str
   const licence = useRadioLicence();
   const line = licenceLine(use, licence);
   if (!line) return null;
+  // A licensed household has said it knows the rules: one short line, the sources one press away on the Help page.
+  if (licence.licensed)
+    return (
+      <p className={cn("flex items-start gap-2 text-small text-ink-muted", className)} data-licence-line={use}>
+        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+        <span>
+          {line.text}{" "}
+          <Link to={LICENCE_HELP_PATH} className="text-primary underline underline-offset-2">
+            The rules
+          </Link>
+        </span>
+      </p>
+    );
   return (
     <p className={cn("flex items-start gap-2 text-small text-ink-muted", className)} data-licence-line={use}>
       <Info aria-hidden className="mt-0.5 size-4 shrink-0" />

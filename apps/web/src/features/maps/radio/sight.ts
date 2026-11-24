@@ -32,6 +32,12 @@ export const MIN_MHZ = 1;
 export const MAX_MHZ = 100_000;
 export const MAX_ANTENNA_METERS = 1000;
 
+/** Both antennas at once: a handheld held at about head height, or an antenna on a mast. */
+export const ANTENNA_PRESETS = [
+  { meters: 1.5, label: "Handhelds, 1.5 m" },
+  { meters: 10, label: "Masts, 10 m" },
+] as const;
+
 /** What the tool remembers in this browser: the heights and the band last used. */
 export interface SightSettings {
   antennaFrom: number;

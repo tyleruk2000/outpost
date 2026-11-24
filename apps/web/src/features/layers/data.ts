@@ -93,9 +93,12 @@ export const useFeature = (id: number | null) =>
     retry: false,
   });
 
-export const useLayerSearch = (text: string, filter: ReferenceFilter) => {
+/** `near`: the nearest first, each with its distance and the town it is in or near. */
+export const useLayerSearch = (text: string, filter: ReferenceFilter, near?: { lat: number; lon: number } | null) => {
   const params = filterParams(filter);
   params.set("q", text.trim());
+  // Rounded, so that a map moved a little does not ask again.
+  if (near) params.set("near", `${near.lat.toFixed(3)},${near.lon.toFixed(3)}`);
   const query = params.toString();
   return useQuery({
     queryKey: layersKeys.search(query),
@@ -106,7 +109,14 @@ export const useLayerSearch = (text: string, filter: ReferenceFilter) => {
 };
 
 /** The nearest held records of a layer to a point: Outpost's own answer from what is held; no source is asked. */
-export const useNearest = (from: { lat: number; lon: number } | null, layer: string, kind: string | null, enabled = true) => {
+export const useNearest = (
+  from: { lat: number; lon: number } | null,
+  layer: string,
+  kind: string | null,
+  enabled = true,
+  /** The nearest few of the layer whatever their kind, rather than the nearest of each kind. */
+  anyKind = false,
+) => {
   const params = new URLSearchParams();
   // Rounded to about ten metres, so that a nudge of the map asks nothing new.
   if (from) {
@@ -116,6 +126,7 @@ export const useNearest = (from: { lat: number; lon: number } | null, layer: str
   params.set("layer", layer);
   if (kind) params.set("kind", kind);
   params.set("limit", "5");
+  if (anyKind) params.set("any", "1");
   const query = params.toString();
   return useQuery({
     queryKey: layersKeys.nearest(query),

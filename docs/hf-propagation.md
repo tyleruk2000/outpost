@@ -30,8 +30,9 @@ bands are better, never changes the prediction, and is marked old after three ho
 
 ## Making a prediction
 
-1. **Where.** Transmitter and receiver as coordinates (`51.5074, -0.1278`), a British grid
-   reference, a locator (`IO91WM`), a saved place, or **Choose on the map**. An empty
+1. **Where.** Transmitter and receiver as a place's name (from the place names on this
+   Outpost), coordinates (`51.5074, -0.1278`), a British grid reference, a locator (`IO91WM`), a
+   saved place, or **Choose on the map**. An empty
    transmitter starts at the current household's home (for a portable household, where it
    was last said to be).
 2. **Date.** The model works by month: every day of a month gives the same answer.
@@ -42,7 +43,8 @@ bands are better, never changes the prediction, and is marked old after three ho
 5. **The Sun.** See [Where the sunspot number comes from](#where-the-sunspot-number-comes-from).
 6. **The reply** (optional): the other station's power and your noise, to predict the way back.
 
-Press **Predict**, or **Try London to Birmingham on 40 m** for a first look. The form is
+Press **Predict**, or **Try London to Birmingham on 40 m** for a first look. If something needs
+putting right, the line under **Predict** names the field, and the cursor goes to it. The form is
 remembered in the browser. **Save this prediction** keeps the question by name; **Open** asks it
 again with today's data. An antenna profile changed since is run **As saved**.
 
@@ -55,6 +57,8 @@ by hour, every caveat and the versions. A cell with no figure is a dash, never a
 
 ### Reading the answer
 
+- **The first line** says what was assumed: the power and each antenna ("For 5 W into a
+  half-wave dipole, 5 m up…"). The form starts at 5 W and a low dipole; change them for your station.
 - **The notice at the top** says what the answer rests on and how old that is.
 - **A few sentences** give the chosen hour's reliability, the MUF, a better band if any, and the
   hours that work on half the days or more.
@@ -173,6 +177,8 @@ entry**, or **Import an ADIF file** from your logging program (ADIF 3.1.8 `.adi`
 - Every record is accounted for: brought in, already there, or left out with its reason.
 - A position is only what the file states (`LAT`/`LON`, or a locator of four characters or
   more). Nothing is guessed from a callsign.
+- An entry typed in starts from where your station was last time. A position typed as a
+  locator is listed as that locator.
 - No contact is added twice. **Take back**, under **Files imported**, removes one file's entries.
 - Large files import as a job; nothing appears until all of it is in. Over 64 MB or 200,000
   records is refused: export in parts.

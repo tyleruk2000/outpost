@@ -12,7 +12,7 @@ map** (line of sight, Maidenhead locators).
 
 Every radio screen says in one line whether what it does needs a licence; the detail is on
 [What needs a radio licence](radio-licences.md). A household with a licensed operator can
-say so under **Settings → Radio licence**, and the reminders are left out.
+say so under **Settings → Radio licence**: the reminders are left out and the line shrinks to a few words and **The rules**.
 
 ## Licences and band plans
 
