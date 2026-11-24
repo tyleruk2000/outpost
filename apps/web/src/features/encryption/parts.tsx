@@ -223,7 +223,14 @@ export function ArmorOutput({
     <Field label={label} hint={hint}>
       {(ids) => (
         <div className="grid gap-2">
-          <Textarea {...ids} readOnly value={value} rows={rows} spellCheck={false} className="font-mono text-[0.8125rem] leading-5" />
+          <Textarea
+            {...ids}
+            readOnly
+            value={value}
+            rows={rows}
+            spellCheck={false}
+            className="font-mono text-[0.8125rem] leading-5 max-md:text-body md:pointer-coarse:text-body"
+          />
           <div className="flex flex-wrap gap-2">
             <CopyButton text={value} />
             <Button size="sm" onClick={() => download(value, filename, "text/plain")}>

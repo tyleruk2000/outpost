@@ -5,18 +5,26 @@
  *
  * A field reached with Tab scrolls into view at the very foot of the window, under the
  * bar; `SAVE_BAR_ROOM` on the form's container leaves the bar's height below whatever
- * takes the focus (WCAG 2.4.11). The bar of screens on a phone is left by the page's own
- * scroll padding (styles/base.css).
+ * takes the focus (WCAG 2.4.11), and on a phone the bar is marked `data-sticky-bottom`
+ * so that a field reached any other way is moved clear of it (components/focus-clear.ts).
+ *
+ * `stuck` false leaves the bar where it is in the form, at its foot: a form with nothing
+ * changed has nothing to save, and a bar over it only hides fields (owner's review).
  */
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 export const SAVE_BAR_ROOM = "[&_*]:scroll-mb-20";
 
-export function SaveBar({ children }: { children: ReactNode }) {
+export function SaveBar({ children, stuck = true }: { children: ReactNode; stuck?: boolean }) {
   return (
     <div
       data-save-bar
-      className="sticky bottom-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))] z-(--z-sticky) mt-6 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0"
+      data-sticky-bottom={stuck ? "" : undefined}
+      className={cn(
+        "mt-6 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3",
+        stuck && "sticky bottom-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))] z-(--z-sticky) md:bottom-0",
+      )}
     >
       {children}
     </div>

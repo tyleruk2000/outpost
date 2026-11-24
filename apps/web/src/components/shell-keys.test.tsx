@@ -139,7 +139,7 @@ describe("the phone's bottom bar", () => {
     expect(within(under).getByRole("link", { name: "Manage and clean up" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("has a Close button at the end of the More sheet, which a screen reader on a phone can reach, and focus goes back to More", async () => {
+  it("has a Close button at the top of the More sheet, which a screen reader on a phone can reach, and focus goes back to More", async () => {
     const user = userEvent.setup();
     const nav = bar("/");
     const more = within(nav).getByRole("button", { name: "More" });

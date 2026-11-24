@@ -56,11 +56,19 @@ test.describe("Focus on the Prepare forms on a phone", () => {
 
     await page.goto(`/prepare/medical/${sheet.id}`);
     await expect(page.getByRole("heading", { level: 1, name: "Medical sheet: Focus test" })).toBeVisible();
-    // The bar with Save sits on the bar of screens, not under it.
+    // With nothing changed the bar with Save stays at the foot of the form, out of the way; once something is changed it
+    // stays in sight, sitting on the bar of screens, not under it.
+    await expect(page.locator("[data-save-bar]")).not.toHaveAttribute("data-sticky-bottom");
+    const notes = page.getByRole("textbox", { name: /^Anything else/ });
+    await notes.fill("Focus test notes");
+    await expect(page.locator("[data-save-bar]")).toHaveAttribute("data-sticky-bottom", "");
+    await page.evaluate(() => window.scrollTo(0, 0));
     const bar = (await page.locator("[data-save-bar]").boundingBox())!;
     const nav = (await page.getByRole("navigation", { name: "Main" }).boundingBox())!;
     expect(Math.round(bar.y + bar.height)).toBeLessThanOrEqual(Math.round(nav.y) + 1);
     expect(await coveredStops(page, 40)).toEqual([]);
+    await page.locator("[data-save-bar]").getByRole("button", { name: "Save" }).click();
+    await expect(page.locator("[data-save-bar]")).not.toHaveAttribute("data-sticky-bottom");
 
     await page.goto("/prepare/keeping-in-touch");
     await expect(page.getByRole("heading", { level: 1, name: "Keeping in touch" })).toBeVisible();

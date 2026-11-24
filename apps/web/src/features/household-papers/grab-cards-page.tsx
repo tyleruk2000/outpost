@@ -99,33 +99,40 @@ export default function GrabCardsPage() {
             </Button>
           }
         >
-          The household's people are kept under Prepare › Households. Each person in it gets a card, and so does anyone else with a medical
-          sheet.
+          The household's people are kept under Preparedness › Households. Each person in it gets a card, and so does anyone else with a
+          medical sheet.
         </EmptyState>
       ) : (
         <div className="grid gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Segmented<GrabCardSize>
-              label="Size"
-              value={size}
-              onChange={(next) => {
-                setSize(next);
-                writeStored(SIZE_KEY, next);
-              }}
-              options={[
-                { value: "wallet", label: "Wallet" },
-                { value: "a6", label: "A6" },
-              ]}
-            />
-            <Segmented<CardPaper>
-              label="Paper"
-              value={paper}
-              onChange={(next) => {
-                setPaper(next);
-                writeStored(AID_PAPER_KEY, next);
-              }}
-              options={(["a4", "letter"] as const).map((value) => ({ value, label: PAPERS[value].label }))}
-            />
+          {/* Each choice says what it is: "Wallet, A6" and "A4, US Letter" side by side read as one choice (owner's review). */}
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+            <div className="grid gap-1.5">
+              <span className="text-small font-medium text-ink">Card size</span>
+              <Segmented<GrabCardSize>
+                label="Card size"
+                value={size}
+                onChange={(next) => {
+                  setSize(next);
+                  writeStored(SIZE_KEY, next);
+                }}
+                options={[
+                  { value: "wallet", label: "Wallet" },
+                  { value: "a6", label: "A6" },
+                ]}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <span className="text-small font-medium text-ink">Paper</span>
+              <Segmented<CardPaper>
+                label="Paper"
+                value={paper}
+                onChange={(next) => {
+                  setPaper(next);
+                  writeStored(AID_PAPER_KEY, next);
+                }}
+                options={(["a4", "letter"] as const).map((value) => ({ value, label: PAPERS[value].label }))}
+              />
+            </div>
           </div>
           {household.travelling ? (
             <p className="max-w-[65ch] text-small text-ink-muted">

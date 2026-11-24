@@ -91,7 +91,7 @@ test.describe("Several households, end to end", () => {
     const here = page.getByRole("dialog", { name: "Where E2E Caravan is now" });
     await here.getByRole("radio", { name: "On the map" }).click();
     await idle(page);
-    const map = await here.getByRole("region", { name: "Map: press where the household is now" }).boundingBox();
+    const map = await here.getByRole("region", { name: "Map: press where the household is" }).boundingBox();
     await page.mouse.click(map!.x + map!.width / 2, map!.y + map!.height / 2);
     await expect(here.getByTestId("here-chosen")).toContainText(/-?\d+\.\d+/);
     await here.getByLabel(/^Name for this place/).fill("E2E Lakeside campsite");

@@ -280,7 +280,7 @@ export function MessageRow({
             <Button
               size="icon-sm"
               variant="ghost"
-              aria-label={`What to do with ${node?.name ?? message.author}'s ${message.kind === "checkin" ? "check-in" : "message"}`}
+              aria-label={`What to do with ${node?.name ?? message.author}'s ${message.kind === "checkin" ? "check-in" : "message"} from ${whenWritten(message.createdAt)}`}
               className="-my-1 col-start-2 row-start-1 md:col-start-3"
             >
               <MoreHorizontal aria-hidden />

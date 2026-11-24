@@ -32,8 +32,8 @@ export function CommandLine({ command, className }: { command: string; className
         <code>{command}</code>
       </pre>
       <Button
-        variant="ghost"
         size="sm"
+        className="max-sm:min-w-11"
         aria-label={`Copy: ${command.split("\n")[0]}`}
         onClick={async () => {
           setCopied(await copyText(command));

@@ -14,7 +14,7 @@ import {
   tableKcal,
 } from "@outpost/shared";
 import { PawPrint, Trash2, UserPlus } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -131,7 +131,25 @@ export function PeopleEditor({
 }) {
   const change = (key: string, patch: Partial<MemberDraft>) =>
     onChange((list) => list.map((member) => (member.key === key ? { ...member, ...patch } : member)));
-  const add = (kind: "person" | "pet") => onChange((list) => [...list, newDraft(kind)]);
+  // A row added goes at the foot of the list, often a screen or more below the buttons: its first field takes the focus,
+  // which brings it into view, and the live line says it is there (owner's review, 24 Nov 2026).
+  const [added, setAdded] = useState("");
+  const names = useRef(new Map<string, HTMLInputElement>());
+  const toFocus = useRef<string | null>(null);
+  const add = (kind: "person" | "pet") => {
+    const draft = newDraft(kind);
+    toFocus.current = draft.key;
+    setAdded(`${draftLabel(draft, members.length)} added. Type a name.`);
+    onChange((list) => [...list, draft]);
+  };
+  useLayoutEffect(() => {
+    const key = toFocus.current;
+    const input = key ? names.current.get(key) : undefined;
+    if (!input) return;
+    toFocus.current = null;
+    input.focus({ preventScroll: true });
+    input.scrollIntoView({ block: "center", behavior: "instant" });
+  });
 
   return (
     <Section
@@ -152,8 +170,11 @@ export function PeopleEditor({
         </div>
       }
     >
+      <p role="status" className="sr-only">
+        {added}
+      </p>
       {members.length === 0 ? (
-        <p className="border-y border-border py-4 text-body text-ink-muted">{empty}</p>
+        <p className="border-t border-border pt-4 text-body text-ink-muted">{empty}</p>
       ) : (
         <ul className="divide-y divide-border border-y border-border" aria-label={listLabel}>
           {members.map((member, index) => {
@@ -167,6 +188,10 @@ export function PeopleEditor({
                     {(ids) => (
                       <Input
                         {...ids}
+                        ref={(input) => {
+                          if (input) names.current.set(member.key, input);
+                          else names.current.delete(member.key);
+                        }}
                         value={member.name}
                         onChange={(event) => change(member.key, { name: event.target.value })}
                         maxLength={80}

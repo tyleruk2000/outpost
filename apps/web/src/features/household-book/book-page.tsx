@@ -15,7 +15,7 @@ import {
 } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { BookOpen, ListChecks, TriangleAlert } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,11 @@ export default function BookPage() {
   const [params] = useSearchParams();
   const [asking, setAsking] = useState<BookStepId | null>(() => BOOK_STEPS.find((each) => each.id === params.get("step"))?.id ?? null);
   const [result, setResult] = useState<{ pdf: MadePdf; bytes: Uint8Array; pages: number; medical: boolean } | null>(null);
+  // The book's buttons appear under Make the book, below the fold when it was pressed at the foot of a phone's screen.
+  const madeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (result) madeRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
+  }, [result]);
   const [making, setMaking] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const radioPlans = useRadioPlans();
@@ -305,7 +310,7 @@ export default function BookPage() {
               <ListChecks /> Change the answers
             </Button>
             <p className="text-small text-ink-muted" role="status" aria-live="polite">
-              {making ? working : null}
+              {making ? working : result ? `Book made, ${plural(result.pages, "page")}. Save it below.` : null}
             </p>
           </div>
           {facts.data && !facts.data.home ? (
@@ -314,7 +319,7 @@ export default function BookPage() {
             </Notice>
           ) : null}
           {result ? (
-            <div className="grid gap-4">
+            <div ref={madeRef} className="grid scroll-mt-20 scroll-mb-24 gap-4">
               <PdfActions pdf={result.pdf} lead="save" confirm={libraryQuestion(result.medical)} />
               <p className="text-small text-ink-muted">
                 {plural(result.pages, "page")}. The first {Math.min(PREVIEW_PAGES, result.pages)} as they print:

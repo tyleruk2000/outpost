@@ -204,7 +204,8 @@ export function AutomaticBackups() {
                       <Select
                         aria-label="Day of the week"
                         value={String(settings.weekday)}
-                        disabled={busy}
+                        // Not disabled while the choice saves: a list that closes onto a disabled button drops the keyboard's
+                        // place to the top of the page (owner's review, 24 Nov 2026). A second choice simply saves again.
                         onChange={(value) => save.mutate({ weekday: Number(value) })}
                         className="w-36"
                         options={DAYS.map((day) => ({ value: String(day), label: weekdayName(day) }))}

@@ -201,7 +201,9 @@ export default function StatusPage() {
           <div className="mb-8">
             <p className="text-lead text-ink">
               {overallSentence(checks)}{" "}
-              <span className="text-small text-ink-muted">Checked at {formatTimeOfDay(status.data.checkedAt)}.</span>
+              <span className="text-small text-ink-muted" role="status">
+                Checked at {formatTimeOfDay(status.data.checkedAt, { seconds: true })}.
+              </span>
             </p>
             <NeedsALook checks={checks} />
           </div>

@@ -69,13 +69,25 @@ export function ChooseName({ people, current, onDone }: { people: string[]; curr
 
 export function WriteMessage({ name, channel = null }: { name: string; channel?: MeshChannel | null }) {
   const [text, setText] = useState("");
+  // Said once a message is on the board: it lands at the foot of the board, under this box and maybe out of sight.
+  const [posted, setPosted] = useState(false);
   const post = usePost(channel?.id);
   const count = radioCount(channel, radioText({ kind: "message", author: name, body: text }));
   const blocked = !text.trim() || Boolean(count?.over);
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     if (blocked) return;
-    post.mutate({ author: name, body: text }, { onSuccess: () => setText(""), onError: (error) => notify.error(errorMessage(error)) });
+    setPosted(false);
+    post.mutate(
+      { author: name, body: text },
+      {
+        onSuccess: () => {
+          setText("");
+          setPosted(true);
+        },
+        onError: (error) => notify.error(errorMessage(error)),
+      },
+    );
   };
   return (
     <form onSubmit={submit} className="grid gap-2">
@@ -94,7 +106,10 @@ export function WriteMessage({ name, channel = null }: { name: string; channel?:
             value={text}
             rows={3}
             maxLength={10_000}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => {
+              setText(event.target.value);
+              setPosted(false);
+            }}
             onKeyDown={(event) => {
               // Ctrl or ⌘ and Enter sends; Enter alone is a new line, as a note on paper would have.
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) submit();
@@ -103,8 +118,14 @@ export function WriteMessage({ name, channel = null }: { name: string; channel?:
         )}
       </Field>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="tabular text-micro text-ink-muted">
-          {!channel && text.length > 9_000 ? `${(10_000 - text.length).toLocaleString("en-GB")} characters left` : ""}
+        <span className="tabular text-small text-ink-muted" role="status">
+          {!channel && text.length > 9_000
+            ? `${(10_000 - text.length).toLocaleString("en-GB")} characters left`
+            : posted
+              ? channel
+                ? "Written. It is at the foot of the list below."
+                : "Posted. It is at the foot of the board below."
+              : ""}
         </span>
         <Button type="submit" variant="primary" loading={post.isPending} disabled={blocked}>
           <Send aria-hidden /> {channel ? "Send by radio" : "Post"}

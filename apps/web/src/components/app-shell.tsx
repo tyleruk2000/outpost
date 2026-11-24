@@ -9,6 +9,7 @@ import { ReachNotice } from "@/features/kept/reach";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { notify } from "@/lib/notify";
 import { TABLET, useMediaQuery } from "@/lib/use-media-query";
+import { ConnectionNotice } from "./connection-notice";
 import { MobileNav } from "./mobile-nav";
 import { allNav } from "./nav";
 import { RouteAnnouncer } from "./route-announcer";
@@ -242,6 +243,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
       />
       <MobileNav onOpenSearch={() => setPaletteOpen(true)} />
       <main id="content" ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+        <ConnectionNotice />
         <UpdateNotice />
         <ClockNotice />
         <AccessNotice />

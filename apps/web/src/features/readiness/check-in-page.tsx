@@ -238,7 +238,7 @@ export default function CheckInPage() {
               </Button>
             }
           >
-            The roll call lists the household's people (Prepare › Households) and the people of the emergency plans, and anyone who has
+            The roll call lists the household's people (Preparedness › Households) and the people of the emergency plans, and anyone who has
             checked in.
           </EmptyState>
         ) : (

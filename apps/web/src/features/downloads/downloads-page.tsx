@@ -47,6 +47,8 @@ const nothingWords: Record<TaskFilter | "all", string> = {
 };
 
 /** Every task, in one list with a filter: running, waiting, finished, failed. */
+const TASKS_FINISHED_FIRST = 10;
+
 function TasksSection({ active, finished }: { active: JobDto[]; finished: ReturnType<typeof useFinishedTasks> }) {
   const [params, setParams] = useSearchParams();
   const asked = params.get("tasks");
@@ -62,7 +64,13 @@ function TasksSection({ active, finished }: { active: JobDto[]; finished: Return
   );
   const counts = { running: 0, waiting: 0, finished: 0, failed: 0 };
   for (const job of tasks) counts[filterOf(job)] += 1;
-  const shown = filter === "all" ? tasks : tasks.filter((job) => filterOf(job) === filter);
+  const [everyFinished, setEveryFinished] = useState(false);
+  const listed = filter === "all" ? tasks : tasks.filter((job) => filterOf(job) === filter);
+  // Under "All", the newest ten finished tasks at first, as History has it: the rest were a long scroll on a Pi.
+  const finishedListed = listed.filter((job) => filterOf(job) === "finished");
+  const folded = filter === "all" && !everyFinished && finishedListed.length > TASKS_FINISHED_FIRST;
+  const hidden = new Set(folded ? finishedListed.slice(TASKS_FINISHED_FIRST).map((job) => job.id) : []);
+  const shown = listed.filter((job) => !hidden.has(job.id));
   const choose = (next: TaskFilter | "all") =>
     setParams(
       (current) => {
@@ -116,6 +124,11 @@ function TasksSection({ active, finished }: { active: JobDto[]; finished: Return
               <TaskRow key={job.id} job={job} />
             ))}
           </Rows>
+          {folded ? (
+            <Button className="mt-4" onClick={() => setEveryFinished(true)}>
+              Show all {formatNumber(finishedListed.length)} finished tasks
+            </Button>
+          ) : null}
           {finished.isError ? (
             <p className="mt-2.5 text-small text-danger">Finished tasks could not be loaded; only those under way are listed.</p>
           ) : null}
@@ -254,6 +267,9 @@ function HistoryRow({ download, installed }: { download: DownloadDto; installed:
   );
 }
 
+const HISTORY_FIRST = 10;
+const HISTORY_STEP = 50;
+
 const stateOrder: Record<string, number> = { running: 0, verifying: 1, queued: 2, paused: 3 };
 
 export default function DownloadsPage() {
@@ -279,7 +295,20 @@ export default function DownloadsPage() {
         .map((item) => [item.id, item]),
     ).values(),
   ].sort((a, b) => (b.finishedAt ?? b.updatedAt) - (a.finishedAt ?? a.updatedAt));
-  const moreHistory = history.length < historyTotal && (!olderAsked || older.hasNextPage || older.isFetching);
+  const moreOnServer = history.length < historyTotal && (!olderAsked || older.hasNextPage || older.isFetching);
+  // The newest ten at first: on a Raspberry Pi with a year of downloads the first page of fifty made the screen 15,000 px
+  // tall, with Tasks under it all (owner's review, 24 Nov 2026). Show more adds fifty, fetching older ones when needed.
+  const [historyLimit, setHistoryLimit] = useState(HISTORY_FIRST);
+  const historyShown = history.slice(0, historyLimit);
+  const moreHistory = historyShown.length < history.length || moreOnServer;
+  const showMoreHistory = () => {
+    const next = historyLimit + HISTORY_STEP;
+    setHistoryLimit(next);
+    if (history.length < next && moreOnServer) {
+      if (olderAsked) void older.fetchNextPage();
+      else setOlderAsked(true);
+    }
+  };
   const otherWork = (jobs.data ?? []).filter((job) => job.type !== DOWNLOAD_JOB_TYPE);
   const finishedTasks = useFinishedTasks();
   const anyTask = otherWork.length > 0 || (finishedTasks.data?.length ?? 0) > 0;
@@ -359,7 +388,7 @@ export default function DownloadsPage() {
           onChange={showOnly}
           className="-mt-2 mb-8"
           options={[
-            { value: "all", label: "Downloads and tasks" },
+            { value: "all", label: "Both" },
             { value: "downloads", label: "Downloads" },
             { value: "tasks", label: otherWork.length > 0 ? `Tasks (${otherWork.length} under way)` : "Tasks" },
           ]}
@@ -458,7 +487,7 @@ export default function DownloadsPage() {
           {history.length > 0 ? (
             <Section title="History">
               <Rows>
-                {history.map((download) => (
+                {historyShown.map((download) => (
                   <HistoryRow
                     key={download.id}
                     download={download}
@@ -472,11 +501,11 @@ export default function DownloadsPage() {
               </Rows>
               {moreHistory ? (
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Button onClick={() => (olderAsked ? void older.fetchNextPage() : setOlderAsked(true))} loading={older.isFetching}>
+                  <Button onClick={showMoreHistory} loading={older.isFetching}>
                     Show more
                   </Button>
                   <span className="tabular text-small text-ink-muted">
-                    {formatNumber(history.length)} of {formatNumber(historyTotal)} shown
+                    {formatNumber(historyShown.length)} of {formatNumber(Math.max(historyTotal, history.length))} shown
                   </span>
                 </div>
               ) : null}

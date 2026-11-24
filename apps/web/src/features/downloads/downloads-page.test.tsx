@@ -163,7 +163,7 @@ describe("Downloads", () => {
     });
     renderScreen(<DownloadsPage />);
     const history = within(await section("History"));
-    expect(history.getByText("50 of 53 shown")).toBeInTheDocument();
+    expect(history.getByText("10 of 53 shown")).toBeInTheDocument();
     expect(server.calls.some((call) => call.startsWith("GET /api/downloads/history"))).toBe(false);
     await userEvent.click(history.getByRole("button", { name: "Show more" }));
     await waitFor(() => expect(history.getByRole("heading", { name: "Old download 50" })).toBeInTheDocument());
@@ -235,6 +235,21 @@ describe("Downloads", () => {
     renderScreen(<DownloadsPage />, "/downloads?show=downloads");
     expect(await screen.findByRole("heading", { name: "In progress" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Tasks" })).not.toBeInTheDocument();
+  });
+
+  it("lists the newest ten finished tasks at first, and the rest when asked", async () => {
+    const finished = Array.from({ length: 14 }, (_, n) =>
+      job({ id: `f${n}`, type: "database.check", state: "succeeded", title: `Finished task ${n}`, finishedAt: 100 - n }),
+    );
+    serve({
+      "GET /api/jobs": ({ url }: { url: URL }) => (url.searchParams.get("active") === "true" ? { jobs: [] } : { jobs: finished }),
+    });
+    renderScreen(<DownloadsPage />);
+    const tasks = within(await section("Tasks"));
+    expect(await tasks.findByRole("heading", { name: "Finished task 9" })).toBeInTheDocument();
+    expect(tasks.queryByRole("heading", { name: "Finished task 10" })).not.toBeInTheDocument();
+    await userEvent.click(tasks.getByRole("button", { name: "Show all 14 finished tasks" }));
+    expect(tasks.getByRole("heading", { name: "Finished task 13" })).toBeInTheDocument();
   });
 
   it("leaves the tasks out when there have been none", async () => {

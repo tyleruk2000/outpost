@@ -8,11 +8,9 @@ const DAY_CHOICES = ["1", "3", "7", "14", "30", "90", "0"] as const;
 
 export function BoardSettingsSection({
   settings,
-  disabled,
   save,
 }: {
   settings: Settings;
-  disabled: boolean;
   save: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }) {
   const value = String(settings["board.fileDays"]);
@@ -32,7 +30,8 @@ export function BoardSettingsSection({
           <Select
             id="board-file-days"
             value={value as (typeof DAY_CHOICES)[number]}
-            disabled={disabled}
+            // Not disabled while the choice saves: a list that closes onto a disabled button drops the keyboard's place
+            // to the top of the page (owner's review, 24 Nov 2026). A second choice simply saves again.
             onChange={(next) => save("board.fileDays", Number(next))}
             options={options}
             className="w-60 max-w-full"

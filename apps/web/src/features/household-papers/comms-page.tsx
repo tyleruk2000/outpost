@@ -544,14 +544,17 @@ export default function CommsPage() {
             </ul>
             <Button
               className="mt-4"
-              onClick={() =>
+              onClick={(event) => {
+                const list = event.currentTarget.previousElementSibling;
                 change({
                   situations: [
                     ...draft.situations,
                     { id: localId(), name: draft.situations.length === 0 ? "Phones down" : "", steps: [], checkIn: "", contactIds: [] },
                   ],
-                })
-              }
+                });
+                // The new situation's name takes the focus, which brings it into view (owner's review, 24 Nov 2026).
+                requestAnimationFrame(() => list?.lastElementChild?.querySelector<HTMLElement>("input")?.focus());
+              }}
             >
               <Plus /> Add a situation
             </Button>
@@ -562,7 +565,7 @@ export default function CommsPage() {
               <p className="text-small text-ink-muted">
                 The household's people are kept under{" "}
                 <Link to="/prepare/households" className="text-primary underline underline-offset-2">
-                  Prepare › Households
+                  Preparedness › Households
                 </Link>
                 . Add its people there for a page each; until then one page is printed for everyone.
               </p>
@@ -601,12 +604,12 @@ export default function CommsPage() {
           </Section>
 
           <LeaveGuard when={dirty} what="the changes to the plan" />
-          <SaveBar>
+          <SaveBar stuck={dirty}>
             <Button variant="primary" loading={save.isPending} disabled={!dirty} onClick={submit}>
               Save
             </Button>
             <span className="text-small text-ink-muted" role="status">
-              {dirty ? "Changes not saved yet." : draft.updatedAt ? `Saved ${shortDate.format(draft.updatedAt)}.` : "Not saved yet."}
+              {dirty ? "Changes not saved yet." : draft.updatedAt ? `Saved ${shortDate.format(draft.updatedAt)}.` : ""}
             </span>
             {dirty ? (
               <Button

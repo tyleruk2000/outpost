@@ -20,7 +20,7 @@ import {
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import { FileText, Plus, Search, Trash2, X } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, useId, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
@@ -53,10 +53,20 @@ function RemoveButton({ what, onClick }: { what: string; onClick: () => void }) 
   );
 }
 
+/** Adds a row just above itself, and puts the focus in the row's first field, as typing is what comes next (owner's review). */
 function AddButton({ children, onClick, disabled }: { children: ReactNode; onClick: () => void; disabled?: boolean }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const add = () => {
+    onClick();
+    requestAnimationFrame(() => {
+      let row = wrap.current?.previousElementSibling;
+      while (row?.tagName === "DATALIST") row = row.previousElementSibling;
+      row?.querySelector<HTMLElement>("input, textarea")?.focus();
+    });
+  };
   return (
-    <div>
-      <Button variant="soft" size="sm" onClick={onClick} disabled={disabled}>
+    <div ref={wrap}>
+      <Button variant="soft" size="sm" onClick={add} disabled={disabled}>
         <Plus /> {children}
       </Button>
     </div>
@@ -843,7 +853,10 @@ function Form({ contact }: { contact?: ContactDto }) {
         </Notice>
       ) : null}
 
-      <div className="sticky bottom-0 z-(--z-sticky) -mx-1 mt-8 flex flex-wrap justify-end gap-2 border-t border-border bg-page px-1 py-3 max-md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+      <div
+        data-sticky-bottom
+        className="sticky bottom-0 z-(--z-sticky) -mx-1 mt-8 flex flex-wrap justify-end gap-2 border-t border-border bg-page px-1 py-3 max-md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))]"
+      >
         <Button onClick={() => (dirty ? setLeaving(true) : void navigate(back))}>Cancel</Button>
         <Button type="submit" variant="primary" loading={save.isPending}>
           Save contact
