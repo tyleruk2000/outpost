@@ -12,8 +12,9 @@
  * and choosing it says why in one line with the step that puts it right.
  *
  * Four views: the form (way, start, via points, end, the crossing, Plan route), with the
- * saved routes under it; a planned drive (directions, save, print, plain text); a route
- * planned on streets (the same, without saving); and a saved drive (rename and delete).
+ * saved routes under it; a planned drive (directions, save, print, GPX, plain text); a
+ * route planned on streets (the same); and a saved route of either kind, kept as it was
+ * planned (rename, delete, plan it again).
  */
 import type {
   MarkerDto,
@@ -21,12 +22,13 @@ import type {
   RoadDistanceUnit,
   RoadRouteResult,
   SavedRoadRouteDto,
+  SavedRouteResult,
   StreetLine,
   StreetsRouteResult,
   StreetsStatusResponse,
 } from "@outpost/shared";
 import { roadDistanceText, roadDurationText } from "@outpost/shared";
-import { ArrowLeft, CircleAlert, Plus, Route, Save, Scan, Trash2 } from "lucide-react";
+import { ArrowLeft, CircleAlert, Download, Plus, Route, Save, Scan, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -36,11 +38,11 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton, Spinner } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
 import { useStoredState } from "../hooks";
 import type { LatLon } from "../lib/geo";
 import { countryName } from "../lib/search";
 import type { MapEngine } from "../map/engine";
+import { downloadText } from "../radio/range-files";
 import {
   useDeleteRoadRoute,
   usePlanRoadRoute,
@@ -56,6 +58,7 @@ import { DirectionsList, RouteCredit, RouteTotals, RouteWarnings } from "./direc
 import { PlainTextBox } from "./plain-text";
 import { PointField } from "./point-field";
 import { RouteCardPdf } from "./route-card-pdf";
+import { buildRouteGpx, routeGpxFileName } from "./route-gpx";
 import { AddRoadsButton, problemCountries, problemOf, RouteNeedsNotice, routeNeeds } from "./route-needs";
 import { DoorToDoorList, StreetLinesList, StreetsCredit, StreetsTotals } from "./street-directions";
 import {
@@ -262,6 +265,25 @@ export function RoadRoutePanel({
     );
   }
 
+  const streetsLeg = (result: StreetsRouteResult, index: number) => {
+    if (!result.road) return;
+    const next = selected === index ? null : index;
+    setSelected(next);
+    show.current(result, next);
+    const leg = result.road.legs[index];
+    if (leg)
+      engine?.fitBounds(next === null ? geometryBounds(result) : legBounds(leg, legLines(result.road)[index] ?? []), {
+        maxZoom: 12,
+      });
+    onNeedMap();
+  };
+  const streetLine = (line: StreetLine) => {
+    const [lon, lat] = line.at;
+    engine?.fitBounds([lon - 0.002, lat - 0.0013, lon + 0.002, lat + 0.0013], { maxZoom: 17 });
+    onNeedMap();
+  };
+  const boundsOf = (route: SavedRouteResult) => ("mode" in route ? geometryBounds(route) : routeBounds(route));
+
   if (view.kind === "streets" && streetsPlan.data) {
     const result = streetsPlan.data;
     return (
@@ -269,30 +291,15 @@ export function RoadRoutePanel({
         key={result.plannedAt}
         result={result}
         selected={selected}
-        onLeg={(index) => {
-          if (result.road) {
-            const next = selected === index ? null : index;
-            setSelected(next);
-            show.current(result, next);
-            const leg = result.road.legs[index];
-            if (leg)
-              engine?.fitBounds(next === null ? geometryBounds(result) : legBounds(leg, legLines(result.road)[index] ?? []), {
-                maxZoom: 12,
-              });
-            onNeedMap();
-          }
-        }}
-        onLine={(line) => {
-          const [lon, lat] = line.at;
-          engine?.fitBounds([lon - 0.002, lat - 0.0013, lon + 0.002, lat + 0.0013], { maxZoom: 17 });
-          onNeedMap();
-        }}
+        onLeg={(index) => streetsLeg(result, index)}
+        onLine={streetLine}
         onFit={() => engine?.fitBounds(geometryBounds(result))}
         onBack={() => {
           setView({ kind: "plan" });
           setSelected(null);
           show.current(null, null);
         }}
+        onSaved={(saved) => setView({ kind: "saved", id: saved.id })}
       />
     );
   }
@@ -303,29 +310,42 @@ export function RoadRoutePanel({
         key={view.id}
         id={view.id}
         selected={selected}
-        onLeg={(route, index) => fitLeg(route, index)}
+        onLeg={(route, index) => ("mode" in route ? streetsLeg(route, index) : fitLeg(route, index))}
+        onLine={streetLine}
         onShown={(route) => {
           setSelected(null);
           show.current(route, null);
-          engine?.fitBounds(routeBounds(route));
+          engine?.fitBounds(boundsOf(route));
         }}
-        onFit={(route) => engine?.fitBounds(routeBounds(route))}
+        onFit={(route) => engine?.fitBounds(boundsOf(route))}
         onBack={() => {
           setView({ kind: "plan" });
           setSelected(null);
           show.current(null, null);
         }}
         onPlanAgain={(route) => {
-          const again = route.snapped.map(
-            (point): RoutePointChoice => ({
-              name: point.input.name ?? "",
-              lat: point.input.lat,
-              lon: point.input.lon,
-              from: "search",
-            }),
-          );
-          setPoints(again);
-          setCrossing(route.request.crossing ?? "any");
+          if ("mode" in route) {
+            // Only the points with a place on the map come back; a saved place since deleted is left for choosing again.
+            const again = route.request.points.map((point): RoutePointChoice | null =>
+              "lat" in point ? { name: point.name ?? "", lat: point.lat, lon: point.lon, from: "search" } : null,
+            );
+            setPoints(again);
+            setCrossing((route.request.crossing as RoadCrossingChoice | undefined) ?? "any");
+            if (route.request.units) setUnits(route.request.units);
+            setMode(route.mode);
+          } else {
+            const again = route.snapped.map(
+              (point): RoutePointChoice => ({
+                name: point.input.name ?? "",
+                lat: point.input.lat,
+                lon: point.input.lon,
+                from: "search",
+              }),
+            );
+            setPoints(again);
+            setCrossing(route.request.crossing ?? "any");
+            setMode("drive");
+          }
           setView({ kind: "plan" });
           setSelected(null);
           show.current(null, null);
@@ -583,7 +603,153 @@ function StreetsUnavailable({
   );
 }
 
+// ── Saving a route, and taking it away as a file ──
+
+/** "Name to save it under" and Save route: for a drive, door to door, a walk or a ride alike. */
+function SaveRouteForm({
+  route,
+  suggested,
+  onSaved,
+  name,
+  onName,
+}: {
+  route: SavedRouteResult;
+  suggested: string;
+  onSaved: (saved: SavedRoadRouteDto) => void;
+  name: string;
+  onName: (name: string) => void;
+}) {
+  const save = useSaveRoadRoute();
+  const nameId = useId();
+  return (
+    <form
+      className="grid gap-2"
+      aria-label="Save this route"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const wanted = name.trim() || suggested;
+        save.mutate(
+          { name: wanted, route },
+          {
+            onSuccess: (saved) => {
+              toast.success(`Saved “${saved.name}”.`);
+              onSaved(saved);
+            },
+          },
+        );
+      }}
+    >
+      <label htmlFor={nameId} className="text-small font-medium text-ink">
+        Name to save it under
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <Input
+          id={nameId}
+          value={name}
+          onChange={(event) => onName(event.target.value)}
+          maxLength={160}
+          enterKeyHint="done"
+          autoComplete="off"
+          className="min-w-0 flex-[1_1_10rem]"
+        />
+        <Button type="submit" variant="primary" loading={save.isPending} disabled={!name.trim()}>
+          <Save /> Save route
+        </Button>
+      </div>
+      {save.isError ? <p className="text-small text-danger">{errorMessage(save.error)}</p> : null}
+    </form>
+  );
+}
+
+/** Save GPX: the route as a file for another app or a GPS, made here and handed to the browser to keep. */
+function SaveGpxButton({ route, name }: { route: SavedRouteResult; name: string }) {
+  return (
+    <Button
+      className="justify-self-start"
+      onClick={() => {
+        const { gpx } = buildRouteGpx(route, name);
+        downloadText(routeGpxFileName(name), gpx, "application/gpx+xml");
+        toast.success("Saved the route as GPX.");
+      }}
+    >
+      <Download aria-hidden /> Save GPX
+    </Button>
+  );
+}
+
+/** What a route can be taken away as: a printable card, a GPX file, plain text. */
+function RouteFiles({ route, name, from }: { route: SavedRouteResult; name: string; from: { what: string; path: string } }) {
+  return (
+    <>
+      <div className="flex flex-wrap items-start gap-2">
+        <RouteCardPdf route={route} name={name} from={from} />
+        <SaveGpxButton route={route} name={name} />
+      </div>
+      <PlainTextBox route={route} title={name} />
+    </>
+  );
+}
+
 // ── A route planned on streets ──
+
+/** A route on streets, under its title: the warnings, the directions, the files. */
+function StreetsBody({
+  result,
+  name,
+  selected,
+  onLeg,
+  onLine,
+  onFit,
+  from,
+  totals = true,
+}: {
+  result: StreetsRouteResult;
+  name: string;
+  selected: number | null;
+  onLeg: (index: number) => void;
+  onLine: (line: StreetLine) => void;
+  onFit: () => void;
+  from: { what: string; path: string };
+  totals?: boolean;
+}) {
+  const door = result.mode === "drive-door" && result.road;
+  return (
+    <>
+      {totals ? <StreetsTotals result={result} /> : null}
+      {result.warnings.length > 0 ? (
+        <div className="grid gap-2">
+          {result.warnings.map((warning) => (
+            <Notice key={warning} tone="warning" icon={<CircleAlert />}>
+              {warning}
+            </Notice>
+          ))}
+        </div>
+      ) : null}
+      <div className="grid gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-body font-semibold text-ink">Directions</h4>
+          <Button size="sm" variant="ghost" onClick={onFit} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
+            <Scan /> Whole route on the map
+          </Button>
+        </div>
+        <p className="text-small text-ink-muted">
+          {door ? "Choose a road to see it on the map; open the start or the end for its turns." : "Choose a turn to see it on the map."}
+        </p>
+        <div className="-mx-4">
+          {door ? (
+            <DoorToDoorList result={result} selected={selected} onLeg={onLeg} onLine={onLine} />
+          ) : result.streets ? (
+            <div className="border-y border-border">
+              <StreetLinesList directions={result.streets} label="Directions" onLine={onLine} />
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <RouteFiles route={result} name={name} from={from} />
+      <StreetsCredit result={result} />
+    </>
+  );
+}
 
 function StreetsPlanned({
   result,
@@ -592,6 +758,7 @@ function StreetsPlanned({
   onLine,
   onFit,
   onBack,
+  onSaved,
 }: {
   result: StreetsRouteResult;
   selected: number | null;
@@ -599,11 +766,12 @@ function StreetsPlanned({
   onLine: (line: StreetLine) => void;
   onFit: () => void;
   onBack: () => void;
+  onSaved: (saved: SavedRoadRouteDto) => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const title = streetsTitle(result);
-  const door = result.mode === "drive-door" && result.road;
+  const [name, setName] = useState(title);
   return (
     <div key="streets" className="flex min-h-0 flex-1 flex-col">
       {header("Change the route", onBack)}
@@ -615,38 +783,17 @@ function StreetsPlanned({
           </h3>
         </div>
         <StreetsTotals result={result} />
-        {result.warnings.length > 0 ? (
-          <div className="grid gap-2">
-            {result.warnings.map((warning) => (
-              <Notice key={warning} tone="warning" icon={<CircleAlert />}>
-                {warning}
-              </Notice>
-            ))}
-          </div>
-        ) : null}
-        <div className="grid gap-1.5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className="text-body font-semibold text-ink">Directions</h4>
-            <Button size="sm" variant="ghost" onClick={onFit} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
-              <Scan /> Whole route on the map
-            </Button>
-          </div>
-          <p className="text-small text-ink-muted">
-            {door ? "Choose a road to see it on the map; open the start or the end for its turns." : "Choose a turn to see it on the map."}
-          </p>
-          <div className="-mx-4">
-            {door ? (
-              <DoorToDoorList result={result} selected={selected} onLeg={onLeg} onLine={onLine} />
-            ) : result.streets ? (
-              <div className="border-y border-border">
-                <StreetLinesList directions={result.streets} label="Directions" onLine={onLine} />
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <RouteCardPdf route={result} name={title} from={{ what: "a route planned on the map", path: "/maps?tab=routes" }} />
-        <PlainTextBox route={result} title={title} />
-        <StreetsCredit result={result} />
+        <SaveRouteForm route={result} suggested={title} name={name} onName={setName} onSaved={onSaved} />
+        <StreetsBody
+          result={result}
+          name={name.trim() || title}
+          selected={selected}
+          onLeg={onLeg}
+          onLine={onLine}
+          onFit={onFit}
+          totals={false}
+          from={{ what: "a route planned on the map", path: "/maps?tab=routes" }}
+        />
       </div>
     </div>
   );
@@ -690,8 +837,7 @@ function RouteBody({
           <DirectionsList route={route} selected={selected} onLeg={onLeg} />
         </div>
       </div>
-      <RouteCardPdf route={route} name={name} from={from} />
-      <PlainTextBox route={route} title={name} />
+      <RouteFiles route={route} name={name} from={from} />
       <RouteCredit route={route} />
     </>
   );
@@ -714,9 +860,7 @@ function PlannedRoute({
   onSaved: (saved: SavedRoadRouteDto) => void;
   onOpenNetworks: () => void;
 }) {
-  const save = useSaveRoadRoute();
   const [name, setName] = useState(() => suggestedName(route));
-  const nameId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const title = routeTitle(route);
@@ -730,41 +874,7 @@ function PlannedRoute({
         {/* How far and how long first: what was asked for, ahead of saving it (at half a phone's height, the name
             to save it under had been all there was to see). */}
         <RouteTotals route={route} />
-        <form
-          className="grid gap-2"
-          aria-label="Save this route"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const wanted = name.trim();
-            if (!wanted) return;
-            save.mutate(
-              { name: wanted, route },
-              {
-                onSuccess: (saved) => {
-                  toast.success(`Saved “${saved.name}”.`);
-                  onSaved(saved);
-                },
-              },
-            );
-          }}
-        >
-          <label htmlFor={nameId} className="text-small font-medium text-ink">
-            Name to save it under
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <Input
-              id={nameId}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              maxLength={160}
-              className="min-w-0 flex-[1_1_10rem]"
-            />
-            <Button type="submit" variant="primary" loading={save.isPending} disabled={!name.trim()}>
-              <Save /> Save route
-            </Button>
-          </div>
-          {save.isError ? <p className="text-small text-danger">{errorMessage(save.error)}</p> : null}
-        </form>
+        <SaveRouteForm route={route} suggested={title} name={name} onName={setName} onSaved={onSaved} />
         <RouteBody
           route={route}
           name={name.trim() || title}
@@ -782,10 +892,18 @@ function PlannedRoute({
 
 // ── A saved route ──
 
+const SAVED_KIND: Record<SavedRoadRouteDto["mode"], string> = {
+  drive: "Drive",
+  "drive-door": "Door to door",
+  walk: "Walk",
+  cycle: "Cycle",
+};
+
 function SavedRoute({
   id,
   selected,
   onLeg,
+  onLine,
   onShown,
   onFit,
   onBack,
@@ -793,15 +911,16 @@ function SavedRoute({
 }: {
   id: string;
   selected: number | null;
-  onLeg: (route: RoadRouteResult, index: number) => void;
-  onShown: (route: RoadRouteResult) => void;
-  onFit: (route: RoadRouteResult) => void;
+  onLeg: (route: SavedRouteResult, index: number) => void;
+  onLine: (line: StreetLine) => void;
+  onShown: (route: SavedRouteResult) => void;
+  onFit: (route: SavedRouteResult) => void;
   onBack: () => void;
-  onPlanAgain: (route: RoadRouteResult) => void;
+  onPlanAgain: (route: SavedRouteResult) => void;
 }) {
-  const saved = useSavedRoadRoute(id);
-  const rename = useRenameRoadRoute();
   const remove = useDeleteRoadRoute();
+  const saved = useSavedRoadRoute(id, remove.isIdle || remove.isError);
+  const rename = useRenameRoadRoute();
   const [name, setName] = useState("");
   const [deleting, setDeleting] = useState(false);
   const nameId = useId();
@@ -831,10 +950,11 @@ function SavedRoute({
         ) : (
           <>
             <div>
+              <p className="text-micro font-medium text-ink-muted">{SAVED_KIND[saved.data.mode]}</p>
               <h3 className="font-title text-lead break-words text-ink">{saved.data.name}</h3>
               <p className="text-small text-ink-muted">
-                {saved.data.fromTo}. Saved {formatDate(saved.data.createdAt)}, kept with its directions: it opens and prints even if the
-                routes are removed from Offline maps.
+                {saved.data.fromTo ? `${saved.data.fromTo}. ` : ""}Kept as it was planned, never planned again on opening: it opens and
+                prints even if the routes or streets are removed from Offline maps.
               </p>
             </div>
             <form
@@ -856,6 +976,8 @@ function SavedRoute({
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   maxLength={160}
+                  enterKeyHint="done"
+                  autoComplete="off"
                   className="min-w-0 flex-[1_1_10rem]"
                 />
                 <Button type="submit" loading={rename.isPending} disabled={!name.trim() || name.trim() === saved.data.name}>
@@ -871,19 +993,31 @@ function SavedRoute({
                 <Trash2 /> Delete
               </Button>
             </div>
-            <RouteBody
-              route={saved.data.route}
-              name={saved.data.name}
-              selected={selected}
-              onLeg={(index) => onLeg(saved.data.route, index)}
-              onFit={() => onFit(saved.data.route)}
-              from={{ what: `the saved road route “${saved.data.name}”`, path: "/maps?tab=routes" }}
-            />
+            {"mode" in saved.data.route ? (
+              <StreetsBody
+                result={saved.data.route}
+                name={saved.data.name}
+                selected={selected}
+                onLeg={(index) => onLeg(saved.data.route, index)}
+                onLine={onLine}
+                onFit={() => onFit(saved.data.route)}
+                from={{ what: `the saved route “${saved.data.name}”`, path: "/maps?tab=routes" }}
+              />
+            ) : (
+              <RouteBody
+                route={saved.data.route}
+                name={saved.data.name}
+                selected={selected}
+                onLeg={(index) => onLeg(saved.data.route, index)}
+                onFit={() => onFit(saved.data.route)}
+                from={{ what: `the saved road route “${saved.data.name}”`, path: "/maps?tab=routes" }}
+              />
+            )}
             <ConfirmDialog
               open={deleting}
               onOpenChange={setDeleting}
               title={`Delete “${saved.data.name}”?`}
-              description="The saved route and its directions go. A PDF of it already made is not touched."
+              description="The saved route and its directions go. A PDF or GPX file of it already made is not touched."
               confirmLabel="Delete route"
               loading={remove.isPending}
               onConfirm={() =>
@@ -910,14 +1044,16 @@ function SavedRoutesList({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <section aria-labelledby="saved-road-routes" className="grid gap-2 border-t border-border pt-4">
       <h4 id="saved-road-routes" className="text-body font-semibold text-ink">
-        Saved road routes
+        Saved routes
       </h4>
       {routes.isPending ? (
         <Skeleton className="h-12" />
       ) : routes.isError ? (
         <ErrorState error={routes.error} onRetry={() => routes.refetch()} />
       ) : routes.data.length === 0 ? (
-        <p className="text-small text-ink-muted">Routes you save are listed here, to open, print or plan again.</p>
+        <p className="text-small text-ink-muted">
+          Routes you save are listed here, drives, walks and rides alike, to open, print, save as GPX or plan again.
+        </p>
       ) : (
         <ul className="-mx-4 divide-y divide-border border-y border-border">
           {routes.data.map((route) => (
@@ -929,7 +1065,10 @@ function SavedRoutesList({ onOpen }: { onOpen: (id: string) => void }) {
               >
                 <span className="min-w-0">
                   <span className="block text-small font-medium text-ink">{route.name}</span>
-                  <span className="block text-small text-ink-muted">{route.fromTo}</span>
+                  <span className="block text-small text-ink-muted">
+                    {SAVED_KIND[route.mode]}
+                    {route.fromTo ? ` · ${route.fromTo}` : ""}
+                  </span>
                 </span>
                 <span className="tabular shrink-0 text-right text-small text-ink">
                   {roadDistanceText(route.distanceM)}

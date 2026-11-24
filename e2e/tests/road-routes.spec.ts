@@ -99,9 +99,7 @@ test.describe("road routes", () => {
       expect(words).toContain("OpenStreetMap contributors");
 
       await page.getByRole("button", { name: "Plan a route", exact: true }).click();
-      await expect(
-        page.getByRole("region", { name: "Saved road routes" }).getByRole("button", { name: /Alps by the ferry/ }),
-      ).toBeVisible();
+      await expect(page.getByRole("region", { name: "Saved routes" }).getByRole("button", { name: /Alps by the ferry/ })).toBeVisible();
       expect(errors).toEqual([]);
     } finally {
       await removeChannelTrip(page, places);

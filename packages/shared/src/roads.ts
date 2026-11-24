@@ -6,6 +6,8 @@
  * docs/road-routes.md (for people) and docs/development/road-routes.md (the shapes).
  */
 
+import type { StreetsRouteMode, StreetsRouteResult } from "./streets.ts";
+
 // ── Networks ────────────────────────────────────────────────────────────────
 
 /** One installed road network: the main roads of a country or a part of one. */
@@ -311,9 +313,16 @@ export interface RoadRouteResult {
 
 // ── Saved routes ────────────────────────────────────────────────────────────
 
+/** A saved route: a drive on main roads, or one planned on streets (door to door, a walk, a ride). */
+export type SavedRouteResult = RoadRouteResult | StreetsRouteResult;
+
 export interface SavedRoadRouteSummaryDto {
   id: string;
   name: string;
+  /** "drive" for a road route; otherwise the way it was planned on streets. */
+  mode: "drive" | StreetsRouteMode;
+  /** When it was planned (ms): a saved route is the plan as made, never planned again on opening. */
+  plannedAt: number;
   /** "Leatherhead to Chamonix" */
   fromTo: string;
   distanceM: number;
@@ -323,12 +332,12 @@ export interface SavedRoadRouteSummaryDto {
 }
 
 export interface SavedRoadRouteDto extends SavedRoadRouteSummaryDto {
-  route: RoadRouteResult;
+  route: SavedRouteResult;
 }
 
 export interface SaveRoadRouteRequest {
   name: string;
-  route: RoadRouteResult;
+  route: SavedRouteResult;
 }
 
 export interface SavedRoadRoutesResponse {
