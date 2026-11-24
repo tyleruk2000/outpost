@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { decodeBits, toblerKmh, WALK_OFF_PATH_FACTOR, type WalkReach } from "@outpost/shared";
+import { decodeBits, toblerKmh, WALK_OFF_PATH_FACTOR, type WalkReach, walkCellMeters } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { readVectorTile } from "../src/modules/maps/vector-tile.ts";
@@ -248,5 +248,27 @@ describe("how far on foot", () => {
       const { status } = await app.api<Failure>("GET", `/api/maps/walk-reach?at=53,-4&${query}`);
       expect(status, query).toBe(400);
     }
+  });
+
+  it("walks for 8 hours on a grid no larger than 4 hours', says how far it has got, and still answers the old times", async () => {
+    const wide: [number, number, number, number] = [-5.4, 52.4, -2.7, 53.6];
+    await install("plain", groundTiles(plain, { minZoom: 10, maxZoom: 10, bbox: wide }), wide, "terrain");
+    expect(walkCellMeters(240)).toBe(60);
+    expect(walkCellMeters(480)).toBe(120);
+    const query = `at=${AT.lat},${AT.lon}&minutes=480`;
+    expect((await app.api<{ share: number | null }>("GET", `/api/maps/walk-reach/progress?${query}`)).body.share).toBeNull();
+    const long = (await walkOf(AT, 480)).body;
+    const four = (await walkOf(AT, 240)).body;
+    expect(long.coverage).toBe("terrain");
+    expect(long.cellMeters).toBe(120);
+    // The cell grows with the time, so the grid's size (and the work) stays that of 4 hours: about 800 cells a side.
+    expect(long.size).toBe(four.size);
+    expect(long.size).toBeLessThanOrEqual(805);
+    // 8 hours off-path at three fifths of 5.04 km/h: about 24 km.
+    const expected = toblerKmh(0) * WALK_OFF_PATH_FACTOR * 8 * 1000;
+    expect(Math.abs(long.furthestMeters - expected)).toBeLessThan(0.05 * expected);
+    expect((await app.api<{ share: number | null }>("GET", `/api/maps/walk-reach/progress?${query}`)).body.share).toBe(1);
+    // An hour and a half and three hours were offered before 8 hours was: a link kept from then still works.
+    for (const minutes of [90, 180]) expect((await walkOf(AT, minutes)).status).toBe(200);
   });
 });

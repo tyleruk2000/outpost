@@ -20,6 +20,7 @@ import {
   type RoutePoint,
   toblerKmh,
   WALK_MINUTES,
+  WALK_MINUTES_ANSWERED,
   WALK_OFF_PATH_FACTOR,
   WALK_PACES,
   WALK_STEEPEST_SLOPE,
@@ -38,7 +39,7 @@ export const walkReachQuery = z.object({
   at: position("at"),
   minutes: z.coerce
     .number({ error: "Give `minutes` as a number of minutes." })
-    .refine((value) => (WALK_MINUTES as readonly number[]).includes(value), `\`minutes\` is one of ${WALK_MINUTES.join(", ")}.`),
+    .refine((value) => WALK_MINUTES_ANSWERED.includes(value), `\`minutes\` is one of ${WALK_MINUTES.join(", ")}.`),
   pace: z.enum(WALK_PACES.map((pace) => pace.id) as [string, ...string[]]).default("standard"),
 });
 
@@ -147,12 +148,22 @@ function roleOf(layer: string, feature: TileFeature): "path" | "bridge" | "barri
   return null;
 }
 
-export type WalkReacher = (query: { at: RoutePoint; minutes: number; pace: string }) => Promise<WalkReach>;
+type WalkQuery = { at: RoutePoint; minutes: number; pace: string };
+
+export interface WalkReacher {
+  (query: WalkQuery): Promise<WalkReach>;
+  /**
+   * How far a walk being worked out has got, 0 to 1, or null when none is: the share of the time reached so far,
+   * squared, since the ground to work grows with the square of the time.
+   */
+  progress(query: WalkQuery): number | null;
+}
 
 export function createWalkReacher(ctx: AppContext, sampler: ElevationSampler, tiles: TileServer): WalkReacher {
   const kept = new Map<string, Promise<WalkReach>>();
+  const working = new Map<string, number>();
 
-  const work = async (at: RoutePoint, minutes: number, paceId: string): Promise<WalkReach> => {
+  const work = async (at: RoutePoint, minutes: number, paceId: string, key: string): Promise<WalkReach> => {
     const pace = WALK_PACES.find((one) => one.id === paceId) ?? WALK_PACES[0];
     const cell = walkCellMeters(minutes);
     // As far as the fastest pace on the best path could go, and a cell more.
@@ -312,7 +323,10 @@ export function createWalkReacher(ctx: AppContext, sampler: ElevationSampler, ti
         heap.push(next, arrive);
       }
       popped += 1;
-      if (popped % 20_000 === 0) await yieldToEventLoop();
+      if (popped % 20_000 === 0) {
+        working.set(key, Math.min(0.99, (time / limit) ** 2));
+        await yieldToEventLoop();
+      }
     }
 
     const grid = new Uint8Array(size * size).fill(NEVER);
@@ -335,20 +349,30 @@ export function createWalkReacher(ctx: AppContext, sampler: ElevationSampler, ti
     };
   };
 
-  return ({ at, minutes, pace }) => {
+  const keyOf = ({ at, minutes, pace }: WalkQuery) => {
     const edition = tiles
       .regions()
       .map((region) => `${region.id}:${region.installedAt}:${region.status}:${region.available}`)
       .join(",");
-    const key = `${at.lat.toFixed(5)},${at.lon.toFixed(5)}|${minutes}|${pace}|${edition}`;
+    return `${at.lat.toFixed(5)},${at.lon.toFixed(5)}|${minutes}|${pace}|${edition}`;
+  };
+  const reach = (query: WalkQuery) => {
+    const key = keyOf(query);
     const known = kept.get(key);
     if (known) return known;
-    const pending = work(at, minutes, pace);
+    working.set(key, 0);
+    const pending = work(query.at, query.minutes, query.pace, key);
     kept.set(key, pending);
-    pending.catch(() => kept.delete(key));
+    pending.catch(() => kept.delete(key)).finally(() => working.delete(key));
     while (kept.size > KEPT) kept.delete(kept.keys().next().value!);
     return pending;
   };
+  return Object.assign(reach, {
+    progress: (query: WalkQuery) => {
+      const key = keyOf(query);
+      return working.get(key) ?? (kept.has(key) ? 1 : null);
+    },
+  });
 }
 
 /** Marks every cell a line passes through, stepping a quarter of a cell at a time so that no corner is skipped. */

@@ -25,7 +25,7 @@ import {
   trackPatchSchema,
 } from "./annotations.ts";
 import { createCountryFiles } from "./country-files.ts";
-import { createElevationSampler } from "./elevation.ts";
+import { createElevationSampler, type ElevationSampler } from "./elevation.ts";
 import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./extract-download.ts";
 import { MAX_GPX_BYTES } from "./gpx.ts";
 import { createImageryInstaller, type ImageryService, isImageryDownload, registerImagery } from "./imagery/index.ts";
@@ -62,6 +62,8 @@ export interface MapsService {
   imagery: ImageryService;
   /** The ground along the straight line between two points, from installed terrain (the household book reads journeys with it). */
   terrainProfile: TerrainProfiler;
+  /** Heights from installed terrain (a walk or a ride on streets is re-timed over them). */
+  elevation: ElevationSampler;
   overview(): MapOverview;
 }
 
@@ -134,6 +136,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     annotations,
     imagery,
     terrainProfile,
+    elevation,
     overview() {
       return {
         regions: tiles.regions(),
@@ -327,6 +330,10 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   // The ground reachable on foot from a point in a set time, over installed terrain and along the map's paths.
   app.get("/api/maps/walk-reach", async (request) => {
     return walkReach(walkReachQuery.parse(request.query));
+  });
+  // How far that walk has got while it is worked out (a long walk takes seconds on a Pi): 0 to 1, or null.
+  app.get("/api/maps/walk-reach/progress", async (request) => {
+    return { share: walkReach.progress(walkReachQuery.parse(request.query)) };
   });
 
   // ── Places ──

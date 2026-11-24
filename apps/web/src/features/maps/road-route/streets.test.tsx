@@ -21,7 +21,7 @@ import { streetsRouteData } from "./layers";
 import { RoadRoutePanel } from "./road-route-panel";
 import { routeCardDocument } from "./route-card";
 import { endTurnsTitle, reachTimeText, streetsAsPlainText, turnsSummary } from "./street-words";
-import { DOOR_TRIP, NO_STREETS, NOT_INSTALLED, REACH_MAIN_ROADS, READY, WALK } from "./test-streets";
+import { DOOR_TRIP, HILLY_WALK, NO_STREETS, NOT_INSTALLED, REACH_MAIN_ROADS, READY, WALK } from "./test-streets";
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
@@ -260,6 +260,29 @@ describe("a walk", () => {
     expect(card).toContain("Take the steps");
   });
 
+  it("over terrain: the climb and the steepest stretch under the totals, and on the card a profile and each turn's time", async () => {
+    serve(READY, { "/api/streets/route": HILLY_WALK });
+    panel();
+    await userEvent.click(
+      within(await screen.findByRole("radiogroup", { name: "Way of travelling" })).getByRole("radio", { name: "Walk" }),
+    );
+    await choosePlace("From", "Fetcham");
+    await choosePlace("To", "Chamonix");
+    await userEvent.click(screen.getByRole("button", { name: "Plan route" }));
+    expect(await screen.findByText("↑ 310 m ↓ 280 m")).toBeInTheDocument();
+    expect(screen.getByText("310 m of climb, 280 m of descent")).toHaveClass("sr-only");
+    expect(screen.getByText(/Steepest: 14% uphill for 250 m, 1\.2 km from the start \(Continue onto Downs Lane\)\./)).toBeInTheDocument();
+    expect(screen.getByText(/Hills counted, no stops\./)).toBeInTheDocument();
+    const document = routeCardDocument({ route: HILLY_WALK, name: "Box Hill", paper: "a4", map: null, made: new Date(0) });
+    const card = contentText(document.content);
+    expect(card).toContain("310 m of climb, 280 m of descent; highest 172 m, lowest 48 m above sea level.");
+    expect(card).toContain("Heights along the way");
+    expect(card).toContain("timed over the installed terrain (United Kingdom, hills): Tobler's hiking function");
+    // Each turn's time over the hills: 2,700 s up Downs Lane is 45 min.
+    expect(card).toContain("45 min");
+    expect(JSON.stringify(document.content)).toContain("<svg");
+  });
+
   it("saves under a name like a drive, and opens again as planned, with Save GPX", async () => {
     const saved = {
       id: "r1",
@@ -297,7 +320,28 @@ describe("a walk", () => {
   });
 });
 
-const reachEngine = { setOverlay: vi.fn(), fitBounds: vi.fn(), getCenter: () => ({ lat: 51.296, lon: -0.33 }) };
+/** The walks asked of the server, as their queries. */
+const walksAsked = () =>
+  vi
+    .mocked(fetch)
+    .mock.calls.map(([input]) => String(input))
+    .filter((url) => url.includes("/api/maps/walk-reach?"))
+    .map((url) => url.split("?")[1]!);
+
+const NO_TERRAIN_WALK = {
+  at: { lat: 51.296, lon: -0.33 },
+  minutes: 60,
+  pace: "standard",
+  coverage: "none",
+  groundMeters: null,
+  cellMeters: 25,
+  size: 483,
+  minutesGrid: "",
+  paths: false,
+  furthestMeters: 0,
+};
+
+const reachEngine = { setOverlay: vi.fn(), setShades: vi.fn(), fitBounds: vi.fn(), getCenter: () => ({ lat: 51.296, lon: -0.33 }) };
 
 /** Reachable from Paris, to see what is offered for France. */
 function AtParis({ onOpenNetworks }: { onOpenNetworks: (countries?: readonly string[]) => void }) {
@@ -335,8 +379,11 @@ describe("reachable areas", () => {
     show(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: "Start" }));
     expect(screen.getByRole("heading", { name: "Reachable from here" })).toBeInTheDocument();
-    // Without streets, only a drive: no choice of way.
-    expect(screen.queryByRole("radiogroup", { name: "Way of travelling" })).toBeNull();
+    // Without streets, a drive over the main roads to begin with; a walk (over terrain) is offered too.
+    expect(within(screen.getByRole("radiogroup", { name: "Way of travelling" })).getByRole("radio", { name: "Drive" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     const legend = await screen.findByRole("list", { name: "Legend" });
     expect(
       within(legend)
@@ -371,11 +418,11 @@ describe("reachable areas", () => {
 
     await userEvent.click(within(ways).getByRole("radio", { name: "Walk" }));
     expect(times()).toEqual(["30 min30 min", "1 h1 hour", "2 h2 hours", "4 h4 hours", "6 h6 hours", "8 h8 hours"]);
-    // An hour on foot to begin with: half an hour inside it.
-    await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ mode: "walk", minutes: [30, 60] }));
+    // On foot it is the walk over terrain, not the streets: an hour to begin with, at a fit adult's pace.
+    await waitFor(() => expect(walksAsked().at(-1)).toBe("at=51.29600%2C-0.33000&minutes=60&pace=standard"));
     await userEvent.click(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "8 hours" }));
-    // Never more than three areas: 2, 4 and 8 hours.
-    await waitFor(() => expect(sent.at(-1)?.body).toMatchObject({ mode: "walk", minutes: [120, 240, 480] }));
+    await waitFor(() => expect(walksAsked().at(-1)).toBe("at=51.29600%2C-0.33000&minutes=480&pace=standard"));
+    expect(sent.some((each) => (each.body as { mode?: string } | undefined)?.mode === "walk")).toBe(false);
 
     await userEvent.click(within(ways).getByRole("radio", { name: "Cycle" }));
     await userEvent.click(within(screen.getByRole("radiogroup", { name: "Time" })).getByRole("radio", { name: "2 hours" }));
@@ -410,13 +457,17 @@ describe("reachable areas", () => {
     expect(sent.some((each) => each.path === "/api/streets/reach")).toBe(false);
   });
 
-  it("offers cycling and walking with streets, and says what they need without", async () => {
-    serve(NO_STREETS, { "/api/streets/reach": REACH_MAIN_ROADS });
+  it("walks over terrain without streets, and says what cycling needs", async () => {
+    serve(NO_STREETS, { "/api/streets/reach": REACH_MAIN_ROADS, "/api/maps/walk-reach": NO_TERRAIN_WALK });
     show(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: "Start" }));
     const ways = await screen.findByRole("radiogroup", { name: "Way of travelling" });
     await userEvent.click(within(ways).getByRole("radio", { name: "Walk" }));
-    expect(await screen.findByText("Walking areas in United Kingdom need street detail, built once on this device.")).toBeInTheDocument();
+    // A walk needs only terrain: here there is none, and the card says where to get it.
+    expect(await screen.findByText(/No terrain is held here/)).toBeInTheDocument();
+    expect(screen.queryByText(/Walking areas in United Kingdom need street detail/)).toBeNull();
+    await userEvent.click(within(ways).getByRole("radio", { name: "Cycle" }));
+    expect(await screen.findByText("Cycling areas in United Kingdom need street detail, built once on this device.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add walking and cycling for United Kingdom" })).toBeInTheDocument();
   });
 

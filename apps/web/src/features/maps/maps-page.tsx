@@ -151,7 +151,6 @@ import { addRoadsLink } from "./road-route/route-needs";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 import { PanelLoading } from "./ui";
-import { useWalkReach } from "./walk/walk-reach";
 
 /** "Print or save as PDF", fetched when it is first asked for. */
 const PrintTool = lazy(() => import("./print/print-tool"));
@@ -1242,28 +1241,26 @@ export default function MapsPage() {
     const shared = readPointRangePath(new URLSearchParams(location.search));
     if (shared) pointRange.start(shared);
   }, [engine, location.key, location.search, pointRange.start]);
-  // "How far on foot from here", from the same menu.
-  const walk = useWalkReach({
-    engine,
-    where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
-    onOpenOffline: () => openOffline({ type: "add" }),
-  });
-  // "Reachable from here", from the same menu and the quick search (/maps?reach=1, from the middle of the map).
+  // "Reachable from here", from the same menu and the quick search (/maps?reach=1, from the middle of the map; with
+  // mode=walk, on foot, as the walking reach that was once a tool of its own was opened).
   const reachable = useReach({
     engine,
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
     onOpenStreets: (country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`),
     onOpenNetworks: (countries) => navigate(addRoadsLink(countries)),
+    onOpenOffline: () => openOffline({ type: "add" }),
+    onPrint: () => changeTool("print"),
   });
   const handledReach = useRef<string | undefined>(undefined);
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival, when the map is there
   useEffect(() => {
     if (!engine || handledReach.current === location.key) return;
     handledReach.current = location.key;
-    if (new URLSearchParams(location.search).get("reach") !== "1") return;
-    walk.stop();
+    const params = new URLSearchParams(location.search);
+    if (params.get("reach") !== "1") return;
     pointRange.stop();
-    reachable.start(engine.getCenter());
+    const way = params.get("mode");
+    reachable.start(engine.getCenter(), null, way === "walk" || way === "cycle" || way === "drive" ? way : undefined);
     setDetent("peek");
   }, [engine, location.key]);
   const repeaters = useRepeatersOnMap({
@@ -1828,8 +1825,6 @@ export default function MapsPage() {
       />
     ) : reachable.card ? (
       reachable.card
-    ) : walk.card ? (
-      walk.card
     ) : pointRange.card ? (
       pointRange.card
     ) : pin ? (
@@ -2191,19 +2186,8 @@ export default function MapsPage() {
               setDraft(null);
               setMoving(null);
               setPin(null);
-              walk.stop();
               reachable.stop();
               pointRange.start({ position: contextMenu.position, name: contextPlace?.name });
-              setDetent("peek");
-            }}
-            onWalk={() => {
-              setContextMenu(null);
-              setDraft(null);
-              setMoving(null);
-              setPin(null);
-              pointRange.stop();
-              reachable.stop();
-              walk.start(contextMenu.position);
               setDetent("peek");
             }}
             onReach={() => {
@@ -2212,7 +2196,6 @@ export default function MapsPage() {
               setMoving(null);
               setPin(null);
               pointRange.stop();
-              walk.stop();
               reachable.start(contextMenu.position, contextPlace?.name ?? null);
               setDetent("peek");
             }}
