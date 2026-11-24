@@ -20,6 +20,7 @@ import {
   type RoutePoint,
   toblerKmh,
   WALK_MINUTES,
+  WALK_MINUTES_ANSWERED,
   WALK_OFF_PATH_FACTOR,
   WALK_PACES,
   WALK_STEEPEST_SLOPE,
@@ -38,7 +39,7 @@ export const walkReachQuery = z.object({
   at: position("at"),
   minutes: z.coerce
     .number({ error: "Give `minutes` as a number of minutes." })
-    .refine((value) => (WALK_MINUTES as readonly number[]).includes(value), `\`minutes\` is one of ${WALK_MINUTES.join(", ")}.`),
+    .refine((value) => WALK_MINUTES_ANSWERED.includes(value), `\`minutes\` is one of ${WALK_MINUTES.join(", ")}.`),
   pace: z.enum(WALK_PACES.map((pace) => pace.id) as [string, ...string[]]).default("standard"),
 });
 

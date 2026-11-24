@@ -12,9 +12,11 @@
  */
 import type { RoutePoint } from "./maps.ts";
 
-/** The times a walk can be asked for, in minutes. */
-export const WALK_MINUTES = [30, 60, 90, 120, 180, 240] as const;
+/** The times a walk is offered for, in minutes: the same as Reachable from here offers on foot, up to 8 hours. */
+export const WALK_MINUTES = [30, 60, 120, 240, 360, 480] as const;
 export type WalkMinutes = (typeof WALK_MINUTES)[number];
+/** Every time the server answers for: the times offered, and an hour and a half and three hours, offered before. */
+export const WALK_MINUTES_ANSWERED: readonly number[] = [30, 60, 90, 120, 180, 240, 360, 480];
 
 /**
  * The paces offered. The first is Tobler's function as published, for a fit adult with no load; the others are
