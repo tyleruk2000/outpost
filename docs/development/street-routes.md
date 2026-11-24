@@ -34,7 +34,13 @@ POST /api/streets/tiles ─▶ tiles.ts: task streets.build writes request.json,
   network (a loopback or private address, or a name without dots); anything else is
   refused with a sentence, so routes and places never leave for the internet.
 - **client.ts**: `POST /route` (costing `auto`, `bicycle` or `pedestrian`, `language:
-  en-GB`, kilometres) and `POST /isochrone`, each with a time limit (20 s and 30 s), the
+  en-GB`, kilometres) and `POST /isochrone`, both with `costing_options.<costing>.use_ferry:
+  0`: Valhalla's pedestrian costing defaults to 1 (a ferry at half its time), which sent a
+  Battersea to Chelsea walk by river bus; at 0 a ferry costs ten times its time plus six
+  hours to board (`valhalla/sif/dynamiccost.h`), so it is taken only for want of another
+  way. A manoeuvre of type 28 (or `ferry: true`) becomes a `ferries` entry on the
+  directions (its ends, name, length and line), a "Take the ferry … Check it is running"
+  line and a warning; the web app draws it dashed. Each with a time limit (20 s and 30 s), the
   person's request's signal (a closed browser stops the question), a size limit on the
   reply (4 MB and 8 MB) and a zod check of its shape. Valhalla's refusals keep its error
   code: 170 to 172 (no streets near a point) become "Streets are not installed for

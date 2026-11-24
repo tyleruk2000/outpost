@@ -258,7 +258,13 @@ Folkestone", "A26 (E17) - Reims (A4)". Open **Routes**, then **Plan a route**; o
 hold (right-click) a point on the map and choose **Plan a route from here** or **Plan a route
 to here**. The roads are added by country on **Offline maps**, as **Routes**. With
 the optional Walking and cycling add-on, the same panel also plans door to door, walking and cycling.
-See [road-routes.md](road-routes.md).
+
+Every planned route, whichever way, can be saved under a name and is kept as it was
+planned, with its date; **Saved routes** under the form opens, renames and deletes them.
+**Save GPX** downloads a planned or saved route as a GPX file (the line, the start, via
+points and end, and each turn by its instruction), and **Printable route card (PDF)**
+prints the directions. Walks and rides avoid ferries; one taken for want of another way is
+said plainly and drawn dashed. See [road-routes.md](road-routes.md).
 
 ## Reachable from here
 

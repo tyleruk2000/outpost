@@ -189,6 +189,18 @@ export interface StreetLine {
   at: [number, number];
 }
 
+/** A stretch of a route on a ferry: Outpost asks for routes that avoid them, so one is there only for want of another way. */
+export interface StreetFerry {
+  /** Where it leaves from and lands, as the streets name them; null when they have no name. */
+  from: string | null;
+  to: string | null;
+  /** The ferry's own name where the streets give one ("Woolwich Ferry"). */
+  name: string | null;
+  distanceM: number;
+  /** [lon, lat] pairs along the water, for drawing it dashed. */
+  coordinates: Array<[number, number]>;
+}
+
 /** Turn-by-turn directions for streets: a whole walk or ride, or one end of a drive. */
 export interface StreetDirections {
   lines: StreetLine[];
@@ -196,6 +208,8 @@ export interface StreetDirections {
   durationS: number;
   /** [lon, lat] pairs, simplified for drawing. */
   geometry: { type: "LineString"; coordinates: Array<[number, number]> };
+  /** The stretches on a ferry, in order; absent from routes saved before ferries were picked out. */
+  ferries?: StreetFerry[];
 }
 
 export interface StreetsRouteResult {

@@ -167,8 +167,18 @@ form plans a drive, as above; one line under it says the other ways exist.
 
 Choose a road or a turn to see it on the map. The route card and the condensed plain text
 carry the turns too: on a door-to-door card each end is a band with its turns in smaller
-type and a box to tick. Routes on streets are not saved: print the card or copy
-the text.
+type and a box to tick. Routes on streets are saved like a drive (see
+[Saving and printing](#saving-and-printing)).
+
+### Ferries
+
+Walks, rides and the streets of a drive avoid ferries: a river bus or a foot ferry is
+taken only where the streets built offer no other way, or only one far longer. When a
+route still takes one, it says so at the top ("This walk takes a ferry from Lombard Road
+to Cadogan Pier, 2 km on the water…"), the line in the directions reads "Take the ferry
+… Check it is running: it may not be in a power cut", and the stretch on the water is
+drawn dashed on the map, as a sea crossing is on a drive. Check the ferry before you set
+off, or plan via a bridge.
 
 A way that cannot be used yet still shows, and choosing it says why in one line with the
 step that puts it right: **Add walking and cycling for** the point's country (not built
@@ -203,10 +213,18 @@ save as PDF** to put them on a paper map, with the legend in words under it.
 
 ## Saving and printing
 
-Give the route a name and press **Save route**. It is kept with its directions, so it opens
-and prints even if you later remove or update the routes. Saved routes are listed under
-the form, as **Saved road routes**: open one to rename it, delete it, print it or **Plan it
-again** on the routes you have now.
+Any route can be saved: a drive, door to door, a walk or a ride, with its via points.
+Give it a name and press **Save route**. It is kept exactly as it was planned, with its
+directions and the day it was planned: opening it never plans it again, so it opens and
+prints even if you later remove or update the routes or the streets. Saved routes are
+listed under the form, as **Saved routes**, each with its way of travelling: open one to
+rename it, delete it, print it, save it as GPX or **Plan it again** on what you have now.
+
+**Save GPX**, on a planned or a saved route, downloads the route as a GPX 1.1 file, made on
+this device, for a GPS, a walking app or another map: the line as a track, the start, via
+points and end as waypoints, and each line of the directions as a route point named with
+its instruction ("Turn left onto Church Street (B2450)"). The file carries the map credit
+and any warnings, such as a ferry.
 
 **Printable route card (PDF)** makes the card on this device, on A4 or US Letter: first an
 overview map of the whole route (your offline map where a place covers it, otherwise the
