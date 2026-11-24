@@ -165,7 +165,7 @@ right-to-left passage long enough to wrap reads its lines in the wrong order.
 ## Journeys
 
 The book does not plan routes on roads: each journey is the straight line from home, and the
-book says so. For a drive, plan it under **Maps → Routes → Plan a route** and print its
+book says so. For a drive, plan it with **Maps → Directions** and print its
 [route card](road-routes.md#saving-and-printing) to keep with the book. The time on foot is worked out along that line with Tobler's hiking
 function (5 km/h on level ground, slower up and down slopes), from the terrain installed:
 for a fit adult with no load, and at half that pace for someone hurt, tired or with small

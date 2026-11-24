@@ -83,11 +83,11 @@ test.describe("the shell", () => {
     await open("supermarket");
     await expect(page).toHaveURL(/\/maps\?tab=layers$/);
     await expect(page.getByRole("tab", { name: "Layers" })).toHaveAttribute("aria-selected", "true");
-    // A tool of the map, not only its tab: Plan a route opens in Routes, and the page to print is taken up.
+    // A tool of the map, not only its tab: Directions opens in Routes, and the page to print is taken up.
     await open("directions");
     await expect(page).toHaveURL(/\/maps\?tab=routes&road=1$/);
     await expect(page.getByRole("tab", { name: "Routes" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
     await open("print");
     await expect(page).toHaveURL(/\/maps\?print=1$/);
     await expect(page.getByRole("heading", { name: "Print or save as PDF" })).toBeVisible({ timeout: 20_000 });

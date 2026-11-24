@@ -8,6 +8,10 @@ More on the map: [Routes and tracks](map-routes.md), [Road routes](road-routes.m
 
 ## The Maps screen
 
+On a phone, Maps has the whole screen: the search box is at the top (quick search is the first
+row of **More**), and **Directions** is at the foot, beside the handle of the sheet. See
+[road routes](road-routes.md).
+
 The panel beside the map (a sheet you drag up on a phone) has five tabs: **Places** (saved
 places), **Routes** ([map-routes.md](map-routes.md) and [road routes](road-routes.md)),
 **Layers** ([reference-layers.md](reference-layers.md)), **Offline** (what covers the view,
@@ -26,7 +30,7 @@ it lists every tool by name. A tool taken up on a phone has its card at the foot
 screen in place of the tabs; close the card to have the tabs back. Pinch to zoom.
 
 Right-click the map (press and hold on a touch screen) for **Save a place here**, **Measure
-from here**, **Draw a route from here**, **Plan a route from here**, **Plan a route to here**,
+from here**, **Draw a route from here**, **Directions from here**, **Directions to here**,
 **Reachable from here**,
 **Sun times here**, **Estimated radio range from here**, **How far on foot from here** and
 **Copy coordinates** (and **Move** on a saved place).
@@ -254,9 +258,10 @@ A hand compass reads to a degree or two, about 90 m at 5 km, so expect a few hun
 ## Road routes
 
 Planned directions for a drive, written the way you would write them down: "M20 -
-Folkestone", "A26 (E17) - Reims (A4)". Open **Routes**, then **Plan a route**; or press and
-hold (right-click) a point on the map and choose **Plan a route from here** or **Plan a route
-to here**. The roads are added by country on **Offline maps**, as **Routes**. With
+Folkestone", "A26 (E17) - Reims (A4)". On a phone, press **Directions** at the foot of the
+map, type where to and press it: the route starts from home and is planned at once. On a
+wider screen, open **Routes**, then **Directions**. Or press and hold (right-click) a point on
+the map and choose **Directions from here** or **Directions to here**. The roads are added by country on **Offline maps**, as **Routes**. With
 the optional Walking and cycling add-on, the same panel also plans door to door, walking and cycling.
 
 Every planned route, whichever way, can be saved under a name and is kept as it was

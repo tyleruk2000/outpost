@@ -10,6 +10,7 @@ import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
 import { useMobileNavHeight } from "./mobile-nav-height";
 import { isInGroup, isOwnScreen, knowledgeNav, type NavItem, upkeepNav } from "./nav";
+import { ownsTopBar, useBottomBarHidden } from "./shell-bars";
 
 /** The phone's four tabs, the screens used most. Everything else is in the More sheet. */
 const TABS = ["/", "/library", "/notes", "/maps"];
@@ -138,11 +139,16 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   const header = useRef<HTMLElement>(null);
   useFocusClearOfBars(header, bar);
   useMobileNavHeight(bar);
+  // Maps has a bar of its own at the top (its search, or the task in hand): the app's is not shown there, and quick
+  // search is the first row of More. A task with a bar of its own puts the bar of screens away (shell-bars.ts).
+  const ownBar = ownsTopBar(pathname);
+  const taskInHand = useBottomBarHidden();
 
   return (
     <>
       <header
         ref={header}
+        hidden={ownBar}
         className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] text-spine-ink md:hidden"
       >
         <Link to="/" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5">
@@ -162,6 +168,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
       <nav
         ref={bar}
         aria-label="Main"
+        hidden={taskInHand}
         className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] backdrop-blur-sm md:hidden"
       >
         {tabs.map((item) => (
@@ -187,6 +194,19 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
               <Sheet.Title className="sr-only">More</Sheet.Title>
               <Sheet.Description className="sr-only">Every other screen, each with the screens under it</Sheet.Description>
               <div aria-hidden className="mx-auto mb-2 h-1 w-9 rounded-full bg-spine-border" />
+              {ownBar ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    onOpenSearch();
+                  }}
+                  className={cn(rowClass, "mb-2 w-full")}
+                >
+                  <Search aria-hidden className="size-5 shrink-0" strokeWidth={1.6} />
+                  Quick search
+                </button>
+              ) : null}
               <HouseholdSwitcher onPicked={close} className="mb-2 px-3" />
               <SheetPart items={more} label="Knowledge" close={close} />
               <div className="mt-2 border-t border-spine-border pt-2">

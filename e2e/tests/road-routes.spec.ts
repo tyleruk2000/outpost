@@ -34,8 +34,8 @@ test.describe("road routes", () => {
 
       // Routes, Road route.
       await page.getByRole("tab", { name: /Routes/ }).click();
-      await page.getByRole("button", { name: "Plan a route" }).first().click();
-      await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Directions", exact: true }).first().click();
+      await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
       const choose = (label: string, place: string) => choosePlace(page, label, place);
       await choose("From", "Leatherhead");
       await page.getByRole("button", { name: "Add a via point" }).click();
@@ -98,7 +98,7 @@ test.describe("road routes", () => {
       expect(words).toContain("Check the signs and closures");
       expect(words).toContain("OpenStreetMap contributors");
 
-      await page.getByRole("button", { name: "Plan a route", exact: true }).click();
+      await page.getByRole("button", { name: "Directions", exact: true }).click();
       await expect(page.getByRole("region", { name: "Saved routes" }).getByRole("button", { name: /Alps by the ferry/ })).toBeVisible();
       expect(errors).toEqual([]);
     } finally {
@@ -119,8 +119,8 @@ test.describe("road routes", () => {
       await page.goto("/maps?lat=49&lon=3&z=5");
       await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
       await page.getByRole("tab", { name: /Routes/ }).click();
-      await page.getByRole("button", { name: "Plan a route" }).first().click();
-      await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Directions", exact: true }).first().click();
+      await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
       await choosePlace(page, "From", "London");
       await choosePlace(page, "To", "Chamonix");
 
@@ -148,29 +148,39 @@ test.describe("road routes", () => {
   });
 });
 
-// Pictures of the same at a phone's width, for looking at by eye: only when a folder is given.
+// The same at a phone's width, where Directions has its bar, picker and sheet: said before any planning.
 test.describe("road routes on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
-  test("pictures the countries a route needs", async ({ page }) => {
-    const shots = process.env.OUTPOST_SHOTS_DIR;
-    test.skip(!shots, "Pictures only when OUTPOST_SHOTS_DIR is set");
+  test("names the country a route has no roads for in the sheet, before anything is planned", async ({ page }) => {
     test.setTimeout(120_000);
+    const shots = process.env.OUTPOST_SHOTS_DIR;
     await page.goto("/");
     const places = await installChannelTrip(page, ["GB"]);
     places.push(
       (await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", { name: "London", lat: 51.5074, lon: -0.1278 })).marker.id,
     );
+    const plans: string[] = [];
+    page.on("request", (request) => request.url().endsWith("/api/roads/route") && plans.push(request.url()));
     try {
       await page.goto("/maps?lat=49&lon=3&z=5");
-      await page.getByRole("tab", { name: /Routes/ }).click();
-      await page.getByRole("button", { name: "Plan a route" }).first().click();
-      await page.screenshot({ path: `${shots}/p1-route-empty-390.png` });
-      await choosePlace(page, "From", "London");
-      await choosePlace(page, "To", "Chamonix");
-      await page.getByText("France has no roads yet").scrollIntoViewIfNeeded();
-      await page.screenshot({ path: `${shots}/p1-route-needs-france-390.png` });
-      await page.getByRole("button", { name: "Plan route" }).scrollIntoViewIfNeeded();
-      await page.screenshot({ path: `${shots}/p1-route-needs-france-390-b.png` });
+      await page.getByRole("button", { name: "Directions", exact: true }).click();
+      if (shots) await page.screenshot({ path: `${shots}/p1-route-empty-390.png` });
+      await page
+        .getByRole("dialog", { name: "Where to?" })
+        .getByRole("option", { name: /^Chamonix/ })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Where from?" })
+        .getByRole("option", { name: /^London/ })
+        .click();
+      const sheet = page.getByRole("region", { name: "Directions" });
+      await expect(sheet.getByText("France has no roads yet")).toBeVisible();
+      await expect(sheet.getByRole("button", { name: "Add roads for France" })).toBeVisible();
+      if (shots) await page.screenshot({ path: `${shots}/p1-route-needs-france-390.png` });
+      expect(plans).toEqual([]);
+      const opened = page.waitForURL(/\/maps\/data\?add=1&kinds=roads&countries=FR$/, { waitUntil: "commit" });
+      await sheet.getByRole("button", { name: "Add roads for France" }).click();
+      await opened;
     } finally {
       await removeChannelTrip(page, places);
     }

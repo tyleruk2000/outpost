@@ -31,8 +31,8 @@ export const roadsKeys = {
   coverage: (points: string) => ["roads", "coverage", points] as const,
 };
 
-export const useRoadNetworks = () =>
-  useQuery({ queryKey: roadsKeys.networks, queryFn: () => api.get<RoadNetworksResponse>("/api/roads/networks") });
+export const useRoadNetworks = (enabled = true) =>
+  useQuery({ queryKey: roadsKeys.networks, queryFn: () => api.get<RoadNetworksResponse>("/api/roads/networks"), enabled });
 
 export const useRoadCrossings = (enabled = true) =>
   useQuery({

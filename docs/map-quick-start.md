@@ -24,7 +24,7 @@ This needs the internet once.
    `54.4609, -3.0886`.
 2. Choose a result. The map moves to it.
 3. To keep it, press **Save this place** and give it a name. It is then under **Places**.
-   To drive there, press **Plan a route to here** (see [Plan a drive](#plan-a-drive)).
+   To drive there, press **Directions to here** (see [Plan a drive](#plan-a-drive)).
 
 Or press and hold the map (right-click with a mouse) and choose **Save a place here**.
 
@@ -57,13 +57,15 @@ Print at 100% (not "fit to page") so the scale is right. More in
 
 ## Plan a drive
 
-1. Open **Routes** beside the map and press **Plan a route**, or press **Plan a route to here**
-   on a place you found. Once From and To are set, it names any country on the way that has
-   no roads yet, with one button to add them (this needs the internet once).
-2. Give **From** and **To**: a saved place, a town or coordinates, or **Map centre**.
-3. Press **Plan route**. The main roads and the places on their signs are listed, as you
-   would write them down.
-4. **Save route** keeps it; **Printable route card (PDF)** makes a card for the car.
+1. On a phone, press **Directions** at the foot of the map (or **Directions to here** on a
+   place you found), type where to and press it. It starts from home and is planned at once;
+   **Steps** lists the main roads and the places on their signs, as you would write them
+   down, **Save** keeps it and **Print** makes a card for the car.
+2. On a wider screen, open **Routes** beside the map and press **Directions**, give **From**
+   and **To** (a saved place, a town or coordinates, or **Map centre**) and press **Plan
+   route**. **Save route** keeps it; **Printable route card (PDF)** makes a card for the car.
+3. Either way, once both ends are set it names any country on the way that has no roads
+   yet, with one button to add them (this needs the internet once).
 
 It is planned once, not live: no traffic, closures or voice. To see how far you could drive
 in 15, 30 or 60 minutes, press and hold a point and choose **Reachable from here**. More in
@@ -94,8 +96,8 @@ The card under the map gives the answer in a few words; press **Show the details
 upward arrow) for the rest. Set the heights under **Heights and details**. Woods, buildings and power are not counted:
 radio often reaches less than this.
 
-From anywhere in Outpost, quick search (Ctrl K) goes straight to these: type "plan a route"
-(or "directions"), "reachable", "print" or "routes".
+From anywhere in Outpost, quick search (Ctrl K) goes straight to these: type "directions",
+"reachable", "print" or "routes".
 
 ## More
 

@@ -33,6 +33,7 @@ const RINGED_BY_WRAPPER: Record<string, string> = {
   "features/propagation/antenna-picker.tsx": "searchRowFocus",
   "features/satellites/satellite-picker.tsx": "searchRowFocus",
   "features/maps/search-box.tsx": "searchRowFocus",
+  "features/maps/directions/picker.tsx": "searchRowFocus",
   "features/library/document-tags.tsx": "focus-within:ring-2 focus-within:ring-focus",
   "features/chat/composer.tsx": "focus-within:ring-2 focus-within:ring-focus",
   "features/games/skerry/skerry-page.tsx": "focus-within:outline-2",

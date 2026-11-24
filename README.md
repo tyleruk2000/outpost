@@ -68,7 +68,7 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 | [Offline maps](docs/maps.md) | **Add a place** (a country, part of one or an area you draw), tick Map, Routes, Nearby places or Walking and cycling, and see the size before anything downloads. One row a place, updated from there. |
 | [Terrain and contours](docs/maps.md) | Every map comes with its hills: hill shading, contour lines and the height of the ground, in metres or feet. |
 | [Places and routes](docs/maps.md) | Saved places; routes drawn with distance, ascent and profile; GPX, KML, KMZ and GeoJSON in, GPX out. |
-| [Plan a route](docs/road-routes.md) | Drive, Door to door, Walk or Cycle, worked out on this device and written as you would write it down: the road, the place on the signs, the junctions, the ferry or tunnel. Says which country still needs its roads. A printable route card and a plain-text copy. |
+| [Directions](docs/road-routes.md) | Drive, Door to door, Walk or Cycle, worked out on this device and written as you would write it down: the road, the place on the signs, the junctions, the ferry or tunnel. Says which country still needs its roads. A printable route card and a plain-text copy. |
 | [Reachable from here](docs/road-routes.md) | How far you get in 15, 30 or 60 minutes from any point, over main roads or, with Walking and cycling, every street. |
 | [Find and record routes](docs/map-routes.md) | Look a named route up in OpenStreetMap, or record where you walk while the screen is on, over `https`. |
 | [Coordinates and place search](docs/maps.md) | Grid references, UTM, MGRS and Maidenhead; offline place names, and every British postcode. |
@@ -82,7 +82,7 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 
 ![Offline maps: one row for each place, saying where its map, routes and nearby places stand](docs/screenshots/offline-maps.webp)
 
-<img src="docs/screenshots/add-a-place.webp" width="480" alt="Add a place, asking what it is for"> <img src="docs/screenshots/route-needs-france.webp" width="300" alt="Plan a route saying France has no roads yet, with a button to add them">
+<img src="docs/screenshots/add-a-place.webp" width="480" alt="Add a place, asking what it is for"> <img src="docs/screenshots/route-needs-france.webp" width="300" alt="Directions saying France has no roads yet, with a button to add them">
 
 ![A drive from Leatherhead to Chamonix, with its directions](docs/screenshots/road-route.webp)
 

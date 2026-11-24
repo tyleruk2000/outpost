@@ -196,10 +196,10 @@ describe("the card of a place found", () => {
       onClose: () => {},
     };
     const { rerender } = render(<PinCard {...props} />);
-    expect(screen.queryByRole("button", { name: "Plan a route to here" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Directions to here" })).toBeNull();
     rerender(<PinCard {...props} onRoadRoute={onRoadRoute} />);
     expect(screen.getByRole("button", { name: "Save this place" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Plan a route to here" }));
+    await userEvent.click(screen.getByRole("button", { name: "Directions to here" }));
     expect(onRoadRoute).toHaveBeenCalledTimes(1);
   });
 });

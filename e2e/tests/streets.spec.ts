@@ -1,5 +1,5 @@
 /**
- * Plan a route's ways of travelling and Reachable from here, with and without the optional
+ * Directions' ways of travelling and Reachable from here, with and without the optional
  * streets service. The service is a stand-in answering with replies recorded from a real
  * Valhalla serving Great Britain (streets.ts); the road networks are the made-up channel
  * trip (road-routes.ts). Nothing is downloaded and nothing reaches the internet.
@@ -14,8 +14,8 @@ const openPlanner = async (page: Page, at = "lat=51.2&lon=0.5&z=8") => {
   await page.goto(`/maps?${at}`);
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
   await page.getByRole("tab", { name: /Routes/ }).click();
-  await page.getByRole("button", { name: "Plan a route" }).first().click();
-  await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Directions", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
 };
 
 test.describe("street routes", () => {

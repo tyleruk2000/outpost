@@ -1,15 +1,15 @@
 /**
- * Road routes on a phone: the panel in the sheet, every control a 44 px target, nothing past
- * the edge of the screen (the plain text box scrolls inside itself), no serious accessibility
- * finding in either theme, and the same with the text at 200%.
+ * Road routes on a phone: Directions' bar, picker and sheet, every control a 44 px target,
+ * nothing past the edge of the screen (the plain text box scrolls inside itself), no serious
+ * accessibility finding in either theme, and the same with the text at 200%.
  */
 import type { Page } from "@playwright/test";
 import { accessibilityInBothThemes } from "./a11y";
 import { expect, test, watchForErrors } from "./fixtures";
 import { auditLayout } from "./layout-audit";
-import { choosePlace, installChannelTrip, removeChannelTrip } from "./road-routes";
+import { installChannelTrip, removeChannelTrip, useAsHome } from "./road-routes";
 
-const SHEET = "section.outpost-sheet";
+const SHEET = 'section[aria-label="Directions"]';
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 /**
@@ -32,27 +32,38 @@ function pastTheEdge(page: Page): Promise<string[]> {
   }, SHEET);
 }
 
-/** Steps the sheet up to its full height, where the directions are read. */
+/** Opens the steps: the sheet takes the room under the bar, where the directions are read. */
 async function raiseSheet(page: Page) {
-  const handle = page.getByRole("button", { name: /^Panel height/ });
-  for (let step = 0; step < 3 && !/full/.test((await handle.getAttribute("aria-label")) ?? ""); step += 1) await handle.tap();
-  await expect(handle).toHaveAttribute("aria-label", /full/);
+  await page.locator(SHEET).getByRole("button", { name: "Steps" }).tap();
   await expect(page.getByRole("list", { name: "Directions" })).toBeVisible();
 }
 
+/** Directions, as a person does it on a phone: the end, then the start it asks for, then a stop from the options. */
 async function planOnPhone(page: Page) {
-  await page.goto("/maps?lat=49&lon=3&z=5&tab=routes");
+  await page.goto("/maps?lat=49&lon=3&z=5");
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
-  await page.getByRole("button", { name: "Plan a route" }).first().tap();
-  await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
-  const smallBefore = (await page.evaluate(auditLayout, { scope: SHEET })).filter((finding) => finding.kind === "small-target");
-  expect(smallBefore, "the form's controls are 44 px targets").toEqual([]);
-  await choosePlace(page, "From", "Leatherhead", true);
-  await page.getByRole("button", { name: "Add a via point" }).tap();
-  await choosePlace(page, "Via 1", "Reims", true);
-  await choosePlace(page, "To", "Chamonix", true);
-  await page.getByRole("button", { name: "Plan route" }).tap();
-  await expect(page.getByRole("heading", { name: "Leatherhead to Chamonix" })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("button", { name: "Directions", exact: true }).tap();
+  const smallBefore = (await page.evaluate(auditLayout, { scope: '[role="dialog"][aria-label="Where to?"]' })).filter(
+    (finding) => finding.kind === "small-target",
+  );
+  expect(smallBefore, "the picker's controls are 44 px targets").toEqual([]);
+  await page
+    .getByRole("dialog", { name: "Where to?" })
+    .getByRole("option", { name: /^Chamonix/ })
+    .tap();
+  // From is the household's home, Leatherhead here.
+  await expect(page.getByRole("button", { name: "From: Leatherhead. Change" })).toBeVisible();
+  const sheet = page.locator(SHEET);
+  await expect(sheet.getByRole("heading", { name: /\d+ km/ })).toBeVisible({ timeout: 60_000 });
+  await sheet.getByRole("button", { name: "Options" }).tap();
+  await sheet.getByRole("button", { name: "Add a stop" }).tap();
+  await page
+    .getByRole("dialog", { name: "Stop 1: where?" })
+    .getByRole("option", { name: /^Reims/ })
+    .tap();
+  await page.getByRole("button", { name: "Done" }).tap();
+  await expect(sheet.getByRole("heading", { name: /\d+ km/ })).toBeVisible({ timeout: 60_000 });
+  await raiseSheet(page);
   await expect(page.getByRole("list", { name: "Directions" }).getByText("M20 - Folkestone", { exact: true })).toBeAttached();
 }
 
@@ -61,10 +72,9 @@ test("a road route on a phone: 44 px targets, nothing past the edge, both themes
   const errors = watchForErrors(page);
   await page.goto("/");
   const places = await installChannelTrip(page);
+  const restoreHome = await useAsHome(page, places[0]!);
   try {
     await planOnPhone(page);
-    // Raised, the sheet shows the directions.
-    await raiseSheet(page);
     const small = (await page.evaluate(auditLayout, { scope: SHEET })).filter((finding) => finding.kind === "small-target");
     expect(small, "the route's controls are 44 px targets").toEqual([]);
     expect(await sideways(page)).toBeLessThanOrEqual(0);
@@ -72,6 +82,7 @@ test("a road route on a phone: 44 px targets, nothing past the edge, both themes
     expect(await accessibilityInBothThemes(page, "/maps (road route, phone)")).toEqual([]);
     expect(errors).toEqual([]);
   } finally {
+    await restoreHome();
     await removeChannelTrip(page, places);
   }
 });
@@ -85,12 +96,13 @@ test("a road route on a phone with the text at 200%", async ({ page }) => {
   });
   await page.goto("/");
   const places = await installChannelTrip(page);
+  const restoreHome = await useAsHome(page, places[0]!);
   try {
     await planOnPhone(page);
-    await raiseSheet(page);
     expect(await sideways(page)).toBeLessThanOrEqual(0);
     expect(await pastTheEdge(page)).toEqual([]);
   } finally {
+    await restoreHome();
     await removeChannelTrip(page, places);
   }
 });

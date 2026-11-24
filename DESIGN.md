@@ -179,7 +179,10 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
   screen or with Escape. Beside the page at that width it left a map 160 px wide.
 - Mobile: a spine-coloured top bar and a bottom bar with Home, Library, Maps, Notes
   and More. The More sheet is the sidebar's two parts, each heading's screens folded
-  under it until asked for.
+  under it until asked for. Maps is the exception: it has no app bar (quick search is
+  the first row of More there), and a task with a bar of its own (Directions) takes the
+  top in the spine's colour and puts the bottom bar away while it is in hand. Search bar
+  on top, the bottom bar is there; a task's bar on top, it is not.
 - Lists before cards. A card appears only when an item is an object picked from a set
   (a catalogue collection, a map region). Cards are never nested.
 - Home is written as sentences and lists, not tiles of numbers.
@@ -197,7 +200,8 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 - Under `prefers-reduced-motion`, transitions are instant.
 - A loading skeleton holds its room at once, appears after 300 ms, shimmers five times
   (eight seconds) and then holds still.
-- On a phone a dialog is a sheet that rises from the foot of the screen, edge to edge.
+- On a phone a dialog is a sheet that rises from the foot of the screen, edge to edge. Nothing with suggestions is typed in a sheet: a field that suggests is at the top of the
+  screen with its rows under it (Directions' picker), so the keyboard never covers them.
 
 ## Writing
 

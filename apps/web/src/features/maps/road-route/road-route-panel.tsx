@@ -1,5 +1,5 @@
 /**
- * "Plan a route" in the Routes tab. Drive: planned, high-level road directions worked out on
+ * Directions in the Routes tab on a wide screen (a phone has directions/, the bar, map and sheet). Drive: planned, high-level road directions worked out on
  * this Outpost from the road networks installed, read as the main roads and the places on
  * their signs ("M20 - Folkestone", "A26 (E17) - Reims (A4)"), saved and printed. Where the
  * optional streets service is installed, three more ways: Door to door (the same lines with
@@ -117,7 +117,13 @@ export function RoadRoutePanel({
   onNeedMap,
   onOpenNetworks,
   onOpenStreets,
+  savedOnly,
 }: {
+  /**
+   * On a phone, where Directions plans routes: the panel shows only this saved route; Back closes it, and Plan it
+   * again hands its points to Directions.
+   */
+  savedOnly?: { id: string; onPlanAgain: (points: Array<RoutePointChoice | null>, mode: RouteMode) => void };
   engine: RoadRouteMap | null;
   markers: readonly MarkerDto[];
   intent: RoadRouteIntent | null;
@@ -141,13 +147,15 @@ export function RoadRoutePanel({
   // Without the streets service there is one way only, whatever was chosen on another installation.
   const installed_ = streets.data?.installed ?? false;
   const mode: RouteMode = installed_ ? storedMode : "drive";
-  const [view, setView] = useState<View>({ kind: "plan" });
+  const [view, setView] = useState<View>(savedOnly ? { kind: "saved", id: savedOnly.id } : { kind: "plan" });
   const [points, setPoints] = useState<Array<RoutePointChoice | null>>([null, null]);
   const [crossing, setCrossing] = useState<RoadCrossingChoice>("any");
   const [units, setUnits] = useStoredState<RoadDistanceUnit>(UNITS_KEY, isUnits, "km");
   const [selected, setSelected] = useState<number | null>(null);
   const [missing, setMissing] = useState(false);
   const getCenter = (): LatLon | null => engine?.getCenter() ?? null;
+  /** The form's scrolling body. */
+  const form = useRef<HTMLDivElement>(null);
 
   // A point pressed on the map: it becomes the start or the end, and the form is shown.
   useEffect(() => {
@@ -308,6 +316,7 @@ export function RoadRoutePanel({
     return (
       <SavedRoute
         key={view.id}
+        backLabel={savedOnly ? "Routes" : "Directions"}
         id={view.id}
         selected={selected}
         onLeg={(route, index) => ("mode" in route ? streetsLeg(route, index) : fitLeg(route, index))}
@@ -319,11 +328,28 @@ export function RoadRoutePanel({
         }}
         onFit={(route) => engine?.fitBounds(boundsOf(route))}
         onBack={() => {
+          if (savedOnly) return onClose();
           setView({ kind: "plan" });
           setSelected(null);
           show.current(null, null);
         }}
         onPlanAgain={(route) => {
+          if (savedOnly) {
+            const again =
+              "mode" in route
+                ? route.request.points.map((point): RoutePointChoice | null =>
+                    "lat" in point ? { name: point.name ?? "", lat: point.lat, lon: point.lon, from: "search" } : null,
+                  )
+                : route.snapped.map(
+                    (point): RoutePointChoice => ({
+                      name: point.input.name ?? "",
+                      lat: point.input.lat,
+                      lon: point.input.lon,
+                      from: "search",
+                    }),
+                  );
+            return savedOnly.onPlanAgain(again, "mode" in route ? route.mode : "drive");
+          }
           if ("mode" in route) {
             // Only the points with a place on the map come back; a saved place since deleted is left for choosing again.
             const again = route.request.points.map((point): RoutePointChoice | null =>
@@ -356,8 +382,12 @@ export function RoadRoutePanel({
 
   // ── The form ──
   const vias = points.slice(1, -1);
-  const setPoint = (index: number, point: RoutePointChoice | null) =>
+  const setPoint = (index: number, point: RoutePointChoice | null) => {
     setPoints((current) => current.map((each, at) => (at === index ? point : each)));
+    // With a finger, a choice leaves the form at its top: From in sight, and the next step found without looking for it.
+    // Chosen with the keyboard up, the form had been left scrolled to To, with From out of sight.
+    if (point && window.matchMedia?.("(max-width: 47.99rem), (pointer: coarse)").matches) form.current?.scrollTo?.({ top: 0 });
+  };
 
   const intro =
     mode === "drive"
@@ -366,9 +396,12 @@ export function RoadRoutePanel({
   return (
     <div key="plan" className="flex min-h-0 flex-1 flex-col">
       {header("Routes", onClose)}
-      <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4 max-md:gap-3 max-md:pt-3">
+      <div
+        ref={form}
+        className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4 max-md:gap-3 max-md:pt-3"
+      >
         <div>
-          <h3 className="font-title text-lead text-ink">Plan a route</h3>
+          <h3 className="font-title text-lead text-ink">Directions</h3>
           {/* On a phone the fields come first and this is said under them: above them it pushed From below the keyboard. */}
           <p className="mt-1 text-small text-ink-muted max-md:hidden">{intro}</p>
         </div>
@@ -478,10 +511,10 @@ export function RoadRoutePanel({
               <StreetsUnavailable status={streets.data!} mode={mode} country={routeCountry} onOpenStreets={onOpenStreets} />
             ) : null}
 
-            {/* Kept in view at the foot of the panel while a notice above pushes it down (1280 × 800 with the roads notice).
-                On a phone an ordinary last row of the form: kept over the foot of the sheet it lay over the suggestions
-                for To, and a finger on one pressed Plan route. */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 md:sticky md:bottom-0 md:z-10 md:-mx-4 md:-mb-1 md:border-t md:border-border md:bg-page md:px-4 md:py-2.5 max-md:pt-1">
+            {/* Kept in view at the foot of the panel while a notice above pushes it down (1280 × 800 with the roads notice),
+                where there is a mouse. Wherever there is a finger (a phone, an iPad at any width) an ordinary last row of the
+                form: kept over the foot of the panel it lay over the suggestions for To, and a finger on one pressed Plan route. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 md:pointer-fine:sticky md:pointer-fine:bottom-0 md:pointer-fine:z-10 md:pointer-fine:-mx-4 md:pointer-fine:-mb-1 md:pointer-fine:border-t md:pointer-fine:border-border md:pointer-fine:bg-page md:pointer-fine:px-4 md:pointer-fine:py-2.5 max-md:pt-1 md:pointer-coarse:pt-1">
               <Button
                 type="submit"
                 variant="primary"
@@ -662,7 +695,7 @@ function SaveRouteForm({
 }
 
 /** Save GPX: the route as a file for another app or a GPS, made here and handed to the browser to keep. */
-function SaveGpxButton({ route, name }: { route: SavedRouteResult; name: string }) {
+export function SaveGpxButton({ route, name }: { route: SavedRouteResult; name: string }) {
   return (
     <Button
       className="justify-self-start"
@@ -908,7 +941,10 @@ function SavedRoute({
   onFit,
   onBack,
   onPlanAgain,
+  backLabel = "Directions",
 }: {
+  /** Where Back leads: the form, or on a phone the list of routes. */
+  backLabel?: string;
   id: string;
   selected: number | null;
   onLeg: (route: SavedRouteResult, index: number) => void;
@@ -938,7 +974,7 @@ function SavedRoute({
 
   return (
     <div key="saved" className="flex min-h-0 flex-1 flex-col">
-      {header("Plan a route", onBack)}
+      {header(backLabel, onBack)}
       <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
         {saved.isPending ? (
           <div className="grid gap-3" aria-busy>
@@ -1039,7 +1075,7 @@ function SavedRoute({
 
 // ── The saved routes ──
 
-function SavedRoutesList({ onOpen }: { onOpen: (id: string) => void }) {
+export function SavedRoutesList({ onOpen }: { onOpen: (id: string) => void }) {
   const routes = useSavedRoadRoutes();
   return (
     <section aria-labelledby="saved-road-routes" className="grid gap-2 border-t border-border pt-4">
