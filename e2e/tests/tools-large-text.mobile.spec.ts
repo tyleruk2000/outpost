@@ -24,16 +24,25 @@ const TOOLS = [
 ];
 
 test.describe("tools with large text, on a phone", () => {
+  // The home place is taken away again: left behind, it was the home of every later test (Weather offered "Use
+  // Large-text home" instead of its own).
+  let marker: string | undefined;
+  test.afterEach(async ({ page }) => {
+    if (marker) await page.request.delete(`/api/maps/markers/${marker}`, { headers: { "X-Outpost-Request": "1" } });
+    marker = undefined;
+  });
+
   test("none scrolls sideways with the text at 200%", async ({ page }) => {
     test.setTimeout(120_000);
     const errors = watchForErrors(page);
     // A home place, so that the screens that need one show their answers rather than asking for it.
     await page.goto("/");
-    await page.request.fetch("/api/maps/markers", {
+    const made = await page.request.fetch("/api/maps/markers", {
       method: "POST",
       headers: { "X-Outpost-Request": "1", "Content-Type": "application/json" },
       data: JSON.stringify({ name: "Large-text home", lat: 42.3601, lon: -71.0589, icon: "home" }),
     });
+    marker = ((await made.json()) as { marker: { id: string } }).marker.id;
     const wide: string[] = [];
     for (const path of TOOLS) {
       await page.goto(path);

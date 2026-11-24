@@ -68,6 +68,8 @@ test.describe("on a phone", () => {
   });
 
   test("reaches every screen from the bottom bar: four tabs, and everything else in the More sheet", async ({ page }) => {
+    // Some seventy screens, each opened from the sheet: past 45 s in a full run, where the server holds every test's data.
+    test.setTimeout(90_000);
     const errors = watchForErrors(page);
     await page.goto("/");
     const bar = page.getByRole("navigation", { name: "Main" });
