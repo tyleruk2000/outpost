@@ -85,7 +85,7 @@ function write(
 ) {
   front.text("In an emergency", size + 3, { bold: true });
   front.text(person.name || "Name not given", size + 1.5, { bold: true, gap: 2 });
-  front.number("emergency services", household.emergencyNumber, size + 2);
+  front.number("emergency services", household.emergencyNumber.trim() || "not given", size + 2);
   if (person.sheetLocked) front.text("Medical sheet kept encrypted: not on this card.", size * 0.85, { color: MUTED, gap: 2 });
   else {
     front.text(`Blood group: ${person.bloodGroup || "not known"}`, size, { gap: 2 });

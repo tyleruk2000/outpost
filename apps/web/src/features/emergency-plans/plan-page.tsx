@@ -5,6 +5,7 @@
  */
 import {
   EMERGENCY_NUMBERS,
+  emergencyNumberFor,
   type EmergencyPlanInput,
   type EmergencyPlanResponse,
   PLAN_KINDS,
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { BookPlansLine } from "@/features/household-book/book-line";
 import { PlanIllustrations } from "@/features/nuclear/plan-illustrations";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/utils";
@@ -175,6 +177,11 @@ const PARTS = [
 ] as const;
 
 /** One part of the plan, with an address to jump to; it keeps the space a section has above it. */
+/** "999 in the United Kingdom; 112 also in the United Kingdom; 112 across the European Union; …": the numbers Outpost has a source for. */
+function numbersKnown(): string {
+  return EMERGENCY_NUMBERS.map((entry) => `${entry.number} ${entry.where}`).join("; ");
+}
+
 function Part({ id, children }: { id: string; children: ReactNode }) {
   return (
     <div id={id} className="mt-10 scroll-mt-16 first:mt-0 md:scroll-mt-6 [&>section]:mt-0">
@@ -235,6 +242,7 @@ function Sources({ templateId }: { templateId: string | null }) {
 export default function EmergencyPlanPage() {
   const { id = "" } = useParams();
   const response = usePlan(id);
+  const home = useHomeCountry();
   const { draft, change, state, flush, conflict, choosing, keepMine, takeTheirs } = useDraft(response.data, async () => {
     const fresh = await response.refetch();
     return fresh.data;
@@ -402,8 +410,14 @@ export default function EmergencyPlanPage() {
             </Field>
             <Field
               label="Emergency services number"
-              hint={`It differs by country: ${EMERGENCY_NUMBERS.map((entry) => `${entry.number} ${entry.where}`).join("; ")}.`}
-              error={draft.emergencyNumber.trim() ? undefined : "Give the number."}
+              hint={`It differs by country. Outpost knows it, from each country's own published source, ${numbersKnown()}.`}
+              error={
+                draft.emergencyNumber.trim()
+                  ? undefined
+                  : home && !emergencyNumberFor(home.code)
+                    ? `Not known for ${home.name}: add your local number.`
+                    : "Give the number for the emergency services where you are."
+              }
             >
               {(ids) => (
                 <Input

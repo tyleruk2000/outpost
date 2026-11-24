@@ -328,13 +328,8 @@ export function reviewDue(plan: Pick<EmergencyPlan, "reviewedAt" | "reviewEveryD
 
 // ── The emergency number ──────────────────────────────────────────────────────
 
-/**
- * The number offered when neither Home's country nor the device's region is one listed
- * in `emergency-templates.ts` (`EMERGENCY_NUMBERS`): 112, the number across the
- * European Union, also used in the UK and some countries beyond. Elsewhere the
- * household types its own; the field says so and lists the others.
- */
-export const DEFAULT_EMERGENCY_NUMBER = "112";
+// Never guessed: `emergencyNumberFor` (emergency-templates.ts) gives the number only for a
+// country with a published source, and a plan in any other asks for the household's own.
 
 // ── The supplies this plan needs, against what is held ───────────────────────
 
@@ -464,4 +459,8 @@ export function compareSupplies(supplies: PlanSupply[], held: HeldRow[], people:
 
 /** The one line every plan carries, on screen and on paper. */
 export const planCaveat = (emergencyNumber: string): string =>
-  `This is our household's own plan, made in advance. In a real emergency, follow the emergency services and official warnings. Emergency services: ${emergencyNumber.trim() || DEFAULT_EMERGENCY_NUMBER}.`;
+  `This is our household's own plan, made in advance. In a real emergency, follow the emergency services and official warnings. ${
+    emergencyNumber.trim()
+      ? `Emergency services: ${emergencyNumber.trim()}.`
+      : "The number for the emergency services is not given in this plan: add your local number."
+  }`;

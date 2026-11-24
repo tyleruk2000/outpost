@@ -106,8 +106,12 @@ spare key and who checks on neighbours.
 ### The number for the emergency services
 
 Each plan keeps its own, offered from the household's country (its own choice, else the
-country its home is in, else your device's language) and changeable; with none, 112. 999 or 112 in the UK, 112 across the European Union and in Switzerland and South Africa, 911 in the
-United States, 000 in Australia, 111 in New Zealand.
+country its home is in; with no home, your device's language) and changeable. Outpost
+offers a number only where it has the country's own published source: 999 or 112 in the
+UK, 112 across the European Union and in Switzerland and South Africa, 911 in the United
+States and Canada, 000 in Australia, 111 in New Zealand. Anywhere else it offers none and
+says so ("Not known for Brazil: add your local number"); the plan, Use now and the cards
+say the number is not given until you type it.
 
 ## Supplies, beside the inventory
 
@@ -121,8 +125,11 @@ The plan's supplies are set against **Supplies**:
 
 ## Using a plan
 
-**Use now** shows the steps, numbers and places in large type and nothing else. A number
-calls on a phone; a place opens the offline map. **Start using this plan** records when it
+**Use now** shows the plan in large type for the moment it is needed: the emergency
+number, then **What to do now** (the During steps), who to call, where to meet, where
+things are, what to do if the phones fail, each person's own line and the notes, then the
+After steps. Links under the number jump to each part. The Before steps come last, folded,
+with how many are done. A number calls on a phone; a place opens the offline map. **Start using this plan** records when it
 started; each tick is kept with its time, so whoever opens it next sees what is done.
 **Reset for next time** clears the ticks. A tick on one phone never undoes an edit on
 another. Once started, it links to **Check in on the household board**

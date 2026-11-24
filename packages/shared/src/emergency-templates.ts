@@ -15,7 +15,7 @@
  * docs/emergency-plans.md lists every source with what it says.
  */
 import type { EmergencyPlanInput, PlanKind, PlanPhase, PlanStep } from "./emergency-plans.ts";
-import { DEFAULT_EMERGENCY_NUMBER, DEFAULT_REVIEW_DAYS, emptyPlanBody } from "./emergency-plans.ts";
+import { DEFAULT_REVIEW_DAYS, emptyPlanBody } from "./emergency-plans.ts";
 import { EMERGENCY_NUMBERS_DATA, PLAN_SOURCES_DATA, PLAN_TEMPLATES_DATA, SOURCE_TERMS_DATA } from "./emergency-templates-data.ts";
 import { RADIATION_SOURCE_TERMS, RADIATION_SOURCES, RADIATION_TEMPLATE } from "./emergency-templates-radiation.ts";
 import { WORLD_SOURCE_TERMS, WORLD_SOURCES, WORLD_TEMPLATES } from "./emergency-templates-world.ts";
@@ -158,17 +158,16 @@ export function templatesInOrder(country: string | null | undefined): PlanTempla
 }
 
 /**
- * The number for the emergency services in the first of the regions given (ISO 3166
- * codes: Home's country, then the device's region) that has one listed, else 112
- * (`DEFAULT_EMERGENCY_NUMBER`). Where a country has two, the first listed is its own.
+ * The number for the emergency services in the first region given (ISO 3166 codes:
+ * Home's country, then the device's region), or null where that region is not one
+ * Outpost has a published source for. The first region that is given decides: a home
+ * in a country not listed is not given the device's region's number, nor a guess.
+ * Where a country has two, the first listed is its own.
  */
-export function emergencyNumberFor(...regions: Array<string | null | undefined>): string {
-  for (const region of regions) {
-    const code = region?.toUpperCase();
-    const found = code ? EMERGENCY_NUMBERS.find((entry) => entry.regions.includes(code)) : undefined;
-    if (found) return found.number;
-  }
-  return DEFAULT_EMERGENCY_NUMBER;
+export function emergencyNumberFor(...regions: Array<string | null | undefined>): string | null {
+  const code = regions.find((region) => region?.trim())?.toUpperCase();
+  if (!code) return null;
+  return EMERGENCY_NUMBERS.find((entry) => entry.regions.includes(code))?.number ?? null;
 }
 
 export const sourceById = (id: string | null | undefined): PlanSource | undefined =>
@@ -259,7 +258,8 @@ export function attributionsFor(origins: Array<string | null>): string[] {
 export function planFromTemplate(
   template: PlanTemplate,
   makeId: () => string,
-  emergencyNumber = DEFAULT_EMERGENCY_NUMBER,
+  /** Empty where the number is not known: the plan then asks for it. */
+  emergencyNumber = "",
 ): EmergencyPlanInput {
   const body = emptyPlanBody();
   body.steps = template.steps.map((step) => ({ id: makeId(), phase: step.phase, text: step.text, origin: step.id }));

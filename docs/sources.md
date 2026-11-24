@@ -700,6 +700,7 @@ publisher whose terms allow copying are shipped; a test holds this.
 | Ofcom | https://www.ofcom.org.uk/about-ofcom/our-website/copyright | Reproduce accurately, not misleadingly, acknowledged with the title. | Exact copies only: each step a whole unchanged sentence, shown "Ofcom copyright: words from “Stay connected in severe weather”, reproduced unchanged." |
 | European Commission | https://commission.europa.eu/legal-notice_en | CC BY 4.0. | **Cleared**: "© European Union, CC BY 4.0 (European Commission, “112 - the EU's emergency phone number”)." |
 | Queensland Government | https://www.qld.gov.au/legal/copyright | CC BY 4.0, keep the notice, attribute the State. | **Cleared**: "© State of Queensland, CC BY 4.0 (“Triple Zero (000)”, qld.gov.au)." |
+| Government of Canada (canada.ca) | https://www.canada.ca/en/transparency/terms.html | Read 24 Nov 2026: non-commercial reproduction only. | **Not cleared**: 911 is given as a fact, cited to “Prepare children for emergencies” (canada.ca, 2026-02-16), with none of its words. |
 | British Red Cross | https://www.redcross.org.uk/terms-and-conditions | All rights reserved. | **Not cleared**: pointed to, not quoted. |
 | Ready.gov and FEMA | https://www.fema.gov/about/website-information | fema.gov refused (403) on the day; read only through a summarising fetcher; Ready.gov has no terms page of its own. | **Not cleared**: pointed to, not quoted. |
 

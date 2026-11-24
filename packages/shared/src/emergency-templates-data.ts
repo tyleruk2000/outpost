@@ -121,6 +121,18 @@ export const SOURCE_TERMS_DATA: SourceTerms[] = [
     attribution: null,
   },
   {
+    id: "government-of-canada",
+    publisher: "Government of Canada (canada.ca)",
+    url: "https://www.canada.ca/en/transparency/terms.html",
+    quote:
+      "Unless otherwise specified you may reproduce the materials in whole or in part for non-commercial purposes, and in any format, without charge or further permission",
+    read: "24 November 2026",
+    cleared: false,
+    adapt: false,
+    licence: "Non-commercial reproduction only: the number 911 is given as a fact, cited, with none of the page's words",
+    attribution: null,
+  },
+  {
     id: "nz-police",
     publisher: "New Zealand Police",
     url: "https://www.police.govt.nz/about-site-and-nz-police-app/copyright",
@@ -464,6 +476,16 @@ export const PLAN_SOURCES_DATA: PlanSource[] = [
     checked: "16 November 2026",
     country: "International",
     terms: "queensland",
+  },
+  {
+    id: "canada-911",
+    publisher: "Government of Canada",
+    title: "Prepare children for emergencies: Tips for parents and caregivers",
+    url: "https://www.canada.ca/en/services/policing/emergencies/preparedness/get-prepared/emergency-planning-resources/children.html",
+    pageDate: "2026-02-16",
+    checked: "24 November 2026",
+    country: "International",
+    terms: "government-of-canada",
   },
   {
     id: "nz-police-111",
@@ -2518,7 +2540,7 @@ export const EMERGENCY_NUMBERS_DATA: EmergencyNumber[] = [
   },
   {
     regions: ["GB", "UK"],
-    where: "or 112, in the United Kingdom",
+    where: "also in the United Kingdom",
     number: "112",
     source: "govuk-999-112",
     quote: "112 is the pan-European equivalent to 999 and can be used in the UK.",
@@ -2570,6 +2592,16 @@ export const EMERGENCY_NUMBERS_DATA: EmergencyNumber[] = [
     where: "in the United States",
     number: "911",
     source: "readygov-home-fires",
+    quote: "",
+  },
+  {
+    // Read on 24 November 2026 (canada.ca, page details 2026-02-16): "Explain that 9-1-1 is the
+    // number to call for help from police, fire departments, and ambulances". Not quoted on screen:
+    // canada.ca allows non-commercial reproduction only (see its terms), so the number is given as a fact, cited.
+    regions: ["CA"],
+    where: "in Canada",
+    number: "911",
+    source: "canada-911",
     quote: "",
   },
   {

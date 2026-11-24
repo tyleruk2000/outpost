@@ -9,7 +9,6 @@
 import {
   type CommsResponse,
   type ContactDto,
-  DEFAULT_EMERGENCY_NUMBER,
   type EmergencyPlanResponse,
   type MedicalSheet,
   PACE_LEVELS,
@@ -175,7 +174,8 @@ export function grabHousehold(
   const home = which?.home ?? null;
   const portable = which?.kind === "portable";
   return {
-    emergencyNumber: plans[0]?.plan.emergencyNumber || DEFAULT_EMERGENCY_NUMBER,
+    // Never guessed: a plan with no number gives the card none, and the card says so.
+    emergencyNumber: plans.find((each) => each.plan.emergencyNumber.trim())?.plan.emergencyNumber ?? "",
     contacts,
     places,
     comms: commsLines(comms),

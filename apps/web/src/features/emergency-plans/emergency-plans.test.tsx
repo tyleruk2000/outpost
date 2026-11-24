@@ -122,12 +122,14 @@ describe("a plan as it is read", () => {
     expect(read.supplies.find((supply) => supply.name === "Bottled water")?.amount).toBe("18 litre");
   });
 
-  it("offers the number for the device's country first, and 112 otherwise", () => {
+  it("offers the number for the device's country first, and none it does not know", () => {
     expect(guessEmergencyNumber("en-GB")).toBe("999");
     expect(guessEmergencyNumber("en-US")).toBe("911");
     expect(guessEmergencyNumber("de-DE")).toBe("112");
     expect(guessEmergencyNumber("en-NZ")).toBe("111");
-    expect(guessEmergencyNumber("en")).toBe("112");
+    expect(guessEmergencyNumber("en-CA")).toBe("911");
+    expect(guessEmergencyNumber("pt-BR")).toBe("");
+    expect(guessEmergencyNumber("en")).toBe("");
   });
 });
 
@@ -546,10 +548,14 @@ describe("the cards to print", () => {
 });
 
 describe("a plan in use", () => {
-  it("is only the steps, the numbers and the places, and a tick is sent with the step", async () => {
+  it("leads with what to do now, holds what the plan says for the moment, and a tick is sent with the step", async () => {
+    const withMore = answer();
+    withMore.plan.body.where = [{ id: "w1", what: "Torches", where: "Kitchen drawer by the back door", origin: null }];
+    withMore.plan.body.comms = { text: "Meet at home by 6 pm.", commPlanId: null, frequency: "", schedule: "" };
+    withMore.plan.body.notes = "Spare key with number 14.";
     const server = serve({
-      "/api/emergency-plans/p1": answer(),
-      "POST /api/emergency-plans/p1/opened": answer(),
+      "/api/emergency-plans/p1": withMore,
+      "POST /api/emergency-plans/p1/opened": withMore,
       "POST /api/emergency-plans/p1/ticks": () => {
         const ticked = answer();
         const first = ticked.plan.body.steps[0]!.id;
@@ -563,9 +569,23 @@ describe("a plan in use", () => {
     expect(screen.getByRole("link", { name: /Village hall/ })).toHaveAttribute("href", "/maps?lat=54.30000&lon=-2.20000&z=15");
     expect(screen.getByText("No longer in Contacts: no number to call.")).toBeInTheDocument();
 
-    const during = screen.getByRole("heading", { name: "During" }).closest("section")!;
-    const boxes = within(screen.getByRole("heading", { name: "Before" }).closest("section")!).getAllByRole("checkbox");
+    // What to do now comes first; Before is last, folded, with its count.
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(headings[0]).toBe("What to do now");
+    expect(headings.at(-2)).toBe("Before: things to have done ahead");
+    expect(headings.at(-1)).toMatch(/^Keep on this /);
+    expect(screen.getByRole("navigation", { name: "In this plan" })).toHaveTextContent(/Who to call.*Where things are.*If the phones fail/);
+    expect(screen.getByText("Kitchen drawer by the back door")).toBeInTheDocument();
+    expect(screen.getByText("Meet at home by 6 pm.")).toBeInTheDocument();
+    expect(screen.getByText("Fetch Sam")).toBeInTheDocument();
+    expect(screen.getByText("Medical: Penicillin allergy")).toBeInTheDocument();
+    expect(screen.getByText("Spare key with number 14.")).toBeInTheDocument();
+    const during = screen.getByRole("heading", { name: "What to do now" }).closest("section")!;
+    const before = screen.getByRole("heading", { name: /^Before/ }).closest("section")!;
+    expect(before.querySelector("details")?.open).toBe(false);
+    expect(before).toHaveTextContent(/0 of \d+ done/);
     expect(within(during).getAllByRole("checkbox").length).toBeGreaterThan(0);
+    const boxes = within(during).getAllByRole("checkbox");
     await userEvent.click(boxes[0]!);
     await waitFor(() =>
       expect(server.posted.find((post) => post.path === "POST /api/emergency-plans/p1/ticks")?.body).toMatchObject({ done: true }),
