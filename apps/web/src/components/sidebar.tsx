@@ -427,9 +427,9 @@ export function Sidebar({
               className="grid size-8 pointer-coarse:size-11 place-content-center rounded-control text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink"
             >
               {collapsed ? (
-                <PanelLeftOpen className="size-[18px]" strokeWidth={1.6} />
+                <PanelLeftOpen className={large ? "size-[1.125rem]" : "size-[18px]"} strokeWidth={1.6} />
               ) : (
-                <PanelLeftClose className="size-[18px]" strokeWidth={1.6} />
+                <PanelLeftClose className={large ? "size-[1.125rem]" : "size-[18px]"} strokeWidth={1.6} />
               )}
             </button>
           </Tooltip>
@@ -447,7 +447,7 @@ export function Sidebar({
               collapsed && "justify-center border-transparent bg-transparent px-0",
             )}
           >
-            <Search aria-hidden className="size-[17px] shrink-0" strokeWidth={1.6} />
+            <Search aria-hidden className={cn("shrink-0", large ? "size-[1.0625rem]" : "size-[17px]")} strokeWidth={1.6} />
             {!collapsed ? (
               <>
                 <span className="flex-1 text-left">Quick search</span>

@@ -88,8 +88,9 @@ function useDraft(response: EmergencyPlanResponse | undefined, reload: () => Pro
     // A person who has not chosen a side yet has not agreed to overwrite anything.
     if (stopped.current) return;
     const waiting = pending.current;
-    // A plan always has a name, and a step always has words: what is half-typed waits for the next change.
-    if (waiting?.name.trim() && waiting.emergencyNumber.trim()) {
+    // A plan always has a name, and a step always has words: what is half-typed waits for the next change. A plan
+    // whose number is not known yet is saved all the same, and goes on asking for it.
+    if (waiting?.name.trim()) {
       pending.current = null;
       const body: PlanBody = {
         ...waiting.body,
@@ -152,12 +153,12 @@ function useDraft(response: EmergencyPlanResponse | undefined, reload: () => Pro
     ? "conflict"
     : draft && !draft.name.trim()
       ? "unnamed"
-      : draft && !draft.emergencyNumber.trim()
-        ? "no-number"
-        : pending.current || save.isPending
-          ? "saving"
-          : save.isError
-            ? "failed"
+      : pending.current || save.isPending
+        ? "saving"
+        : save.isError
+          ? "failed"
+          : draft && !draft.emergencyNumber.trim()
+            ? "no-number"
             : "saved";
   return { draft, change, state, flush, conflict, choosing, keepMine, takeTheirs };
 }
@@ -191,11 +192,11 @@ function Part({ id, children }: { id: string; children: ReactNode }) {
 }
 
 /** The states in which leaving would lose what was typed: it cannot be sent as it is. */
-const UNSENT = ["conflict", "unnamed", "no-number", "failed"];
+const UNSENT = ["conflict", "unnamed", "failed"];
 
 const STATE_WORDS: Record<string, string> = {
   unnamed: "Give the plan a name to save it.",
-  "no-number": "Give the emergency number to save the plan.",
+  "no-number": "Saved, without the number for the emergency services: add it below.",
   conflict: "Not saved: this plan was changed somewhere else.",
   saving: "Saving…",
   failed: "The last change was not saved.",
@@ -535,7 +536,11 @@ export default function EmergencyPlanPage() {
       />
       {/* A change waiting to be saved is sent on leaving; one that cannot be (no name, a newer version elsewhere, a failed
           save) is asked about. Reloading or closing the tab asks while anything at all is unsent. */}
-      <LeaveGuard when={!gone && UNSENT.includes(state)} beforeUnload={!gone && state !== "saved"} what="the changes to this plan" />
+      <LeaveGuard
+        when={!gone && UNSENT.includes(state)}
+        beforeUnload={!gone && state !== "saved" && state !== "no-number"}
+        what="the changes to this plan"
+      />
     </Page>
   );
 }

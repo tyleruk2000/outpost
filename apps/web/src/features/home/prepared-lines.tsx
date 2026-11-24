@@ -77,7 +77,12 @@ export function PreparedLines({ className }: { className?: string }) {
               {plan.name}
             </Link>{" "}
             ·{" "}
-            <Link to={`/prepare/plans/${plan.id}/use`} aria-label={`Use now: ${plan.name}`} className={`${link} font-medium`}>
+            <Link
+              to={`/prepare/plans/${plan.id}/use`}
+              aria-label={`Use now: ${plan.name}`}
+              // The one to reach in a hurry: a full 44 px to press on a touch screen, not the line's height.
+              className={`${link} font-medium pointer-coarse:-my-3 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:items-center`}
+            >
               Use now
             </Link>
             {others > 0 ? (

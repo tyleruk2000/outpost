@@ -155,7 +155,11 @@ function CountryChoice({ plan }: { plan: AlertsPlan }) {
 }
 
 function NotFetched({ what }: { what: string }) {
-  return <p className="mt-1 text-body text-ink-muted">{what} have not been fetched yet. Press Fetch alerts when there is a connection.</p>;
+  return (
+    <p className="mt-1 text-body text-ink-muted">
+      {what} have not been fetched yet. Press Fetch alerts or Update now when there is a connection.
+    </p>
+  );
 }
 
 function EcccSection({ copy, source, now }: { copy: KeptCopy<"eccc"> | null; source: WeatherSourceInfo | undefined; now: number }) {

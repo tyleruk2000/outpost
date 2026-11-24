@@ -104,7 +104,10 @@ export function asksLine(kinds: WeatherKind[], sources: WeatherSourceInfo[]): st
     .filter((source): source is WeatherSourceInfo => source !== undefined);
   const parts = asked
     .filter((source, index) => asked.findIndex((other) => other.publisher === source.publisher) === index)
-    .map((source) => `${source.publisher} (${source.host}): ${source.sends.replace(/\.$/, "")}`);
+    .map((source) => {
+      const sends = source.sends.replace(/\.$/, "");
+      return `${source.publisher} (${source.host}): ${sends.charAt(0).toLowerCase()}${sends.slice(1)}`;
+    });
   return parts.length === 0 ? "" : `Update now asks ${parts.join("; ")}.`;
 }
 

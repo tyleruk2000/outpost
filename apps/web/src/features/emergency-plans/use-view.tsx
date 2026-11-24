@@ -281,13 +281,18 @@ export function PlanInUse({
       {before.length > 0 ? (
         <section className="mt-8" aria-labelledby="phase-before">
           <details className="group">
-            <summary className="flex min-h-12 cursor-default flex-wrap items-center gap-x-2 py-2 marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-              <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-90" />
-              <h2 id="phase-before" className="text-heading font-semibold text-ink">
-                Before: things to have done ahead
-              </h2>
-              <span className="text-body text-ink-muted tabular">
-                {beforeDone} of {before.length} done
+            <summary className="flex min-h-12 cursor-default items-start gap-2 py-2 marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
+              <ChevronRight
+                aria-hidden
+                className="mt-[0.3em] size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"
+              />
+              <span className="min-w-0">
+                <h2 id="phase-before" className="text-heading font-semibold text-ink">
+                  Before: things to have done ahead
+                </h2>
+                <span className="block text-body text-ink-muted tabular">
+                  {beforeDone} of {before.length} done
+                </span>
               </span>
             </summary>
             {stepList(before)}

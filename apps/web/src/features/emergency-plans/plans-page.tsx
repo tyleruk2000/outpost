@@ -104,6 +104,12 @@ function NewPlanDialog({
         description="Start from a template drawn from official guidance, then change it to fit your household. Every step says where it came from."
       >
         <DialogBody>
+          {/* Whose guidance the templates are, said before they are read, not under a list a person may not scroll past. */}
+          {whereLine ? (
+            <p className="mb-4 max-w-[65ch] text-small text-ink" data-testid="templates-where">
+              {whereLine}
+            </p>
+          ) : null}
           <fieldset>
             <legend className="mb-2 text-small font-medium text-ink">What is it for?</legend>
             <Rows>
@@ -141,11 +147,6 @@ function NewPlanDialog({
               })}
             </Rows>
           </fieldset>
-          {whereLine ? (
-            <p className="mt-4 max-w-[65ch] text-small text-ink" data-testid="templates-where">
-              {whereLine}
-            </p>
-          ) : null}
           <div className="mt-4">
             <TemplateLicences sources={templateSources()} />
           </div>
