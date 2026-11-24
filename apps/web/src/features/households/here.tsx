@@ -166,7 +166,7 @@ function MapChooser({
       ) : null}
       <Suspense fallback={<Skeleton className="h-72 sm:h-80" />}>
         <PlanMap
-          label="Map: press the place to choose it"
+          label="Map: press where the household is"
           data={pin}
           places={places}
           fit={fit}
