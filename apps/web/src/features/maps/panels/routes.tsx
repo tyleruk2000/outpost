@@ -5,7 +5,7 @@
 import type { Bbox, TrackDto } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowLeft, Car, CircleAlert, Download, Ellipsis, FileUp, Mountain, PenLine, Scan, Search, Spline, Trash2 } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
@@ -402,6 +402,7 @@ export function RoutesList({
   onFind,
   onRoadRoute,
   canDraw,
+  footer,
 }: {
   tracks: UseQueryResult<TrackDto[]>;
   markerCount: number;
@@ -418,6 +419,8 @@ export function RoutesList({
   onRoadRoute: () => void;
   /** False when the map could not be drawn, so there is nothing to draw on. */
   canDraw: boolean;
+  /** Under the list: on a phone, the saved routes of Directions. */
+  footer?: ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -488,6 +491,7 @@ export function RoutesList({
             </Button>
           ) : null}
         </div>
+        {footer ? <div className="mt-5">{footer}</div> : null}
       </div>
     );
   }
@@ -562,6 +566,7 @@ export function RoutesList({
         {all.length > rows ? (
           <ShowMoreRow shown={rows} total={all.length} onMore={() => setRows((current) => current + PANEL_ROWS)} />
         ) : null}
+        {footer ? <li className="px-4 pb-4">{footer}</li> : null}
       </ul>
       <ExportDialog open={exporting} onOpenChange={setExporting} tracks={all} markerCount={markerCount} />
     </div>

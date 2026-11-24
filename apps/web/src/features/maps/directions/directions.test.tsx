@@ -128,7 +128,13 @@ function Harness() {
       {directions.active ? <DirectionsBar directions={directions} /> : null}
       {directions.active ? (
         <div style={{ position: "relative" }}>
-          <DirectionsSheet directions={directions} onHeight={() => {}} onOpenNetworks={() => {}} onOpenStreets={() => {}} onFitLine={() => {}} />
+          <DirectionsSheet
+            directions={directions}
+            onHeight={() => {}}
+            onOpenNetworks={() => {}}
+            onOpenStreets={() => {}}
+            onFitLine={() => {}}
+          />
         </div>
       ) : null}
       <DirectionsPicker directions={directions} markers={MARKERS} home={HOME} getCenter={() => ({ lat: 50, lon: 2 })} />

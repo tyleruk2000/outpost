@@ -62,7 +62,7 @@ test.describe("Directions on an iPad held upright, by touch", () => {
     const errors = watchForErrors(page);
     await standInPlaceNames(page);
     await page.goto("/maps?lat=50&lon=2&z=5&tab=routes&road=1");
-    await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible({ timeout: 15_000 });
     const edge = await page
       .getByRole("complementary", { name: /Places, routes/ })
       .evaluate((element) => element.getBoundingClientRect().right);

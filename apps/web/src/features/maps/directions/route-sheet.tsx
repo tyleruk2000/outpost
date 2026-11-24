@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useSaveRoadRoute } from "../road-route/data";
 import { DirectionsList, RouteCredit, RouteWarnings } from "../road-route/directions";
 import { PlainTextBox } from "../road-route/plain-text";
+import { SaveGpxButton } from "../road-route/road-route-panel";
 import { RouteCardPdf } from "../road-route/route-card-pdf";
 import { AddRoadsButton, problemCountries, problemOf, RouteNeedsNotice } from "../road-route/route-needs";
 import { DoorToDoorList, StreetLinesList, StreetsCredit } from "../road-route/street-directions";
@@ -234,7 +235,6 @@ function Summary({ directions, route }: { directions: Directions; route: Directi
   const save = useSaveRoadRoute();
   const [saved, setSaved] = useState<{ plannedAt: number; name: string } | null>(null);
   const savedNow = saved?.plannedAt === route.plannedAt ? saved : null;
-  const drive = !("mode" in route);
   const warnings = route.warnings;
   const heading = useRef<HTMLHeadingElement>(null);
   // A person who chose a result lands on the totals.
@@ -252,10 +252,8 @@ function Summary({ directions, route }: { directions: Directions; route: Directi
           <p className="mt-1 flex items-start gap-1.5 text-small text-warning">
             <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
             {/* Said in full at the head of the steps; here, that there is something to read before setting off. */}
-            <span>
-              {warnings.length === 1
-                ? "One thing to know before you go, in Steps."
-                : `${warnings.length} things to know before you go, in Steps.`}
+            <span className="line-clamp-2">
+              {warnings.length === 1 ? warnings[0] : `${warnings.length} things to know before you go, in Steps.`}
             </span>
           </p>
         ) : null}
@@ -263,24 +261,23 @@ function Summary({ directions, route }: { directions: Directions; route: Directi
           Route planned: {distance}, {time}.
         </p>
       </div>
-      <div className={cn("grid gap-2", drive ? "grid-cols-4" : "grid-cols-3")}>
+      <div className="grid grid-cols-4 gap-2">
         <Button variant="primary" className={action} onClick={() => directions.setView("steps")}>
           <List aria-hidden /> Steps
         </Button>
-        {drive ? (
-          <Button
-            className={action}
-            loading={save.isPending}
-            aria-pressed={savedNow !== null}
-            onClick={() => {
-              if (savedNow) return;
-              const name = suggestedName(route);
-              save.mutate({ name, route }, { onSuccess: (done) => setSaved({ plannedAt: route.plannedAt, name: done.name }) });
-            }}
-          >
-            {savedNow ? <Check aria-hidden /> : <Save aria-hidden />} {savedNow ? "Saved" : "Save"}
-          </Button>
-        ) : null}
+        {/* Every way of travelling is saved alike: a drive, door to door, a walk or a ride. */}
+        <Button
+          className={action}
+          loading={save.isPending}
+          aria-pressed={savedNow !== null}
+          onClick={() => {
+            if (savedNow) return;
+            const name = "mode" in route ? streetsTitle(route) : suggestedName(route);
+            save.mutate({ name, route }, { onSuccess: (done) => setSaved({ plannedAt: route.plannedAt, name: done.name }) });
+          }}
+        >
+          {savedNow ? <Check aria-hidden /> : <Save aria-hidden />} {savedNow ? "Saved" : "Save"}
+        </Button>
         <Button className={action} onClick={() => directions.setView("print")}>
           <Printer aria-hidden /> Print
         </Button>
@@ -423,7 +420,7 @@ function StepsPage({
             <DirectionsList route={road} selected={null} onLeg={openLeg} />
           ) : null}
         </div>
-        <div className="grid gap-4 px-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 px-4 break-words">
           {streets ? <StreetsCredit result={streets} /> : <RouteCredit route={route as RoadRouteResult} />}
           <Button className="justify-self-start" onClick={() => directions.setView("print")}>
             <Printer aria-hidden /> Print or copy as text
@@ -446,6 +443,7 @@ function PrintPage({ directions, route }: { directions: Directions; route: Direc
           defaultOpen
           from={{ what: "a route planned on the map", path: "/maps?tab=routes&road=1" }}
         />
+        <SaveGpxButton route={route} name={title} />
         <PlainTextBox route={route as RoadRouteResult | StreetsRouteResult} title={title} />
       </div>
     </div>
@@ -574,9 +572,15 @@ function OptionsPage({ directions }: { directions: Directions }) {
           </Field>
         ) : null}
         {directions.result ? (
-          <p className="text-small text-ink-muted">
-            {roadDistanceText(directions.result.summary.distanceM, directions.units)} as planned. A change here plans the route again.
-          </p>
+          <>
+            <p className="text-small text-ink-muted">
+              {roadDistanceText(directions.result.summary.distanceM, directions.units)} as planned. A change here plans the route again.
+            </p>
+            <div className="grid justify-items-start gap-1.5 border-t border-border pt-4">
+              <p className="text-small text-ink-muted">The route as a file for a GPS or another app.</p>
+              <SaveGpxButton route={directions.result} name={titleOf(directions.result)} />
+            </div>
+          </>
         ) : null}
       </div>
     </div>

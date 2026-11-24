@@ -112,10 +112,12 @@ place you found and in the menu a long press opens, and in **Routes**.
     step on the map, then **Next** and **Previous** walk the route one step at a time;
     **All steps** goes back to the list.
   - **Save** keeps the route under its own name ("Home to Reims") with one press, and says
-    so under the buttons.
-  - **Print** has the printable route card and the plain text.
+    so under the buttons. Saved routes are listed in **Routes**; one opened there has
+    **Plan it again**, which brings it back to Directions.
+  - **Print** has the printable route card, **Save GPX** (the route as a file for a GPS or
+    another app) and the plain text.
   - **Options** has the stops (**Add a stop**, up to ten, each removed with ✕), the way of
-    travelling, kilometres or miles, and the sea crossing when there is one.
+    travelling, kilometres or miles, the sea crossing when there is one, and **Save GPX**.
 
 If the route cannot be planned, the sheet says why, with what puts it right first
 (**Change the end**, or **Add roads for France**) and **Try again**.

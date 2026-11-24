@@ -23,7 +23,7 @@ function BarShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** A title and a line under it, with ✕ before them: choosing on the map, and the steps. */
+/** A title and a line under it, with a close button before them: choosing on the map, and the steps. */
 function TitleBar({
   title,
   detail,

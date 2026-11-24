@@ -143,7 +143,7 @@ import { foldRecordingCard, TrackRecording, useRecordTool } from "./recording/re
 import { useResection } from "./resection/resection-card";
 import { ROAD_ROUTE_SOURCE, shownRouteData } from "./road-route/layers";
 import { pointName } from "./road-route/point-field";
-import { type RoadRouteIntent, RoadRoutePanel, type ShownRoute } from "./road-route/road-route-panel";
+import { type RoadRouteIntent, RoadRoutePanel, SavedRoutesList, type ShownRoute } from "./road-route/road-route-panel";
 import { addRoadsLink } from "./road-route/route-needs";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
@@ -374,6 +374,8 @@ export default function MapsPage() {
   useHideBottomBar(phoneDirections);
   /** How tall the sheet of Directions is on a phone, for the map to keep the route clear of it. */
   const [directionsHeight, setDirectionsHeight] = useState(0);
+  /** On a phone, a saved route opened from Routes: shown in the sheet, its Plan it again handed to Directions. */
+  const [phoneSaved, setPhoneSaved] = useState<string | null>(null);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
   const [magneticLines, setMagneticLines] = useMagneticLines(engine);
   const [utmGridOn, setUtmGrid] = useUtmGrid(engine);
@@ -1477,7 +1479,9 @@ export default function MapsPage() {
    * tabs is put away while it does, so that the form's first line (its way back) and first field are at the top.
    */
   const formInSheet =
-    !isDesktop && ((panel.tab === "places" && draft !== null) || (panel.tab === "routes" && !routeDraft && (roadRouting || finding)));
+    !isDesktop &&
+    ((panel.tab === "places" && draft !== null) ||
+      (panel.tab === "routes" && !routeDraft && (roadRouting || finding || phoneSaved !== null)));
 
   const tabs = (
     <PanelTabs
@@ -1549,6 +1553,26 @@ export default function MapsPage() {
             onOpenNetworks={(countries) => navigate(addRoadsLink(countries))}
             onOpenStreets={(country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`)}
           />
+        ) : !isDesktop && phoneSaved ? (
+          <RoadRoutePanel
+            key={phoneSaved}
+            savedOnly={{
+              id: phoneSaved,
+              onPlanAgain: (points, way) => {
+                setPhoneSaved(null);
+                directions.startWith(points, way);
+              },
+            }}
+            engine={engine}
+            markers={markers.data ?? []}
+            intent={null}
+            onIntentHandled={clearRoadIntent}
+            onClose={() => setPhoneSaved(null)}
+            onShow={showRoadRoute}
+            onNeedMap={() => setDetent((current) => (current === "full" ? "half" : current))}
+            onOpenNetworks={(countries) => navigate(addRoadsLink(countries))}
+            onOpenStreets={(country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`)}
+          />
         ) : finding ? (
           <FindRoutePanel
             engine={engine}
@@ -1600,6 +1624,17 @@ export default function MapsPage() {
               setDetent(FORM_DETENT);
             }}
             canDraw={Boolean(engine)}
+            footer={
+              // On a phone Directions plans in a bar and sheet of its own; the routes it saved are listed here.
+              isDesktop ? undefined : (
+                <SavedRoutesList
+                  onOpen={(id) => {
+                    setPhoneSaved(id);
+                    setDetent("full");
+                  }}
+                />
+              )
+            }
           />
         ),
         layers: (

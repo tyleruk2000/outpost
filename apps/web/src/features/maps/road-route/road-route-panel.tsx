@@ -117,7 +117,13 @@ export function RoadRoutePanel({
   onNeedMap,
   onOpenNetworks,
   onOpenStreets,
+  savedOnly,
 }: {
+  /**
+   * On a phone, where Directions plans routes: the panel shows only this saved route; Back closes it, and Plan it
+   * again hands its points to Directions.
+   */
+  savedOnly?: { id: string; onPlanAgain: (points: Array<RoutePointChoice | null>, mode: RouteMode) => void };
   engine: RoadRouteMap | null;
   markers: readonly MarkerDto[];
   intent: RoadRouteIntent | null;
@@ -141,7 +147,7 @@ export function RoadRoutePanel({
   // Without the streets service there is one way only, whatever was chosen on another installation.
   const installed_ = streets.data?.installed ?? false;
   const mode: RouteMode = installed_ ? storedMode : "drive";
-  const [view, setView] = useState<View>({ kind: "plan" });
+  const [view, setView] = useState<View>(savedOnly ? { kind: "saved", id: savedOnly.id } : { kind: "plan" });
   const [points, setPoints] = useState<Array<RoutePointChoice | null>>([null, null]);
   const [crossing, setCrossing] = useState<RoadCrossingChoice>("any");
   const [units, setUnits] = useStoredState<RoadDistanceUnit>(UNITS_KEY, isUnits, "km");
@@ -310,6 +316,7 @@ export function RoadRoutePanel({
     return (
       <SavedRoute
         key={view.id}
+        backLabel={savedOnly ? "Routes" : "Directions"}
         id={view.id}
         selected={selected}
         onLeg={(route, index) => ("mode" in route ? streetsLeg(route, index) : fitLeg(route, index))}
@@ -321,11 +328,28 @@ export function RoadRoutePanel({
         }}
         onFit={(route) => engine?.fitBounds(boundsOf(route))}
         onBack={() => {
+          if (savedOnly) return onClose();
           setView({ kind: "plan" });
           setSelected(null);
           show.current(null, null);
         }}
         onPlanAgain={(route) => {
+          if (savedOnly) {
+            const again =
+              "mode" in route
+                ? route.request.points.map((point): RoutePointChoice | null =>
+                    "lat" in point ? { name: point.name ?? "", lat: point.lat, lon: point.lon, from: "search" } : null,
+                  )
+                : route.snapped.map(
+                    (point): RoutePointChoice => ({
+                      name: point.input.name ?? "",
+                      lat: point.input.lat,
+                      lon: point.input.lon,
+                      from: "search",
+                    }),
+                  );
+            return savedOnly.onPlanAgain(again, "mode" in route ? route.mode : "drive");
+          }
           if ("mode" in route) {
             // Only the points with a place on the map come back; a saved place since deleted is left for choosing again.
             const again = route.request.points.map((point): RoutePointChoice | null =>
@@ -671,7 +695,7 @@ function SaveRouteForm({
 }
 
 /** Save GPX: the route as a file for another app or a GPS, made here and handed to the browser to keep. */
-function SaveGpxButton({ route, name }: { route: SavedRouteResult; name: string }) {
+export function SaveGpxButton({ route, name }: { route: SavedRouteResult; name: string }) {
   return (
     <Button
       className="justify-self-start"
@@ -917,7 +941,10 @@ function SavedRoute({
   onFit,
   onBack,
   onPlanAgain,
+  backLabel = "Directions",
 }: {
+  /** Where Back leads: the form, or on a phone the list of routes. */
+  backLabel?: string;
   id: string;
   selected: number | null;
   onLeg: (route: SavedRouteResult, index: number) => void;
@@ -947,7 +974,7 @@ function SavedRoute({
 
   return (
     <div key="saved" className="flex min-h-0 flex-1 flex-col">
-      {header("Directions", onBack)}
+      {header(backLabel, onBack)}
       <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
         {saved.isPending ? (
           <div className="grid gap-3" aria-busy>
@@ -1048,7 +1075,7 @@ function SavedRoute({
 
 // ── The saved routes ──
 
-function SavedRoutesList({ onOpen }: { onOpen: (id: string) => void }) {
+export function SavedRoutesList({ onOpen }: { onOpen: (id: string) => void }) {
   const routes = useSavedRoadRoutes();
   return (
     <section aria-labelledby="saved-road-routes" className="grid gap-2 border-t border-border pt-4">

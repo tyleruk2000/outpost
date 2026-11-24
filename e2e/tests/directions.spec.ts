@@ -33,8 +33,10 @@ test("Directions with the keyboard alone: quick search, both ends, plan, save", 
     await page.goto("/maps?lat=49&lon=3&z=5");
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
     await page.keyboard.press("Control+k");
+    const palette = page.getByRole("dialog", { name: "Search and go to" });
+    await expect(palette.getByRole("combobox")).toBeFocused({ timeout: 15_000 });
     await page.keyboard.type("directions", { delay: 20 });
-    await expect(page.getByRole("option", { name: /Directions/ }).first()).toBeVisible();
+    await expect(palette.getByRole("option").first()).toContainText("Directions");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
 

@@ -199,6 +199,22 @@ export function useDirections({
     [home, focusPicker],
   );
 
+  /** Starts with these points and way of travelling, as a saved route's Plan it again hands them over. */
+  const startWith = useCallback(
+    (again: Array<RoutePointChoice | null>, way: RouteMode) => {
+      setPoints(again.length >= 2 ? again : [again[0] ?? null, null]);
+      setMode(way);
+      setActive(true);
+      setView("route");
+      setStep(null);
+      setStopped(null);
+      setChoosing(null);
+      setPicker(null);
+      fitted.current = null;
+    },
+    [setMode],
+  );
+
   const close = useCallback(() => {
     if (key && planning) void client.cancelQueries({ queryKey: ["directions", key] });
     setActive(false);
@@ -291,6 +307,7 @@ export function useDirections({
     stopped: key !== null && stopped === key,
     error: ready && stopped !== key && plan.isError ? plan.error : null,
     start,
+    startWith,
     close,
     choose,
     openPicker: focusPicker,

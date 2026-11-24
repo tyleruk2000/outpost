@@ -1,7 +1,8 @@
 /**
- * Plan a walk with a via point, save it under a name, open it again from Saved routes and
- * download it as GPX: the same steps on a desktop (clicks) and an iPhone (taps). The walk
- * is answered by the streets stand-in (streets.ts); the file is read back and checked.
+ * Plan a walk with a via point, save it, open it again from Saved routes and download it as
+ * GPX: on a desktop with the panel's form (clicks), and on an iPhone with Directions' bar,
+ * picker and sheet (taps). The walk is answered by the streets stand-in (streets.ts); the
+ * file is read back and checked.
  */
 import fs from "node:fs";
 import type { Page } from "@playwright/test";
@@ -31,42 +32,50 @@ export async function planSaveReopenAndDownload(page: Page, touch: boolean): Pro
   try {
     await page.goto("/maps?lat=51.28&lon=-0.32&z=12&tab=routes");
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
-    await press(page.getByRole("button", { name: "Plan a route" }).first());
-    await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
-    await press(page.getByRole("radiogroup", { name: "Way of travelling" }).getByRole("radio", { name: "Walk" }));
-    await choosePlace(page, "From", from, touch);
-    await press(page.getByRole("button", { name: "Add a via point" }));
-    await choosePlace(page, "Via 1", via, touch);
-    await choosePlace(page, "To", to, touch);
-    const asked = page.waitForRequest((request) => request.url().endsWith("/api/streets/route"));
-    await press(page.getByRole("button", { name: "Plan route" }));
-    expect((await asked).postDataJSON()).toMatchObject({ mode: "walk" });
-    await expect(page.getByRole("heading", { name: `${from} to ${to}` })).toBeVisible({ timeout: 30_000 });
-    // The turns are listed, one per line.
-    await expect(page.getByRole("list", { name: "Directions" }).getByText("Turn left onto Church Street (B2450)")).toBeAttached();
+    if (touch) {
+      savedId = await planAndSaveOnPhone(page, { from, via, to });
+    } else {
+      await press(page.getByRole("button", { name: "Directions", exact: true }).first());
+      await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
+      await press(page.getByRole("radiogroup", { name: "Way of travelling" }).getByRole("radio", { name: "Walk" }));
+      await choosePlace(page, "From", from, touch);
+      await press(page.getByRole("button", { name: "Add a via point" }));
+      await choosePlace(page, "Via 1", via, touch);
+      await choosePlace(page, "To", to, touch);
+      const asked = page.waitForRequest((request) => request.url().endsWith("/api/streets/route"));
+      await press(page.getByRole("button", { name: "Plan route" }));
+      expect((await asked).postDataJSON()).toMatchObject({ mode: "walk" });
+      await expect(page.getByRole("heading", { name: `${from} to ${to}` })).toBeVisible({ timeout: 30_000 });
+      // The turns are listed, one per line.
+      await expect(page.getByRole("list", { name: "Directions" }).getByText("Turn left onto Church Street (B2450)")).toBeAttached();
 
-    // Saved under a name of its own.
-    const name = page.getByLabel("Name to save it under");
-    await name.scrollIntoViewIfNeeded();
-    await name.fill(`Box Hill by Mickleham ${tag}`);
-    const saving = page.waitForResponse(
-      (response) => response.url().endsWith("/api/roads/routes") && response.request().method() === "POST",
-    );
-    await press(page.getByRole("button", { name: "Save route" }));
-    savedId = ((await (await saving).json()) as { id: string }).id;
-    await expect(page.getByRole("heading", { name: `Box Hill by Mickleham ${tag}` })).toBeVisible();
+      // Saved under a name of its own.
+      const name = page.getByLabel("Name to save it under");
+      await name.scrollIntoViewIfNeeded();
+      await name.fill(`Box Hill by Mickleham ${tag}`);
+      const saving = page.waitForResponse(
+        (response) => response.url().endsWith("/api/roads/routes") && response.request().method() === "POST",
+      );
+      await press(page.getByRole("button", { name: "Save route" }));
+      savedId = ((await (await saving).json()) as { id: string }).id;
+      await expect(page.getByRole("heading", { name: `Box Hill by Mickleham ${tag}` })).toBeVisible();
 
-    // Back to the form, and opened again from Saved routes: as planned, nothing asked of the streets.
-    await press(page.getByRole("button", { name: "Plan a route" }).first());
+      // Back to the form.
+      await press(page.getByRole("button", { name: "Directions", exact: true }).first());
+    }
+    // Opened again from Saved routes: as planned, nothing asked of the streets.
+    const saveName = touch ? `${from} to ${to}` : `Box Hill by Mickleham ${tag}`;
+    // On a phone they are under the Routes tab's list, in the sheet raised by pressing the tab.
+    if (touch) await page.getByRole("tab", { name: /^Routes/ }).tap();
     const list = page.getByRole("region", { name: "Saved routes" });
-    const row = list.getByRole("button", { name: new RegExp(`Box Hill by Mickleham ${tag}`) });
+    const row = list.getByRole("button", { name: new RegExp(saveName) });
     await expect(row).toContainText("Walk");
     let replanned = false;
     page.on("request", (request) => {
       if (request.url().endsWith("/api/streets/route")) replanned = true;
     });
     await press(row);
-    await expect(page.getByRole("heading", { name: `Box Hill by Mickleham ${tag}` })).toBeVisible();
+    await expect(page.getByRole("heading", { name: saveName })).toBeVisible();
     await expect(page.getByText(/Kept as it was planned/)).toBeVisible();
     await expect(page.getByRole("list", { name: "Directions" }).getByText("Take the steps").first()).toBeAttached();
 
@@ -78,7 +87,7 @@ export async function planSaveReopenAndDownload(page: Page, touch: boolean): Pro
     const downloading = page.waitForEvent("download");
     await press(page.getByRole("button", { name: "Save GPX" }));
     const download = await downloading;
-    expect(download.suggestedFilename()).toBe(`Box Hill by Mickleham ${tag}.gpx`);
+    expect(download.suggestedFilename()).toBe(`${saveName}.gpx`);
     const gpx = fs.readFileSync((await download.path())!, "utf8");
     expect(gpx).toContain('<gpx version="1.1" creator="Outpost" xmlns="http://www.topografix.com/GPX/1/1">');
     expect(gpx).toContain(`<name>Start: ${from}</name>`);
@@ -96,7 +105,8 @@ export async function planSaveReopenAndDownload(page: Page, touch: boolean): Pro
     await expect(page.getByText(`Renamed it “Box Hill walk ${tag}”.`)).toBeVisible();
     await press(page.getByRole("button", { name: "Delete" }));
     await press(page.getByRole("alertdialog").getByRole("button", { name: "Delete route" }));
-    await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+    // Back where it was opened from: the form on a desktop, the list of routes on a phone.
+    if (!touch) await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
     await expect(
       page.getByRole("region", { name: "Saved routes" }).getByRole("button", { name: new RegExp(`Box Hill walk ${tag}`) }),
     ).toHaveCount(0);
@@ -106,4 +116,44 @@ export async function planSaveReopenAndDownload(page: Page, touch: boolean): Pro
     for (const id of ids) await api(page, "DELETE", `/api/maps/markers/${id}`);
     removeStreets();
   }
+}
+
+/**
+ * On a phone: Directions, the end from the list, the start it asks for, Walk in the bar, a stop from the options; the
+ * walk is planned with no button to press, and saved with one press under its own name. Answers the saved route's id,
+ * with Directions ended and the Routes tab open.
+ */
+async function planAndSaveOnPhone(page: Page, ends: { from: string; via: string; to: string }): Promise<string> {
+  await page.locator('[role="tabpanel"]').getByRole("button", { name: "Directions", exact: true }).first().tap();
+  await page
+    .getByRole("dialog", { name: "Where to?" })
+    .getByRole("option", { name: new RegExp(`^${ends.to}`) })
+    .tap();
+  await page
+    .getByRole("dialog", { name: "Where from?" })
+    .getByRole("option", { name: new RegExp(`^${ends.from}`) })
+    .tap();
+  const asked = page.waitForRequest((request) => request.url().endsWith("/api/streets/route"));
+  await page.getByRole("radiogroup", { name: "Way of travelling" }).getByRole("radio", { name: "Walk" }).tap();
+  expect((await asked).postDataJSON()).toMatchObject({ mode: "walk" });
+  const sheet = page.getByRole("region", { name: "Directions" });
+  await sheet.getByRole("button", { name: "Options" }).tap();
+  await sheet.getByRole("button", { name: "Add a stop" }).tap();
+  await page
+    .getByRole("dialog", { name: "Stop 1: where?" })
+    .getByRole("option", { name: new RegExp(`^${ends.via}`) })
+    .tap();
+  await page.getByRole("button", { name: "Done" }).tap();
+  await expect(page.getByRole("button", { name: `Via ${ends.via}` })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: /\d+(\.\d)? km/ })).toBeVisible({ timeout: 30_000 });
+  // The turns are listed, one per line.
+  await sheet.getByRole("button", { name: "Steps" }).tap();
+  await expect(sheet.getByRole("list", { name: "Directions" }).getByText("Turn left onto Church Street (B2450)")).toBeAttached();
+  await sheet.getByRole("button", { name: "Map" }).tap();
+  const saving = page.waitForResponse((response) => response.url().endsWith("/api/roads/routes") && response.request().method() === "POST");
+  await sheet.getByRole("button", { name: "Save" }).tap();
+  const id = ((await (await saving).json()) as { id: string }).id;
+  await expect(sheet.getByText(`Saved as “${ends.from} to ${ends.to}”, with its directions.`)).toBeVisible();
+  await page.getByRole("button", { name: "End directions" }).tap();
+  return id;
 }
