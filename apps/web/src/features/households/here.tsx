@@ -95,10 +95,10 @@ export function HereChooser({
       ) : null}
       {how === "map" ? (
         <div className="grid gap-2">
-          <p className="text-small text-ink-muted">Press the map where it is now.</p>
+          <p className="text-small text-ink-muted">Press the map where the household is.</p>
           <Suspense fallback={<Skeleton className="h-64" />}>
             <PlanMap
-              label="Map: press where the household is now"
+              label="Map: press where the household is"
               places={places}
               onPress={({ position, place }) =>
                 onChange({ lat: position.lat, lon: position.lon, name: place?.name ?? value?.name ?? null, source: "map" })

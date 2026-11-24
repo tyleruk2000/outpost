@@ -241,28 +241,6 @@ export function Board({ board, flipped, selected, targets, marked, checked, drag
                       canDrag && "touch-none",
                     )}
                   >
-                    {column === 0 ? (
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "pointer-events-none absolute top-0.5 left-1 text-micro leading-none",
-                          !light ? "text-game-board-mark-on-dark" : "text-game-board-mark-on-light",
-                        )}
-                      >
-                        {rankOf(square) + 1}
-                      </span>
-                    ) : null}
-                    {row === 7 ? (
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "pointer-events-none absolute right-1 bottom-0.5 text-micro leading-none",
-                          !light ? "text-game-board-mark-on-dark" : "text-game-board-mark-on-light",
-                        )}
-                      >
-                        {FILES[fileOf(square)]}
-                      </span>
-                    ) : null}
                     {isMarked ? <span aria-hidden className="absolute inset-0 bg-game-board-hint opacity-35" /> : null}
                     {checked === square ? (
                       <span aria-hidden className="absolute inset-[2px] rounded-full border-[3px] border-dashed border-danger" />
@@ -283,6 +261,29 @@ export function Board({ board, flipped, selected, targets, marked, checked, drag
                       )
                     ) : null}
                   </button>
+                  {/* Beside the button, not in it: a mark drawn in it is words of its name that its name does not say (axe). */}
+                  {column === 0 ? (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute top-0.5 left-1 text-micro leading-none",
+                        !light ? "text-game-board-mark-on-dark" : "text-game-board-mark-on-light",
+                      )}
+                    >
+                      {rankOf(square) + 1}
+                    </span>
+                  ) : null}
+                  {row === 7 ? (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute right-1 bottom-0.5 text-micro leading-none",
+                        !light ? "text-game-board-mark-on-dark" : "text-game-board-mark-on-light",
+                      )}
+                    >
+                      {FILES[fileOf(square)]}
+                    </span>
+                  ) : null}
                 </div>
               );
             })}

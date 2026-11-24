@@ -509,7 +509,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
       </Section>
 
       <LeaveGuard when={dirty} what="the changes to this sheet" />
-      <SaveBar>
+      <SaveBar stuck={dirty}>
         <Button variant="primary" loading={busy} disabled={!dirty || !name.trim()} onClick={() => void send(false)}>
           Save
         </Button>

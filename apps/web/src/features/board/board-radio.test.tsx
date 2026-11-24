@@ -282,7 +282,7 @@ describe("a radio message on the board", () => {
     serve([LONGFAST]);
     show();
     await toLongFast();
-    await userEvent.click(screen.getByRole("button", { name: "What to do with Hilltop base's message" }));
+    await userEvent.click(screen.getByRole("button", { name: /^What to do with Hilltop base's message/ }));
     expect(await screen.findByRole("menuitem", { name: /Remove/ })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /Change/ })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("menuitem", { name: /Remove/ }));

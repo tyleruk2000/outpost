@@ -81,7 +81,10 @@ no update check, no background refresh, no telemetry.
 connected; Outpost does not probe the internet. Explore keeps the last known details,
 downloads resume by themselves or wait for **Retry**, and search notes any source it
 could not reach. "Server not responding" means the browser cannot reach Outpost; notes
-being edited wait and retry. The messages are in [troubleshooting.md](troubleshooting.md).
+being edited wait and retry. On every screen a line under the top bar then says **Can't reach
+Outpost**, and on a phone More carries a red dot. Outpost asks again every few seconds: when
+the server answers, the line goes and the screen is fetched again by itself (**Try now** asks
+at once). The messages are in [troubleshooting.md](troubleshooting.md).
 
 ## A phone out of reach of the server
 

@@ -320,7 +320,10 @@ export function SuppliesSection({
             ? "Nothing to add to the shopping list"
             : `Add ${plural(toBuy.length, "missing or low thing", "missing or low things")} to the shopping list`}
         </Button>
-        <Link to="/prepare/supplies?view=shopping" className="text-small text-primary underline underline-offset-2">
+        <Link
+          to="/prepare/supplies?view=shopping"
+          className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6"
+        >
           Open the shopping list
         </Link>
       </div>

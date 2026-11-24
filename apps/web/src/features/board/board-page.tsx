@@ -1,7 +1,7 @@
 /**
  * Messages: the household's board on the home network. One shared place, like a board on
- * the kitchen wall: everyone's latest check-in at the top, the history beneath with the
- * newest at the bottom, then somewhere to write and a way to send a file to another device.
+ * the kitchen wall: everyone's latest check-in at the top, then somewhere to write, the history
+ * beneath with the newest at the bottom, and a way to send a file to another device.
  *
  * Not a messenger: no private messages, read receipts, typing indicators or reactions.
  * New messages arrive by the live-events stream (`board.changed` refreshes every "board"
@@ -101,6 +101,14 @@ export default function BoardPage() {
         </Section>
       )}
 
+      {/* Above the board, not under it: under a week of check-ins the box to write in was 1,500 px down a phone's screen
+          and moved further as the board grew (owner's review, 24 Nov 2026). */}
+      {name ? (
+        <Section title={channel ? "Write by radio" : "Write"}>
+          <WriteMessage key={channel?.id ?? BOARD_CHANNEL} name={name} channel={channel} />
+        </Section>
+      ) : null}
+
       <Section
         title={channel ? channel.label : "The board"}
         description={
@@ -148,18 +156,11 @@ export default function BoardPage() {
         )}
       </Section>
 
-      {name ? (
-        <>
-          <Section title={channel ? "Write by radio" : "Write"} className="mt-8">
-            <WriteMessage key={channel?.id ?? BOARD_CHANNEL} name={name} channel={channel} />
-          </Section>
-          {/* A file cannot go by radio. */}
-          {channel ? null : (
-            <Section title="Send a file">
-              <SendFile name={name} summary={summary.data} />
-            </Section>
-          )}
-        </>
+      {/* A file cannot go by radio. */}
+      {name && !channel ? (
+        <Section title="Send a file" className="mt-8">
+          <SendFile name={name} summary={summary.data} />
+        </Section>
       ) : null}
 
       {editing && name ? <EditDialog key={editing.id} message={editing} name={name} onClose={() => setEditing(null)} /> : null}

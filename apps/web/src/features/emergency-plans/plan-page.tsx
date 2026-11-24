@@ -19,6 +19,7 @@ import { Copy, ListChecks, Printer, TriangleAlert } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 import { LeaveGuard } from "@/components/leave-guard";
 import { ErrorState, JumpLinks, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -355,7 +356,10 @@ export default function EmergencyPlanPage() {
           title="Time to look this plan over"
           className="mb-6"
           action={
-            <Button loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
+            <Button
+              loading={reviewed.isPending}
+              onClick={() => reviewed.mutate(undefined, { onSuccess: () => toast.success("Marked as looked over today.") })}
+            >
               Mark as looked over
             </Button>
           }
@@ -429,7 +433,12 @@ export default function EmergencyPlanPage() {
             </Field>
           </div>
           {!review.due ? (
-            <Button variant="ghost" className="mt-2" loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
+            <Button
+              variant="ghost"
+              className="mt-2"
+              loading={reviewed.isPending}
+              onClick={() => reviewed.mutate(undefined, { onSuccess: () => toast.success("Marked as looked over today.") })}
+            >
               Mark as looked over today
             </Button>
           ) : null}

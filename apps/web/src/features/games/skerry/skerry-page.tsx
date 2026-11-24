@@ -227,7 +227,7 @@ function Skerry({ levels }: { levels: Level[] }) {
             autoComplete="off"
             spellCheck={false}
             enterKeyHint="send"
-            className="min-h-11 w-full min-w-0 flex-1 bg-transparent text-game-term-ink caret-game-term-prompt outline-none md:min-h-8 md:pointer-coarse:min-h-11"
+            className="min-h-11 w-full min-w-0 flex-1 bg-transparent text-game-term-ink caret-game-term-prompt outline-none max-md:text-body md:min-h-8 md:pointer-coarse:min-h-11 md:pointer-coarse:text-body"
           />
         </form>
       </div>
@@ -236,7 +236,7 @@ function Skerry({ levels }: { levels: Level[] }) {
         <Button
           {...keyProps(() => setTyped((current) => `${current.replace(/\s+$/, "")} | `))}
           aria-label="Type a pipe, |"
-          className="min-w-11 md:min-w-8"
+          className="min-w-11 md:min-w-8 md:pointer-coarse:min-w-11"
         >
           |
         </Button>

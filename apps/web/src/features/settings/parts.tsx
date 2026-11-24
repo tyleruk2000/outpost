@@ -132,7 +132,7 @@ export function TextSetting({
       onChange={(event) => setDraft(event.target.value)}
       onBlur={() => draft.trim() !== value && onSave(draft.trim())}
       onKeyDown={(event) => event.key === "Enter" && (event.target as HTMLInputElement).blur()}
-      className={mono ? "w-72 max-w-full font-mono text-small" : "w-72 max-w-full"}
+      className={mono ? "w-72 max-w-full font-mono text-small max-md:text-body md:pointer-coarse:text-body" : "w-72 max-w-full"}
     />
   );
 }

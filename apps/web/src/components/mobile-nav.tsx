@@ -1,10 +1,11 @@
 import { ChevronRight, Ellipsis, Search, X } from "lucide-react";
 import { Dialog as Sheet } from "radix-ui";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { HouseholdSwitcher } from "@/features/households/switcher";
 import { useActiveJobs } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { useServerDown } from "./connection-notice";
 import { useFocusClearOfBars } from "./focus-clear";
 import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
@@ -143,6 +144,23 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   // search is the first row of More. A task with a bar of its own puts the bar of screens away (shell-bars.ts).
   const ownBar = ownsTopBar(pathname);
   const taskInHand = useBottomBarHidden();
+  const serverDown = useServerDown();
+  // The sheet opens with the screen in view in sight: under an open group it was a screen and a half down (owner's review).
+  const sheet = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const frame = requestAnimationFrame(() => {
+      const box = sheet.current;
+      const current = box?.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!box || !current) return;
+      // The sheet's own scroll only, not the page's behind it (scrollIntoView moves every box round it).
+      const row = current.getBoundingClientRect();
+      const room = box.getBoundingClientRect();
+      const by = row.top + row.height / 2 - (room.top + room.height / 2);
+      if (row.bottom > room.bottom || row.top < room.top + 56) box.scrollTop += by;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [moreOpen]);
 
   return (
     <>
@@ -169,7 +187,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
         ref={bar}
         aria-label="Main"
         hidden={taskInHand}
-        className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] backdrop-blur-sm md:hidden"
+        className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] md:hidden"
       >
         {tabs.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === "/"} className={tab}>
@@ -181,19 +199,39 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
           <Sheet.Trigger className={cn(tab, inMore && "text-primary")} aria-current={inMore ? "true" : undefined}>
             <span className="relative block">
               <Ellipsis aria-hidden className="size-[22px]" strokeWidth={1.6} />
-              {downloads > 0 ? (
-                <span aria-hidden data-lamp className="absolute -top-0.5 -right-1.5 size-2 rounded-full bg-lamp ring-2 ring-page" />
+              {serverDown || downloads > 0 ? (
+                <span
+                  aria-hidden
+                  data-lamp
+                  className={cn("absolute -top-0.5 -right-1.5 size-2 rounded-full ring-2 ring-page", serverDown ? "bg-danger" : "bg-lamp")}
+                />
               ) : null}
             </span>
             More
-            {downloads > 0 ? <span className="sr-only">, {downloads === 1 ? "a download" : `${downloads} downloads`} running</span> : null}
+            {serverDown ? (
+              <span className="sr-only">, the server is not responding</span>
+            ) : downloads > 0 ? (
+              <span className="sr-only">, {downloads === 1 ? "a download" : `${downloads} downloads`} running</span>
+            ) : null}
           </Sheet.Trigger>
           <Sheet.Portal>
             <Sheet.Overlay className="fixed inset-0 z-(--z-overlay) bg-overlay data-[state=open]:animate-fade" />
-            <Sheet.Content className="scroll-quiet fixed inset-x-0 bottom-0 z-(--z-dialog) max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-[14px] bg-spine px-3 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] text-spine-ink shadow-dialog data-[state=open]:animate-sheet focus:outline-none">
-              <Sheet.Title className="sr-only">More</Sheet.Title>
+            <Sheet.Content
+              ref={sheet}
+              className="scroll-quiet fixed inset-x-0 bottom-0 z-(--z-dialog) max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-[14px] bg-spine px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] text-spine-ink shadow-dialog data-[state=open]:animate-sheet focus:outline-none"
+            >
+              {/* Its name and a way out stay at the top as the sheet scrolls: Close was the last row, 1,500 px down, and the
+                  grey handle that stood here looked as if it could be pulled down, and could not (owner's review). */}
+              <div className="sticky top-0 z-10 -mx-3 mb-1 flex items-center justify-between gap-3 bg-spine py-1.5 pr-1.5 pl-6">
+                <Sheet.Title className="text-small font-semibold text-spine-ink-muted">More</Sheet.Title>
+                <Sheet.Close
+                  aria-label="Close"
+                  className="grid size-11 place-content-center rounded-control text-spine-ink-muted hover:text-spine-ink"
+                >
+                  <X aria-hidden className="size-5" strokeWidth={1.6} />
+                </Sheet.Close>
+              </div>
               <Sheet.Description className="sr-only">Every other screen, each with the screens under it</Sheet.Description>
-              <div aria-hidden className="mx-auto mb-2 h-1 w-9 rounded-full bg-spine-border" />
               {ownBar ? (
                 <button
                   type="button"
@@ -213,14 +251,8 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
                 <SheetPart items={upkeepNav} label="Upkeep" close={close} />
               </div>
               <div className="mt-2 border-t border-spine-border pt-2">
-                <Lamp />
+                <Lamp className="min-h-11" />
               </div>
-              {/* A way out a screen reader can reach on a phone: VoiceOver's and TalkBack's gestures for Escape do not reach
-                  every browser, and the dimmed page behind cannot be reached while the sheet is open. */}
-              <Sheet.Close className={cn(rowClass, "mt-2 w-full border-t border-spine-border")}>
-                <X aria-hidden className="size-5 shrink-0" strokeWidth={1.6} />
-                Close
-              </Sheet.Close>
             </Sheet.Content>
           </Sheet.Portal>
         </Sheet.Root>

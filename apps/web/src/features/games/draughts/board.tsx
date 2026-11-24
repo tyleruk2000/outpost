@@ -233,7 +233,6 @@ export function Board({ board, flipped, selected, targets, taking, marked, dragg
                       canDrag && "touch-none",
                     )}
                   >
-                    {edgeLabels}
                     {selected === square ? (
                       <span aria-hidden className="absolute inset-[3px] rounded-[3px] border-[3px] border-game-board-hint" />
                     ) : null}
@@ -244,6 +243,8 @@ export function Board({ board, flipped, selected, targets, taking, marked, dragg
                     ) : null}
                     {isTarget ? <span aria-hidden className="absolute size-[30%] rounded-full bg-game-board-hint opacity-90" /> : null}
                   </button>
+                  {/* Beside the button, not in it: a mark drawn in it is words of its name that its name does not say (axe). */}
+                  {edgeLabels}
                 </div>
               );
             })}

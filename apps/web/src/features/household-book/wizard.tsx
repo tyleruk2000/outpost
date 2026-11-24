@@ -82,6 +82,19 @@ export function BookWizard({ answers: initial, household, markers, country, shee
     navigate(to);
   };
 
+  // A new step starts at its heading, which takes the focus so that a screen reader says which step it is: it used to
+  // open at the old step's scroll, part-way down the new one with its heading out of sight (owner's review, 24 Nov 2026).
+  const heading = useRef<HTMLHeadingElement>(null);
+  const opened = useRef(step);
+  useEffect(() => {
+    if (opened.current === step) return;
+    opened.current = step;
+    const element = heading.current;
+    if (!element) return;
+    element.focus({ preventScroll: true });
+    element.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [step]);
+
   const go = async (to: number | "done") => {
     try {
       await save(answers);
@@ -116,7 +129,7 @@ export function BookWizard({ answers: initial, household, markers, country, shee
           ))}
         </ol>
       </nav>
-      <h2 className="font-title text-heading text-ink">
+      <h2 ref={heading} tabIndex={-1} className="scroll-mt-20 font-title text-heading text-ink focus:outline-none">
         Step {index + 1} of {BOOK_STEPS.length}: {BOOK_STEPS[index]!.label}
       </h2>
 
@@ -150,10 +163,13 @@ export function BookWizard({ answers: initial, household, markers, country, shee
             <ArrowLeft /> Back
           </Button>
         ) : null}
-        <Button variant="ghost" onClick={() => void go("done")}>
+      </SaveBar>
+      {/* Under the bar, not in it: with all three the bar took two lines, a fifth of a phone's screen (owner's review). */}
+      {index < BOOK_STEPS.length - 1 ? (
+        <Button variant="ghost" className="-mt-3 justify-self-start" onClick={() => void go("done")}>
           Save and stop here
         </Button>
-      </SaveBar>
+      ) : null}
     </div>
   );
 }
@@ -277,7 +293,7 @@ function PeopleStep({ answers, set, household, sheets }: StepProps & { household
           })}
         </Rows>
       )}
-      <Section level={3} title="Add someone" description="Change or take anyone out under Prepare › Households.">
+      <Section level={3} title="Add someone" description="Change or take anyone out under Preparedness › Households.">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
           <Field label="Name">
             {(ids) => <Input {...ids} value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />}

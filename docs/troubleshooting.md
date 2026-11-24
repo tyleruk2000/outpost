@@ -52,9 +52,9 @@ Set `OUTPOST_HTTPS_PORT` to a free port. Plain HTTP still works.
 A script called the API without `-H "X-Outpost-Request: 1"`
 ([api.md](api.md#the-x-outpost-request-header)).
 
-### "The server is not responding"
+### "The server is not responding" or "Can't reach Outpost"
 
-Wait a few seconds after a start. Otherwise check the container or service is running
+Wait a few seconds after a start: the screen comes back by itself once the server answers. Otherwise check the container or service is running
 (`docker compose ps`) and read the log. Behind a reverse proxy, make sure `/api/events`
 is not buffered.
 

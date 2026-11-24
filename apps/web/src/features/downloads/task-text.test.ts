@@ -9,6 +9,7 @@ import {
   rateReadings,
   rateWords,
   secondsLeft,
+  systemFailure,
   taskStateWords,
   timeLeftWords,
   waitingWords,
@@ -134,5 +135,16 @@ describe("a task in words", () => {
       ["Started again", "Attempt 2 of 3", "normal"],
       ["Finished", null, "success"],
     ]);
+  });
+});
+
+describe("a failure the system reported in its own terms", () => {
+  it("is said in words, with what to do, and the system's own words are left for the details", () => {
+    const said = systemFailure("EACCES: permission denied, open '/valhalla/request.json.part'");
+    expect(said?.words).toBe("Outpost was not allowed to write a file it needs.");
+    expect(said?.advice).toMatch(/until then it fails the same way/);
+    expect(systemFailure("ENOSPC: no space left on device, write")?.words).toBe("The drive is full.");
+    expect(systemFailure("The download stopped: the server said 404.")).toBeNull();
+    expect(systemFailure(null)).toBeNull();
   });
 });

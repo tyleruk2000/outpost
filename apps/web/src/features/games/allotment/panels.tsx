@@ -379,7 +379,7 @@ function CropCard({ plot, id, hemisphere }: { plot: AllotmentState; id: CropId; 
   return (
     <li>
       <details className="group">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-2 md:min-h-10 [&::-webkit-details-marker]:hidden">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-2 md:min-h-10 md:pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
           <ChevronRight
             aria-hidden
             className="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"

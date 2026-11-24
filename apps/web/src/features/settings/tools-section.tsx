@@ -201,7 +201,7 @@ function OffForModels({
           maxLength={200}
           list={choices.length > 0 ? "tools-off-model-choices" : undefined}
           onChange={(event) => setDraft(event.target.value)}
-          className="w-72 max-w-full font-mono text-small"
+          className="w-72 max-w-full font-mono text-small max-md:text-body md:pointer-coarse:text-body"
         />
         {choices.length > 0 ? (
           <datalist id="tools-off-model-choices">

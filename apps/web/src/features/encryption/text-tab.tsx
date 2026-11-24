@@ -333,7 +333,7 @@ function DecryptText({ shelf, onSignedOnly }: { shelf: Shelf; onSignedOnly(text:
             onChange={(event) => setArmored(event.target.value)}
             rows={8}
             spellCheck={false}
-            className="font-mono text-[0.8125rem] leading-5"
+            className="font-mono text-[0.8125rem] leading-5 max-md:text-body md:pointer-coarse:text-body"
           />
         )}
       </Field>
@@ -547,7 +547,7 @@ function VerifyText({ shelf, initial }: { shelf: Shelf; initial: string }) {
             }}
             rows={10}
             spellCheck={false}
-            className="font-mono text-[0.8125rem] leading-5"
+            className="font-mono text-[0.8125rem] leading-5 max-md:text-body md:pointer-coarse:text-body"
           />
         )}
       </Field>

@@ -277,7 +277,7 @@ function PeopleForm({ household, households }: { household: HouseholdDto; househ
           ) : null
         }
       />
-      <SaveBar>
+      <SaveBar stuck={dirty || Boolean(problem)}>
         <Button type="submit" variant="primary" loading={save.isPending}>
           Save people
         </Button>

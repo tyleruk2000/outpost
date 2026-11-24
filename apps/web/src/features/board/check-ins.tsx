@@ -21,7 +21,7 @@ import { errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
-import { currentPosition, positionAvailable, useCheckIn } from "./data";
+import { currentPosition, positionAvailable, useCheckIn, useRemove } from "./data";
 import { checkInWords, needsHelp } from "./words";
 
 export function CheckInStrip({ summary }: { summary: BoardSummaryResponse | undefined }) {
@@ -66,6 +66,7 @@ const said: Record<CheckInStatus, string> = {
 /** The place field and the two one-press check-ins, with "More" for words of your own and a position. */
 export function CheckInControls({ name, channel = null }: { name: string; channel?: MeshChannel | null }) {
   const checkIn = useCheckIn(channel?.id);
+  const remove = useRemove();
   const [place, setPlace] = useState("");
   const [more, setMore] = useState(false);
 
@@ -73,8 +74,27 @@ export function CheckInControls({ name, channel = null }: { name: string; channe
     checkIn.mutate(
       { author: name, ...input },
       {
-        onSuccess: () => {
-          toast.success(said[input.status]);
+        onSuccess: ({ message }) => {
+          // One press sends it to every device: a press by mistake can be taken back from the toast (owner's review). Not
+          // by radio, which cannot call back what went out.
+          toast.success(
+            said[input.status],
+            channel
+              ? undefined
+              : {
+                  action: {
+                    label: "Undo",
+                    onClick: () =>
+                      remove.mutate(
+                        { id: message.id, by: name },
+                        {
+                          onSuccess: () => toast.success("Check-in taken back."),
+                          onError: (error) => notify.error(errorMessage(error)),
+                        },
+                      ),
+                  },
+                },
+          );
           setPlace("");
           after?.();
         },

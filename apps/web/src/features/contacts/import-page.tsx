@@ -297,7 +297,10 @@ function PreviewStep({
         </Notice>
       ) : null}
 
-      <div className="sticky bottom-0 z-(--z-sticky) mt-8 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-page py-3 max-md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+      <div
+        data-sticky-bottom
+        className="sticky bottom-0 z-(--z-sticky) mt-8 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-page py-3 max-md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))]"
+      >
         <Button onClick={onCancel} disabled={apply.isPending}>
           Cancel
         </Button>

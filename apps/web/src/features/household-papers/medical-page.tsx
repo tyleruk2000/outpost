@@ -128,8 +128,8 @@ export default function MedicalPage() {
                   </Button>
                 }
               >
-                The household's people are kept under Prepare › Households, so that food, water and these sheets count the same people. Or
-                make a sheet for someone by name below.
+                The household's people are kept under Preparedness › Households, so that food, water and these sheets count the same people.
+                Or make a sheet for someone by name below.
               </EmptyState>
             ) : (
               <Rows>

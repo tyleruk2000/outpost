@@ -11,10 +11,12 @@ type Listener = (payload: { id?: string; data?: unknown }) => void;
 interface EventsValue {
   /** False while the connection to the server is down. */
   connected: boolean;
+  /** Tries the stream again now rather than after the wait (the server answered a plain question). */
+  reconnect(): void;
   subscribe(type: string, listener: Listener): () => void;
 }
 
-const EventsContext = createContext<EventsValue>({ connected: true, subscribe: () => () => {} });
+const EventsContext = createContext<EventsValue>({ connected: true, reconnect: () => {}, subscribe: () => () => {} });
 
 /** Which cached queries each server event makes stale. Keys are query-key prefixes. */
 const invalidations: Record<string, string[][]> = {
@@ -134,6 +136,7 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
   const client = useQueryClient();
   const [connected, setConnected] = useState(true);
   const listeners = useRef(new Map<string, Set<Listener>>());
+  const reconnectNow = useRef(() => {});
 
   useEffect(() => {
     if (!enabled) return;
@@ -269,6 +272,7 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
         open();
       }
     };
+    reconnectNow.current = onOnline;
 
     // When the list of locations is fetched again, the lists that depend on a drive being
     // there are fetched only if a location came, went or moved.
@@ -291,6 +295,7 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
     window.addEventListener("pageshow", onPageShow);
     window.addEventListener("online", onOnline);
     return () => {
+      reconnectNow.current = () => {};
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", letGo);
       window.removeEventListener("pageshow", onPageShow);
@@ -305,6 +310,7 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
   const value = useMemo<EventsValue>(
     () => ({
       connected,
+      reconnect: () => reconnectNow.current(),
       subscribe(type, listener) {
         let set = listeners.current.get(type);
         if (!set) {
@@ -322,6 +328,9 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
 }
 
 export const useServerConnection = () => useContext(EventsContext).connected;
+
+/** Opens the live stream again at once, when the server is known to answer again. */
+export const useReconnect = () => useContext(EventsContext).reconnect;
 
 /** Run `listener` whenever the server publishes an event of `type`. */
 export function useServerEvent(type: string, listener: Listener): void {

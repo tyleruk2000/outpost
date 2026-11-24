@@ -27,6 +27,7 @@ import { Badge, Segmented } from "@/components/ui/misc";
 import { SETTINGS_MODEL } from "@/features/chat/chat-data";
 import { CommandLine, RecommendedModels } from "@/features/setup/recommended-models";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 // A long address ("ollama.com/download") breaks rather than running off a narrow screen with large text.
 const link = "text-primary underline decoration-1 underline-offset-2 [overflow-wrap:anywhere] hover:decoration-2";
@@ -194,7 +195,7 @@ function Section({ section, system, choose, level }: { section: GuideSection; sy
         ))}
         {opens ? (
           <p>
-            <Link to={opens.to} className={link}>
+            <Link to={opens.to} className={cn(link, "inline-flex min-h-11 items-center md:min-h-6")}>
               {opens.label}
             </Link>
           </p>

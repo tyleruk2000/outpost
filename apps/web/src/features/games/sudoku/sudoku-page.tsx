@@ -192,7 +192,7 @@ export default function SudokuPage() {
             setByKeyboard(keyboard);
           }}
         />
-        <div className="mt-4 grid gap-3 lg:mt-0">
+        <div className="mt-3 grid gap-2 lg:mt-0 lg:gap-3">
           {game.finished ? (
             <div className="grid gap-3">
               <p className="text-lead text-ink">

@@ -95,8 +95,10 @@ async function request<T>(
         ...(keepalive ? { keepalive } : {}),
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError" && !timeout?.timedOut()) throw error;
+      // Heard by the line that says the server cannot be reached (components/connection-notice.tsx).
+      window.dispatchEvent(new Event(UNREACHABLE_EVENT));
       if (timeout?.timedOut()) throw new ApiError(0, "timeout", TIMEOUT_MESSAGE);
-      if (error instanceof DOMException && error.name === "AbortError") throw error;
       throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
     }
     try {
@@ -110,6 +112,9 @@ async function request<T>(
     timeout?.done();
   }
 }
+
+/** Sent on `window` when a request had no answer at all: the server is stopped, unplugged or stuck. */
+export const UNREACHABLE_EVENT = "outpost:unreachable";
 
 /** How long a GET waits for its answer before it is given up. */
 export const GET_TIMEOUT_MS = 15_000;

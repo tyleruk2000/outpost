@@ -56,7 +56,14 @@ export function useFocusClearOfBars(top: RefObject<HTMLElement | null>, bottom: 
           const box = stuck.getBoundingClientRect();
           if (box.top <= clearBelow + 1) clearBelow = Math.max(clearBelow, box.bottom);
         }
-        const by = clearance(target.getBoundingClientRect(), clearBelow, bar.getBoundingClientRect().top);
+        // And a form's own bar that stays on the bottom one (Save on a medical sheet) is marked data-sticky-bottom.
+        let clearAbove = bar.getBoundingClientRect().top;
+        for (const stuck of document.querySelectorAll<HTMLElement>("[data-sticky-bottom]")) {
+          if (stuck.contains(target) || stuck.offsetParent === null) continue;
+          const box = stuck.getBoundingClientRect();
+          if (box.bottom >= clearAbove - 1 && box.top < clearAbove) clearAbove = box.top;
+        }
+        const by = clearance(target.getBoundingClientRect(), clearBelow, clearAbove);
         if (by !== 0) window.scrollBy({ top: by, behavior: "instant" });
       });
     };

@@ -158,7 +158,17 @@ function MakeKeyForm({ onMade, onCancel }: { onMade(made: MadeKey): void; onCanc
       <form onSubmit={submit} className="grid gap-5">
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Name" hint="Written in the key for everyone you give it to.">
-            {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required autoFocus />}
+            {(ids) => (
+              <Input
+                {...ids}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                maxLength={120}
+                required
+                autoFocus
+                autoComplete="name"
+              />
+            )}
           </Field>
           <Field label="Email address" optional hint="Also written in the key. Leave it out if the key is not for email.">
             {(ids) => <Input {...ids} type="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={200} />}
@@ -381,7 +391,7 @@ function AddKeyForm({ shelf, onDone, onCancel }: { shelf: Shelf; onDone(): void;
               rows={7}
               spellCheck={false}
               placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----"
-              className="font-mono text-[0.8125rem] leading-5"
+              className="font-mono text-[0.8125rem] leading-5 max-md:text-body md:pointer-coarse:text-body"
             />
           )}
         </Field>

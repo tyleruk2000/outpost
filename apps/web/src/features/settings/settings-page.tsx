@@ -228,7 +228,7 @@ export default function SettingsPage() {
 
           <UpdateSection />
 
-          <BoardSettingsSection settings={s} disabled={disabled} save={save} />
+          <BoardSettingsSection settings={s} save={save} />
           <MeshSettingsSection />
           <RadioLicenceSettingsSection settings={s} disabled={disabled} save={save} />
           <ReceiversSettingsSection />

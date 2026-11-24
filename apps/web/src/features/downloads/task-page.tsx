@@ -31,6 +31,7 @@ import {
   rateTick,
   rateWords,
   secondsLeft,
+  systemFailure,
   taskNowWords,
   taskStateWords,
   timeLeftWords,
@@ -138,6 +139,7 @@ function NowPart({ detail, job }: { detail: JobDetail; job: JobDto }) {
         .filter(Boolean)
         .join(", ")
     : "";
+  const system = job.state === "failed" ? systemFailure(job.error) : null;
 
   return (
     <Part title={ended ? "How it ended" : "Now"}>
@@ -150,9 +152,15 @@ function NowPart({ detail, job }: { detail: JobDetail; job: JobDto }) {
         <div className="max-w-[70ch]">
           <p className="flex items-start gap-2 text-body text-danger">
             <CircleAlert aria-hidden className="mt-1 size-4 shrink-0" />
-            <span>{job.error ?? "It stopped with an error."}</span>
+            <span>{system?.words ?? job.error ?? "It stopped with an error."}</span>
           </p>
-          <p className="mt-2 text-small text-ink">{failureAdvice(job)}</p>
+          <p className="mt-2 text-small text-ink">{system?.advice ?? failureAdvice(job)}</p>
+          {system ? (
+            <details className="mt-2 text-small text-ink-muted">
+              <summary className="min-h-11 cursor-pointer py-2.5 md:min-h-6 md:py-0.5">What the system said</summary>
+              <p className="mt-1 font-mono break-words">{job.error}</p>
+            </details>
+          ) : null}
         </div>
       ) : job.state === "cancelled" ? (
         <p className="text-body text-ink">

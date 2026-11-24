@@ -276,7 +276,10 @@ export function HouseholdView({ household }: { household: Household }) {
       </Section>
 
       <LeaveGuard when={dirty && !save.isPending} what="the changes to the household" query />
-      <div className="sticky bottom-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))] z-(--z-sticky) mt-8 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0">
+      <div
+        data-sticky-bottom
+        className="sticky bottom-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))] z-(--z-sticky) mt-8 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0"
+      >
         <Button type="submit" variant="primary" loading={save.isPending}>
           Save household
         </Button>

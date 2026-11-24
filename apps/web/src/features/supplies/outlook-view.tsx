@@ -156,7 +156,7 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
               </p>
             ) : null}
             <details className="text-small">
-              <summary className="cursor-pointer text-ink select-none">How this is worked out</summary>
+              <summary className="cursor-pointer py-2.5 text-ink select-none md:py-0.5">How this is worked out</summary>
               <ul className="mt-2 grid list-disc gap-1.5 pl-5">
                 <li>
                   Food is counted by energy: each row's kcal (per pack, or per 100 g times the weight) times how many. Rows with no energy

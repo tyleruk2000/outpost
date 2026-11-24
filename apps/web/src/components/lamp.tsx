@@ -30,7 +30,7 @@ export function useStationStatus(): { tone: Tone; label: string; to: string } {
   return { tone: "quiet", label: "Ready offline", to: "/storage" };
 }
 
-export function Lamp({ collapsed }: { collapsed?: boolean }) {
+export function Lamp({ collapsed, className }: { collapsed?: boolean; className?: string }) {
   const status = useStationStatus();
   const glyph = {
     quiet: "bg-spine-ink-muted/60",
@@ -45,6 +45,7 @@ export function Lamp({ collapsed }: { collapsed?: boolean }) {
       className={cn(
         "flex items-center gap-3 rounded-control px-2.5 py-2 text-small text-spine-ink-muted transition-colors hover:bg-spine-raised hover:text-spine-ink",
         collapsed && "justify-center px-0",
+        className,
       )}
     >
       <span aria-hidden className={cn("size-2 shrink-0 rounded-[2px]", glyph)} />

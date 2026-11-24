@@ -206,6 +206,39 @@ function atWords(at: number, now: number): string {
 
 const lowerFirst = (text: string) => (text ? text[0]!.toLowerCase() + text.slice(1) : text);
 
+/**
+ * A failure the system reported in its own terms ("EACCES: permission denied, open '/valhalla/…'"), said in words,
+ * with what to do: Retry fails the same way until the cause is put right (owner's review, 24 Nov 2026). Null for an
+ * error that is already in words.
+ */
+export function systemFailure(error: string | null | undefined): { words: string; advice: string } | null {
+  const code = /\b(EACCES|EPERM|EROFS|ENOSPC|EDQUOT|ENOENT)\b/.exec(error ?? "")?.[1];
+  switch (code) {
+    case "EACCES":
+    case "EPERM":
+      return {
+        words: "Outpost was not allowed to write a file it needs.",
+        advice:
+          "The folder belongs to another user on the computer Outpost runs on. Give Outpost's user the right to write there, then try again: until then it fails the same way.",
+      };
+    case "EROFS":
+      return {
+        words: "The drive it writes to can only be read.",
+        advice: "Mount the drive so that it can be written to, then try again.",
+      };
+    case "ENOSPC":
+    case "EDQUOT":
+      return { words: "The drive is full.", advice: "Make room on it under Storage, then try again." };
+    case "ENOENT":
+      return {
+        words: "A file or folder it needs is not there.",
+        advice: "If a drive was disconnected, reconnect it under Storage, then try again.",
+      };
+    default:
+      return null;
+  }
+}
+
 /** What to do about a task that failed, in a sentence. */
 export function failureAdvice(job: JobLike): string {
   const kind = taskKind(job.type);

@@ -311,7 +311,7 @@ describe("the Messages screen", () => {
       "POST /api/board/messages/m1/remove": { message: message({ body: "", removed: { by: "Sam", at: Date.now() } }) },
     });
     show(<BoardPage />);
-    await userEvent.click(await screen.findByRole("button", { name: "What to do with Alex's message" }));
+    await userEvent.click(await screen.findByRole("button", { name: /^What to do with Alex's message/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /Remove/ }));
     const ask = await screen.findByRole("alertdialog", { name: "Remove Alex's message?" });
     expect(ask).toHaveTextContent(/keeps a line in its place saying that Sam removed it/);
