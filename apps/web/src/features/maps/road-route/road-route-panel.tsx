@@ -1,5 +1,5 @@
 /**
- * "Plan a route" in the Routes tab. Drive: planned, high-level road directions worked out on
+ * Directions in the Routes tab on a wide screen (a phone has directions/, the bar, map and sheet). Drive: planned, high-level road directions worked out on
  * this Outpost from the road networks installed, read as the main roads and the places on
  * their signs ("M20 - Folkestone", "A26 (E17) - Reims (A4)"), saved and printed. Where the
  * optional streets service is installed, three more ways: Door to door (the same lines with
@@ -357,7 +357,7 @@ export function RoadRoutePanel({
         className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4 max-md:gap-3 max-md:pt-3"
       >
         <div>
-          <h3 className="font-title text-lead text-ink">Plan a route</h3>
+          <h3 className="font-title text-lead text-ink">Directions</h3>
           {/* On a phone the fields come first and this is said under them: above them it pushed From below the keyboard. */}
           <p className="mt-1 text-small text-ink-muted max-md:hidden">{intro}</p>
         </div>
@@ -828,7 +828,7 @@ function SavedRoute({
 
   return (
     <div key="saved" className="flex min-h-0 flex-1 flex-col">
-      {header("Plan a route", onBack)}
+      {header("Directions", onBack)}
       <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
         {saved.isPending ? (
           <div className="grid gap-3" aria-busy>

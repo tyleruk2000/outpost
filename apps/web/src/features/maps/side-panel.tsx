@@ -245,8 +245,11 @@ export function MobileSheet({
   onPeekHeight,
   first = "tabs",
   hidden = false,
+  action,
   children,
 }: {
+  /** The one action of the lowered sheet, at the right of its handle under the thumb: Directions. */
+  action?: ReactNode;
   detent: Detent;
   onDetentChange: (detent: Detent) => void;
   /** Told how tall the lowered sheet is, once that has been measured. */
@@ -352,10 +355,15 @@ export function MobileSheet({
         onKeyDown={onKeyDown}
         // 44 px to take hold of, 36 of them inside the sheet: the rest reaches up over the gap above it, so that
         // the handle and the first row of the sheet are never under the same finger.
-        className="-mt-[8px] grid h-[44px] w-full shrink-0 touch-none place-content-center rounded-t-[14px] pt-[8px] focus-visible:-outline-offset-4"
+        className={cn(
+          "-mt-[8px] grid w-full shrink-0 touch-none rounded-t-[14px] pt-[8px] focus-visible:-outline-offset-4",
+          // With an action beside it, the row is as tall as the action's 44 px and the bar sits at its top.
+          action ? "h-[56px] place-items-start justify-center pt-[14px]" : "h-[44px] place-content-center",
+        )}
       >
         <span aria-hidden className="h-1 w-10 rounded-full bg-border-strong" />
       </button>
+      {action ? <div className="absolute top-[4px] right-3 z-[1] flex">{action}</div> : null}
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );

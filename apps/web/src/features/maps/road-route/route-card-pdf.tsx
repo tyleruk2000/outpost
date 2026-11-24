@@ -26,8 +26,19 @@ import { type CardRoute, type RouteMap, routeOverviewMap } from "./route-map";
 const kindOf = (route: CardRoute) =>
   !("mode" in route) ? "Road route" : route.mode === "drive-door" ? "Door to door" : route.mode === "walk" ? "Walk" : "Ride";
 
-export function RouteCardPdf({ route, name, from }: { route: CardRoute; name: string; from: { what: string; path: string } }) {
-  const [open, setOpen] = useState(false);
+export function RouteCardPdf({
+  route,
+  name,
+  from,
+  defaultOpen = false,
+}: {
+  route: CardRoute;
+  name: string;
+  from: { what: string; path: string };
+  /** Open at once: Print on a phone's route goes straight to the card. */
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   if (!open) {
     return (
       <Button className="justify-self-start" onClick={() => setOpen(true)}>

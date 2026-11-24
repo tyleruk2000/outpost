@@ -255,7 +255,7 @@ of what each feature does are in its own guide.
 - **Keeping maps on a phone**: areas of thousands of tiles, and how long a phone takes to work out a
   radio range, are untried; Safari older than 16.4 gets unpacked tiles two to three times larger.
 
-- **Plan a route**: routes built and planned from real Geofabrik source files (Great Britain,
+- **Directions**: routes built and planned from real Geofabrik source files (Great Britain,
   France and smaller ones) on a Mac only; building a country's routes on a Raspberry Pi is unmeasured. Routes
   through Germany and Austria (downloaded by Land) untried. The printed route card not printed or
   followed on a drive; directions compared with one person's own written route only.

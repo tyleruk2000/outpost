@@ -1,7 +1,7 @@
 /** The Places tab: the list of saved places, and the form for adding or changing one. */
 import { haversineMeters, type MarkerColor, type MarkerDto, type MarkerIcon } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, Copy, Move, Search, Star, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Copy, Move, Route as RouteIcon, Search, Star, Trash2, Undo2 } from "lucide-react";
 import { type RefObject, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
@@ -121,7 +121,10 @@ export function PlaceEditor({
   onClose,
   onDelete,
   onNeedRoom,
+  onDirections,
 }: {
+  /** Directions to this place: a saved place only. */
+  onDirections?: () => void;
   draft: PlaceDraft;
   /** The place as it is stored, when changing an existing one. */
   saved: MarkerDto | undefined;
@@ -158,6 +161,11 @@ export function PlaceEditor({
         <Button variant="ghost" size="sm" onClick={onClose} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
           <ArrowLeft /> Places
         </Button>
+        {saved && onDirections ? (
+          <Button variant="primary" size="sm" onClick={onDirections} className="ml-auto">
+            <RouteIcon aria-hidden /> Directions
+          </Button>
+        ) : null}
       </div>
       <div ref={fields} className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
         {/* The Sun line sits straight under the name: on a phone the sheet shows little more than this at first. */}

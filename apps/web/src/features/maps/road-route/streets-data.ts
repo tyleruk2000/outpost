@@ -25,11 +25,12 @@ export const streetsKeys = {
  * Where streets stand. Read once and kept: a build moving on, or streets added or removed,
  * sends `streets.changed`, which asks again.
  */
-export const useStreetsStatus = () =>
+export const useStreetsStatus = (enabled = true) =>
   useQuery({
     queryKey: streetsKeys.status,
     queryFn: () => api.get<StreetsStatusResponse>("/api/streets/status"),
     staleTime: 30_000,
+    enabled,
   });
 
 /** Plans a door-to-door drive, a walk or a ride. One at a time; leaving the panel drops the answer. */

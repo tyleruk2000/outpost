@@ -943,7 +943,7 @@ export function PinCard({
         </Button>
         {onRoadRoute ? (
           <Button size="sm" onClick={onRoadRoute}>
-            <Car aria-hidden /> Plan a route to here
+            <Car aria-hidden /> Directions to here
           </Button>
         ) : null}
       </div>
@@ -1052,10 +1052,10 @@ export function ContextMenu({
       {onRoadRoute ? (
         <>
           <button type="button" role="menuitem" className={item} onClick={() => onRoadRoute("from")}>
-            Plan a route from here
+            Directions from here
           </button>
           <button type="button" role="menuitem" className={item} onClick={() => onRoadRoute("to")}>
-            Plan a route to here
+            Directions to here
           </button>
         </>
       ) : null}

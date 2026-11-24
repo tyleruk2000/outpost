@@ -587,8 +587,21 @@ export class MapEngine {
       else this.map.easeTo({ padding, center, duration: 200 });
     };
     // A fly that is under way is left to finish: stopping it here would strand the map half-way.
-    if (this.map.isMoving()) this.map.once("moveend", apply);
+    if (this.map.isMoving()) this.map.once("moveend", () => this.whenStill(apply));
     else apply();
+  }
+
+  /**
+   * Runs `then` once the map is still. A move ends either by finishing or by being stopped for the next one (a fit
+   * that follows a fit), and in that case the next one has not started yet when the end is told: `then` waits a turn,
+   * and for that one too, rather than stopping it.
+   */
+  private whenStill(then: () => void): void {
+    window.setTimeout(() => {
+      if (this.destroyed) return;
+      if (this.map.isMoving()) this.map.once("moveend", () => this.whenStill(then));
+      else then();
+    }, 0);
   }
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
   /** How much of the bottom padding nothing lies over yet: room kept for a card, which a card's own height is not added to. */

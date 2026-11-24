@@ -122,7 +122,7 @@ describe("ways of travelling", () => {
   it("offers no choice where the streets service is not installed, and says once how to add it", async () => {
     serve(NOT_INSTALLED);
     panel();
-    expect(await screen.findByRole("heading", { name: "Plan a route" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Directions" })).toBeInTheDocument();
     await screen.findByRole("button", { name: "Plan route" });
     expect(await screen.findByText(/come with an optional add-on for the streets/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "How to turn it on" })).toHaveAttribute(

@@ -306,7 +306,7 @@ over it. A regional server knows only its region. Otherwise draw it or import a 
 ### "France has no roads yet", or "The roads kept do not join these points"
 
 A drive needs **Routes** for every country it passes through, added under
-**Maps → Offline maps**. **Plan a route** names the countries missing before you plan, with
+**Maps → Offline maps**. **Directions** names the countries missing before you plan, with
 one button to add them. Across the sea, both sides need routes, joined by a car ferry or
 the Channel Tunnel ([road-routes.md](road-routes.md#adding-routes-for-a-place)).
 

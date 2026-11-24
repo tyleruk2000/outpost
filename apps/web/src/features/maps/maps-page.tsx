@@ -17,11 +17,12 @@ import {
   type TrackDto,
   type TrackWithGeometryDto,
 } from "@outpost/shared";
-import { CircleAlert, Crosshair, FileUp, PanelLeftOpen } from "lucide-react";
+import { CircleAlert, Crosshair, FileUp, PanelLeftOpen, Route as RouteIcon } from "lucide-react";
 import { type DragEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
+import { useHideBottomBar } from "@/components/shell-bars";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
@@ -53,6 +54,11 @@ import {
   useTrackGeometries,
   useTracks,
 } from "./data";
+import { DirectionsPicker } from "./directions/picker";
+import { DirectionsBar } from "./directions/route-bar";
+import { DirectionsSheet } from "./directions/route-sheet";
+import { useDirections } from "./directions/use-directions";
+import { directionsBounds, endsData } from "./directions/words";
 import { FindRoutePanel } from "./find-route/find-route-panel";
 import { anyFoundRoute, ROUTE_CREDIT } from "./find-route/source-credit";
 import { PREVIEW_TRACK_ID } from "./find-route/words";
@@ -352,6 +358,22 @@ export default function MapsPage() {
   const area = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
+  /**
+   * Directions on a phone (directions/): a bar of its own at the top, the map, and a sheet of what it found at the foot,
+   * in place of the search box, the sheet of tabs and the bar of screens while it is in hand. A wide screen keeps the
+   * form in the panel.
+   */
+  const directionsHome = useHome().home;
+  const directions = useDirections({
+    engine,
+    home: directionsHome ? { name: directionsHome.name, lat: directionsHome.lat, lon: directionsHome.lon, at: directionsHome.at } : null,
+    enabled: !isDesktop,
+    onShow: showRoadRoute,
+  });
+  const phoneDirections = !isDesktop && directions.active;
+  useHideBottomBar(phoneDirections);
+  /** How tall the sheet of Directions is on a phone, for the map to keep the route clear of it. */
+  const [directionsHeight, setDirectionsHeight] = useState(0);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
   const [magneticLines, setMagneticLines] = useMagneticLines(engine);
   const [utmGridOn, setUtmGrid] = useUtmGrid(engine);
@@ -615,7 +637,9 @@ export default function MapsPage() {
     const tab = params.get("tab");
     if (tab === "routes" && params.get("road") === "1") {
       setFinding(false);
-      setRoadRouting(true);
+      // On a phone, Directions itself; on a wide screen, the form in the panel.
+      if (window.matchMedia("(min-width: 48rem)").matches) setRoadRouting(true);
+      else return directions.start({});
     }
     if (tab && (PANEL_TABS as readonly string[]).includes(tab)) showPanel(tab as PanelTab);
     if (tab === "routes" && params.get("road") === "1") setDetent(FORM_DETENT);
@@ -694,8 +718,12 @@ export default function MapsPage() {
   }, [engine, geometries, tracks.data, trackId, reshapingId, routePreview]);
 
   useEffect(() => {
-    engine?.setOverlay(ROAD_ROUTE_SOURCE, shownRouteData(roadShown?.route ?? null, roadShown?.selected ?? null));
-  }, [engine, roadShown]);
+    // While a route is being planned on a phone its two ends are marked, so that the map says what was asked.
+    engine?.setOverlay(
+      ROAD_ROUTE_SOURCE,
+      !roadShown && phoneDirections ? endsData(directions.points) : shownRouteData(roadShown?.route ?? null, roadShown?.selected ?? null),
+    );
+  }, [engine, roadShown, phoneDirections, directions.points]);
 
   const routePoints = routeDraft?.edit.points;
   const routeColor = routeDraft?.color;
@@ -872,11 +900,17 @@ export default function MapsPage() {
     const cardless = !isDesktop && tool === "print";
     const foot = cardless ? clear.bottom : clear.held;
     // A compact wide screen has no sheet: only the readout at the foot.
-    const under = isDesktop ? (compact ? foot : 0) : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + foot;
+    const under = isDesktop
+      ? compact
+        ? foot
+        : 0
+      : phoneDirections
+        ? directionsHeight + clear.bottom
+        : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + foot;
     // The centre is kept two fifths of the way down the clear part of the map, not half way: a card that comes up
     // from the foot of it (which may take three fifths, less a margin; see maps.css) then never covers the centre,
     // and the map does not have to move when a card appears or grows.
-    const fifth = (isDesktop && !compact) || cardless ? 0 : Math.max(0, height - top - under) * 0.2;
+    const fifth = (isDesktop && !compact) || cardless || phoneDirections ? 0 : Math.max(0, height - top - under) * 0.2;
     const sheet = under + fifth;
     // Room kept at the foot that nothing lies over: the fifth for a card, and what is held while something is in hand.
     const spare = fifth + (foot - clear.bottom);
@@ -888,7 +922,15 @@ export default function MapsPage() {
     // The cross that marks the centre is 20 px across: a card at the foot stops 12 px short of it.
     const centre = top + Math.max(0, height - top - bottom) / 2;
     setDockRoom(isDesktop && !compact ? undefined : Math.max(0, Math.round(height - centre - 22)));
-  }, [engine, isDesktop, compact, detent, peekHeight, clear, tool]);
+  }, [engine, isDesktop, compact, detent, peekHeight, clear, tool, phoneDirections, directionsHeight]);
+
+  // The route of Directions is fitted again into what is left when the sheet under it changes height (the answer
+  // comes, the steps are put away), so that it is never under the sheet.
+  const directionsRoute = phoneDirections && directions.view === "route" && directions.step === null ? directions.result : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: when the sheet's height changes, not on every new route (use-directions fits those)
+  useEffect(() => {
+    if (engine && directionsRoute) engine.fitBounds(directionsBounds(directionsRoute));
+  }, [engine, directionsHeight]);
 
   // A place being saved is slid into the clear map if it is where the sheet, the readout or a card would hide it.
   useEffect(() => {
@@ -1057,6 +1099,10 @@ export default function MapsPage() {
     setContextMenu(null);
     setPin(null);
     if (tool === "draw") closeDrawing();
+    if (!isDesktop) {
+      directions.start({ ...(role === "from" ? { from: point } : { to: point }), here: hereNow() });
+      return;
+    }
     setFinding(false);
     setRoadRouting(true);
     setRoadIntent({ role, point, at: Date.now() });
@@ -1110,6 +1156,8 @@ export default function MapsPage() {
   useEffect(() => {
     engine?.setOverlay("o-location", locationData(locate.fix));
   }, [engine, locate.fix]);
+  /** Where the device is, while it is being followed: the start of Directions before the household's home. */
+  const hereNow = () => (locate.state !== "off" && locate.fix ? { lat: locate.fix.lat, lon: locate.fix.lon } : null);
   const toggleLocate = () => {
     setHereDismissed(false);
     if (locate.state === "off") locate.start();
@@ -1258,7 +1306,9 @@ export default function MapsPage() {
   const cardOpen = Boolean(heard.card ?? rangeCard ?? repeaters.card ?? reference.card);
   // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
   // always, except while the Sun tab itself is open beside the map and says the same and more.
-  const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving && !cardOpen;
+  const sunLine = isDesktop
+    ? !(panel.open && panel.tab === "sun")
+    : !phoneDirections && detent === "peek" && tool === "browse" && !pin && !moving && !cardOpen;
   inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
   // A record opened from the Layers tab (found by name) comes up as a card over the map: on a phone the sheet is
   // lowered for it, as for a found place, or the card had a strip of map and showed none of an airport's frequencies.
@@ -1454,6 +1504,9 @@ export default function MapsPage() {
             onClose={() => setDraft(null)}
             onDelete={() => draft.id && deleteMarker.mutate(draft.id, { onSuccess: () => setDraft(null) })}
             onNeedRoom={raiseSheet}
+            onDirections={() =>
+              savedDraft && startRoadRoute("to", { name: savedDraft.name, lat: savedDraft.lat, lon: savedDraft.lon, from: "place" })
+            }
           />
         ) : (
           <PlacesList
@@ -1484,7 +1537,7 @@ export default function MapsPage() {
             onSave={saveDrawnRoute}
             onClose={() => closeDrawing()}
           />
-        ) : roadRouting ? (
+        ) : roadRouting && isDesktop ? (
           <RoadRoutePanel
             engine={engine}
             markers={markers.data ?? []}
@@ -1542,6 +1595,7 @@ export default function MapsPage() {
               setDetent(FORM_DETENT);
             }}
             onRoadRoute={() => {
+              if (!isDesktop) return directions.start({ here: hereNow() });
               setRoadRouting(true);
               setDetent(FORM_DETENT);
             }}
@@ -1842,8 +1896,14 @@ export default function MapsPage() {
   return (
     <div
       data-map-style={mapStyle}
-      className="outpost-fill relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]"
+      // On a phone Maps has the whole height: no app bar at the top (ownsTopBar in components/shell-bars.ts), the room of
+      // a notch kept in the spine's colour, and the bar of screens at the foot unless Directions has put it away.
+      className={cn(
+        "outpost-fill relative isolate flex h-dvh overflow-hidden max-md:bg-spine max-md:pt-[env(safe-area-inset-top)]",
+        phoneDirections ? "max-md:flex-col" : "max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]",
+      )}
     >
+      {phoneDirections ? <DirectionsBar directions={directions} /> : null}
       {isDesktop && panel.open ? (
         <DesktopPanel onCollapse={() => setPanel((current) => ({ ...current, open: false }))}>{panelBody}</DesktopPanel>
       ) : null}
@@ -1888,43 +1948,50 @@ export default function MapsPage() {
 
         {/* The point "the centre of the map" means, wherever something on screen is reading it: the readout while it
             says "Centre", the Sun tab, and a route drawn from the keyboard, where it is where the next point will go. */}
-        {engine && (isDesktop || detent !== "full") ? (
+        {/* Not over a route being read: only while a point of it is chosen on the map, where the cross is the point. */}
+        {engine && (isDesktop || (phoneDirections ? directions.choosing !== null : detent !== "full")) ? (
           <CentreMark
             engine={engine}
-            always={(panel.tab === "sun" && (isDesktop ? panel.open : detent !== "peek")) || (tool === "draw" && mapHasKeyboard)}
+            always={
+              (phoneDirections && directions.choosing !== null) ||
+              (panel.tab === "sun" && (isDesktop ? panel.open : detent !== "peek")) ||
+              (tool === "draw" && mapHasKeyboard)
+            }
           />
         ) : null}
 
         <MapFurniture
           phone={!isDesktop || compact}
-          covered={!isDesktop && detent === "full"}
-          docked={docked}
+          covered={!isDesktop && (phoneDirections ? directions.view !== "route" && !directions.choosing : detent === "full")}
+          docked={docked && !phoneDirections}
           dockRoom={dockRoom}
           onClear={onClear}
           search={
-            <SearchBox
-              className="pointer-events-auto w-full min-w-0 md:max-w-[24rem]"
-              markers={markers.data ?? []}
-              tracks={allTracks}
-              placesInstalled={(overview.data?.places.length ?? 0) > 0}
-              getCenter={() => engine?.getCenter() ?? null}
-              onChoose={chooseResult}
-              onAddPlaceNames={() => navigate("/maps/data?names=1")}
-              leading={
-                isDesktop && !panel.open ? (
-                  <Tooltip label="Show places, routes and offline maps" side="bottom">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Show places, routes and offline maps"
-                      onClick={() => setPanel((current) => ({ ...current, open: true }))}
-                    >
-                      <PanelLeftOpen />
-                    </Button>
-                  </Tooltip>
-                ) : undefined
-              }
-            />
+            phoneDirections ? null : (
+              <SearchBox
+                className="pointer-events-auto w-full min-w-0 md:max-w-[24rem]"
+                markers={markers.data ?? []}
+                tracks={allTracks}
+                placesInstalled={(overview.data?.places.length ?? 0) > 0}
+                getCenter={() => engine?.getCenter() ?? null}
+                onChoose={chooseResult}
+                onAddPlaceNames={() => navigate("/maps/data?names=1")}
+                leading={
+                  isDesktop && !panel.open ? (
+                    <Tooltip label="Show places, routes and offline maps" side="bottom">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Show places, routes and offline maps"
+                        onClick={() => setPanel((current) => ({ ...current, open: true }))}
+                      >
+                        <PanelLeftOpen />
+                      </Button>
+                    </Tooltip>
+                  ) : undefined
+                }
+              />
+            )
           }
           tools={
             isDesktop && !compact ? (
@@ -1951,7 +2018,7 @@ export default function MapsPage() {
           cards={
             <>
               <TrackRecording engine={engine} onShowTrack={(track) => openTrack(track, false)} />
-              {card}
+              {phoneDirections ? null : card}
             </>
           }
           footer={
@@ -1978,7 +2045,8 @@ export default function MapsPage() {
               // with the coordinates there, the box on a phone in a browser was 55 px across, too small to take hold of.
               className={cn(
                 "w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch",
-                (repeaters.ranging || tool === "print") && "max-md:[&_.outpost-readout-row]:hidden",
+                // Directions keeps the map for the route: the coordinates and the sun times step aside while it is in hand.
+                (repeaters.ranging || tool === "print" || phoneDirections) && "max-md:[&_.outpost-readout-row]:hidden",
               )}
             />
           }
@@ -2073,18 +2141,47 @@ export default function MapsPage() {
           </Suspense>
         ) : null}
 
-        {!isDesktop ? (
+        {phoneDirections ? (
+          <DirectionsSheet
+            directions={directions}
+            onHeight={setDirectionsHeight}
+            onOpenNetworks={(countries) => navigate(addRoadsLink(countries))}
+            onOpenStreets={(country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`)}
+            onFitLine={(line) => {
+              const [lon, lat] = line.at;
+              engine?.fitBounds([lon - 0.002, lat - 0.0013, lon + 0.002, lat + 0.0013], { maxZoom: 17 });
+            }}
+          />
+        ) : !isDesktop ? (
           <MobileSheet
             detent={detent}
             onDetentChange={setDetent}
             onPeekHeight={setPeekHeight}
             hidden={docked}
+            action={
+              // Directions under the thumb whenever the tabs are the sheet's first line: the reason most people open a map.
+              tool === "browse" && !formInSheet && !routeDraft ? (
+                <Button variant="primary" size="sm" onClick={() => directions.start({ here: hereNow() })}>
+                  <RouteIcon aria-hidden /> Directions
+                </Button>
+              ) : undefined
+            }
             first={tool === "sight" ? "sight" : tool === "print" && printInSheet ? "print" : formInSheet ? "form" : "tabs"}
           >
             {panelBody}
           </MobileSheet>
         ) : null}
       </div>
+
+      {/* Mounted before it is wanted, so that it is shown and focused inside the press that asks for it (directions/picker.tsx). */}
+      {!isDesktop ? (
+        <DirectionsPicker
+          directions={directions}
+          markers={markers.data ?? []}
+          home={directions.home}
+          getCenter={() => engine?.getCenter() ?? null}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={discarding !== null}

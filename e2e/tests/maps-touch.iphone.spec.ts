@@ -1,19 +1,21 @@
 /**
  * Maps pressed with a finger in Safari on an iPhone (WebKit, touch). Found on the owner's
- * iPhone: a suggestion tapped in Plan a route did nothing (the field's blur closed the
+ * iPhone: a suggestion tapped in a route's form did nothing (the field's blur closed the
  * list before the tap's click, and WebKit never focuses a tapped button); with six
  * Outpost tabs open, the search icon did nothing and a route point said "Searching" for
  * ever (each tab's live stream held one of the six connections WebKit gives a server);
- * and the route form had 74 px of a half-height sheet, under the keyboard.
+ * and the route form had 74 px of a half-height sheet, under the keyboard. Directions now
+ * types in a picker at the top of the screen, not in the sheet.
  *
  * Every list of suggestions is tapped here; six tabs are opened, five put in the
- * background, and the sixth must still search; and the route form is used at 320 and 390
- * px with the room a keyboard leaves (the window made shorter, as WebKit here has no
- * keyboard of its own). Pictures are attached to the report, to be looked at.
+ * background, and the sixth must still search; and Directions' picker is used at 320 and
+ * 390 px with the room a keyboard leaves (laid over the page as Safari does, and the window
+ * made shorter as other browsers do). Pictures are attached to the report, to be looked at.
  */
 import type { BrowserContext, Page, TestInfo } from "@playwright/test";
 import { KESWICK_BOX } from "../../apps/server/test/fixtures/layers/food-stand-in.ts";
 import { api, expect, test, watchForErrors } from "./fixtures";
+import { aboveKeyboard, keyboard, standInKeyboard } from "./keyboard-stand-in";
 import { removeReferencePacks } from "./reference-layers";
 import { installChannelTrip, removeChannelTrip } from "./road-routes";
 
@@ -41,11 +43,12 @@ async function touch(page: Page, locator: ReturnType<Page["locator"]>): Promise<
   await page.touchscreen.tap(x, y);
 }
 
-/** Opens the Routes tab and Plan a route, as a person does. */
-async function openPlanRoute(page: Page): Promise<void> {
+/** Opens the Routes tab and Directions there, as a person does: the picker for where to, its field focused. */
+async function openDirections(page: Page): Promise<void> {
   await page.getByRole("tab", { name: /^Routes/ }).tap();
-  await page.getByRole("button", { name: "Plan a route" }).first().tap();
-  await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+  await page.locator('[role="tabpanel"]').getByRole("button", { name: "Directions", exact: true }).first().tap();
+  await expect(page.getByRole("dialog", { name: "Where to?" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: /^To: / })).toBeFocused();
 }
 
 test.describe("Maps by touch on an iPhone", () => {
@@ -63,37 +66,41 @@ test.describe("Maps by touch on an iPhone", () => {
     await removeChannelTrip(page, places);
   });
 
-  test("every suggestion in Plan a route is chosen by a tap, and the form has the sheet to itself", async ({ page }, info) => {
+  test("every suggestion in Directions is chosen by a tap, and the picker has the screen to itself", async ({ page }, info) => {
     test.setTimeout(150_000);
     const errors = watchForErrors(page);
     await page.goto("/maps?lat=49&lon=3&z=5");
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
-    await openPlanRoute(page);
+    await openDirections(page);
 
-    // The form takes the whole sheet, without the row of tabs over it; its way back is its first line.
-    await expect(page.locator(SHEET)).toHaveAttribute("data-detent", "full");
-    await expect(page.getByRole("tab", { name: /^Places/ })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Routes", exact: true })).toBeInViewport();
-
-    // From: a saved place from the list shown before anything is typed.
-    await page.getByLabel("From", { exact: true }).tap();
-    await touch(page, page.getByRole("list", { name: "Saved places" }).getByRole("button", { name: "Home" }));
-    await expect(page.getByRole("button", { name: "Change from" })).toBeVisible();
-
-    // Via: a saved place found by typing part of its name.
-    await page.getByRole("button", { name: "Add a via point" }).tap();
-    await page.getByLabel("Via 1", { exact: true }).tap();
-    await page.keyboard.type("Reim", { delay: 40 });
-    await touch(page, page.getByRole("list", { name: "Places for via 1" }).getByRole("button", { name: /Reims/ }));
-    await expect(page.getByRole("button", { name: "Remove via 1" })).toBeVisible();
+    // The picker is the whole screen: nothing of the map, its buttons or its sheet over its rows.
+    const picker = page.getByRole("dialog", { name: "Where to?" });
+    const area = (await picker.boundingBox())!;
+    expect(area.width).toBe(page.viewportSize()!.width);
 
     // To: a typed position, the server's reading of it.
-    await page.getByLabel("To", { exact: true }).tap();
     await page.keyboard.type("45.9237, 6.8694", { delay: 20 });
-    const toList = page.getByRole("list", { name: "Places for to" });
+    const toList = picker.getByRole("listbox", { name: "Places for to" });
+    await expect(toList.getByRole("option", { name: /45\.92/ }).first()).toBeVisible();
     await picture(page, info, "to-suggestions");
-    await touch(page, toList.getByRole("button").first());
-    await expect(page.getByRole("button", { name: "Change to" })).toBeVisible();
+    await touch(page, toList.getByRole("option").first());
+
+    // From: the household has no home here, so it is asked; a saved place from the list shown before anything is typed.
+    const from = page.getByRole("dialog", { name: "Where from?" });
+    await expect(page.getByRole("combobox", { name: /^From: / })).toBeFocused();
+    await touch(page, from.getByRole("option", { name: /^Home/ }));
+    await expect(page.getByRole("button", { name: "From: Home. Change" })).toBeVisible();
+
+    // A stop: a saved place found by typing part of its name.
+    const sheet = page.getByRole("region", { name: "Directions" });
+    await expect(sheet.getByRole("heading", { name: /\d+ km/ })).toBeVisible({ timeout: 60_000 });
+    await sheet.getByRole("button", { name: "Options" }).tap();
+    await sheet.getByRole("button", { name: "Add a stop" }).tap();
+    await page.keyboard.type("Reim", { delay: 40 });
+    const stop = page.getByRole("dialog", { name: "Stop 1: where?" });
+    await expect(stop.getByRole("option", { name: /^Chamonix/ })).toBeHidden();
+    await touch(page, stop.getByRole("option", { name: /^Reims/ }));
+    await expect(sheet.getByRole("button", { name: /^Reims/ })).toBeVisible();
 
     // The sea crossing's drop-down, chosen by touch too.
     const crossing = page.getByRole("combobox", { name: "Sea crossing" });
@@ -104,18 +111,14 @@ test.describe("Maps by touch on an iPhone", () => {
     await crossing.tap();
     await page.getByRole("option", { name: /^Any/ }).tap();
     await expect(crossing).toHaveText(/Any/);
+    await page.getByRole("button", { name: "Done" }).tap();
 
-    // Plan route: an ordinary last row of the form on a phone, not a bar over the foot of the sheet.
-    const plan = page.getByRole("button", { name: "Plan route" });
-    await plan.scrollIntoViewIfNeeded();
-    expect(await plan.evaluate((button) => getComputedStyle(button.parentElement!).position)).toBe("static");
-    await picture(page, info, "form-filled");
-    await plan.tap();
-    await expect(page.getByRole("heading", { name: /^Home to / })).toBeVisible({ timeout: 60_000 });
-    // How far and how long come before the name to save it under.
-    const totals = (await page.locator(SHEET).getByText(/\d km/).first().boundingBox())!;
-    const name = (await page.getByText("Name to save it under").boundingBox())!;
-    expect(totals.y).toBeLessThan(name.y);
+    // Planned again with the stop, with no button to press; the totals are the sheet's first line.
+    await expect(page.getByRole("button", { name: "Via Reims" })).toBeVisible();
+    const totals = sheet.getByRole("heading", { name: /\d+ km/ });
+    await expect(totals).toBeVisible({ timeout: 60_000 });
+    const top = (await sheet.boundingBox())!.y;
+    expect((await totals.boundingBox())!.y - top).toBeLessThan(40);
     await picture(page, info, "planned");
     expect(errors).toEqual([]);
   });
@@ -228,7 +231,7 @@ test("with six tabs open, five behind, the sixth still searches", async ({ page 
     await tab.evaluate(() => (window as unknown as { putAway: (away: boolean) => void }).putAway(true));
     behind.push(tab);
   }
-  const sixth = await openTab(context, "/maps?lat=51.3&lon=-0.33&z=8");
+  const sixth = await openTab(context, "/library");
   // The search icon answers.
   await sixth.getByRole("button", { name: "Quick search" }).tap();
   const search = sixth.getByRole("dialog", { name: "Search and go to" });
@@ -239,56 +242,13 @@ test("with six tabs open, five behind, the sixth still searches", async ({ page 
   await picture(sixth, info, "sixth-tab-quick-search");
   await sixth.keyboard.press("Escape");
   // A route point's search answers, rather than saying "Searching" for ever.
-  await openPlanRoute(sixth);
-  await sixth.getByLabel("To", { exact: true }).tap();
+  await sixth.goto("/maps?lat=51.3&lon=-0.33&z=8");
+  await openDirections(sixth);
   await sixth.keyboard.type("51.30, -0.33", { delay: 20 });
-  await expect(sixth.getByRole("list", { name: "Places for to" }).getByRole("button").first()).toBeVisible({ timeout: 10_000 });
+  await expect(sixth.getByRole("listbox", { name: "Places for to" }).getByRole("option").first()).toBeVisible({ timeout: 10_000 });
   for (const tab of [...behind, sixth]) await tab.close();
   expect(elsewhere).toEqual([]);
 });
-
-/**
- * Safari's keyboard as it is: the page keeps its height and the keyboard is laid over its foot (the bar of screens
- * too), and only `visualViewport` says so. WebKit under test has no keyboard, so one is stood in for: the visual
- * viewport made shorter by its height, and a grey block drawn where it would be, for the pictures.
- */
-async function standInKeyboard(page: Page) {
-  await page.addInitScript(() => {
-    const viewport = new EventTarget();
-    let keyboard = 0;
-    const readings: Record<string, () => number> = {
-      height: () => window.innerHeight - keyboard,
-      width: () => window.innerWidth,
-      offsetTop: () => 0,
-      offsetLeft: () => 0,
-      pageTop: () => window.scrollY,
-      pageLeft: () => window.scrollX,
-      scale: () => 1,
-    };
-    for (const [name, value] of Object.entries(readings)) Object.defineProperty(viewport, name, { get: value });
-    Object.defineProperty(window, "visualViewport", { configurable: true, get: () => viewport });
-    (window as unknown as { keyboard: (height: number) => void }).keyboard = (height) => {
-      keyboard = height;
-      let block = document.getElementById("stand-in-keyboard");
-      if (!block) {
-        block = document.createElement("div");
-        block.id = "stand-in-keyboard";
-        block.style.cssText = "position:fixed;left:0;right:0;bottom:0;background:#8a8f98;z-index:2147483647;pointer-events:none";
-        document.body.append(block);
-      }
-      block.style.height = `${height}px`;
-      viewport.dispatchEvent(new Event("resize"));
-    };
-  });
-}
-
-/** Wholly above the keyboard, and on the screen. */
-async function aboveKeyboard(page: Page, locator: ReturnType<Page["locator"]>, keyboard: number) {
-  const box = (await locator.boundingBox())!;
-  const height = page.viewportSize()!.height;
-  expect(box.y, "below the top of the screen").toBeGreaterThanOrEqual(0);
-  expect(box.y + box.height, "above the keyboard").toBeLessThanOrEqual(height - keyboard + 0.5);
-}
 
 for (const size of [
   { width: 320, height: 568, keyboard: 260, scheme: "light" as const },
@@ -296,7 +256,7 @@ for (const size of [
   { width: 390, height: 664, keyboard: 300, scheme: "light" as const },
   { width: 390, height: 664, keyboard: 300, scheme: "dark" as const },
 ]) {
-  test.describe(`Plan a route at ${size.width} by ${size.height}, ${size.scheme}, with a keyboard up`, () => {
+  test.describe(`Directions at ${size.width} by ${size.height}, ${size.scheme}, with a keyboard up`, () => {
     test.use({ viewport: { width: size.width, height: size.height }, colorScheme: size.scheme });
     let home: string | undefined;
     test.beforeEach(async ({ page }) => {
@@ -312,25 +272,19 @@ for (const size of [
       await standInKeyboard(page);
       await page.goto("/maps?lat=51.3&lon=-0.33&z=8");
       await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
-      await openPlanRoute(page);
-      // The first field is near the top of the sheet, not below the fold.
-      const from = page.getByLabel("From", { exact: true });
-      await expect(from).toBeInViewport({ ratio: 1 });
-      await picture(page, info, `${size.width}-${size.scheme}-form`);
-      await from.tap();
-      await page.evaluate((height) => (window as unknown as { keyboard: (height: number) => void }).keyboard(height), size.keyboard);
-      await page.waitForTimeout(600);
-      await aboveKeyboard(page, from, size.keyboard);
-      const first = page.getByRole("list", { name: "Saved places" }).getByRole("button").first();
-      await aboveKeyboard(page, first, size.keyboard);
+      await openDirections(page);
+      // The field is the first thing on the screen, so Safari has nothing to pan.
+      const field = page.getByRole("combobox", { name: /^To: / });
+      await expect(field).toBeInViewport({ ratio: 1 });
+      await keyboard(page, size.keyboard);
+      await aboveKeyboard(page, field, size.keyboard);
+      const rows = page.getByRole("dialog", { name: "Where to?" }).getByRole("option");
+      await aboveKeyboard(page, rows.first(), size.keyboard);
+      await aboveKeyboard(page, rows.nth(1), size.keyboard);
       await picture(page, info, `${size.width}-${size.scheme}-keyboard`);
-      await touch(page, first);
-      await expect(page.getByRole("button", { name: "Change from" })).toBeVisible();
-      // The keyboard goes; Plan route is reached in the form.
-      await page.evaluate(() => (window as unknown as { keyboard: (height: number) => void }).keyboard(0));
-      const plan = page.getByRole("button", { name: "Plan route" });
-      await plan.scrollIntoViewIfNeeded();
-      await expect(plan).toBeInViewport({ ratio: 1 });
+      await touch(page, rows.nth(1));
+      await expect(page.getByRole("button", { name: "To: Home. Change" })).toBeVisible();
+      await keyboard(page, 0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
       expect(errors).toEqual([]);
     });
@@ -339,19 +293,19 @@ for (const size of [
       const errors = watchForErrors(page);
       await page.goto("/maps?lat=51.3&lon=-0.33&z=8");
       await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
-      await openPlanRoute(page);
-      const from = page.getByLabel("From", { exact: true });
-      await from.tap();
-      // The window made shorter by the keyboard; the bar of screens stays above it here.
+      await openDirections(page);
+      const field = page.getByRole("combobox", { name: /^To: / });
+      // The window made shorter by the keyboard.
       await page.setViewportSize({ width: size.width, height: size.height - size.keyboard });
-      await page.waitForTimeout(600);
-      await expect(from).toBeInViewport({ ratio: 1 });
-      const first = page.getByRole("list", { name: "Saved places" }).getByRole("button").first();
-      // At 320 by 308 with the bar of screens still showing, the larger part of the first row: enough for a finger.
-      await expect(first).toBeInViewport({ ratio: size.width < 390 ? 0.6 : 1 });
+      await page.waitForTimeout(300);
+      await expect(field).toBeInViewport({ ratio: 1 });
+      const rows = page.getByRole("dialog", { name: "Where to?" }).getByRole("option");
+      // Two whole rows even at 320 by 308: the bar of screens is put away and the picker has the screen.
+      await expect(rows.first()).toBeInViewport({ ratio: 1 });
+      await expect(rows.nth(1)).toBeInViewport({ ratio: 1 });
       await picture(page, info, `${size.width}-${size.scheme}-shorter`);
-      await first.tap();
-      await expect(page.getByRole("button", { name: "Change from" })).toBeVisible();
+      await rows.nth(1).tap();
+      await expect(page.getByRole("button", { name: "To: Home. Change" })).toBeVisible();
       expect(errors).toEqual([]);
     });
   });

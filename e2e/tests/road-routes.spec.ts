@@ -34,8 +34,8 @@ test.describe("road routes", () => {
 
       // Routes, Road route.
       await page.getByRole("tab", { name: /Routes/ }).click();
-      await page.getByRole("button", { name: "Plan a route" }).first().click();
-      await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Directions", exact: true }).first().click();
+      await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
       const choose = (label: string, place: string) => choosePlace(page, label, place);
       await choose("From", "Leatherhead");
       await page.getByRole("button", { name: "Add a via point" }).click();
@@ -98,7 +98,7 @@ test.describe("road routes", () => {
       expect(words).toContain("Check the signs and closures");
       expect(words).toContain("OpenStreetMap contributors");
 
-      await page.getByRole("button", { name: "Plan a route", exact: true }).click();
+      await page.getByRole("button", { name: "Directions", exact: true }).click();
       await expect(
         page.getByRole("region", { name: "Saved road routes" }).getByRole("button", { name: /Alps by the ferry/ }),
       ).toBeVisible();
@@ -121,8 +121,8 @@ test.describe("road routes", () => {
       await page.goto("/maps?lat=49&lon=3&z=5");
       await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
       await page.getByRole("tab", { name: /Routes/ }).click();
-      await page.getByRole("button", { name: "Plan a route" }).first().click();
-      await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Directions", exact: true }).first().click();
+      await expect(page.getByRole("heading", { name: "Directions", exact: true })).toBeVisible();
       await choosePlace(page, "From", "London");
       await choosePlace(page, "To", "Chamonix");
 
@@ -165,7 +165,7 @@ test.describe("road routes on a phone", () => {
     try {
       await page.goto("/maps?lat=49&lon=3&z=5");
       await page.getByRole("tab", { name: /Routes/ }).click();
-      await page.getByRole("button", { name: "Plan a route" }).first().click();
+      await page.getByRole("button", { name: "Directions", exact: true }).first().click();
       await page.screenshot({ path: `${shots}/p1-route-empty-390.png` });
       await choosePlace(page, "From", "London");
       await choosePlace(page, "To", "Chamonix");

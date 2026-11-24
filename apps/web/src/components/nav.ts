@@ -369,7 +369,7 @@ export const mapSections: Array<{ id: string; label: string; keywords: string; t
   { id: "routes", label: "Routes", keywords: "route track tracks gpx kml walk hike trail draw import" },
   {
     id: "road-route",
-    label: "Plan a route",
+    label: "Directions",
     to: "/maps?tab=routes&road=1",
     keywords: "drive driving directions car journey sat nav navigation plan road route door to door walk walking cycle cycling bike",
   },

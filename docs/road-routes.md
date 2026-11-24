@@ -50,7 +50,7 @@ countries you need are added, nothing goes on the internet.
 
 Routes are part of a place on **Maps → Offline maps** (one row per place: **Map**,
 **Routes**, **Nearby places**), with the day their data is from and their size. You need
-not add countries before you plan: **Plan a route** says which countries a route needs and
+not add countries before you plan: **Directions** says which countries a route needs and
 adds exactly those (see [Which countries a route needs](#which-countries-a-route-needs)).
 
 Routes come by country, or by part of a country, from OpenStreetMap. Add every country you
@@ -82,19 +82,53 @@ file already in your storage, through the API only (see
 
 ## Planning a route
 
-On the Maps screen, open **Routes** and press **Plan a route** (or type "directions" in the
-quick search). Give a start (**From**) and an
-end (**To**), and up to ten via points (**Add a via point**) in the order you want to pass
-them. For each, type a saved place, a town (with place names installed) or coordinates,
-choose from your saved places, or press **Map centre**. You can also press and hold
-(right-click) a point on the map and choose **Plan a route from here** or **Plan a route to
-here**. Then press **Plan route**. The first route after a while takes longest, up to a
-minute on a small computer, while the routes are read.
+### On a phone
 
-On a phone the form takes the whole panel, with its fields at the top; **← Routes** at the
-top leads back. With the keyboard up, the field you are typing in and its list of
-suggestions stay above the keyboard. Once planned, the panel lowers to show the route, with
-its distance and time first.
+Press **Directions** at the foot of the map, type where to, and press it in the list. That is
+all: the route starts from your household's home and is planned as soon as both ends are
+known. **Directions** is also on a saved place's first line, as **Directions to here** on a
+place you found and in the menu a long press opens, and in **Routes**.
+
+- **Where to.** The field is at the top of the screen with its list under it, so the list
+  stays above the keyboard. Before you type: **Choose on the map** (move the map until the
+  cross is on the place, then **Use this point as the end**) and your saved places,
+  favourites first, each with its distance. Type a saved place, a town (with place names
+  installed), coordinates or a grid reference. Return chooses the first.
+- **Where from.** Your household's home; for a household on the move, where it was last
+  put; while the map is following where you are, from there. With no home set, or when the
+  end is home itself, it asks where from next.
+- **Planning.** It starts at once and says so, with **Cancel**. The first route after a
+  while takes longest, up to a minute on a small computer, while the roads are read; nothing
+  is sent anywhere. A route asked for again in the same visit (after swapping the ends and
+  back, say) is there at once.
+- **The bar at the top** shows the two ends: press one to change it, **⇅** swaps them,
+  and with the Walking and cycling add-on **Drive**, **Door to door**, **Walk** and
+  **Cycle** are under them. A change plans the route again. **✕** ends Directions. The bar
+  of screens at the foot is put away while Directions is open.
+- **The answer** is at the foot of the screen, the route drawn above it: the distance and
+  time first, then one line of how ("Driving, with the Eurotunnel, through United Kingdom and
+  France"), then **Steps**, **Save**, **Print** and **Options**.
+  - **Steps** opens the directions as a page; **Map** goes back. Press a line to see that
+    step on the map, then **Next** and **Previous** walk the route one step at a time;
+    **All steps** goes back to the list.
+  - **Save** keeps the route under its own name ("Home to Reims") with one press, and says
+    so under the buttons.
+  - **Print** has the printable route card and the plain text.
+  - **Options** has the stops (**Add a stop**, up to ten, each removed with ✕), the way of
+    travelling, kilometres or miles, and the sea crossing when there is one.
+
+If the route cannot be planned, the sheet says why, with what puts it right first
+(**Change the end**, or **Add roads for France**) and **Try again**.
+
+### On a tablet or a computer
+
+Open **Routes** beside the map and press **Directions** (or type "directions" in the quick
+search). Give a start (**From**) and an end (**To**), and up to ten via points (**Add a via
+point**) in the order you want to pass them. For each, type a saved place, a town (with place
+names installed) or coordinates, choose from your saved places, or press **Map centre**. You
+can also press and hold (right-click) a point on the map and choose **Directions from here**
+or **Directions to here**. Then press **Plan route**. The first route after a while takes
+longest, up to a minute on a small computer, while the routes are read.
 
 The route is drawn on the map: the main roads bold, a crossing dashed. Under it come the
 totals and the directions: the start ("Join the A24"), a line for each road, the crossing
@@ -120,14 +154,14 @@ crosses for more than a corner. Before you press anything it says what is missin
 - **France has no roads yet**: "This route runs through France. United Kingdom is
   ready." **Add roads for France** opens **Add a place** for France alone, which asks
   the size first; it needs a connection once. Several are named together ("France and
-  Switzerland have no roads yet") and added with one press. **Plan route** waits, saying
+  Switzerland have no roads yet") and added with one press. The route waits until then, saying
   "Add France first".
 - **Only part of France has roads**: roads are kept for a part of the country and a point
   of the route is outside it. **Add roads for all of France**.
 - **On their way**: while a country's roads download and are built, the panel shows it in
   the words of Offline maps with a bar: "France: Downloading 1.20 of 4.90 GB, 18 minutes left",
   then "Building". You can leave the screen. When they are ready it says "France is
-  ready." and **Plan route** is enabled.
+  ready." and the route is planned (on a wide screen, **Plan route** is enabled).
 
 The line between points is only a guide: a road may go round a country the line crosses.
 If a route still cannot be planned, the message names the countries, with the same button,
@@ -154,7 +188,7 @@ These are Outpost's assumptions, kept under the legal limits (in the United King
 
 ## Door to door, walking and cycling
 
-Where the optional Walking and cycling add-on is installed, **Plan a route** has four ways of
+Where the optional Walking and cycling add-on is installed, **Directions** has four ways of
 travelling at its top. Without it (most installations) there is nothing to choose and the
 form plans a drive, as above; one line under it says the other ways exist.
 

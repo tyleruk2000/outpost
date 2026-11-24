@@ -233,7 +233,7 @@ export const GUIDES: Guide[] = [
     file: "road-routes.md",
     group: "using",
     about:
-      "Plan a route offline: a drive on main roads with junctions, signs and sea crossings; door to door, walking and cycling where added; and what is reachable from a point.",
+      "Directions offline: a drive on main roads with junctions, signs and sea crossings; door to door, walking and cycling where added; and what is reachable from a point.",
     keywords:
       "plan a route road drive directions motorway junction ferry eurotunnel sea crossing sat nav walk cycle door to door reachable from here",
     opens: { to: "/maps", label: "Open Maps" },
