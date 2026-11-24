@@ -367,8 +367,9 @@ export function MobileSheet({
       style={{ height, bottom: lift || undefined }}
     >
       {action ? (
-        // Side by side, never one over the other: a finger meant for the handle cannot press the action.
-        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start">
+        // Side by side, never one over the other: a finger meant for the handle cannot press the action. The action's
+        // column gives way first: with large text its buttons go one under the other rather than past the screen's edge.
+        <div className="grid shrink-0 grid-cols-[minmax(3rem,1fr)_minmax(0,auto)] items-start">
           <button
             type="button"
             aria-label={`Panel height: ${detent === "peek" ? "lowered" : detent === "half" ? "half" : "full"}. Drag, or press to change`}
@@ -394,7 +395,7 @@ export function MobileSheet({
               className={cn("h-1 w-10 rounded-full bg-border-strong", action && "absolute top-[6px] left-1/2 -translate-x-1/2")}
             />
           </button>
-          <div className="flex pt-[4px] pr-3">{action}</div>
+          <div className="flex min-w-0 justify-end pt-[4px] pr-3">{action}</div>
         </div>
       ) : (
         <button

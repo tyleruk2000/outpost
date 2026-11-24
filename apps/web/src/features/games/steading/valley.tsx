@@ -429,7 +429,8 @@ export function Valley({
       cell.focus();
       setFocusTarget(null);
     }
-  }, [focusTarget]);
+    // After every render, not only when the target changes: one asked for before its square was drawn lands once it is.
+  });
 
   const pxPerSquare = () => (box.current?.getBoundingClientRect().width || 1) / view.across;
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -537,6 +538,36 @@ export function Valley({
   // rather than thousands of squares too small to press or to listen through.
   const least = leastSquare();
   const choosable = !big || boxPx === 0 || boxPx / view.across >= least - 0.5;
+  // The plan can change between squares and the one button with no key pressed: zoomed in just as far as a press allows,
+  // the window's width moving by a scroll bar is enough. What had the focus is then taken away, and the focus would fall
+  // to the page; it goes to the square it was on, or to the whole map (seen in the keyboard e2e test, 24 Nov 2026).
+  const focusInside = useRef(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const into = () => {
+      focusInside.current = true;
+    };
+    // Left for somewhere else, not taken away with a square that is no longer drawn.
+    const out = (event: FocusEvent) => {
+      const to = event.relatedTarget;
+      if ((to instanceof Node && !el.contains(to)) || (!to && event.target instanceof Node && event.target.isConnected))
+        focusInside.current = false;
+    };
+    el.addEventListener("focusin", into);
+    el.addEventListener("focusout", out);
+    return () => {
+      el.removeEventListener("focusin", into);
+      el.removeEventListener("focusout", out);
+    };
+  }, []);
+  const wasChoosable = useRef(choosable);
+  useLayoutEffect(() => {
+    if (wasChoosable.current === choosable) return;
+    wasChoosable.current = choosable;
+    const active = document.activeElement;
+    if (focusInside.current && (!active || active === document.body)) setFocusTarget(`${tabSquare.x},${tabSquare.y}`);
+  });
   const mostAcross = Math.max(MIN_ACROSS, Math.floor(boxPx / least));
   const zoomToChoose = (about: { x: number; y: number }) => {
     const across = Math.min(view.across, mostAcross);

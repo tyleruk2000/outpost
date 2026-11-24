@@ -33,7 +33,7 @@ test.describe("setting up answers and chat, on a phone", () => {
   test("the guide is a page inside Outpost, linked from both sections and from Chat, and reads on a phone", async ({ page }) => {
     const errors = watchForErrors(page);
     await page.goto("/chat");
-    await expect(page.getByRole("heading", { name: "Chat needs a language model on your own computer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Chat needs a writing model" })).toBeVisible();
     await page.getByRole("link", { name: "Set-up guide" }).click();
     await expect(page).toHaveURL(/\/help\/search-and-answers#answers-and-chat$/);
     await expect(page.getByRole("heading", { level: 1, name: "Setting up search by meaning, answers and chat" })).toBeVisible();

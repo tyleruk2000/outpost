@@ -199,8 +199,12 @@ test.describe("maps", () => {
     const before = await mapDownloads();
     // The first-use card leads to Add a place on Offline maps; it does not start a download.
     await page.getByRole("button", { name: "Add a place" }).first().click();
-    await expect(page.getByRole("heading", { name: "Offline maps", level: 1 })).toBeVisible();
+    await expect(page).toHaveURL(/\/maps\/data(\?|$)/);
     const dialog = page.getByRole("dialog", { name: "Add a place" });
+    await expect(dialog).toBeVisible();
+    // The screen's heading is behind the dialog, so out of the accessibility tree while it is open: whether it was found
+    // depended on how soon the dialog opened. It is looked for there, but must still be drawn.
+    await expect(page.getByRole("heading", { name: "Offline maps", level: 1, includeHidden: true })).toBeVisible();
     await expect(dialog.getByRole("heading", { name: "Where?" })).toBeVisible();
     // Nothing is chosen for the person: the whole world is one suggestion among others.
     await dialog.getByRole("button", { name: /The whole world/ }).click();

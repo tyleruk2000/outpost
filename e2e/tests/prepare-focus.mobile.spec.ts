@@ -17,6 +17,9 @@ async function coveredStops(page: Page, stops: number): Promise<string[]> {
   const covered: string[] = [];
   for (let i = 0; i < stops; i++) {
     await page.keyboard.press("Tab");
+    // The page is moved clear of the bars in the frame after the browser's own scroll to the control (focus-clear.ts):
+    // looked at before then, a field the browser left under the bar of screens was counted as covered.
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
     const found = await page.evaluate(() => {
       const element = document.activeElement as HTMLElement | null;
       if (!element || element === document.body || !element.closest("main")) return null;

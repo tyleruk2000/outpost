@@ -41,7 +41,7 @@ test.describe("chat with a local model", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Chat" })).toBeVisible();
     // Said once, plainly: there are no accounts.
     await expect(page.getByText(/there are no accounts, so anyone who can open it can read them/)).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Chat needs a language model on your own computer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Chat needs a writing model" })).toBeVisible();
     await expect(page.getByText(/Outpost does not include one/)).toBeVisible();
     await expect(box(page)).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open the setting" })).toHaveAttribute("href", "/settings#answers-title");

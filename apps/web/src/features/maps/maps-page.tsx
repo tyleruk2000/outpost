@@ -2266,7 +2266,7 @@ export default function MapsPage() {
             action={
               // Directions under the thumb whenever the tabs are the sheet's first line: the reason most people open a map.
               tool === "browse" && !formInSheet && !routeDraft ? (
-                <span className="flex gap-2">
+                <span className="flex min-w-0 flex-wrap justify-end gap-2">
                   {/* The nearest hospital, pharmacy, shelter, water or fuel, without switching a layer on. */}
                   <Button size="sm" onClick={() => setNearestOpen(true)}>
                     <Radar aria-hidden /> Nearest

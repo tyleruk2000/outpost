@@ -21,6 +21,14 @@ async function clear(page: import("@playwright/test").Page) {
 }
 
 test.describe("Weather and hazards on a phone", () => {
+  // The place marked as a home is taken away again: left behind, it was where every later test's "home" was, and Maps'
+  // Nearest measured from it rather than from the middle of the map.
+  let marker: string | undefined;
+  test.afterEach(async ({ page }) => {
+    if (marker) await api(page, "DELETE", `/api/maps/markers/${marker}`);
+    marker = undefined;
+  });
+
   test("fetches nothing on opening, then fetches on a press and says how old each copy is", async ({ page }) => {
     const errors = watchForErrors(page);
     const updates: string[] = [];
@@ -29,7 +37,14 @@ test.describe("Weather and hazards on a phone", () => {
     });
     await page.goto("/");
     await clear(page);
-    await api(page, "POST", "/api/maps/markers", { name: "Weather home", lat: 52.13, lon: -0.46, icon: "home" });
+    marker = (
+      await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", {
+        name: "Weather home",
+        lat: 52.13,
+        lon: -0.46,
+        icon: "home",
+      })
+    ).marker.id;
 
     // Reached from the More sheet, under Preparedness.
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();

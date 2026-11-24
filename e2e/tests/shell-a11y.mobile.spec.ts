@@ -101,11 +101,18 @@ test("Home and Settings fit a narrow phone with the text at 200%, and so does th
   }
 });
 
-test("search results with their filter tabs do not scroll the page sideways on a narrow phone", async ({ page }) => {
+test("search results with their filter do not scroll the page sideways on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto("/search?q=water");
-  await expect(page.getByRole("tablist", { name: "Filter results" }).getByRole("tab").nth(1)).toBeVisible();
-  // The words read out with a tab's count are kept inside the strip of tabs that scrolls, not past the screen's edge.
+  // On a column this narrow the filter tabs give way to one "Show" list, which holds every kind with its count.
+  const show = page.getByRole("combobox", { name: "Show" });
+  await expect(show).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  await show.click();
+  await expect(page.getByRole("option").nth(1)).toBeVisible();
+  const list = await page.getByRole("listbox").boundingBox();
+  expect(list!.x).toBeGreaterThanOrEqual(0);
+  expect(list!.x + list!.width).toBeLessThanOrEqual(320);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
 

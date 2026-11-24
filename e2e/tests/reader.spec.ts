@@ -12,8 +12,13 @@ import { api, expect, test, watchForErrors } from "./fixtures";
 const BOOK = "field-library_en_2026-11";
 const UUID = "5d1c0b6e-2f3a-4c7d-9e8f-0a1b2c3d4e5f";
 const headers = { "X-Outpost-Request": "1" };
-/** The list's count, said as it changes. The screen's own status, not the app's announcement of the screen's name (outside main). */
-const listStatus = (page: Page) => page.getByRole("main").getByRole("status");
+/** The list's count, said as it changes. The screen's own status, not the app's announcement of the screen's name (outside main),
+ * nor the shell's box for when the server stops answering, which is in main and empty while it answers. */
+const listStatus = (page: Page) =>
+  page
+    .getByRole("main")
+    .getByRole("status")
+    .filter({ hasText: /documents?$/ });
 
 /** The stand-in archive itself, for making its files slow to arrive or one of them absent. */
 const ARCHIVE = process.env.OUTPOST_E2E_KIWIX_URL!;

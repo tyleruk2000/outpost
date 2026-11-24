@@ -57,7 +57,9 @@ function SheetPart({ items, label, close }: { items: NavItem[]; label: string; c
           if (!item.children?.length) {
             return (
               <li key={item.to}>
-                <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,10.5rem),1fr))] gap-0.5">
+                {/* auto-fit: a screen alone on its line has the whole line, not half of it with its name broken onto a
+                    second line (Downloads and tasks), which pushed Settings out of sight under the sheet's title row. */}
+                <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10.5rem),1fr))] gap-0.5">
                   {run.map((leaf) => (
                     <li key={leaf.to}>{link(leaf)}</li>
                   ))}

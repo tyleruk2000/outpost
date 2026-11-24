@@ -390,6 +390,8 @@ describe("an entry typed in", () => {
     expect(made.status).toBe(200);
     expect(made.body.observation.rx).toMatchObject({ call: "DL1ABC", from: "locator JO62QM" });
     expect(made.body.observation.tx.from).toBe("coordinates");
+    // Taken out again, so the comparison below counts only the imported log.
+    expect((await app.api("DELETE", `/api/radio/observations/${made.body.observation.id}`)).status).toBe(200);
   });
 });
 

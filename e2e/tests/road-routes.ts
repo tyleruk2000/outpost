@@ -56,7 +56,7 @@ export async function removeChannelTrip(page: Page, places: string[]): Promise<v
 export async function choosePlace(page: Page, label: string, place: string, tap = false): Promise<void> {
   const field = page.getByLabel(label, { exact: true });
   await (tap ? field.tap() : field.click());
-  const row = page.getByRole("list", { name: "Saved places" }).getByRole("button", { name: place });
+  const row = page.getByRole("list", { name: "Saved places" }).getByRole("button", { name: place, exact: true });
   await (tap ? row.tap() : row.click());
 }
 

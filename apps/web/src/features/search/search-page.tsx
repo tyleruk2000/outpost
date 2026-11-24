@@ -770,9 +770,10 @@ export default function SearchPage() {
               )}
             </section>
           ) : search.isPending ? (
-            <div className="mt-6 grid gap-7" aria-busy>
+            // One column no wider than the screen: a grid's column is otherwise as wide as the widest line (20 rem), past a 320 px phone's edge.
+            <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-7" aria-busy>
               {[0, 1, 2].map((row) => (
-                <div key={row} className="grid gap-2">
+                <div key={row} className="grid grid-cols-[minmax(0,1fr)] gap-2">
                   <Skeleton className="h-3 w-40" />
                   <Skeleton className="h-5 w-80 max-w-full" />
                   <Skeleton className="h-3 w-full max-w-[36rem]" />

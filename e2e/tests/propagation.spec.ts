@@ -80,6 +80,9 @@ test.describe("HF propagation", () => {
     await page.getByLabel("Receiver", { exact: true }).fill("52.4862, -1.8904");
     await page.getByLabel("Frequency, MHz").fill("1.9");
     await page.getByRole("button", { name: "Predict", exact: true }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "Give a frequency between 2 and 30 MHz" })).toBeVisible();
+    // Said under the field, and beside Predict with the field to put right named.
+    await expect(page.getByLabel("Frequency, MHz")).toHaveAccessibleDescription(/Give a frequency between 2 and 30 MHz/);
+    await expect(page.getByText("Give a frequency between 2 and 30 MHz, the range the engine covers.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: /^Not sent: Frequency needs putting right/ })).toBeVisible();
   });
 });
