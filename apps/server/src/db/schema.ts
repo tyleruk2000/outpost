@@ -2130,12 +2130,29 @@ export const satelliteWikipedia = sqliteTable("satellite_wikipedia", {
   url: text("url").notNull(),
   description: text("description"),
   extract: text("extract").notNull(),
-  /** "name" or "search". */
+  /** "number", "cospar", "name", "search" or "series" (SatelliteWikipediaMatch). */
   foundBy: text("found_by").notNull(),
   searchedFor: text("searched_for").notNull(),
+  /** The Wikidata item that tied the article to the satellite, or null. */
+  wikidataId: text("wikidata_id"),
+  /** The reference collection (a Wikipedia ZIM) it was read from, or null when read online. */
+  archiveCollectionId: text("archive_collection_id"),
+  archiveTitle: text("archive_title"),
+  archiveDate: text("archive_date"),
   editedAt: text("edited_at"),
   fetchedAt: integer("fetched_at").notNull(),
 });
+
+/** Articles a person discarded for a satellite, so that they are not offered for it again. */
+export const satelliteWikipediaDiscarded = sqliteTable(
+  "satellite_wikipedia_discarded",
+  {
+    noradId: integer("norad_id").notNull(),
+    title: text("title").notNull(),
+    discardedAt: integer("discarded_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.noradId, table.title] })],
+);
 
 /** When each publisher was last fetched from, and how it went. */
 export const satelliteFetches = sqliteTable("satellite_fetches", {

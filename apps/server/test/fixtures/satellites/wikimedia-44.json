@@ -1,0 +1,2063 @@
+{
+  "about": "Wikimedia's answers for the 44 satellites of the satellites review, read 24 November 2026 (Wikipedia Action API title look-ups and searches, Wikidata items). Reshaped for a local stand-in; never fetched by the tests.",
+  "satellites": [
+    {
+      "noradId": 39444,
+      "celestrak": "FUNCUBE-1 (AO-73)",
+      "cospar": "2013-066AE",
+      "satnogs": {
+        "name": "FUNCUBE-1",
+        "names": "AO-73"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "USS Millicoma"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "FUNcube-1"
+      }
+    },
+    {
+      "noradId": 25544,
+      "celestrak": "ISS (ZARYA)",
+      "cospar": "1998-067A",
+      "satnogs": {
+        "name": "ISS",
+        "names": "ZARYA, RS0ISS, NA1SS"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "International Space Station"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "International Space Station"
+      }
+    },
+    {
+      "noradId": 33591,
+      "celestrak": "NOAA 19",
+      "cospar": "2009-005A",
+      "satnogs": {
+        "name": "NOAA 19",
+        "names": "NOAA-N Prime"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "NOAA-19"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "NOAA-19"
+      }
+    },
+    {
+      "noradId": 57166,
+      "celestrak": "METEOR-M2 3",
+      "cospar": "2023-091A",
+      "satnogs": {
+        "name": "METEOR M2-3",
+        "names": "METEOR 2 2-3, METEOR-M N2-3"
+      },
+      "before": {
+        "verdict": "series",
+        "title": "Meteor (satellite)"
+      },
+      "expected": {
+        "outcome": "series",
+        "title": "Meteor (satellite)"
+      }
+    },
+    {
+      "noradId": 27607,
+      "celestrak": "SAUDISAT 1C (SO-50)",
+      "cospar": "2002-058C",
+      "satnogs": {
+        "name": "SAUDISAT 1C",
+        "names": "SO-50"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Saudi-OSCAR 50"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Saudi-OSCAR 50"
+      }
+    },
+    {
+      "noradId": 43017,
+      "celestrak": "RADFXSAT (FOX-1B)",
+      "cospar": "2017-073E",
+      "satnogs": {
+        "name": "FOX-1B",
+        "names": "AO-91, RADFXSAT"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Fox-1B"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Fox-1B"
+      }
+    },
+    {
+      "noradId": 44909,
+      "celestrak": "RS-44 & BREEZE-KM R/B",
+      "cospar": "2019-096E",
+      "satnogs": {
+        "name": "DOSAAF-85",
+        "names": "RS-44"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 53109,
+      "celestrak": "GREENCUBE (IO-117)",
+      "cospar": "2022-080E",
+      "satnogs": {
+        "name": "MTCube 2",
+        "names": "ROBUSTA-1F, FX6FRA"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Vega C"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 53106,
+      "celestrak": "GREENCUBE (IO-117)",
+      "cospar": "2022-080B",
+      "satnogs": {
+        "name": "GREENCUBE",
+        "names": "IO-117"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 43678,
+      "celestrak": "DIWATA-2B",
+      "cospar": "2018-084H",
+      "satnogs": {
+        "name": "DIWATA-2",
+        "names": "PO-101"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Diwata-2"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Diwata-2"
+      }
+    },
+    {
+      "noradId": 63217,
+      "celestrak": "TEVEL2-1",
+      "cospar": "2025-052H",
+      "satnogs": {
+        "name": "TEVEL2-1",
+        "names": ""
+      },
+      "before": {
+        "verdict": "none",
+        "title": null
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 50988,
+      "celestrak": "TEVEL-3",
+      "cospar": "2022-002AV",
+      "satnogs": {
+        "name": "Tevel-3",
+        "names": "T3TYB"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 42761,
+      "celestrak": "CAS-4A",
+      "cospar": "2017-034D",
+      "satnogs": {
+        "name": "ZHUHAI-1 OVS-01",
+        "names": "CAS 4A, BJ1SK"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Long March 11"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 40908,
+      "celestrak": "LILACSAT-2",
+      "cospar": "2015-049K",
+      "satnogs": {
+        "name": "LILACSAT 2",
+        "names": "CAS-3H XW-2H"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 40903,
+      "celestrak": "XW-2A",
+      "cospar": "2015-049E",
+      "satnogs": {
+        "name": "XW-2A",
+        "names": "CAS-3A"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Tianzhou 5"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 51080,
+      "celestrak": "HADES (SO-115)",
+      "cospar": "2022-002CX",
+      "satnogs": {
+        "name": "HADES",
+        "names": "SO-115, AM6SAT"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "HADES (satellite)"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "HADES (satellite)"
+      }
+    },
+    {
+      "noradId": 7530,
+      "celestrak": "OSCAR 7 (AO-7)",
+      "cospar": "1974-089B",
+      "satnogs": {
+        "name": "OSCAR 7",
+        "names": "AO-7, AMSAT OSCAR 7"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "AMSAT-OSCAR 7"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "AMSAT-OSCAR 7"
+      }
+    },
+    {
+      "noradId": 24278,
+      "celestrak": "JAS-2 (FO-29)",
+      "cospar": "1996-046B",
+      "satnogs": {
+        "name": "JAS-2",
+        "names": "FO-29"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Saab JAS 39 Gripen"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 43700,
+      "celestrak": "ES'HAIL 2",
+      "cospar": "2018-090A",
+      "satnogs": {
+        "name": "Es'hail 2",
+        "names": "QO-100"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Es'hail 2"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Es'hail 2"
+      }
+    },
+    {
+      "noradId": 61781,
+      "celestrak": "ASRTU-1 (AO-123)",
+      "cospar": "2024-199AY",
+      "satnogs": {
+        "name": "ASRTU-1",
+        "names": "AO-123, ASRTU Friendship, Druzhba ATURK, Дружба АТУРК, BJ1CR, RS64S"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "List of OSCAR satellites"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 22825,
+      "celestrak": "EYESAT A (AO-27)",
+      "cospar": "1993-061C",
+      "satnogs": {
+        "name": "EYESAT-1",
+        "names": "AO-27, EYESAT A"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Eyesat-1"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Eyesat-1"
+      }
+    },
+    {
+      "noradId": 40967,
+      "celestrak": "FOX-1A (AO-85)",
+      "cospar": "2015-058D",
+      "satnogs": {
+        "name": "FOX-1A",
+        "names": "AO-85"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Fox-1A"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Fox-1A"
+      }
+    },
+    {
+      "noradId": 43803,
+      "celestrak": "JY1SAT (JO-97)",
+      "cospar": "2018-099AX",
+      "satnogs": {
+        "name": "JY1Sat",
+        "names": "JO-97, Jordan-OSCAR 97"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "JY1-SAT"
+      }
+    },
+    {
+      "noradId": 39440,
+      "celestrak": "CUBEBUG-2 (LO-74)",
+      "cospar": "2013-066AA",
+      "satnogs": {
+        "name": "CUBEBUG-2",
+        "names": "LO-74"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Satellite collision"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 27844,
+      "celestrak": "CUTE-1 (CO-55)",
+      "cospar": "2003-031E",
+      "satnogs": {
+        "name": "CUTE-1",
+        "names": "CO-55"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "CUTE-1.7 + APD"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 14781,
+      "celestrak": "UOSAT 2 (UO-11)",
+      "cospar": "1984-021B",
+      "satnogs": {
+        "name": "UOSAT 2",
+        "names": "UO-11 OSCAR-11"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "UoSAT-2"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "UoSAT-2"
+      }
+    },
+    {
+      "noradId": 26931,
+      "celestrak": "PCSAT (NO-44)",
+      "cospar": "2001-043C",
+      "satnogs": {
+        "name": "PCSAT",
+        "names": "NO-44, W3ADO"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Small Satellite Program (United States Naval Academy)"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "OSCAR 44"
+      }
+    },
+    {
+      "noradId": 50466,
+      "celestrak": "XW-3 (CAS-9)",
+      "cospar": "2021-131B",
+      "satnogs": {
+        "name": "XW-3",
+        "names": "HO-113, CAS-9"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 43013,
+      "celestrak": "NOAA 20 (JPSS-1)",
+      "cospar": "2017-073A",
+      "satnogs": {
+        "name": "NOAA 20",
+        "names": "JPSS-1"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "NOAA-20"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "NOAA-20"
+      }
+    },
+    {
+      "noradId": 41866,
+      "celestrak": "GOES 16",
+      "cospar": "2016-071A",
+      "satnogs": {
+        "name": "GOES-16",
+        "names": ""
+      },
+      "before": {
+        "verdict": "right",
+        "title": "GOES-16"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "GOES-16"
+      }
+    },
+    {
+      "noradId": 38771,
+      "celestrak": "METOP-B",
+      "cospar": "2012-049A",
+      "satnogs": {
+        "name": "METOP-B",
+        "names": ""
+      },
+      "before": {
+        "verdict": "series",
+        "title": "MetOp"
+      },
+      "expected": {
+        "outcome": "series",
+        "title": "MetOp"
+      }
+    },
+    {
+      "noradId": 48274,
+      "celestrak": "CSS (TIANHE)",
+      "cospar": "2021-035A",
+      "satnogs": {
+        "name": "CSS (Tianhe)",
+        "names": "Tiangong, 天和"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Tenna"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Tianhe core module"
+      }
+    },
+    {
+      "noradId": 25397,
+      "celestrak": "TECHSAT 1B (GO-32)",
+      "cospar": "1998-043D",
+      "satnogs": {
+        "name": "TECHSAT 1B",
+        "names": "GO-32 TechSat, Gurwin-II"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 20442,
+      "celestrak": "LUSAT (LO-19)",
+      "cospar": "1990-005G",
+      "satnogs": {
+        "name": "LUSAT",
+        "names": "LO-19"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Lusat"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Lusat"
+      }
+    },
+    {
+      "noradId": 22826,
+      "celestrak": "ITAMSAT (IO-26)",
+      "cospar": "1993-061D",
+      "satnogs": {
+        "name": "ITAMSAT",
+        "names": "IO-26"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Amateur radio satellite"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 14129,
+      "celestrak": "PHASE 3B (AO-10)",
+      "cospar": "1983-058B",
+      "satnogs": {
+        "name": "Phase 3-B",
+        "names": "AO-10\r OSCAR-10"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Starlink"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "AMSAT-OSCAR 10"
+      }
+    },
+    {
+      "noradId": 37849,
+      "celestrak": "SUOMI NPP",
+      "cospar": "2011-061A",
+      "satnogs": {
+        "name": "SUOMI NPP",
+        "names": "2011-061A"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "Suomi NPP"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Suomi NPP"
+      }
+    },
+    {
+      "noradId": 39090,
+      "celestrak": "STRAND-1",
+      "cospar": "2013-009E",
+      "satnogs": {
+        "name": "STRAND-1",
+        "names": ""
+      },
+      "before": {
+        "verdict": "right",
+        "title": "STRaND-1"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "STRaND-1"
+      }
+    },
+    {
+      "noradId": 35932,
+      "celestrak": "SWISSCUBE",
+      "cospar": "2009-051B",
+      "satnogs": {
+        "name": "SWISSCUBE",
+        "names": ""
+      },
+      "before": {
+        "verdict": "right",
+        "title": "SwissCube-1"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "SwissCube-1"
+      }
+    },
+    {
+      "noradId": 40069,
+      "celestrak": "METEOR-M 2",
+      "cospar": "2014-037A",
+      "satnogs": {
+        "name": "METEOR M-2",
+        "names": ""
+      },
+      "before": {
+        "verdict": "series",
+        "title": "Meteor (satellite)"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Meteor-M No.2"
+      }
+    },
+    {
+      "noradId": 28654,
+      "celestrak": "NOAA 18",
+      "cospar": "2005-018A",
+      "satnogs": {
+        "name": "NOAA 18",
+        "names": ""
+      },
+      "before": {
+        "verdict": "right",
+        "title": "NOAA-18"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "NOAA-18"
+      }
+    },
+    {
+      "noradId": 60209,
+      "celestrak": "MESAT1",
+      "cospar": "2024-125G",
+      "satnogs": {
+        "name": "MESAT-1",
+        "names": "MESAT1-OSCAR 122, MO-122"
+      },
+      "before": {
+        "verdict": "right",
+        "title": "MESAT 1"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "MESAT 1"
+      }
+    },
+    {
+      "noradId": 54684,
+      "celestrak": "CAS-5A (FO-118)",
+      "cospar": "2022-167D",
+      "satnogs": {
+        "name": "CAS-5A",
+        "names": "FO-118, Fengtai-OSCAR 118, CAMSAT"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "Jielong 3"
+      },
+      "expected": {
+        "outcome": "none",
+        "title": null
+      }
+    },
+    {
+      "noradId": 43770,
+      "celestrak": "FOX-1CLIFF (AO-95)",
+      "cospar": "2018-099N",
+      "satnogs": {
+        "name": "FOX-1C",
+        "names": "AO-95Fox-1Cliff"
+      },
+      "before": {
+        "verdict": "wrong",
+        "title": "USS Caney"
+      },
+      "expected": {
+        "outcome": "exact",
+        "title": "Fox-1Cliff"
+      }
+    }
+  ],
+  "redirects": {
+    "ISS": "International Space Station",
+    "NOAA-N Prime": "NOAA-19",
+    "AO-73": "USS Millicoma",
+    "NA1SS": "International Space Station",
+    "SO-50": "Saudi-OSCAR 50",
+    "AO-91": "Fox-1B",
+    "PO-101": "Diwata-2",
+    "AO-7": "AMSAT-OSCAR 7",
+    "UO-11": "UoSAT-2",
+    "AO-85": "Fox-1A",
+    "QO-100": "Es'hail 2",
+    "AO-95": "USS Caney",
+    "GOES 16": "GOES-16",
+    "JPSS-1": "NOAA-20",
+    "天和": "Tenna"
+  },
+  "titled": [
+    "International Space Station",
+    "NOAA-19",
+    "USS Millicoma",
+    "Saudi-OSCAR 50",
+    "Diwata-2",
+    "Fox-1B",
+    "UoSAT-2",
+    "AMSAT-OSCAR 7",
+    "AO-27",
+    "Es'hail 2",
+    "Fox-1A",
+    "Tenna",
+    "USS Caney",
+    "CSS",
+    "Tiangong",
+    "GOES-16",
+    "NOAA-20"
+  ],
+  "pages": {
+    "International Space Station": {
+      "q": "Q25271",
+      "description": "Modular space station in low Earth orbit",
+      "disambiguation": false
+    },
+    "NOAA-19": {
+      "q": "Q6954803",
+      "description": "American weather satellite (2009–2025)",
+      "disambiguation": false
+    },
+    "USS Millicoma": {
+      "q": "Q7871807",
+      "description": "Oiler of the United States Navy",
+      "disambiguation": false
+    },
+    "Saudi-OSCAR 50": {
+      "q": "Q4120417",
+      "description": "Saudi Arabian amateur radio satellite",
+      "disambiguation": false
+    },
+    "Diwata-2": {
+      "q": "Q29017851",
+      "description": "Philippine microsatellite",
+      "disambiguation": false
+    },
+    "Fox-1B": {
+      "q": "Q52375962",
+      "description": "American amateur radio satellite",
+      "disambiguation": false
+    },
+    "UoSAT-2": {
+      "q": "Q9294412",
+      "description": "British satellite",
+      "disambiguation": false
+    },
+    "AMSAT-OSCAR 7": {
+      "q": "Q2278545",
+      "description": "1974 amateur radio satellite",
+      "disambiguation": false
+    },
+    "AO-27": {
+      "q": "Q4653115",
+      "description": "Topics referred to by the same term",
+      "disambiguation": true
+    },
+    "Es'hail 2": {
+      "q": "Q16120642",
+      "description": "Qatari television and radio satellite",
+      "disambiguation": false
+    },
+    "Fox-1A": {
+      "q": "Q21405967",
+      "description": "American amateur radio satellite",
+      "disambiguation": false
+    },
+    "Tenna": {
+      "q": "Q1145289",
+      "description": "Period of Japanese history (1681–1684)",
+      "disambiguation": false
+    },
+    "USS Caney": {
+      "q": "Q7868040",
+      "description": "Oiler of the United States Navy",
+      "disambiguation": false
+    },
+    "CSS": {
+      "q": "Q46441",
+      "description": "Style sheet language",
+      "disambiguation": false
+    },
+    "Tiangong": {
+      "q": "Q7800173",
+      "description": "Topics referred to by the same term",
+      "disambiguation": true
+    },
+    "GOES-16": {
+      "q": "Q5514055",
+      "description": "NOAA weather satellite",
+      "disambiguation": false
+    },
+    "NOAA-20": {
+      "q": "Q46996282",
+      "description": "American weather satellite",
+      "disambiguation": false
+    },
+    "Starlink": {
+      "q": "Q19867977",
+      "description": "SpaceX satellite Internet constellation",
+      "disambiguation": false
+    },
+    "Early warning satellite": {
+      "q": "Q25377420",
+      "description": "Ballistic missile detection satellite",
+      "disambiguation": false
+    },
+    "AMSAT": {
+      "q": "Q295309",
+      "description": "Amateur radio satellite organizations",
+      "disambiguation": false
+    },
+    "Lusat": {
+      "q": "Q5984917",
+      "description": null,
+      "disambiguation": false
+    },
+    "Amateur radio satellite": {
+      "q": "Q455647",
+      "description": "Type of satellite that transmits over amateur radio frequencies",
+      "disambiguation": false
+    },
+    "Satellogic": {
+      "q": "Q22669551",
+      "description": "American space technology company",
+      "disambiguation": false
+    },
+    "Eyesat-1": {
+      "q": "Q2790524",
+      "description": "Amateur radio satellite",
+      "disambiguation": false
+    },
+    "Starlette and Stella": {
+      "q": "Q519185",
+      "description": "French geodetic and geophysical satellites",
+      "disambiguation": false
+    },
+    "PoSAT-1": {
+      "q": "Q2045818",
+      "description": "Portuguese satellite",
+      "disambiguation": false
+    },
+    "Saab JAS 39 Gripen": {
+      "q": "Q150088",
+      "description": "Light single-engined multirole fighter aircraft from Sweden",
+      "disambiguation": false
+    },
+    "Czech Air Force": {
+      "q": "Q655272",
+      "description": "Aerial warfare branch of the Czech Republic",
+      "disambiguation": false
+    },
+    "Swedish Air Force": {
+      "q": "Q113525",
+      "description": "Air warfare branch of Sweden's military",
+      "disambiguation": false
+    },
+    "Asher Space Research Institute": {
+      "q": "Q6982862",
+      "description": "Scientific research institute in Israel",
+      "disambiguation": false
+    },
+    "Kwangmyŏngsŏng-1": {
+      "q": "Q978667",
+      "description": "North Korean satellite",
+      "disambiguation": false
+    },
+    "Small Satellite Program (United States Naval Academy)": {
+      "q": "Q16255194",
+      "description": null,
+      "disambiguation": false
+    },
+    "OSCAR 44": {
+      "q": "Q2754398",
+      "description": "American amateur radio satellite",
+      "disambiguation": false
+    },
+    "CUTE-1.7 + APD": {
+      "q": "Q14152752",
+      "description": "Amateur radio satellite launched in 2006",
+      "disambiguation": false
+    },
+    "CUTE-1.7 + APD II": {
+      "q": "Q14152747",
+      "description": "Follow up to CUTE-1.7 + APD nanosatellite",
+      "disambiguation": false
+    },
+    "Cute (disambiguation)": {
+      "q": "Q656496",
+      "description": "Topics referred to by the same term",
+      "disambiguation": true
+    },
+    "NOAA-18": {
+      "q": "Q6954805",
+      "description": "American weather satellite (2005–2025)",
+      "disambiguation": false
+    },
+    "NOAA-21": {
+      "q": "Q48840592",
+      "description": "NASA/NOAA weather satellite",
+      "disambiguation": false
+    },
+    "SwissCube-1": {
+      "q": "Q673366",
+      "description": "Swiss satellite launched in 2009",
+      "disambiguation": false
+    },
+    "Airglow": {
+      "q": "Q408723",
+      "description": "Faint emission of light by a planetary atmosphere",
+      "disambiguation": false
+    },
+    "Suomi NPP": {
+      "q": "Q3294876",
+      "description": "American Earth weather satellite (2011–2026)",
+      "disambiguation": false
+    },
+    "The Blue Marble": {
+      "q": "Q202014",
+      "description": "Photograph of Earth taken by Apollo 17 crew",
+      "disambiguation": false
+    },
+    "Suomi": {
+      "q": "Q351432",
+      "description": "Topics referred to by the same term",
+      "disambiguation": true
+    },
+    "MetOp": {
+      "q": "Q819651",
+      "description": "Series of European meteorological satellites",
+      "disambiguation": false
+    },
+    "MetOp-SG": {
+      "q": "Q1924632",
+      "description": "European meteorological satellites",
+      "disambiguation": false
+    },
+    "EUMETSAT": {
+      "q": "Q692163",
+      "description": "European intergovernmental organisation",
+      "disambiguation": false
+    },
+    "STRaND-1": {
+      "q": "Q6116306",
+      "description": "Nanosatellite",
+      "disambiguation": false
+    },
+    "Satellite DNA": {
+      "q": "Q425319",
+      "description": "Repetitive DNA with distinct base composition",
+      "disambiguation": false
+    },
+    "LES-1": {
+      "q": "Q11756909",
+      "description": "American communications satellite",
+      "disambiguation": false
+    },
+    "Satellite collision": {
+      "q": "Q6872872",
+      "description": "Collision involving one or more satellites in orbit",
+      "disambiguation": false
+    },
+    "Meteor (satellite)": {
+      "q": "Q1925316",
+      "description": "Series of weather observation satellites launched by Russia",
+      "disambiguation": false
+    },
+    "Meteor-M No.2": {
+      "q": "Q17331480",
+      "description": null,
+      "disambiguation": false
+    },
+    "Meteor-M No.2-2": {
+      "q": "Q97317329",
+      "description": null,
+      "disambiguation": false
+    },
+    "Tianzhou 5": {
+      "q": "Q112119394",
+      "description": "2022 Chinese resupply spaceflight to the Tiangong Space Station",
+      "disambiguation": false
+    },
+    "Silkworm (missile)": {
+      "q": "Q1151954",
+      "description": "Series of Chinese anti-ship missiles",
+      "disambiguation": false
+    },
+    "List of OSCAR satellites": {
+      "q": "Q137802817",
+      "description": "",
+      "disambiguation": false
+    },
+    "Codec 2": {
+      "q": "Q1105653",
+      "description": "Low-bitrate speech encoding format",
+      "disambiguation": false
+    },
+    "Long March 11": {
+      "q": "Q6672962",
+      "description": "Small orbital launch vehicle",
+      "disambiguation": false
+    },
+    "List of spaceflight launches in July–December 2019": {
+      "q": "Q134437769",
+      "description": "",
+      "disambiguation": false
+    },
+    "List of spaceflight launches in January–June 2018": {
+      "q": "Q134437748",
+      "description": "",
+      "disambiguation": false
+    },
+    "Fon language": {
+      "q": "Q33291",
+      "description": "Gbe language",
+      "disambiguation": false
+    },
+    "Television in Israel": {
+      "q": "Q1674688",
+      "description": "",
+      "disambiguation": false
+    },
+    "Hot (Israel)": {
+      "q": "Q1539183",
+      "description": "Israeli cable television, internet and telecommunications company",
+      "disambiguation": false
+    },
+    "HADES (satellite)": {
+      "q": "Q110972527",
+      "description": "Spanish amateur radio satellite",
+      "disambiguation": false
+    },
+    "Escape Plan 2: Hades": {
+      "q": "Q30637119",
+      "description": "2018 film by Steven C. Miller",
+      "disambiguation": false
+    },
+    "Sinope (moon)": {
+      "q": "Q17433",
+      "description": "Moon of Jupiter",
+      "disambiguation": false
+    },
+    "Vega C": {
+      "q": "Q56010145",
+      "description": "European small-lift launch vehicle",
+      "disambiguation": false
+    },
+    "Centre Spatial Universitaire Montpellier-Nîmes": {
+      "q": "Q17354138",
+      "description": null,
+      "disambiguation": false
+    },
+    "Jielong 3": {
+      "q": "Q115555344",
+      "description": "Chinese solid-propellant space launch vehicle",
+      "disambiguation": false
+    },
+    "Einstein Probe": {
+      "q": "Q30765887",
+      "description": "X-ray space telescope",
+      "disambiguation": false
+    },
+    "Haiyang (satellite)": {
+      "q": "Q2362851",
+      "description": "Chinese ocean observation satellite",
+      "disambiguation": false
+    },
+    "Chelyabinsk meteor": {
+      "q": "Q4661508",
+      "description": "Near-Earth asteroid that fell over Russia in 2013",
+      "disambiguation": false
+    },
+    "MESAT 1": {
+      "q": "Q130461675",
+      "description": "American amateur radio satellite",
+      "disambiguation": false
+    },
+    "List of spaceflight launches in July–December 2024": {
+      "q": "Q124206428",
+      "description": "",
+      "disambiguation": false
+    },
+    "Fregat": {
+      "q": "Q1453740",
+      "description": "Russian upper rocket stage",
+      "disambiguation": false
+    }
+  },
+  "searches": {
+    "Phase 3-B satellite": ["Starlink", "Early warning satellite", "AMSAT"],
+    "LUSAT satellite": ["Lusat", "Amateur radio satellite", "Satellogic"],
+    "EYESAT-1 satellite": ["Eyesat-1", "AO-27", "Amateur radio satellite"],
+    "ITAMSAT satellite": ["Amateur radio satellite", "Starlette and Stella", "PoSAT-1"],
+    "JAS-2 satellite": ["Saab JAS 39 Gripen", "Czech Air Force", "Swedish Air Force"],
+    "TECHSAT 1B satellite": ["Amateur radio satellite", "Asher Space Research Institute", "Kwangmyŏngsŏng-1"],
+    "PCSAT satellite": ["Small Satellite Program (United States Naval Academy)", "OSCAR 44", "Amateur radio satellite"],
+    "CUTE-1 satellite": ["CUTE-1.7 + APD", "CUTE-1.7 + APD II", "Cute (disambiguation)"],
+    "NOAA 18 satellite": ["NOAA-18", "NOAA-20", "NOAA-21"],
+    "SWISSCUBE satellite": ["SwissCube-1", "Amateur radio satellite", "Airglow"],
+    "SUOMI NPP satellite": ["Suomi NPP", "The Blue Marble", "Suomi"],
+    "METOP-B satellite": ["MetOp", "MetOp-SG", "EUMETSAT"],
+    "STRAND-1 satellite": ["STRaND-1", "Satellite DNA", "LES-1"],
+    "CUBEBUG-2 satellite": ["Satellite collision", "Satellogic", "Amateur radio satellite"],
+    "METEOR M-2 satellite": ["Meteor (satellite)", "Meteor-M No.2", "Meteor-M No.2-2"],
+    "XW-2A satellite": ["Tianzhou 5", "Silkworm (missile)", "List of OSCAR satellites"],
+    "LILACSAT 2 satellite": ["Amateur radio satellite", "Codec 2", "List of OSCAR satellites"],
+    "ZHUHAI-1 OVS-01 satellite": [
+      "Long March 11",
+      "List of spaceflight launches in July–December 2019",
+      "List of spaceflight launches in January–June 2018"
+    ],
+    "JY1Sat satellite": ["Amateur radio satellite", "List of OSCAR satellites"],
+    "DOSAAF-85 satellite": ["Amateur radio satellite"],
+    "XW-3 satellite": ["Amateur radio satellite", "Tianzhou 5", "Fon language"],
+    "Tevel-3 satellite": ["Amateur radio satellite", "Television in Israel", "Hot (Israel)"],
+    "HADES satellite": ["HADES (satellite)", "Escape Plan 2: Hades", "Sinope (moon)"],
+    "GREENCUBE satellite": ["Amateur radio satellite", "List of OSCAR satellites", "Vega C"],
+    "MTCube 2 satellite": [
+      "Vega C",
+      "Centre Spatial Universitaire Montpellier-Nîmes",
+      "List of spaceflight launches in July–December 2019"
+    ],
+    "CAS-5A satellite": ["Jielong 3", "Einstein Probe", "Haiyang (satellite)"],
+    "METEOR M2-3 satellite": ["Meteor (satellite)", "Chelyabinsk meteor", "Meteor-M No.2-2"],
+    "MESAT-1 satellite": ["MESAT 1", "Amateur radio satellite", "List of spaceflight launches in July–December 2024"],
+    "ASRTU-1 satellite": ["List of OSCAR satellites", "List of spaceflight launches in July–December 2024", "Fregat"],
+    "TEVEL2-1 satellite": []
+  },
+  "entities": {
+    "Q2008049": {
+      "label": "AMSAT-OSCAR 10",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["14129"],
+      "p247": ["1983-058B"],
+      "enwiki": "AMSAT-OSCAR 10"
+    },
+    "Q9294412": {
+      "label": "UoSAT-2",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["14781"],
+      "p247": ["1984-021B"],
+      "enwiki": "UoSAT-2"
+    },
+    "Q5984917": {
+      "label": "OSCAR 19",
+      "description": null,
+      "p31": ["Q149918"],
+      "p279": [],
+      "p377": ["20442"],
+      "p247": ["1990-005G"],
+      "enwiki": "Lusat"
+    },
+    "Q2790524": {
+      "label": "Eyesat",
+      "description": "satellite",
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["22825"],
+      "p247": ["1993-061C"],
+      "enwiki": "Eyesat-1"
+    },
+    "Q2790523": {
+      "label": "ITAMSAT",
+      "description": null,
+      "p31": ["Q26540", "Q455647", "Q2008094"],
+      "p279": [],
+      "p377": ["22826"],
+      "p247": ["1993-061D"],
+      "enwiki": null
+    },
+    "Q2045696": {
+      "label": "JAS-2",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["24278"],
+      "p247": ["1996-046B"],
+      "enwiki": null
+    },
+    "Q6921675": {
+      "label": "Gurwin-II TechSat",
+      "description": null,
+      "p31": ["Q455647", "Q12832168"],
+      "p279": [],
+      "p377": ["25397"],
+      "p247": ["1998-043D"],
+      "enwiki": null
+    },
+    "Q25271": {
+      "label": "International Space Station",
+      "description": "modular space station in low Earth orbit",
+      "p31": ["Q139444619", "Q1471432", "Q12832168"],
+      "p279": [],
+      "p377": ["25544"],
+      "p247": ["1998-067A"],
+      "enwiki": "International Space Station"
+    },
+    "Q331785": {
+      "label": "Zarya",
+      "description": "first module of the International Space Station",
+      "p31": ["Q18812508", "Q5508783"],
+      "p279": [],
+      "p377": ["25544"],
+      "p247": ["1998-067A"],
+      "enwiki": "Zarya (ISS module)"
+    },
+    "Q2754398": {
+      "label": "PCsat",
+      "description": "American amateur radio satellite",
+      "p31": ["Q455647", "Q26540"],
+      "p279": [],
+      "p377": ["26931"],
+      "p247": ["2001-043C"],
+      "enwiki": "OSCAR 44"
+    },
+    "Q4120417": {
+      "label": "Saudi-OSCAR 50",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["27607"],
+      "p247": ["2002-058C"],
+      "enwiki": "Saudi-OSCAR 50"
+    },
+    "Q16830765": {
+      "label": "Cute 1",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["27844"],
+      "p247": ["2003-031E"],
+      "enwiki": null
+    },
+    "Q6954805": {
+      "label": "NOAA-18",
+      "description": null,
+      "p31": ["Q209363"],
+      "p279": [],
+      "p377": ["28654"],
+      "p247": ["2005-018A"],
+      "enwiki": "NOAA-18"
+    },
+    "Q6954803": {
+      "label": "NOAA-19",
+      "description": null,
+      "p31": ["Q209363"],
+      "p279": [],
+      "p377": ["33591"],
+      "p247": ["2009-005A"],
+      "enwiki": "NOAA-19"
+    },
+    "Q673366": {
+      "label": "SwissCube-1",
+      "description": null,
+      "p31": ["Q26540", "Q1142930", "Q12832168"],
+      "p279": [],
+      "p377": ["35932"],
+      "p247": ["2009-051B"],
+      "enwiki": "SwissCube-1"
+    },
+    "Q3294876": {
+      "label": "Suomi NPP",
+      "description": null,
+      "p31": ["Q209363"],
+      "p279": [],
+      "p377": ["37849"],
+      "p247": ["2011-061A"],
+      "enwiki": "Suomi NPP"
+    },
+    "Q3133791": {
+      "label": "MetOp-B",
+      "description": null,
+      "p31": ["Q819651"],
+      "p279": [],
+      "p377": ["38771"],
+      "p247": ["2012-049A"],
+      "enwiki": null
+    },
+    "Q6116306": {
+      "label": "STRaND-1",
+      "description": null,
+      "p31": ["Q1142930", "Q12832168"],
+      "p279": [],
+      "p377": ["39090"],
+      "p247": ["2013-009E"],
+      "enwiki": "STRaND-1"
+    },
+    "Q17049981": {
+      "label": "CubeBug-2",
+      "description": null,
+      "p31": ["Q26540", "Q455647", "Q1142930", "Q95945728"],
+      "p279": [],
+      "p377": ["39440"],
+      "p247": ["2013-066AA"],
+      "enwiki": null
+    },
+    "Q15261051": {
+      "label": "FUNcube-1",
+      "description": null,
+      "p31": ["Q26540", "Q1142930"],
+      "p279": [],
+      "p377": ["39444"],
+      "p247": ["2013-066AE"],
+      "enwiki": "FUNcube-1"
+    },
+    "Q17331480": {
+      "label": "Meteor-M No.2-1",
+      "description": "2014 Russian weather satellite",
+      "p31": ["Q209363"],
+      "p279": [],
+      "p377": ["40069"],
+      "p247": ["2014-037A"],
+      "enwiki": "Meteor-M No.2"
+    },
+    "Q67174925": {
+      "label": "XW-2A",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["40903"],
+      "p247": ["2015-049E"],
+      "enwiki": null
+    },
+    "Q67174944": {
+      "label": "LilacSat 2",
+      "description": null,
+      "p31": ["Q26540", "Q455647"],
+      "p279": [],
+      "p377": ["40908"],
+      "p247": ["2015-049K"],
+      "enwiki": null
+    },
+    "Q21405967": {
+      "label": "Fox-1A",
+      "description": null,
+      "p31": ["Q455647", "Q1142930"],
+      "p279": [],
+      "p377": ["40967"],
+      "p247": ["2015-058D"],
+      "enwiki": "Fox-1A"
+    },
+    "Q5514055": {
+      "label": "GOES-16",
+      "description": null,
+      "p31": ["Q209363", "Q12832168", "Q19362195"],
+      "p279": [],
+      "p377": ["41866"],
+      "p247": ["2016-071A"],
+      "enwiki": "GOES-16"
+    },
+    "Q67174942": {
+      "label": "Zhuhai-1 01",
+      "description": null,
+      "p31": ["Q455647", "Q854845", "Q131597874"],
+      "p279": [],
+      "p377": ["42761"],
+      "p247": ["2017-034D"],
+      "enwiki": null
+    },
+    "Q46996282": {
+      "label": "NOAA-20",
+      "description": null,
+      "p31": ["Q209363"],
+      "p279": [],
+      "p377": ["43013"],
+      "p247": ["2017-073A"],
+      "enwiki": "NOAA-20"
+    },
+    "Q52375962": {
+      "label": "Fox-1B",
+      "description": null,
+      "p31": ["Q455647", "Q1142930"],
+      "p279": [],
+      "p377": ["43017"],
+      "p247": ["2017-073E"],
+      "enwiki": "Fox-1B"
+    },
+    "Q29017851": {
+      "label": "Diwata-2",
+      "description": null,
+      "p31": ["Q149918", "Q455647", "Q854845", "Q1580082"],
+      "p279": [],
+      "p377": ["43678"],
+      "p247": ["2018-084H"],
+      "enwiki": "Diwata-2"
+    },
+    "Q16120642": {
+      "label": "Q16120642",
+      "description": null,
+      "p31": ["Q149918", "Q455647", "Q19362195"],
+      "p279": [],
+      "p377": ["43700"],
+      "p247": ["2018-090A"],
+      "enwiki": "Es'hail 2"
+    },
+    "Q60314040": {
+      "label": "Fox-1Cliff",
+      "description": null,
+      "p31": ["Q455647", "Q1142930"],
+      "p279": [],
+      "p377": ["43770"],
+      "p247": ["2018-099N"],
+      "enwiki": "Fox-1Cliff"
+    },
+    "Q60760723": {
+      "label": "JY1-SAT",
+      "description": null,
+      "p31": ["Q1142930"],
+      "p279": [],
+      "p377": ["43803"],
+      "p247": ["2018-099AX"],
+      "enwiki": "JY1-SAT"
+    },
+    "Q97161046": {
+      "label": "DOSAAF-85",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["44909"],
+      "p247": ["2019-096E"],
+      "enwiki": null
+    },
+    "Q5170154": {
+      "label": "Tianhe",
+      "description": null,
+      "p31": ["Q18812508"],
+      "p279": [],
+      "p377": ["48274"],
+      "p247": ["2021-035A"],
+      "enwiki": "Tianhe core module"
+    },
+    "Q110278661": {
+      "label": "CAMSAT XW-3",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["50466"],
+      "p247": ["2021-131B"],
+      "enwiki": null
+    },
+    "Q110972527": {
+      "label": "HADES",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["51080"],
+      "p247": ["2022-002DA"],
+      "enwiki": "HADES (satellite)"
+    },
+    "Q115329403": {
+      "label": "Q115329403",
+      "description": null,
+      "p31": ["Q455647", "Q1142930", "Q105839698"],
+      "p279": [],
+      "p377": ["53106"],
+      "p247": ["2022-080B"],
+      "enwiki": null
+    },
+    "Q115902533": {
+      "label": "Fengtai Shaonian 2",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["54684"],
+      "p247": ["2022-167C"],
+      "enwiki": null
+    },
+    "Q130461675": {
+      "label": "MESAT1",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["60209"],
+      "p247": ["2024-125G"],
+      "enwiki": "MESAT 1"
+    },
+    "Q131347099": {
+      "label": "ASRTU-1",
+      "description": null,
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["61781"],
+      "p247": ["2024-199AY"],
+      "enwiki": null
+    },
+    "Q7871807": {
+      "label": "USS Millicoma",
+      "description": "1943 Suamico-class oiler",
+      "p31": ["Q162986"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q7868040": {
+      "label": "USS Caney",
+      "description": "oiler of the United States Navy",
+      "p31": ["Q162986"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q46441": {
+      "label": "Cascading Style Sheets",
+      "description": "declarative language for styling web pages",
+      "p31": ["Q235557", "Q9143", "Q1029123"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q1145289": {
+      "label": "Tenna",
+      "description": "Japanese era from November 1681 to April 1684",
+      "p31": ["Q24706"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q2278545": {
+      "label": "AMSAT-OSCAR 7",
+      "description": "artificial earth satellite",
+      "p31": ["Q455647"],
+      "p279": [],
+      "p377": ["07530"],
+      "p247": ["1974-089B"],
+      "enwiki": "AMSAT-OSCAR 7"
+    },
+    "Q1925316": {
+      "label": "Meteor",
+      "description": "satellite",
+      "p31": [],
+      "p279": ["Q209363"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q455647": {
+      "label": "amateur radio satellite",
+      "description": "type of satellite that transmits amateur radio",
+      "p31": ["Q131610589"],
+      "p279": ["Q149918"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q150088": {
+      "label": "Saab JAS 39 Gripen",
+      "description": "Swedish multirole fighter aircraft",
+      "p31": ["Q15056993"],
+      "p279": ["Q69144217", "Q63974194", "Q850403", "Q127771"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q819651": {
+      "label": "MetOp",
+      "description": "model of European meteorological satellite",
+      "p31": ["Q29048322"],
+      "p279": ["Q209363"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q14152752": {
+      "label": "CUTE-1.7 + APD",
+      "description": "amateur radio satellite launched in 2006",
+      "p31": ["Q181309"],
+      "p279": [],
+      "p377": ["28941"],
+      "p247": ["2006-005C"],
+      "enwiki": null
+    },
+    "Q16255194": {
+      "label": "Small Satellite Program",
+      "description": null,
+      "p31": [],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q56010145": {
+      "label": "Vega C",
+      "description": "orbital launch vehicle by the European Space Agency",
+      "p31": ["Q110055303"],
+      "p279": ["Q15078724", "Q104871972", "Q22908850"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q6672962": {
+      "label": "Long March 11",
+      "description": "Chinese small orbital launch vehicle",
+      "p31": ["Q111722634"],
+      "p279": ["Q53665"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q112119394": {
+      "label": "Tianzhou 5",
+      "description": "2022 Chinese resupply spaceflight to the Tiangong Space Station",
+      "p31": ["Q15905312"],
+      "p279": [],
+      "p377": ["54237"],
+      "p247": ["2022-152A"],
+      "enwiki": null
+    },
+    "Q6872872": {
+      "label": "satellite collision",
+      "description": "when satellites collided in orbit around celestial bodies",
+      "p31": [],
+      "p279": ["Q238053"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q115555344": {
+      "label": "Jielong-3",
+      "description": "solid-propellant space launch vehicle of China",
+      "p31": ["Q110055303", "Q697175"],
+      "p279": ["Q15078724", "Q22908850", "Q280602", "Q104871972"],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q137802817": {
+      "label": "List of OSCAR satellites",
+      "description": "Wikimedia list article",
+      "p31": ["Q13406463"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": null
+    },
+    "Q97317329": {
+      "label": "Meteor-M No.2-2",
+      "description": "Russian polar orbiting weather satellite",
+      "p31": ["Q209363"],
+      "p279": [],
+      "p377": ["44387"],
+      "p247": ["2019-038A"],
+      "enwiki": null
+    },
+    "Q4653115": {
+      "label": "AO-27",
+      "description": "Wikimedia disambiguation page",
+      "p31": ["Q4167410"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "AO-27"
+    },
+    "Q7800173": {
+      "label": "Tiangong",
+      "description": "Wikimedia disambiguation page",
+      "p31": ["Q4167410"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Tiangong"
+    },
+    "Q19867977": {
+      "label": null,
+      "description": "satellite constellation; space-based internet communication system",
+      "p31": ["Q54806917", "Q136937248"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Starlink"
+    },
+    "Q25377420": {
+      "label": "early warning satellite",
+      "description": "ballistic missile detection satellite",
+      "p31": [],
+      "p279": ["Q466421"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Early warning satellite"
+    },
+    "Q295309": {
+      "label": "AMSAT",
+      "description": "association of amateur radio satellite organizations",
+      "p31": ["Q163740"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "AMSAT"
+    },
+    "Q22669551": {
+      "label": "Satellogic",
+      "description": "vertically integrated geospatial analytics company",
+      "p31": ["Q124628741"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Satellogic"
+    },
+    "Q519185": {
+      "label": "Starlette",
+      "description": "geodetic satellite",
+      "p31": ["Q1502863"],
+      "p279": [],
+      "p377": ["07646"],
+      "p247": ["1975-010A"],
+      "enwiki": "Starlette and Stella"
+    },
+    "Q2045818": {
+      "label": "PoSAT-1",
+      "description": "Portuguese satellite",
+      "p31": ["Q973887", "Q95945728", "Q12832168"],
+      "p279": [],
+      "p377": ["22829"],
+      "p247": ["1993-061G"],
+      "enwiki": "PoSAT-1"
+    },
+    "Q655272": {
+      "label": "Czech Air Force",
+      "description": "aerial warfare branch of the Czech Republic and Czechoslovakia",
+      "p31": ["Q61883"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Czech Air Force"
+    },
+    "Q113525": {
+      "label": "Swedish Air Force",
+      "description": "air warfare branch of Sweden's military",
+      "p31": ["Q61883", "Q781132"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Swedish Air Force"
+    },
+    "Q6982862": {
+      "label": "Asher Space Research Institute",
+      "description": "scientific research institute in Israel",
+      "p31": ["Q31855"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Asher Space Research Institute"
+    },
+    "Q978667": {
+      "label": "Kwangmyŏngsŏng-1",
+      "description": "North Korean satellite, lost in a launch failure",
+      "p31": ["Q95945728", "Q15893266", "Q12832168"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Kwangmyŏngsŏng-1"
+    },
+    "Q14152747": {
+      "label": "CUTE-1.7 + APD II",
+      "description": "follow up to CUTE-1.7 + APD nanosatellite",
+      "p31": ["Q181309"],
+      "p279": [],
+      "p377": ["32785"],
+      "p247": ["2008-021C"],
+      "enwiki": "CUTE-1.7 + APD II"
+    },
+    "Q656496": {
+      "label": "Cute",
+      "description": "Wikimedia disambiguation page",
+      "p31": ["Q4167410"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Cute (disambiguation)"
+    },
+    "Q48840592": {
+      "label": "NOAA-21",
+      "description": "American weather satellite",
+      "p31": ["Q209363"],
+      "p279": [],
+      "p377": ["54234"],
+      "p247": ["2022-150A"],
+      "enwiki": "NOAA-21"
+    },
+    "Q408723": {
+      "label": "airglow",
+      "description": "faint emission of light by a planet's upper atmosphere",
+      "p31": [],
+      "p279": ["Q29564129", "Q9128"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Airglow"
+    },
+    "Q202014": {
+      "label": "The Blue Marble",
+      "description": "photograph of the Earth, cropped and rotated from one taken by the crew of the Apollo 17 spacecraft",
+      "p31": ["Q131426286"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "The Blue Marble"
+    },
+    "Q351432": {
+      "label": "Suomi",
+      "description": "Wikimedia disambiguation page",
+      "p31": ["Q4167410"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Suomi"
+    },
+    "Q1924632": {
+      "label": "MetOp-SG",
+      "description": "European meteorological satellite constellation",
+      "p31": ["Q29048322"],
+      "p279": ["Q209363"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "MetOp-SG"
+    },
+    "Q692163": {
+      "label": "EUMETSAT",
+      "description": "intergovernmental organisation",
+      "p31": ["Q245065"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "EUMETSAT"
+    },
+    "Q425319": {
+      "label": "satellite DNA",
+      "description": "repetitive DNA with distinct base composition observed using isopycnic centrifugation",
+      "p31": [],
+      "p279": ["Q7430"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Satellite DNA"
+    },
+    "Q11756909": {
+      "label": "Lincoln Experimental Satellite 1",
+      "description": "American communications satellite which stopped transmitting in 1967, but resumed c. 2012",
+      "p31": ["Q149918", "Q95945728"],
+      "p279": [],
+      "p377": ["01002"],
+      "p247": ["1965-008C"],
+      "enwiki": "LES-1"
+    },
+    "Q1151954": {
+      "label": "HY-2",
+      "description": "series of Chinese anti-ship missiles",
+      "p31": ["Q18487055"],
+      "p279": ["Q133250", "Q643532"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Silkworm (missile)"
+    },
+    "Q1105653": {
+      "label": "Codec 2",
+      "description": "low-bitrate speech encoding format",
+      "p31": ["Q341", "Q20198160", "Q908562"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Codec 2"
+    },
+    "Q134437769": {
+      "label": "list of spaceflight launches in July–December 2019",
+      "description": "Wikimedia list article",
+      "p31": ["Q13406463"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "List of spaceflight launches in July–December 2019"
+    },
+    "Q134437748": {
+      "label": "list of spaceflight launches in January–June 2018",
+      "description": "Wikimedia list article",
+      "p31": ["Q13406463"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "List of spaceflight launches in January–June 2018"
+    },
+    "Q33291": {
+      "label": "Fon",
+      "description": "part of the Gbe language cluster and belongs to the Volta–Niger branch of the Niger–Congo languages",
+      "p31": ["Q1288568"],
+      "p279": ["Q668284"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Fon language"
+    },
+    "Q1674688": {
+      "label": "television in Israel",
+      "description": "overview of television in Israel",
+      "p31": ["Q55276680"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Television in Israel"
+    },
+    "Q1539183": {
+      "label": "Hot",
+      "description": "Israeli cable television, internet and telecommunications company",
+      "p31": ["Q783794", "Q15265344"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Hot (Israel)"
+    },
+    "Q30637119": {
+      "label": "Escape Plan 2: Hades",
+      "description": "2018 film by Steven C. Miller",
+      "p31": ["Q11424"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Escape Plan 2: Hades"
+    },
+    "Q17433": {
+      "label": "Sinope",
+      "description": "moon of Jupiter",
+      "p31": ["Q61702557", "Q1632885"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Sinope (moon)"
+    },
+    "Q17354138": {
+      "label": "Space Center of the University of Montpellier",
+      "description": "division of the University of Montpellier",
+      "p31": ["Q334453", "Q31855"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Centre Spatial Universitaire Montpellier-Nîmes"
+    },
+    "Q30765887": {
+      "label": "Einstein Probe",
+      "description": "Chinese X-ray astronomy satellite",
+      "p31": ["Q148578"],
+      "p279": [],
+      "p377": ["58753"],
+      "p247": ["2024-007A"],
+      "enwiki": "Einstein Probe"
+    },
+    "Q2362851": {
+      "label": "HaiYang",
+      "description": "series of Chinese marine remote sensing satellites",
+      "p31": ["Q967145"],
+      "p279": ["Q24837250"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Haiyang (satellite)"
+    },
+    "Q4661508": {
+      "label": "Chelyabinsk meteor",
+      "description": "near-Earth asteroid that fell over Russia in 2013",
+      "p31": ["Q217526", "Q131136"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Chelyabinsk meteor"
+    },
+    "Q124206428": {
+      "label": "list of spaceflight launches in July–December 2024",
+      "description": "Wikimedia list article",
+      "p31": ["Q13406463"],
+      "p279": [],
+      "p377": [],
+      "p247": [],
+      "enwiki": "List of spaceflight launches in July–December 2024"
+    },
+    "Q1453740": {
+      "label": "Fregat",
+      "description": "family of Russian rocket upper stages",
+      "p31": ["Q109542585"],
+      "p279": ["Q1958838"],
+      "p377": [],
+      "p247": [],
+      "enwiki": "Fregat"
+    }
+  }
+}

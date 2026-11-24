@@ -77,6 +77,26 @@ export interface KiwixService {
   books(token: string): Promise<BookDto[]>;
   /** Searches of archives at kiwix-serve now, and searches waiting their turn. */
   searchLoad(): { running: number; waiting: number };
+  /** The English Wikipedia copies, for other modules to look an article up in (Satellites: About this satellite). */
+  wikipedia: WikipediaArchives;
+}
+
+export interface WikipediaArchiveRef {
+  collectionId: string;
+  title: string;
+  /** The archive's own date ("2026-10-18"), or null. */
+  date: string | null;
+}
+
+export interface WikipediaArchives {
+  /** The English Wikipedia copies (WikiMed and partial ones included) that can be read now, largest first. */
+  list(): WikipediaArchiveRef[];
+  /** Titles holding these words, best first (kiwix-serve's suggestions). */
+  suggest(collectionId: string, term: string, count: number): Promise<Array<{ title: string; path: string }>>;
+  /** An article's HTML and the path it ended at after any redirect, or null. */
+  article(collectionId: string, articlePath: string): Promise<{ html: string; path: string } | null>;
+  /** Where the reader opens an article. */
+  readerUrl(collectionId: string, articlePath: string): string;
 }
 
 declare module "../../core/context.ts" {
@@ -436,6 +456,49 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         .filter((book): book is BookDto => Boolean(book));
     },
     searchLoad: () => queue.load(),
+    wikipedia: {
+      list() {
+        return zimCollections()
+          .filter(servable)
+          .filter((row) => {
+            const extra = kiwixOf(row);
+            const language = extra.language ?? row.language ?? "";
+            const named = `${zimOf(row)?.bookName ?? ""} ${extra.name ?? ""} ${row.title}`;
+            return /^(en|eng)\b/i.test(language || "en") && /wikipedia|wikimed/i.test(named);
+          })
+          .sort((a, b) => (zimOf(b)?.articleCount ?? 0) - (zimOf(a)?.articleCount ?? 0))
+          .map((row) => ({ collectionId: row.id, title: row.title, date: kiwixOf(row).date ?? null }));
+      },
+      async suggest(collectionId, term, count) {
+        const row = collections.get(collectionId);
+        if (!row || !servable(row)) return [];
+        return (await suggestBook(row, term, count)).map((hit) => ({ title: hit.title, path: hit.path }));
+      },
+      async article(collectionId, articlePath) {
+        const row = collections.get(collectionId);
+        const bookName = row && servable(row) ? zimOf(row)?.bookName : undefined;
+        if (!bookName) return null;
+        const prefix = `/content/${encodeURIComponent(bookName)}/`;
+        const encoded = articlePath.split("/").map(encodeURIComponent).join("/");
+        const response = await upstream(`content/${encodeURIComponent(bookName)}/${encoded}`, { redirect: "follow" });
+        if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) {
+          await response.body?.cancel();
+          return null;
+        }
+        const html = await response.text();
+        if (html.length > 4 * 1024 * 1024) return null;
+        const ended = response.url ? new URL(response.url).pathname : "";
+        const finalPath = ended.startsWith(prefix)
+          ? ended
+              .slice(prefix.length)
+              .split("/")
+              .map((part) => decodeURIComponent(part))
+              .join("/")
+          : articlePath;
+        return { html, path: finalPath };
+      },
+      readerUrl: (collectionId, articlePath) => readerUrl(collectionId, articlePath),
+    },
   };
   ctx.services.kiwix = service;
 

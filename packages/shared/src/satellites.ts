@@ -114,24 +114,43 @@ export interface SatelliteAbout {
   associated: string[];
 }
 
+/**
+ * How a satellite's article was matched to it, strongest first:
+ * - "number": a Wikidata item, or the article's own infobox, carries its NORAD catalogue number;
+ * - "cospar": the same by its international (COSPAR) designator;
+ * - "name": an article goes by one of its names and is about a spacecraft, carrying no other number;
+ * - "search": the same, found by a search;
+ * - "series": the article is about the series it belongs to (MetOp for METOP-B), and says so.
+ */
+export type SatelliteWikipediaMatch = "number" | "cospar" | "name" | "search" | "series";
+
 /** An English Wikipedia article's summary, fetched for a satellite when a person pressed for it, and kept. CC BY-SA 4.0. */
 export interface SatelliteWikipedia {
   noradId: number;
   /** The article's title: "Fox-1B". */
   title: string;
-  /** The article's address on en.wikipedia.org. */
+  /** The article's address on en.wikipedia.org, or in the reader for the copy kept on this Outpost. */
   url: string;
   /** Wikipedia's short description: "American amateur radio satellite", or null. */
   description: string | null;
   /** The summary, as plain text. */
   extract: string;
-  /** How it was found: an article under one of the satellite's names, or the first fitting answer to a search. */
-  foundBy: "name" | "search";
-  /** The name it was found under ("NA1SS"), or the words searched for ("FOX-1B satellite"). */
+  foundBy: SatelliteWikipediaMatch;
+  /** What it was matched by: "NORAD 39444", "COSPAR 2013-066B", a name ("NA1SS"), or the words searched for. */
   searchedFor: string;
+  /** The Wikidata item that tied the article to the satellite ("Q15261051"), or null. */
+  wikidataId: string | null;
+  /** The Wikipedia copy on this Outpost it was read from, or null when it was read from Wikipedia online. */
+  archive: { collectionId: string; title: string; date: string | null } | null;
   /** When the article was last edited, as the summary gives it (ISO 8601), or null. */
   editedAt: string | null;
   fetchedAt: number;
+}
+
+/** An article a person discarded for a satellite: it is not offered for that satellite again. */
+export interface SatelliteWikipediaDiscarded {
+  noradId: number;
+  title: string;
 }
 
 export interface SatelliteSourceState {
@@ -155,6 +174,8 @@ export interface SatellitesResponse {
   about: SatelliteAbout[];
   /** The Wikipedia summaries a person fetched, one a satellite at most. */
   wikipedia: SatelliteWikipedia[];
+  /** Articles a person discarded, not offered again for that satellite. */
+  wikipediaDiscarded: SatelliteWikipediaDiscarded[];
   sources: SatelliteSourceState[];
   /** A fetch is running now. */
   fetching: boolean;
@@ -198,6 +219,8 @@ export const SATELLITE_SOURCES = {
 /** Where a satellite's Wikipedia summary comes from: asked only when a person presses "Read about it on Wikipedia". */
 export const WIKIPEDIA_SOURCE = {
   search: "https://en.wikipedia.org/w/api.php",
+  /** Wikidata's Action API: the item that carries a satellite's catalogue number (P377) or COSPAR designator (P247). CC0. */
+  wikidata: "https://www.wikidata.org/w/api.php",
   summary: "https://en.wikipedia.org/api/rest_v1/page/summary/",
   licence: "CC BY-SA 4.0",
   licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0/",

@@ -19,7 +19,10 @@
  *   failed exactly as the transmitters are.
  *
  * One more route makes a request, and only on its own press: "Read about it on
- * Wikipedia" for one satellite (./wikipedia.ts). Its summary is kept until discarded.
+ * Wikipedia" for one satellite. It looks first in a Wikipedia copy on this Outpost
+ * (./wikipedia-offline.ts, no internet), and asks Wikidata and Wikipedia (./wikipedia.ts)
+ * only when there is no copy, or when the person asks for it online after the copy had
+ * nothing. Its summary is kept until discarded; a discarded title is remembered.
  */
 import type {
   SatelliteAbout,
@@ -30,6 +33,7 @@ import type {
   SatellitesResponse,
   SatelliteTransmitter,
   SatelliteWikipedia,
+  SatelliteWikipediaMatch,
 } from "@outpost/shared";
 import { parseCelestrakCsv, SATELLITE_SOURCES } from "@outpost/shared";
 import { eq } from "drizzle-orm";
@@ -38,9 +42,27 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, classifyNetworkError, notFound } from "../../core/errors.ts";
 import { createHttpClient, type HttpClient, USER_AGENT } from "../../core/http.ts";
-import { satelliteAbout, satelliteElements, satelliteFetches, satelliteTransmitters, satelliteWikipedia } from "../../db/schema.ts";
+import {
+  satelliteAbout,
+  satelliteElements,
+  satelliteFetches,
+  satelliteTransmitters,
+  satelliteWikipedia,
+  satelliteWikipediaDiscarded,
+} from "../../db/schema.ts";
 import { parseSatnogsSatellites, parseSatnogsTransmitters } from "./satnogs.ts";
-import { findArticle, NoArticleError, WIKIPEDIA_URLS, type WikipediaUrls } from "./wikipedia.ts";
+import {
+  createWikimediaClient,
+  type Found,
+  findArticle,
+  NoArticleError,
+  type Subject,
+  WIKIMEDIA_SPACING_MS,
+  WIKIPEDIA_URLS,
+  WikimediaBusyError,
+  type WikipediaUrls,
+} from "./wikipedia.ts";
+import { findInArchives } from "./wikipedia-offline.ts";
 
 const GROUPS: SatelliteGroup[] = ["stations", "amateur", "weather"];
 /** LogBook73's floor for each group: a list smaller than this is taken to be a fault at the publisher, not the truth. */
@@ -53,8 +75,11 @@ const SOURCE_IDS: SourceId[] = ["celestrak", "satnogs", "satnogs-satellites"];
 export interface SatellitesService {
   list(): SatellitesResponse;
   fetchElements(): Promise<SatellitesFetchResponse>;
-  fetchWikipedia(noradId: number): Promise<SatelliteWikipedia>;
+  /** Online only when asked, or when there is no Wikipedia copy on this Outpost to look in first. */
+  fetchWikipedia(noradId: number, online?: boolean): Promise<SatelliteWikipedia>;
   discardWikipedia(noradId: number): void;
+  /** Offers the articles discarded for a satellite again. */
+  forgetDiscarded(noradId: number): void;
 }
 
 declare module "../../core/context.ts" {
@@ -100,8 +125,16 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
     ? `${standIn}/satnogs/satellites/?format=json`
     : `${SATELLITE_SOURCES["satnogs-satellites"].url}?format=json`;
   const wikipediaUrls: WikipediaUrls = standIn
-    ? { search: `${standIn}/wikipedia/w/api.php`, summary: `${standIn}/wikipedia/api/rest_v1/page/summary/` }
+    ? {
+        search: `${standIn}/wikipedia/w/api.php`,
+        summary: `${standIn}/wikipedia/api/rest_v1/page/summary/`,
+        wikidata: `${standIn}/wikidata/w/api.php`,
+      }
     : WIKIPEDIA_URLS;
+  // A stand-in answers at once; Wikimedia itself is asked 6 seconds apart.
+  const wikimedia = createWikimediaClient(http, standIn ? 0 : WIKIMEDIA_SPACING_MS);
+  /** Wikimedia asked to be left alone until then (a 429): nothing is asked of it before. */
+  let wikimediaBusyUntil = 0;
   let fetching: Promise<SatellitesFetchResponse> | null = null;
   const reading = new Map<number, Promise<SatelliteWikipedia>>();
 
@@ -278,19 +311,84 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
     return names.filter((name) => !seen.has(name.toLowerCase()) && seen.add(name.toLowerCase()));
   }
 
-  async function readWikipedia(noradId: number): Promise<SatelliteWikipedia> {
+  function discardedOf(noradId: number): string[] {
+    return ctx.db
+      .select({ title: satelliteWikipediaDiscarded.title })
+      .from(satelliteWikipediaDiscarded)
+      .where(eq(satelliteWikipediaDiscarded.noradId, noradId))
+      .all()
+      .map((row) => row.title);
+  }
+
+  function subjectOf(noradId: number): Subject {
     const names = namesOf(noradId);
-    let found: Omit<SatelliteWikipedia, "noradId" | "fetchedAt">;
-    try {
-      found = await findArticle(http, wikipediaUrls, names);
-    } catch (error) {
-      if (error instanceof NoArticleError) throw new AppError("not_found", error.message);
-      throw new AppError("upstream", `Could not read Wikipedia. ${message(error)}`);
+    const elements = ctx.db
+      .select({ designator: satelliteElements.designator })
+      .from(satelliteElements)
+      .where(eq(satelliteElements.noradId, noradId))
+      .get();
+    return { noradId, cospar: elements?.designator ?? null, names, discarded: discardedOf(noradId) };
+  }
+
+  /** "about a minute", "about 5 minutes": how long until Wikimedia may be asked again. */
+  const waitWords = (ms: number) => {
+    const minutes = Math.max(1, Math.round(ms / 60_000));
+    return minutes === 1 ? "about a minute" : `about ${minutes} minutes`;
+  };
+  const busyError = (ms: number) =>
+    new AppError(
+      "too_many",
+      `Wikipedia is busy and asked Outpost to wait before asking again. Nothing was changed. Try again in ${waitWords(ms)}.`,
+      { retryAfterMs: ms },
+    );
+
+  async function readWikipedia(noradId: number, online: boolean | undefined): Promise<SatelliteWikipedia> {
+    const subject = subjectOf(noradId);
+    let found: Found | null = null;
+    // A Wikipedia copy on this Outpost first: no internet needed.
+    const archives = (ctx.services as Partial<typeof ctx.services>).kiwix?.wikipedia;
+    const copies = archives?.list() ?? [];
+    if (archives && copies.length > 0 && online !== true) {
+      try {
+        found = await findInArchives(archives, subject);
+      } catch (error) {
+        ctx.log.warn({ err: error, noradId }, "looking a satellite up in the Wikipedia copy failed");
+      }
+      if (!found) {
+        const named = copies.map((copy) => copy.title).join(", ");
+        throw new AppError(
+          "not_found",
+          `The Wikipedia copy on this Outpost (${named}) has no article that is clearly about this satellite. You can ask Wikipedia online instead.`,
+          { offlineChecked: true },
+        );
+      }
     }
-    const row: SatelliteWikipedia = { noradId, ...found, fetchedAt: Date.now() };
+    if (!found) {
+      const wait = wikimediaBusyUntil - Date.now();
+      if (wait > 0) throw busyError(wait);
+      try {
+        found = await findArticle(wikimedia, wikipediaUrls, subject);
+      } catch (error) {
+        if (error instanceof NoArticleError) throw new AppError("not_found", error.message);
+        if (error instanceof WikimediaBusyError) {
+          wikimediaBusyUntil = Date.now() + error.retryAfterMs;
+          throw busyError(error.retryAfterMs);
+        }
+        throw new AppError("upstream", `Could not read Wikipedia. ${message(error)}`);
+      }
+    }
+    const { archive, ...rest } = found;
+    const row = {
+      noradId,
+      ...rest,
+      archiveCollectionId: archive?.collectionId ?? null,
+      archiveTitle: archive?.title ?? null,
+      archiveDate: archive?.date ?? null,
+      fetchedAt: Date.now(),
+    };
     ctx.db.insert(satelliteWikipedia).values(row).onConflictDoUpdate({ target: satelliteWikipedia.noradId, set: row }).run();
     ctx.events.publish({ type: "satellites.changed" });
-    return row;
+    return { noradId, ...found, fetchedAt: row.fetchedAt };
   }
 
   return {
@@ -307,20 +405,52 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
         .select()
         .from(satelliteWikipedia)
         .all()
-        .map((row) => ({ ...row, foundBy: row.foundBy === "search" ? "search" : "name" }) as SatelliteWikipedia);
-      return { satellites, transmitters, about, wikipedia, sources: sources(), fetching: fetching !== null, now: Date.now() };
+        .map(
+          ({ archiveCollectionId, archiveTitle, archiveDate, ...row }): SatelliteWikipedia => ({
+            ...row,
+            foundBy: MATCHES.includes(row.foundBy as SatelliteWikipediaMatch) ? (row.foundBy as SatelliteWikipediaMatch) : "name",
+            archive: archiveCollectionId ? { collectionId: archiveCollectionId, title: archiveTitle ?? "", date: archiveDate } : null,
+          }),
+        );
+      const wikipediaDiscarded = ctx.db
+        .select({ noradId: satelliteWikipediaDiscarded.noradId, title: satelliteWikipediaDiscarded.title })
+        .from(satelliteWikipediaDiscarded)
+        .all();
+      return {
+        satellites,
+        transmitters,
+        about,
+        wikipedia,
+        wikipediaDiscarded,
+        sources: sources(),
+        fetching: fetching !== null,
+        now: Date.now(),
+      };
     },
-    fetchWikipedia(noradId) {
+    fetchWikipedia(noradId, online) {
       // Two presses for one satellite share one look-up.
       let pending = reading.get(noradId);
       if (!pending) {
-        pending = readWikipedia(noradId).finally(() => reading.delete(noradId));
+        pending = readWikipedia(noradId, online).finally(() => reading.delete(noradId));
         reading.set(noradId, pending);
       }
       return pending;
     },
     discardWikipedia(noradId) {
-      ctx.db.delete(satelliteWikipedia).where(eq(satelliteWikipedia.noradId, noradId)).run();
+      const kept = ctx.db.select().from(satelliteWikipedia).where(eq(satelliteWikipedia.noradId, noradId)).get();
+      ctx.sqlite.transaction(() => {
+        if (kept)
+          ctx.db
+            .insert(satelliteWikipediaDiscarded)
+            .values({ noradId, title: kept.title, discardedAt: Date.now() })
+            .onConflictDoNothing()
+            .run();
+        ctx.db.delete(satelliteWikipedia).where(eq(satelliteWikipedia.noradId, noradId)).run();
+      })();
+      ctx.events.publish({ type: "satellites.changed" });
+    },
+    forgetDiscarded(noradId) {
+      ctx.db.delete(satelliteWikipediaDiscarded).where(eq(satelliteWikipediaDiscarded.noradId, noradId)).run();
       ctx.events.publish({ type: "satellites.changed" });
     },
     fetchElements() {
@@ -351,14 +481,24 @@ export async function registerSatellites(app: FastifyInstance, ctx: AppContext):
   app.post(
     "/api/satellites/:noradId/wikipedia",
     async (request): Promise<{ wikipedia: SatelliteWikipedia }> => ({
-      wikipedia: await service.fetchWikipedia(noradParams.parse(request.params).noradId),
+      wikipedia: await service.fetchWikipedia(noradParams.parse(request.params).noradId, wikipediaBody.parse(request.body ?? {}).online),
     }),
   );
+
+  /** Offers again the articles discarded for a satellite. */
+  app.delete("/api/satellites/:noradId/wikipedia/discarded", async (request) => {
+    service.forgetDiscarded(noradParams.parse(request.params).noradId);
+    return { ok: true };
+  });
 
   app.delete("/api/satellites/:noradId/wikipedia", async (request) => {
     service.discardWikipedia(noradParams.parse(request.params).noradId);
     return { ok: true };
   });
 }
+
+/** `online: true` asks Wikipedia online even when a Wikipedia copy on this Outpost was looked in. */
+const wikipediaBody = z.object({ online: z.boolean().optional() });
+const MATCHES: SatelliteWikipediaMatch[] = ["number", "cospar", "name", "search", "series"];
 
 const noradParams = z.object({ noradId: z.coerce.number().int().positive().max(999_999_999) });

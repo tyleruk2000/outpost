@@ -67,6 +67,12 @@ export interface SatellitePass {
   losAzimuthDeg: number;
   minRangeKm: number;
   durationSeconds: number;
+  /**
+   * Above the horizon all through the window and for 12 hours either side of it, as a
+   * geostationary satellite in view is: `aos` and `los` are the window's edges, and the
+   * highest point is where to point.
+   */
+  alwaysUp?: true;
 }
 
 export interface TrackPoint {
@@ -180,7 +186,8 @@ function peakWithin(satrec: SatRec, observer: ObserverGeodetic, aos: Date, los: 
 /** The longest pass the edge searches follow: a high elliptical orbit's pass runs for hours. */
 const EDGE_SEARCH_LIMIT_MS = 12 * 3_600_000;
 
-function findEdge(satrec: SatRec, observer: ObserverGeodetic, start: Date, stepMs: number): Date {
+/** Where the satellite crosses the horizon, searching from `start` (above it) in steps of `stepMs`; null when it never does within 12 hours. */
+function findEdge(satrec: SatRec, observer: ObserverGeodetic, start: Date, stepMs: number): Date | null {
   let inside = start;
   for (let offset = stepMs; Math.abs(offset) <= EDGE_SEARCH_LIMIT_MS; offset += stepMs) {
     const at = new Date(start.getTime() + offset);
@@ -189,7 +196,7 @@ function findEdge(satrec: SatRec, observer: ObserverGeodetic, start: Date, stepM
     }
     inside = at;
   }
-  return start;
+  return null;
 }
 
 export function predictPasses(orbit: Orbit, observer: ObserverLocation, from: Date, hours = 24, limit = 8): SatellitePass[] {
@@ -198,9 +205,10 @@ export function predictPasses(orbit: Orbit, observer: ObserverLocation, from: Da
   const end = from.getTime() + hours * 3_600_000;
   const stepMs = 30_000;
   const passes: SatellitePass[] = [];
-  const push = (aos: Date, los: Date) => {
+  const push = (aos: Date, los: Date, alwaysUp = false) => {
     const peak = satelliteState(satrec, observer, peakWithin(satrec, geo, aos, los));
     passes.push({
+      ...(alwaysUp ? { alwaysUp: true as const } : {}),
       aos,
       tca: peak.at,
       los,
@@ -214,7 +222,10 @@ export function predictPasses(orbit: Orbit, observer: ObserverLocation, from: Da
   };
   let previousAt = from;
   let previous = elevationAt(satrec, geo, previousAt);
-  let aos: Date | null = previous >= 0 ? findEdge(satrec, geo, from, -stepMs) : null;
+  // Up already: walked back to its rise, or, risen more than 12 hours ago, taken from the window's start.
+  const risen = previous >= 0 ? findEdge(satrec, geo, from, -stepMs) : null;
+  const upSinceLongAgo = previous >= 0 && risen === null;
+  let aos: Date | null = previous >= 0 ? (risen ?? from) : null;
   for (let time = from.getTime() + stepMs; time <= end && passes.length < limit; time += stepMs) {
     const at = new Date(Math.min(time, end));
     const elevation = elevationAt(satrec, geo, at);
@@ -227,8 +238,9 @@ export function predictPasses(orbit: Orbit, observer: ObserverLocation, from: Da
     previous = elevation;
   }
   if (aos && passes.length < limit) {
+    // Still up at the window's end: followed to its set, or, up 12 hours more, kept to the window's end.
     const los = findEdge(satrec, geo, previousAt, stepMs);
-    if (los.getTime() !== previousAt.getTime()) push(aos, los);
+    push(aos, los ?? previousAt, los === null && upSinceLongAgo && passes.length === 0);
   }
   return passes;
 }
@@ -240,8 +252,13 @@ export interface ScheduledPass<S extends Orbit = SatelliteElements> {
   workable: boolean;
 }
 
-/** Peak elevation at or above which a pass is flagged workable (LogBook73's figure). */
-export const WORKABLE_ELEVATION_DEG = 10;
+/**
+ * A pass whose highest point is below this is a low pass, everywhere it is said (Passes,
+ * Weather satellites, the PDF); at or above it the pass is workable (LogBook73's figure).
+ */
+export const LOW_PASS_BELOW_DEG = 10;
+/** Peak elevation at or above which a pass is flagged workable: the same line as a low pass. */
+export const WORKABLE_ELEVATION_DEG = LOW_PASS_BELOW_DEG;
 /** Passes peaking lower than this are left out of the schedule: behind the houses for nearly everyone. */
 export const FLOOR_ELEVATION_DEG = 2;
 /** No real orbit passes over one place more often than this. */

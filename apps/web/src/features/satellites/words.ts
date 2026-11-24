@@ -6,7 +6,7 @@
 import { compassPoint, elementsAge, elementsAgeWarning, sunAt } from "@outpost/shared";
 import { clockText, formatTimeOfDay } from "@/lib/clock";
 import { formatDate } from "@/lib/utils";
-import type { SatellitePass } from "./engine";
+import { LOW_PASS_BELOW_DEG, type SatellitePass } from "./engine";
 
 /** "14:32" in UTC, always on the 24-hour clock. */
 export const utcTime = (at: Date | number) => {
@@ -37,14 +37,24 @@ export function dayWords(at: Date, now: Date): string {
   return formatDate(at.getTime());
 }
 
+/** "Always up here: point 25° up, to the SSE (166°)", for a satellite that stays in view (a geostationary one). */
+export function alwaysUpWords(pass: SatellitePass): string {
+  return `Always up here: point ${Math.round(pass.maxElevationDeg)}° up, to the ${compassPoint(pass.tcaAzimuthDeg)} (${Math.round(pass.tcaAzimuthDeg)}°)`;
+}
+
 /** "Rises in the NNW, highest 47° in the ENE, sets in the SE." */
 export function pathWords(pass: SatellitePass): string {
+  if (pass.alwaysUp) return alwaysUpWords(pass);
   return `Rises in the ${compassPoint(pass.aosAzimuthDeg)}, highest ${Math.round(pass.maxElevationDeg)}° in the ${compassPoint(pass.tcaAzimuthDeg)}, sets in the ${compassPoint(pass.losAzimuthDeg)}`;
 }
 
-/** "145.800 MHz", "2.4012 GHz"; kHz to three places at most. */
+/**
+ * "145.800 MHz", "145.8125 MHz", "10.489550 GHz": always to the kHz, and to 100 Hz below
+ * 1 GHz where the figure has it. Above 1 GHz the kHz still counts: QO-100's narrowband
+ * transponder runs from 10.489550 to 10.489800 GHz, which four places of GHz made one figure.
+ */
 export function frequencyWords(hz: number): string {
-  if (hz >= 1e9) return `${(hz / 1e9).toFixed(4)} GHz`;
+  if (hz >= 1e9) return `${(Math.round(hz / 1000) / 1e6).toFixed(6)} GHz`;
   return `${(hz / 1e6).toFixed(hz % 1000 === 0 ? 3 : 4)} MHz`;
 }
 
@@ -54,10 +64,14 @@ export function shiftWords(hz: number): string {
   return `${rounded >= 0 ? "+" : "−"}${Math.abs(rounded).toLocaleString("en-GB")} Hz`;
 }
 
-/** LogBook73's geometry words for a pass, by its highest point. */
+/**
+ * A pass in words by its highest point: high from 45°, good from 20°, fair from 10°, and
+ * low below `LOW_PASS_BELOW_DEG`, the one line Passes, Weather satellites and the PDF draw.
+ */
 export function geometryWords(maxElevationDeg: number): string {
   if (maxElevationDeg >= 45) return "High pass";
   if (maxElevationDeg >= 20) return "Good pass";
+  if (maxElevationDeg >= LOW_PASS_BELOW_DEG) return "Fair pass";
   return "Low pass";
 }
 
