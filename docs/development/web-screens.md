@@ -222,7 +222,9 @@ secret (a one-time pad) gets none of these buttons.
   controls grow to 44 px under 768 px (`max-md:`) and wherever the pointer is a finger
   on a tablet (`md:pointer-coarse:`); a control of a screen's own does the same.
 - From 768 to 1023 px the sidebar is a rail of icons (`TABLET` in `lib/use-media-query.ts`):
-  a screen there has the width less 60 px.
+  a screen there has the width less 60 px. At Larger text and up (a root of 20 px or more,
+  `useLargeText` in `components/sidebar.tsx`) the rail names each icon and is 6.5rem
+  wide, and the whole sidebar scrolls as one, upkeep included.
 - On a phone a `DialogContent` or `ConfirmDialog` is a sheet from the foot of the screen;
   a long form that wants the whole screen passes its own `max-md:` classes (`phoneSheet`).
 - **A full-height screen** leaves `pb-[calc(3.5rem+env(safe-area-inset-bottom))]`, not
