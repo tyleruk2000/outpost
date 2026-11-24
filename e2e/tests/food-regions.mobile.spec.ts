@@ -1,8 +1,9 @@
 /**
- * Food and supplies for a whole state, at phone width: Geofabrik's list of regions read on
- * a press from the stand-in, a country and then a state chosen with a thumb, the size and
- * what stays on the device shown before the download, the extract fetched, read and
- * deleted, and the nearest pharmacy found from what is held.
+ * Food and supplies for a whole state, at phone width, through Add a place like all map data:
+ * the state found by name once Geofabrik's list of regions is read (from the stand-in), Nearby
+ * places with only Food and supplies ticked under Which kinds, the source file's choice said
+ * on the main view, the size before the download, the file fetched, read and deleted, and the
+ * nearest pharmacy found from what is held.
  */
 import { COLUMBUS } from "../../apps/server/test/fixtures/layers/geofabrik-stand-in.ts";
 import { api, expect, test, watchForErrors } from "./fixtures";
@@ -13,57 +14,54 @@ test.describe("food and supplies for a state on a phone", () => {
     await removeReferencePacks(page);
   });
 
-  test("chooses a country and a state, sees the size, fetches it and finds the nearest pharmacy", async ({ page, sealed }) => {
+  test("finds a state by name, ticks only food and supplies, sees the size, fetches it and finds the nearest pharmacy", async ({
+    page,
+    sealed,
+  }) => {
     const errors = watchForErrors(page);
-    // Nearby places from another source: the link Layers gives, to Offline maps.
-    await page.goto("/maps/data?get=places");
-    const dialog = page.getByRole("dialog", { name: "Get layer data" });
+    // The list of regions, as the first Check size reads it: here asked for up front, from the stand-in.
+    await api(page, "POST", "/api/reference/regions", {});
+    // The older link the Layers tab gave (?get=places) now opens Add a place with Nearby places to tick.
+    await page.goto("/maps/data?get=places&layers=food");
+    const dialog = page.getByRole("dialog", { name: "Add a place" });
+    await dialog.getByLabel("Country, region or town").fill("Ohio");
+    await dialog.getByRole("list", { name: "Places found" }).getByRole("button", { name: /^Ohio/ }).tap();
+    await expect(dialog.getByRole("heading", { name: "What for Ohio?" })).toBeVisible();
 
-    // The source, from the drop-down inside the dialog.
-    await dialog.getByRole("combobox", { name: "Source" }).click();
-    await page.getByRole("option", { name: "OpenStreetMap, from a Geofabrik extract" }).click();
-    await dialog.getByRole("radio", { name: "A state or region, by name" }).check();
-    // The list of regions may have been read already, by another test on this server.
-    const read = dialog.getByRole("button", { name: "Read the list of regions" });
-    if (
-      await read.waitFor({ timeout: 3_000 }).then(
-        () => true,
-        () => false,
-      )
-    )
-      await read.click();
+    // Nearby places, and of its kinds only food and supplies, as the link asked.
+    await expect(dialog.getByRole("checkbox", { name: /^Nearby places/ })).toBeChecked();
+    await expect(dialog.getByRole("checkbox", { name: /^Map/ })).not.toBeChecked();
+    await expect(dialog.getByRole("checkbox", { name: /^Routes/ })).not.toBeChecked();
+    const kinds = dialog.getByRole("list", { name: "Kinds from OpenStreetMap, read from the source file" });
+    await expect(kinds.getByRole("checkbox", { name: "Food and supplies" })).toBeChecked();
+    await expect(kinds.getByRole("checkbox", { name: "Hospitals" })).not.toBeChecked();
 
-    // A country, then its state.
-    await dialog
-      .getByRole("list", { name: "Countries" })
-      .getByRole("button", { name: /United States of America/ })
-      .click();
-    const states = dialog.getByRole("list", { name: "United States of America and its parts" });
-    await states.getByText("Ohio", { exact: true }).click();
-    await expect(dialog.getByRole("list", { name: "Chosen" })).toContainText("Ohio: OpenStreetMap only");
-    await dialog.getByRole("checkbox", { name: "Food and supplies" }).check();
-    await expect(dialog.getByText(/One download serves every layer/)).toBeVisible();
+    // The source file: deleted once read, chosen on the main view (first time both choices, else Change).
+    const fileLine = dialog.getByRole("region", { name: "The source file" });
+    if (await fileLine.getByRole("button", { name: /^Change/ }).isVisible()) await fileLine.getByRole("button", { name: /^Change/ }).tap();
+    await dialog.getByRole("radio", { name: /Delete it after reading/ }).tap();
 
-    // The size and what stays, before anything is downloaded.
-    await dialog.getByRole("button", { name: "Show the size" }).click();
-    await expect(dialog.getByText(/^1 file to download, 191 kB/)).toBeVisible({ timeout: 15_000 });
-    await expect(dialog.getByText(/Afterwards on this device: only the places read/)).toBeVisible();
-    await expect(dialog.getByRole("checkbox", { name: "Keep the downloaded file too" })).not.toBeChecked();
+    // The size and what happens to the file, before anything is downloaded.
+    await dialog.getByRole("button", { name: "Check size" }).tap();
+    const download = dialog.getByRole("button", { name: /^Download · / });
+    await expect(download).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByText(/ to download$/).locator("xpath=ancestor::p[1]")).toContainText(
+      /the source file \(.+\) deleted once read/,
+    );
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-    await dialog.getByRole("button", { name: "Download" }).click();
+    await download.tap();
 
     await expect
       .poll(async () => (await api<{ packs: Array<{ records: number }> }>(page, "GET", "/api/reference/packs")).packs[0]?.records ?? 0, {
         timeout: 30_000,
       })
       .toBeGreaterThan(5);
-    await page.keyboard.press("Escape");
     // Listed under its country on Offline maps; the row opens to the places and the source file, read and then deleted as chosen.
     const us = page.locator('[data-place="country:US"]');
     await expect(us).toContainText(/Nearby places/);
     await us.getByRole("button", { name: /^United States/ }).tap();
     const detail = us.getByRole("region", { name: /in detail$/ });
-    await expect(detail).toContainText(/Ohio, United States of America: nearby places/);
+    await expect(detail).toContainText(/Ohio.*: nearby places/);
     await expect(detail).toContainText(/read and deleted/);
 
     await page.goto(`/maps?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}&z=14`);

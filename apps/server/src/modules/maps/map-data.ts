@@ -385,7 +385,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
           pack.request?.provider === "osm-extract" && pack.request.scope.regions?.[0]
             ? { how: "country-file" as const, hosts: hosts.geofabrik(), note: null }
             : pack.origin === "download"
-              ? { how: "elsewhere" as const, hosts: [], note: "Checked for an update from its own source, in its menu." }
+              ? { how: "elsewhere" as const, hosts: [], note: "Asked of its own source on a press of Check." }
               : null,
       };
       // Borders, airports and other world sets are World basics, even clipped to one country.
@@ -557,6 +557,19 @@ export function createMapDataAdd(ctx: AppContext, osNames: () => OsNamesService 
     }
   }
 
+  /**
+   * The kinds of nearby places to read from a region's source file. A new read replaces the
+   * region's places whole, so the kinds held already are read again with those asked for: adding
+   * shelters never takes hospitals away. Asked for none (an update): the kinds held, or the usual six.
+   */
+  function placeLayers(regionId: string, asked: string[] | undefined): string[] {
+    const held = (ctx.services.layers?.packs() ?? [])
+      .filter((pack) => pack.provider === "osm-extract" && pack.request?.scope.regions?.[0] === regionId)
+      .flatMap((pack) => pack.request?.layers ?? pack.layers);
+    const base = asked ?? (held.length > 0 ? held : DEFAULT_PLACE_LAYERS);
+    return [...new Set([...base, ...held])];
+  }
+
   return async function add(body: MapDataAddRequest): Promise<MapDataAddResponse> {
     const downloadIds: string[] = [];
     const taskIds: string[] = [];
@@ -567,7 +580,7 @@ export function createMapDataAdd(ctx: AppContext, osNames: () => OsNamesService 
       const added = await ctx.services.countryFiles.add({
         regionId: body.regionId,
         roads: kinds.has("roads"),
-        layers: kinds.has("places") ? (body.layers ?? DEFAULT_PLACE_LAYERS) : [],
+        layers: kinds.has("places") ? placeLayers(body.regionId, body.layers) : [],
         keep: body.keep,
         ...(body.locationId ? { locationId: body.locationId } : {}),
         ...(body.newerThan ? { newerThan: body.newerThan } : {}),

@@ -1,24 +1,30 @@
 /**
  * The Layers panel: each installed reference layer with its switch and its mark, the
  * legend of where things come from, population with its scale, filters that fit what is
- * installed, and a search of the records in the layers shown.
+ * installed, and a search of the records in the layers shown. Nothing is downloaded or
+ * removed here: a layer with nothing held offers "Add hospitals for United Kingdom", which
+ * opens Add a place on Offline maps with it ticked, where all map data is managed.
  */
 import {
   type FeatureProvenance,
   LINE_LAYER_ZOOM,
+  type MapDataWhereResponse,
   PROVENANCE_INFO,
   REFERENCE_LAYER_INFO,
   type ReferenceLayerId,
   type ReferenceLayersResponse,
 } from "@outpost/shared";
-import type { UseQueryResult } from "@tanstack/react-query";
-import { Layers, Search } from "lucide-react";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
+import { ChevronRight, Plus, Search } from "lucide-react";
 import { type ReactNode, useId, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { ErrorState } from "@/components/page";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, Skeleton, Switch } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
+import { addLayerLink, addLayerText, COUNTRY_LAYERS, WORLD_LAYERS } from "@/features/maps/data-page/nearby-kinds";
 import type { LatLon } from "@/features/maps/lib/geo";
+import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { useLayerSearch } from "./data";
 import { FloodZonesLegend } from "./flood-legend";
@@ -97,18 +103,17 @@ export function LayersPanel({
   onChoice,
   colours,
   shades,
-  onManage,
   onOpen,
   floodZones,
   lines,
   centre = null,
+  roughly = null,
 }: {
   summary: UseQueryResult<ReferenceLayersResponse>;
   choice: LayerChoice;
   onChoice: (next: LayerChoice | ((current: LayerChoice) => LayerChoice)) => void;
   colours: Record<ReferenceLayerId, string>;
   shades: string[];
-  onManage: () => void;
   onOpen: (id: number, layer: ReferenceLayerId, at: LatLon | null) => void;
   /** Why flood zones are not drawn in this view, when they are not. */
   floodZones?: "zoom-in" | "too-many" | null;
@@ -116,6 +121,8 @@ export function LayersPanel({
   lines?: "zoom-in" | "too-many" | null;
   /** The middle of the map, for the nearest list. */
   centre?: LatLon | null;
+  /** Roughly where the map is, drawn or not: the country a layer with nothing held is offered for. */
+  roughly?: LatLon | null;
 }) {
   const [text, setText] = useState("");
   const layers = useMemo(() => [...(summary.data?.layers ?? [])].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id)), [summary.data]);
@@ -145,16 +152,13 @@ export function LayersPanel({
   const population = summary.data.population;
   if (layers.length === 0 && population.length === 0) {
     return (
-      <div className="px-4 py-5">
+      <div className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
         <h3 className="font-title text-lead text-ink">No layer data on this device yet</h3>
         <p className="mt-1.5 text-small text-ink-muted">
-          Layers of published data for the map: country and regional boundaries, airports, publicly mapped military sites, nuclear
-          facilities, hospitals, emergency services, shelters, food shops and drinking water, population, and historical records you import.
-          Each is downloaded when you ask, by country or for the area on screen, with its size shown first.
+          Hospitals, shelters, food and supplies and more for a country, and borders and airports for the world, drawn on the map. Each is
+          added on Offline maps, with its size shown first.
         </p>
-        <Button variant="primary" className="mt-4" onClick={onManage}>
-          <Layers /> Get layer data
-        </Button>
+        <NotHeld summary={summary.data} centre={roughly ?? centre} />
       </div>
     );
   }
@@ -332,16 +336,88 @@ export function LayersPanel({
         </p>
       </section>
 
-      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-        <Button onClick={onManage}>
-          <Layers /> Manage layer data
-        </Button>
+      <div className="px-4 pt-2">
+        <NotHeld summary={summary.data} centre={roughly ?? centre} />
+      </div>
+
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border px-4 py-2">
         <span className="tabular text-small text-ink-muted">
           {formatNumber(layers.reduce((sum, layer) => sum + layer.count, 0))} records
           {population.length > 0 ? `, ${population.length} population ${population.length === 1 ? "grid" : "grids"}` : ""}
         </span>
+        <Link
+          to="/maps/data"
+          className="inline-flex min-h-11 items-center gap-1 text-small text-primary underline decoration-1 underline-offset-2 md:min-h-8"
+        >
+          Update or remove on Offline maps <ChevronRight aria-hidden className="size-4" />
+        </Link>
       </div>
     </div>
+  );
+}
+
+/** The country in the middle of the map, found on this device, else home: where a layer is offered for. */
+function useSuggestedCountry(centre: LatLon | null): { code: string; name: string } | null {
+  const home = useHomeCountry();
+  // To a tenth of a degree: the question is asked again only when the map has moved some way.
+  const lat = centre ? Math.round(centre.lat * 10) / 10 : null;
+  const lon = centre ? Math.round(centre.lon * 10) / 10 : null;
+  const here = useQuery({
+    queryKey: ["maps", "data", "where", "layers", lat, lon],
+    queryFn: () => api.get<MapDataWhereResponse>(`/api/maps/data/where?lat=${lat}&lon=${lon}`),
+    enabled: lat !== null && lon !== null,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const found = here.data?.results[0];
+  return found ? { code: found.country, name: found.countryName } : home;
+}
+
+/**
+ * Layers with nothing held, each as the step that adds it: a country's from its source file (for
+ * the country in view, or home), the worldwide sets for the world. Each opens Add a place with
+ * that kind ticked.
+ */
+function NotHeld({ summary, centre }: { summary: ReferenceLayersResponse; centre: LatLon | null }) {
+  const country = useSuggestedCountry(centre);
+  const held = new Set(summary.layers.map((layer) => layer.id));
+  const rows: Array<{ label: string; to: string }> = [];
+  for (const layer of COUNTRY_LAYERS.filter((each) => !held.has(each))) {
+    const label = layer === "routes" ? "Waymarked routes" : REFERENCE_LAYER_INFO[layer].label;
+    rows.push(
+      country
+        ? { label: addLayerText(label, country.name), to: addLayerLink(layer, { country: country.code }) }
+        : { label: addLayerText(label, "a country"), to: `/maps/data?get=places&layers=${layer}` },
+    );
+  }
+  if (summary.population.length === 0)
+    rows.push(
+      country
+        ? { label: addLayerText("Population density", country.name), to: addLayerLink("population", { country: country.code }) }
+        : { label: addLayerText("Population density", "a country"), to: "/maps/data?get=places&layers=population" },
+    );
+  for (const layer of WORLD_LAYERS.filter((each) => !held.has(each)))
+    rows.push({ label: addLayerText(REFERENCE_LAYER_INFO[layer].label, "the whole world"), to: addLayerLink(layer, { world: true }) });
+  if (rows.length === 0) return null;
+  return (
+    <section className="mt-3" aria-labelledby="layers-not-held">
+      <h3 id="layers-not-held" className="text-body font-semibold text-ink">
+        Not on this device yet
+      </h3>
+      <ul className="mt-1 divide-y divide-border" aria-label="Layers to add">
+        {rows.map((row) => (
+          <li key={row.to}>
+            <Link
+              to={row.to}
+              className="flex min-h-11 items-center gap-2 py-1.5 text-small text-ink transition-colors duration-(--duration-fast) hover:text-primary md:min-h-9"
+            >
+              <Plus aria-hidden className="size-4 shrink-0 text-ink-muted" />
+              <span className="min-w-0 flex-1">{row.label}</span>
+              <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

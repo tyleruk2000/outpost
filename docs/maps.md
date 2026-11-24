@@ -104,34 +104,66 @@ One button, **Add a place**, wherever a map, routes or nearby places are offered
    suggestion: where the map is now, home, the whole world, **Draw an area on the map**, or
    **Import a file**. Nothing is chosen for you.
 2. **What for France?** **Map** and **Routes** are ticked, **Nearby places** is not.
-   **More choices** has the detail of the map, hills and heights, where it is kept and the
-   source file. A country Geofabrik also publishes in parts says so ("Germany comes in 16
-   parts, 4.3 GB together. All are ticked."): untick the parts you do not need, and only
-   those are read.
+   Ticked, **Nearby places** opens to **Which kinds** (see below). The source file is one
+   line under the ticks (see below). **More choices** has the detail of the map, hills and
+   heights, and where things are kept. A country Geofabrik also publishes in parts says so
+   ("Germany comes in 16 parts, 4.3 GB together. All are ticked."): untick the parts you do
+   not need, and only those are read. A press anywhere on a row ticks it.
 3. **Check size** asks the map sources how large it is; the first time, it reads Geofabrik's
    list of regions too (download.geofabrik.de). Nothing is downloaded yet.
 4. **Download · 4.1 GB**. Progress shows at the top of Offline maps and under **Downloads and
    tasks**; you can leave the screen.
 
 A route that needs countries you have no roads for opens the same steps with those countries
-and **Routes** ticked. For Great Britain, a map's place names come from Ordnance Survey's OS
+and **Routes** ticked. A layer with nothing held, in the Layers tab, opens them with its kind
+ticked ("Add hospitals for United Kingdom"). For Great Britain, a map's place names come from Ordnance Survey's OS
 Open Names, with nothing more to choose (see below).
+
+### Which kinds of nearby places
+
+Nearby places are the layers drawn on the map and listed by what is nearest. Under **Which
+kinds**, each is ticked on its own, grouped by where it comes from:
+
+- **A country**: hospitals; police, fire and ambulance; shelters and assembly points; food
+  and supplies (shops, markets, fuel, drinking water, food banks, pharmacies); military
+  sites; nuclear facilities; waymarked routes; rights of way. All are read from the source
+  file, with nothing more downloaded. Also population density (WorldPop), and in Switzerland
+  the official emergency meeting points.
+- **World basics** (the whole world): country boundaries, regions and populated places
+  (Natural Earth), airports and airfields (OurAirports), nuclear power stations and research
+  reactors (Wikidata).
+- **An area you draw**: the same kinds asked of an Overpass server for the area, registered
+  food shops in the UK, flood zones in England (up to about 20 km across), and airports.
+
+What is held already says **Held**. Adding a kind never takes away those held: the kinds held
+are read again with it. After **Check size**, each kind from its own source shows its size.
+Wikidata and the Overpass servers ask to be told what is asking: tick **Send Outpost's name
+to …** (the name is shown word for word); nothing is asked of them until you do.
+
+Nearby places are updated and removed with the rest of the place: **Update** and **Remove…**
+in its **⋯** menu. A set from its own source is checked with **Check**, then **Update**.
 
 ### The source file
 
 Routes and nearby places are read from a country's whole OpenStreetMap record, a separate
-file from Geofabrik (4.9 GB for France). The first time either is added, two lines ask what
-happens to it once read. Routes, nearby places and walking and cycling are made from it and
-keep working without it: the file is only needed to make them again.
+file from Geofabrik (4.9 GB for France). It is always one line under the ticks:
 
-- **Keep the source file**: add walking and cycling, update or rebuild later with no
-  download. Choose where it is kept; the location with the most room is suggested. On a
-  drive that is switched off, routes keep working and rebuilding waits.
-- **Delete it after reading**: saves its space (2.3 GB for the United Kingdom). Everything
-  made from it keeps working; adding walking and cycling or updating downloads it again.
+- The first time, both choices are shown, each with its reason, and nothing is chosen for
+  you:
+  - **Keep it**: needed to add walking and cycling later, or to update without downloading
+    again. The location with the most room is suggested. On a drive that is switched off,
+    routes keep working and updating waits.
+  - **Delete it after reading**: saves its space (2.3 GB for the United Kingdom). Routes and
+    nearby places keep working; walking and cycling or an update downloads it again.
+- After that, the choice you made is said in one line with **Change**: "Source file (2.3
+  GB): kept on NAS. Needed to add walking and cycling or update without downloading again ·
+  Change".
+- With **Walking and cycling** ticked the file is kept, because it is built from it:
+  "Source file (4.9 GB): kept on NAS. Walking and cycling is built from it, so it is kept."
 
-The answer is remembered, and changed under **More choices**. With the file kept, adding
-routes or nearby places reads it again with no download (**Build from the kept file**).
+The total under the ticks says what happens to the file either way. With the file kept,
+adding routes or nearby places reads it again with no download (**Build from the kept
+file**).
 
 ### Updating
 

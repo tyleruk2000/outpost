@@ -219,6 +219,25 @@ describe("one country file for roads and places", () => {
     await app.ctx.services.downloads.remove(fresher.body.downloadIds[0]);
   });
 
+  it("adds a kind of nearby place without taking away those held: the kinds held are read again with it", async () => {
+    const layersOf = async () =>
+      ((await app.api("GET", "/api/reference/packs")).body.packs as Array<{ provider: string; request: { layers: string[] } | null }>)
+        .filter((pack) => pack.provider === "osm-extract")
+        .map((pack) => [...(pack.request?.layers ?? [])].sort());
+    const held = (await layersOf())[0]!;
+    expect(held).toEqual(expect.arrayContaining(["hospitals", "food"]));
+    // Waymarked routes, from Add a place › Nearby places › Which kinds: read from the kept file, nothing downloaded.
+    const added = await app.api("POST", "/api/maps/data/add", { regionId: "monaco", kinds: ["places"], keep: true, layers: ["routes"] });
+    expect(added.status, JSON.stringify(added.body)).toBe(200);
+    expect(added.body.downloadIds).toEqual([]);
+    await app.ctx.jobs.whenIdle();
+    expect(await layersOf()).toEqual([[...new Set([...held, "routes"])].sort()]);
+    // An update names no kinds: the kinds held, not the usual six again.
+    await app.api("POST", "/api/maps/data/add", { regionId: "monaco", kinds: ["places"], keep: true });
+    await app.ctx.jobs.whenIdle();
+    expect(await layersOf()).toEqual([[...new Set([...held, "routes"])].sort()]);
+  });
+
   it("lists road networks and country files in Storage, with sizes and where they are", async () => {
     const items = ((await app.api("GET", "/api/manage/items")).body as ManagedItemsResponse).items;
     const network = items.find((item) => item.kind === "roads")!;

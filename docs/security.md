@@ -355,8 +355,9 @@ instead, [below](#answers-from-a-language-model)), kiwix-serve, listing a share'
 
 ### Reference layers
 
-([reference-layers.md](reference-layers.md)) Fetched only on **Show the size** or
-**Download**, through the guarded client, only from:
+([reference-layers.md](reference-layers.md)) Fetched only on **Check size** or
+**Download** in Add a place (or **Check** and **Update** for one set), through the guarded
+client, only from:
 
 | Host | What | Terms |
 | --- | --- | --- |
@@ -371,7 +372,7 @@ instead, [below](#answers-from-a-language-model)), kiwix-serve, listing a share'
 | `api.ratings.food.gov.uk` | Food retailers round the area on screen | Open Government Licence |
 
 Overpass and Wikidata are sent "Outpost", its version and the project's address, shown
-first; **Show the size** stays off until you tick "Send this name to …", and the server
+first; **Check size** stays off until you tick "Send Outpost's name to …", and the server
 refuses without that agreement. Others get the plain client name. Answers are capped
 before reading (up to 160 MB), positions checked to be on Earth, text cleaned and shown as
 text. Links in a card open in a new tab with `rel="noreferrer"`.

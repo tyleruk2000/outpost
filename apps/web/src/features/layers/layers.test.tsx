@@ -147,8 +147,16 @@ describe("the map marks", () => {
 });
 
 describe("the Layers panel", () => {
-  it("says what can be had when nothing is installed, and leads to getting it", async () => {
-    const onManage = vi.fn();
+  it("offers each layer with nothing held as the step that adds it on Offline maps, for the country in view or the world", async () => {
+    // The country in the middle of the map is found on this device; nothing else is asked.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).includes("/api/maps/data/where")
+          ? Response.json({ results: [{ type: "country", name: "United Kingdom", country: "GB", countryName: "United Kingdom" }] })
+          : Response.json({ error: { message: "Not here." } }, { status: 404 }),
+      ),
+    );
     render(
       wrap(
         <LayersPanel
@@ -157,14 +165,25 @@ describe("the Layers panel", () => {
           onChoice={vi.fn()}
           colours={layerColours()}
           shades={["a", "b", "c", "d", "e"]}
-          onManage={onManage}
           onOpen={vi.fn()}
+          centre={{ lat: 54.5, lon: -3 }}
         />,
       ),
     );
     expect(screen.getByRole("heading", { name: "No layer data on this device yet" })).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Get layer data" }));
-    expect(onManage).toHaveBeenCalled();
+    const add = await screen.findByRole("link", { name: "Add hospitals for United Kingdom" });
+    expect(add).toHaveAttribute("href", "/maps/data?add=1&country=GB&kinds=places&layers=hospitals");
+    expect(screen.getByRole("link", { name: "Add population density for United Kingdom" })).toHaveAttribute(
+      "href",
+      "/maps/data?add=1&country=GB&kinds=places&layers=population",
+    );
+    expect(screen.getByRole("link", { name: "Add country boundaries for the whole world" })).toHaveAttribute(
+      "href",
+      "/maps/data?add=1&world=1&kinds=places&layers=boundaries",
+    );
+    // Nothing is downloaded or managed from the Layers tab itself.
+    expect(screen.queryByRole("button", { name: /layer data/i })).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 
   it("shows loading and failure", () => {
@@ -176,7 +195,6 @@ describe("the Layers panel", () => {
           onChoice={vi.fn()}
           colours={layerColours()}
           shades={[]}
-          onManage={vi.fn()}
           onOpen={vi.fn()}
         />,
       ),
@@ -194,7 +212,6 @@ describe("the Layers panel", () => {
           onChoice={vi.fn()}
           colours={layerColours()}
           shades={[]}
-          onManage={vi.fn()}
           onOpen={vi.fn()}
         />,
       ),
@@ -212,7 +229,6 @@ describe("the Layers panel", () => {
           onChoice={onChoice}
           colours={layerColours()}
           shades={["a", "b", "c", "d", "e"]}
-          onManage={vi.fn()}
           onOpen={vi.fn()}
         />,
       ),
@@ -353,7 +369,6 @@ describe("flood zones", () => {
           onChoice={vi.fn()}
           colours={layerColours()}
           shades={["a", "b", "c", "d", "e"]}
-          onManage={vi.fn()}
           onOpen={vi.fn()}
           floodZones="zoom-in"
         />,
