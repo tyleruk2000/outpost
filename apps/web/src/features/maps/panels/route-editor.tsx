@@ -15,6 +15,7 @@ import { formatDistance, formatDistanceWithMiles, type LatLon } from "../lib/geo
 import { measure } from "../lib/measure";
 import { pressWord } from "../lib/press";
 import { canRedo, canSave, canUndo, isChanged, isFull, type RouteEdit, redo, removePoint, reversePoints, undo } from "../lib/route-edit";
+import { flatWalk } from "../lib/tracks";
 import { ColorPicker } from "../ui";
 
 /** Said once, where drawing starts: what a drawn route is, and what it is not. */
@@ -164,12 +165,17 @@ export function RouteEditor({
           <p className="tabular text-heading font-semibold text-ink" aria-live="polite" aria-atomic>
             {points.length < 2 ? "0 m" : formatDistanceWithMiles(result.totalMeters)}
           </p>
+          {points.length >= 2 ? (
+            <p className="tabular text-small text-ink">
+              Walking, about {flatWalk(result.totalMeters)} on the flat. The climbing is added once the route is saved with heights.
+            </p>
+          ) : null}
           <p className="tabular text-small text-ink-muted">
             {points.length === 0
               ? `No points yet. ${pressWord()} the map to place the first one.`
               : points.length === 1
                 ? "First point placed. Place the next one."
-                : `${plural(points.length, "point")}. Drag a point to move it, or the small handle between two points to add one there.`}
+                : `${plural(points.length, "point")}. Drag a point to move it, or the small handle between two points to add one there.${points.length >= 3 ? ` ${pressWord()} the first point to close the loop.` : ""}`}
           </p>
           {isFull(edit) ? (
             <p className="mt-1 text-small text-warning">That is as many points as one route can have. Remove one to add another.</p>

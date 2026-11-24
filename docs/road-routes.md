@@ -96,7 +96,21 @@ place you found and in the menu a long press opens, and in **Routes**.
   installed), coordinates or a grid reference. Return chooses the first.
 - **Where from.** Your household's home; for a household on the move, where it was last
   put; while the map is following where you are, from there. With no home set, or when the
-  end is home itself, it asks where from next.
+  end is home itself, it asks where from next, and offers:
+  - **Choose on the map**, first and largest. The map opens where you last were: where it
+    was looking when you pressed Directions, if that was close in, otherwise the last point
+    you chose on the map. Move it until the cross is where you are, then **Use this point as
+    the start**.
+  - **Where I am**, the device's own position. On a plain `http://` address phones do not
+    share their position, so the row is greyed and says why: it needs Outpost over HTTPS
+    (**Settings › HTTPS**).
+  - Your saved places, the nearest to where you last were first.
+  - Or type where you are: a postcode (with OS place names for Great Britain installed), a
+    place, a grid reference such as `TQ 30 80`, coordinates or a Maidenhead locator.
+
+  So directions home on foot from where you are is: **Directions**, **Home**, **Choose on
+  the map**, **Use this point as the start**. Walking, once chosen, is remembered on the
+  device.
 - **Planning.** It starts at once and says so, with **Cancel**. The first route after a
   while takes longest, up to a minute on a small computer, while the roads are read; nothing
   is sent anywhere. A route asked for again in the same visit (after swapping the ends and

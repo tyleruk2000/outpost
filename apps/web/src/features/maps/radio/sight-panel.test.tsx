@@ -226,3 +226,14 @@ describe("the line-of-sight card over the map", () => {
     expect(onShowDetails).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("both antennas at once", () => {
+  it("sets both to a handheld held at head height in one press", async () => {
+    const value = sight({ data: profile("level") });
+    show(value);
+    await userEvent.click(screen.getByRole("button", { name: "Handhelds, 1.5 m" }));
+    const update = (value.setSettings as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0] as (current: SightSettings) => SightSettings;
+    expect(update(DEFAULT_SIGHT_SETTINGS)).toMatchObject({ antennaFrom: 1.5, antennaTo: 1.5 });
+    expect(screen.getByRole("button", { name: "Masts, 10 m" })).toHaveAttribute("aria-pressed", "true");
+  });
+});

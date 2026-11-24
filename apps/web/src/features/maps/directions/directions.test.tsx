@@ -15,7 +15,19 @@ import { DirectionsPicker } from "./picker";
 import { DirectionsBar } from "./route-bar";
 import { DirectionsSheet } from "./route-sheet";
 import { useDirections } from "./use-directions";
-import { defaultStart, endsTitle, planKey, pointLabel, routeSteps, routeSummary } from "./words";
+import {
+  defaultStart,
+  endsTitle,
+  LAST_POINT_KEY,
+  lastWhere,
+  nearestFirst,
+  planKey,
+  pointLabel,
+  routeSteps,
+  routeSummary,
+  type WhereIAm,
+  whereIAmState,
+} from "./words";
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
@@ -64,6 +76,31 @@ describe("the words of Directions", () => {
     expect(planKey({ mode: "drive", units: "km", crossing: "any", points: [...points] })).toBe(one);
     expect(planKey({ mode: "drive", units: "miles", crossing: "any", points })).not.toBe(one);
     expect(planKey({ mode: "drive", units: "km", crossing: "any", points: [...points].reverse() })).not.toBe(one);
+  });
+
+  it("knows where the person last was: a close view first, then the last point chosen on the map", () => {
+    const lastPoint = { lat: 51.5, lon: -0.12, at: 1 };
+    expect(lastWhere({ started: { lat: 51.2, lon: -0.3, zoom: 14 }, lastPoint })).toEqual({ lat: 51.2, lon: -0.3, zoom: 14 });
+    expect(lastWhere({ started: { lat: 20, lon: 0, zoom: 1.5 }, lastPoint })).toEqual({ lat: 51.5, lon: -0.12, zoom: 15 });
+    expect(lastWhere({ started: { lat: 20, lon: 0, zoom: 1.5 }, lastPoint: null })).toBeNull();
+  });
+
+  it("lists saved places nearest first, or favourites first with nothing to measure from", () => {
+    const places = [
+      { name: "B far", lat: 45, lon: 6, isFavorite: false },
+      { name: "A near", lat: 51.3, lon: -0.3, isFavorite: false },
+      { name: "C fav", lat: 49, lon: 4, isFavorite: true },
+    ];
+    expect(nearestFirst(places, { lat: 51.3, lon: -0.31 }).map((place) => place.name)).toEqual(["A near", "C fav", "B far"]);
+    expect(nearestFirst(places, null).map((place) => place.name)).toEqual(["C fav", "A near", "B far"]);
+  });
+
+  it("says in one line why Where I am cannot be used", () => {
+    expect(whereIAmState({ supported: true, secure: false, finding: false })).toEqual({
+      state: "unavailable",
+      reason: "Needs Outpost over HTTPS — Settings › HTTPS",
+    });
+    expect(whereIAmState({ supported: true, secure: true, finding: true }).state).toBe("finding");
   });
 });
 
@@ -116,7 +153,16 @@ function serve({ hold = false }: { hold?: boolean } = {}) {
   return { release: () => release() };
 }
 
-const engine = { getCenter: () => ({ lat: 50, lon: 2 }), fitBounds: vi.fn() };
+const engine = {
+  getCenter: () => ({ lat: 50, lon: 2 }),
+  fitBounds: vi.fn(),
+  // Looking at Chamonix, close in, when Directions is opened.
+  getView: () => ({ lat: 45.93, lon: 6.86, zoom: 14 }),
+  jumpTo: vi.fn(),
+};
+const INSECURE: WhereIAm = { state: "unavailable", reason: "Needs Outpost over HTTPS — Settings › HTTPS" };
+let whereIAm: WhereIAm = INSECURE;
+const onWhereIAm = vi.fn();
 
 function Harness() {
   const directions = useDirections({ engine, home: HOME, enabled: true, onShow: () => {} });
@@ -137,7 +183,14 @@ function Harness() {
           />
         </div>
       ) : null}
-      <DirectionsPicker directions={directions} markers={MARKERS} home={HOME} getCenter={() => ({ lat: 50, lon: 2 })} />
+      <DirectionsPicker
+        directions={directions}
+        markers={MARKERS}
+        home={HOME}
+        getCenter={() => ({ lat: 50, lon: 2 })}
+        whereIAm={whereIAm}
+        onWhereIAm={onWhereIAm}
+      />
     </>
   );
 }
@@ -236,5 +289,42 @@ describe("Directions on a phone", () => {
     await userEvent.click(within(screen.getByRole("dialog", { name: "Where to?" })).getByRole("option", { name: /^Home/ }));
     expect(screen.getByRole("dialog", { name: "Where from?" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /^From: / })).toHaveFocus();
+  });
+
+  it("home from where you are, at http: Choose on the map first and opening where you last looked; Where I am greyed with why", async () => {
+    whereIAm = INSECURE;
+    serve();
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Open directions" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Where to?" })).getByRole("option", { name: /^Home/ }));
+    const picker = screen.getByRole("dialog", { name: "Where from?" });
+    const options = within(picker).getAllByRole("option");
+    expect(options[0]).toHaveTextContent("Choose on the map");
+    expect(options[0]).toHaveTextContent("Opens where you last looked at the map");
+    expect(options[1]).toHaveTextContent("Where I am");
+    expect(options[1]).toHaveTextContent("Needs Outpost over HTTPS — Settings › HTTPS");
+    expect(options[1]).toHaveAttribute("aria-disabled", "true");
+    // The saved places nearest where the map was looking come first: Chamonix before Reims.
+    expect(options[2]).toHaveTextContent("Chamonix");
+    await userEvent.click(options[1]!);
+    expect(onWhereIAm).not.toHaveBeenCalled();
+    await userEvent.click(options[0]!);
+    expect(engine.jumpTo).toHaveBeenCalledWith({ lat: 45.93, lon: 6.86, zoom: 14 });
+    await userEvent.click(screen.getByRole("button", { name: "Use this point as the start" }));
+    await waitFor(() => expect(planned).toHaveLength(1));
+    expect(planned[0]).toMatchObject({ points: [{ lat: 50, lon: 2 }, { name: "Home" }] });
+    // The point chosen on the map is kept: next time the map opens there.
+    expect(JSON.parse(localStorage.getItem(LAST_POINT_KEY) ?? "null")).toMatchObject({ lat: 50, lon: 2 });
+  });
+
+  it("takes where the device is when it can say", async () => {
+    whereIAm = { state: "ready" };
+    serve();
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Open directions" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Where to?" })).getByRole("option", { name: /^Home/ }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Where from?" })).getByRole("option", { name: /^Where I am/ }));
+    expect(onWhereIAm).toHaveBeenCalledWith({ index: 0, adding: false });
+    whereIAm = INSECURE;
   });
 });

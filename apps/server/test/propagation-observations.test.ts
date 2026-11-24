@@ -378,6 +378,18 @@ describe("an entry typed in", () => {
     expect(await refused({ tx: { call: "", lat: 51.5, lon: null } })).toContain("Give both the latitude and the longitude");
     expect(await refused({ frequencyMhz: null, band: "" })).toContain("Give the frequency or the band.");
     expect(await refused({ outcome: "maybe" })).toContain("outcome");
+    expect(await refused({ rx: { call: "", lat: 52.5, lon: 13.4, locator: "ZZ99" } })).toContain("Maidenhead locator");
+  });
+
+  it("keeps a position typed as a locator as that locator, to be said back as given", async () => {
+    const made = await app.api("POST", "/api/radio/observations", {
+      ...typed,
+      at: "2026-11-16T16:05:00Z",
+      rx: { call: "dl1abc", lat: 52.52083, lon: 13.375, locator: "jo62qm" },
+    });
+    expect(made.status).toBe(200);
+    expect(made.body.observation.rx).toMatchObject({ call: "DL1ABC", from: "locator JO62QM" });
+    expect(made.body.observation.tx.from).toBe("coordinates");
   });
 });
 

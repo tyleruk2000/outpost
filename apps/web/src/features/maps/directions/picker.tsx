@@ -7,7 +7,7 @@
  * No timers, and nothing resized.
  */
 import type { MarkerDto, RoadDistanceUnit } from "@outpost/shared";
-import { ArrowLeft, Crosshair, House, MapPin, Star, X } from "lucide-react";
+import { ArrowLeft, Crosshair, House, LocateFixed, MapPin, Star, X } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,8 @@ import type { LatLon } from "../lib/geo";
 import { buildSearchResults } from "../lib/search";
 import { pointName } from "../road-route/point-field";
 import type { RoutePointChoice } from "../road-route/words";
-import type { Directions } from "./use-directions";
-import { distanceFrom, type HomeStart, homeDetail, pointLabel, samePlace } from "./words";
+import type { Directions, PickerTarget } from "./use-directions";
+import { distanceFrom, type HomeStart, homeDetail, nearestFirst, pointLabel, samePlace, type WhereIAm } from "./words";
 
 const MAX_LISTED = 8;
 
@@ -52,8 +52,10 @@ interface Row {
   detail?: string;
   distance?: string | null;
   choose: () => void;
-  /** Choose on the map: in the primary colour, one line. */
+  /** Choose on the map: in the primary colour, and large: the way to say where you are when the device cannot. */
   action?: boolean;
+  /** Shown, but cannot be used here; `detail` says why. */
+  disabled?: boolean;
 }
 
 const iconClass = "mt-0.5 size-5 shrink-0";
@@ -63,11 +65,17 @@ export function DirectionsPicker({
   markers,
   home,
   getCenter,
+  whereIAm,
+  onWhereIAm,
 }: {
   directions: Directions;
   markers: readonly MarkerDto[];
   home: HomeStart | null;
   getCenter: () => LatLon | null;
+  /** Whether the device can say where it is on this page, and if not why. */
+  whereIAm: WhereIAm;
+  /** Takes where the device is for this point, once it is known. */
+  onWhereIAm: (target: PickerTarget) => void;
 }) {
   const { picker, points, pickerText: text, setPickerText: setText, units } = directions;
   const open = picker !== null;
@@ -76,12 +84,14 @@ export function DirectionsPicker({
   const inset = useKeyboardInset(open);
   const query = useDebounced(text.trim(), 180);
   const label = picker ? (picker.adding ? `Stop ${picker.index}` : pointLabel(picker.index, points.length)) : "To";
-  // Distances are from the start, or for the start itself from the end; failing both, from the middle of the map.
+  const forStart = picker !== null && picker.index === 0 && !picker.adding;
+  // Distances are from the start. For the start itself they are from where the person last was (the map's view when
+  // Directions opened, or the last point chosen on the map), failing that from the end; failing both, the middle of the map.
   // biome-ignore lint/correctness/useExhaustiveDependencies: read once per opening and query, so the list does not reshuffle
   const from = useMemo<LatLon | null>(() => {
-    const start = picker?.index === 0 ? points.at(-1) : points[0];
+    const start = forStart ? (directions.near ?? points.at(-1)) : points[0];
     return start ?? (open ? getCenter() : null);
-  }, [open, query, points]);
+  }, [open, query, points, forStart]);
   const search = usePlaceSearch(open ? query : "", from ?? undefined);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the first row is in hand again whenever the words change
@@ -94,9 +104,24 @@ export function DirectionsPicker({
       key: "on-map",
       icon: <Crosshair aria-hidden className={cn(iconClass, "text-primary")} />,
       title: "Choose on the map",
+      detail: forStart && directions.near ? "Opens where you last looked at the map" : undefined,
       choose: () => directions.startChoosing(picker),
       action: true,
     };
+    const here: Row[] = forStart
+      ? [
+          {
+            key: "here",
+            icon: (
+              <LocateFixed aria-hidden className={cn(iconClass, whereIAm.state === "unavailable" ? "text-ink-faint" : "text-primary")} />
+            ),
+            title: whereIAm.state === "finding" ? "Finding where you are…" : "Where I am",
+            detail: whereIAm.state === "unavailable" ? whereIAm.reason : "From this device's location",
+            disabled: whereIAm.state !== "ready",
+            choose: () => whereIAm.state === "ready" && onWhereIAm(picker),
+          },
+        ]
+      : [];
     if (query.length < 2) {
       const homeRow: Row[] =
         home && !markers.some((marker) => samePlace(marker, home))
@@ -111,23 +136,22 @@ export function DirectionsPicker({
               },
             ]
           : [];
-      const saved = [...markers]
-        .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite) || a.name.localeCompare(b.name))
-        .map(
-          (marker): Row => ({
-            key: `marker-${marker.id}`,
-            icon: marker.isFavorite ? (
-              <Star aria-hidden className={cn(iconClass, "text-lamp")} />
-            ) : (
-              <MapPin aria-hidden className={cn(iconClass, "text-ink-muted")} />
-            ),
-            title: marker.name,
-            detail: marker.isFavorite ? "Saved place · favourite" : "Saved place",
-            distance: distanceFrom(from, marker, units),
-            choose: () => take({ name: marker.name, lat: marker.lat, lon: marker.lon, from: "place" }),
-          }),
-        );
-      return [onMap, ...homeRow, ...saved];
+      // For the start, the saved places nearest where the person last was come first; for the end, favourites.
+      const saved = (forStart ? nearestFirst(markers, from) : nearestFirst(markers, null)).map(
+        (marker): Row => ({
+          key: `marker-${marker.id}`,
+          icon: marker.isFavorite ? (
+            <Star aria-hidden className={cn(iconClass, "text-lamp")} />
+          ) : (
+            <MapPin aria-hidden className={cn(iconClass, "text-ink-muted")} />
+          ),
+          title: marker.name,
+          detail: marker.isFavorite ? "Saved place · favourite" : "Saved place",
+          distance: distanceFrom(from, marker, units),
+          choose: () => take({ name: marker.name, lat: marker.lat, lon: marker.lon, from: "place" }),
+        }),
+      );
+      return [onMap, ...here, ...homeRow, ...saved];
     }
     const found = buildSearchResults({
       query,
@@ -165,7 +189,7 @@ export function DirectionsPicker({
         }),
       );
     return [...found, onMap];
-  }, [picker, query, search.data, markers, home, from, units, directions]);
+  }, [picker, query, search.data, markers, home, from, units, directions, forStart, whereIAm, onWhereIAm]);
 
   const searching = query.length >= 2 && search.isFetching;
   const failed = query.length >= 2 && search.isError && rows.length <= 1;
@@ -217,7 +241,7 @@ export function DirectionsPicker({
               aria-controls={listId}
               aria-autocomplete="list"
               aria-activedescendant={rows[active] && (query.length >= 2 || active > 0) ? `${listId}-${active}` : undefined}
-              placeholder="Place, coordinates or grid ref"
+              placeholder={forStart ? "Postcode, place or grid ref" : "Place, postcode or grid ref"}
               value={text}
               onChange={(event) => setText(event.target.value)}
               onKeyDown={onKeyDown}
@@ -259,7 +283,8 @@ export function DirectionsPicker({
           </div>
         ) : nothing ? (
           <p className="border-b border-border px-4 py-3 text-small text-ink-muted" role="status">
-            Nothing found called that. Try a saved place, a town with place names installed, or coordinates such as 51.30, -0.33.
+            Nothing found called that. Try a saved place, a town or postcode with place names installed, a grid reference such as TQ 30 80,
+            coordinates such as 51.30, -0.33, or a locator such as IO91wv.
           </p>
         ) : null}
         <div
@@ -276,19 +301,29 @@ export function DirectionsPicker({
               id={`${listId}-${index}`}
               role="option"
               aria-selected={index === active && (query.length >= 2 || active > 0)}
-              onClick={row.choose}
+              aria-disabled={row.disabled || undefined}
+              onClick={row.disabled ? undefined : row.choose}
               className={cn(
-                "flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2 hover:bg-surface active:bg-surface-strong",
+                "flex min-h-14 items-center gap-3 px-4 py-2",
+                row.disabled ? "cursor-default" : "cursor-pointer hover:bg-surface active:bg-surface-strong",
                 index === active && (query.length >= 2 || active > 0) && "bg-surface-strong",
-                row.action && "min-h-12",
+                // Choose on the map, before anything is typed, is the large first row: the answer to "where am I" at http.
+                row.action && (query.length < 2 && forStart ? "min-h-16 bg-surface" : "min-h-12"),
               )}
             >
               {row.icon}
               <span className="min-w-0 flex-1">
-                <span className={cn("block text-body break-words", row.action ? "font-medium text-primary" : "font-semibold text-ink")}>
+                <span
+                  className={cn(
+                    "block text-body break-words",
+                    row.action ? "font-semibold text-primary" : row.disabled ? "font-semibold text-ink-muted" : "font-semibold text-ink",
+                  )}
+                >
                   {row.title}
                 </span>
-                {row.detail ? <span className="block truncate text-small text-ink-muted">{row.detail}</span> : null}
+                {row.detail ? (
+                  <span className={cn("block text-small text-ink-muted", row.disabled ? "break-words" : "truncate")}>{row.detail}</span>
+                ) : null}
               </span>
               {row.distance ? <span className="tabular shrink-0 text-small text-ink-muted">{row.distance}</span> : null}
             </div>

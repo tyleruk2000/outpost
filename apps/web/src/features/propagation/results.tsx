@@ -37,7 +37,7 @@ import { useRadioLicence } from "@/features/radio/licence";
 import { errorMessage } from "@/lib/api";
 import { formatTimeOfDay, useClockStyle } from "@/lib/clock";
 import { APPROXIMATE_SIGN, ChartFrame, HourGrid, HourLines, NOT_MODELLED, percent, ShareBars } from "./charts";
-import { useCompare, useListing } from "./data";
+import { stationWords, useCompare, useListing } from "./data";
 import { ComparisonExport } from "./prediction-export";
 
 const BASIS_TITLE = {
@@ -392,6 +392,10 @@ export function Results({
 
   return (
     <div>
+      {/* What was assumed, first: an answer for 5 W into a low dipole reads very differently from one for 100 W. */}
+      <p className="mb-4 text-small text-ink-muted" data-testid="prediction-assumptions">
+        {stationWords(request)}
+      </p>
       {askedNotModelled ? (
         <Notice tone="warning" icon={<TriangleAlert />} title={`No figure for ${f}: an antenna is not modelled there`} className="mt-4">
           {notModelledOn(request.txAntenna, request.rxAntenna, request.frequencyMhz)}{" "}

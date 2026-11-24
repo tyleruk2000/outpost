@@ -60,8 +60,9 @@ export interface ObservationInput {
   band: string;
   mode: string;
   outcome: ObservationOutcome;
-  tx: { call: string; lat: number | null; lon: number | null };
-  rx: { call: string; lat: number | null; lon: number | null };
+  /** `locator`: the Maidenhead locator the position was typed as, said back in the log as given. */
+  tx: { call: string; lat: number | null; lon: number | null; locator?: string };
+  rx: { call: string; lat: number | null; lon: number | null; locator?: string };
   powerWatts: number | null;
   antenna: string;
   reportSent: string;

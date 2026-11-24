@@ -25,9 +25,15 @@ of the time, 13 closed (kept with the date so nobody hunts for them) and 4 not v
 
 ## Using the screen
 
+- **In an emergency, tune to**, at the top: the emergency broadcasting entries for the
+  household's country (or the country chosen), never a closed station, and a link to the
+  distress and calling frequencies.
+
 - **Filters**: kind, country or region, band, **a set like mine**, and a search box for a
   name, a frequency's first figures (`9410`, `156.8`) or a channel (`16`). They are kept in
-  the address, so a link can open one kind: `/radio/frequencies?kind=time-signals`.
+  the address, so a link can open one kind: `/radio/frequencies?kind=time-signals`. On a
+  phone the four lists fold under **Kind, place, band and set**, and choosing one brings the
+  list into view.
 - **Country first**: the list starts from the current household's country, with entries for its
   region (ITU Region 1, the CEPT countries) and the world. **Show every place** takes the
   filter off.
@@ -36,6 +42,8 @@ of the time, 13 closed (kept with the date so nobody hunts for them) and 4 not v
 - **Rows** give the frequency large (kHz below 30 MHz, MHz above). Press the name for what
   you will hear, any rule on listening, and each source with the day it was checked.
 - **Schedule expired** marks a schedule past its end date; the entry stays.
+- **Closed** stations are not among the live ones: they are under **Closed**, after the list,
+  each with the day it closed and the page that says so.
 - **Shortwave from further away**: with a country chosen, shortwave stations filed
   elsewhere that can sometimes be heard (WWV for a listener in Britain), with a link to
   [HF propagation](hf-propagation.md).

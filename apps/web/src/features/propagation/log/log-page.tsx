@@ -29,6 +29,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Progress, Select, Skeleton } from "@/components/ui/misc";
 import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
+import { readStored, writeStored } from "@/features/maps/lib/view";
 import { LicenceLine } from "@/features/radio/licence";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
@@ -112,6 +113,20 @@ type ImportOutcome = { kind: "done"; result: ObservationImport } | { kind: "refu
 
 const nowUtc = () => new Date().toISOString().slice(0, 16);
 
+const STATION_KEY = "outpost.radio.log.station";
+const isPlaceField = (value: unknown): value is PlaceField =>
+  typeof value === "object" &&
+  value !== null &&
+  typeof (value as PlaceField).text === "string" &&
+  typeof (value as PlaceField).name === "string";
+/** Where your own station was given last, kept in this browser. */
+function rememberedStation(): PlaceField {
+  return readStored<PlaceField>(STATION_KEY, isPlaceField, { text: "", name: "" });
+}
+function rememberStation(place: PlaceField) {
+  if (place.text.trim()) writeStored(STATION_KEY, place);
+}
+
 function EntryDialog({ onClose }: { onClose: () => void }) {
   const places = usePlaces();
   const add = useAddObservation();
@@ -119,7 +134,8 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
   const [outcome, setOutcome] = useState<ObservationOutcome>("contact");
   const [txCall, setTxCall] = useState("");
   const [rxCall, setRxCall] = useState("");
-  const [txPlace, setTxPlace] = useState<PlaceField>({ text: "", name: "" });
+  // Your own station is nearly always in the same place: the one given last time, until another is.
+  const [txPlace, setTxPlace] = useState<PlaceField>(rememberedStation);
   const [rxPlace, setRxPlace] = useState<PlaceField>({ text: "", name: "" });
   const [frequency, setFrequency] = useState("");
   const [mode, setMode] = useState("SSB");
@@ -142,7 +158,9 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
         setProblem({ field, text: "That is not a position: give coordinates, a grid reference or a locator, or leave it empty." });
         return undefined;
       }
-      return { lat: found.lat, lon: found.lon };
+      // A locator is kept as given, so the log says it back: "JO62QM", not rounded degrees.
+      const locator = found.format === "maidenhead" ? place.text.trim().replace(/\s+/g, "") : undefined;
+      return { lat: found.lat, lon: found.lon, ...(locator ? { locator } : {}) };
     };
     const tx = position(txPlace, "tx");
     if (!tx) return;
@@ -170,7 +188,12 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
         reportReceived: received.trim(),
         notes,
       },
-      { onSuccess: onClose },
+      {
+        onSuccess: () => {
+          rememberStation(outcome === "heard" ? rxPlace : txPlace);
+          onClose();
+        },
+      },
     );
   };
 

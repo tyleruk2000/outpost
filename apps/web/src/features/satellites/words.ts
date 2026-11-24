@@ -84,3 +84,31 @@ export function lightAt(lat: number, lon: number, at: Date): "daylight" | "twili
 }
 
 export { elementsAge, elementsAgeWarning };
+
+/**
+ * Whether a satellite answers what was typed in Find: its NORAD number, or words of its name
+ * that each begin with a word typed ("ISS" finds "ISS (ZARYA)", not "SWISSCUBE"; "AO-7" finds "AO-07").
+ */
+export function satelliteMatches(name: string, noradId: number, typed: string): boolean {
+  const needle = typed.trim().toLowerCase();
+  if (!needle) return true;
+  if (/^\d+$/.test(needle)) return String(noradId).startsWith(needle) || name.toLowerCase().includes(needle);
+  const fold = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\b0+(\d)/g, "$1")
+      .trim();
+  const words = fold(name).split(" ");
+  const wanted = fold(needle).split(" ").filter(Boolean);
+  if (wanted.length === 0) return true;
+  // "AO7" typed without its hyphen still finds "AO-07".
+  if (fold(name).replaceAll(" ", "").startsWith(wanted.join(""))) return true;
+  let at = 0;
+  for (const word of wanted) {
+    const found = words.findIndex((each, index) => index >= at && each.startsWith(word));
+    if (found < 0) return false;
+    at = found + 1;
+  }
+  return true;
+}

@@ -231,6 +231,11 @@ describe("a region on a real test server", () => {
     const nearest = (await app.api("GET", `/api/reference/nearest?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}&kind=food:pharmacy&limit=5`))
       .body as NearestResponse;
     expect(nearest.hits[0]).toMatchObject({ name: "High Street Pharmacy (test)", distanceMeters: 111, bearingDegrees: 0 });
+    // A layer other than food with no kind gives its nearest few, whatever each is tagged as (Maps' Nearest hospital).
+    const hospitals = (await app.api("GET", `/api/reference/nearest?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}&layer=hospitals&limit=5&any=1`))
+      .body as NearestResponse;
+    expect(hospitals.hits.map((hit) => hit.name)).toEqual(["Made-up Hospital (test)"]);
+    expect(hospitals.hits[0]!.kind).not.toBe("*");
     const card = (await app.api("GET", `/api/reference/features/${nearest.hits[0]!.id}`)).body.feature;
     expect(card.food).toMatchObject({ openingHours: "Mo-Fr 09:00-19:00" });
     expect(card.source).toMatchObject({

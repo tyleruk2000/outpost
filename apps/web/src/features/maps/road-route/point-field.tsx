@@ -5,7 +5,7 @@
  * the map. A point pressed on the map ("Road route from here") arrives from outside.
  */
 import { formatDecimal, type MarkerDto } from "@outpost/shared";
-import { Crosshair, MapPin, Star, X } from "lucide-react";
+import { Crosshair, LocateFixed, MapPin, Star, X } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
 import { keepFieldFocus, useDismiss } from "@/lib/use-dismiss";
 import { usePlaceSearch } from "../data";
+import { nearestFirst, whereIAmState } from "../directions/words";
 import type { LatLon } from "../lib/geo";
 import { buildSearchResults } from "../lib/search";
 import type { RoutePointChoice } from "./words";
@@ -70,11 +71,31 @@ export function PointField({
         : [],
     [query, search.data, markers, centre],
   );
-  // Before anything is typed: the saved places, favourites first.
-  const saved = useMemo(
-    () => [...markers].sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite) || a.name.localeCompare(b.name)).slice(0, MAX_LISTED),
-    [markers],
-  );
+  // Before anything is typed: the saved places, the nearest to the middle of the map first (where the person is looking).
+  const saved = useMemo(() => nearestFirst(markers, centre).slice(0, MAX_LISTED), [markers, centre]);
+  // Where the device is, asked once on a press. Over plain http browsers will not say, and the row says why.
+  const [finding, setFinding] = useState(false);
+  const [hereError, setHereError] = useState<string | null>(null);
+  const here = whereIAmState({
+    supported: typeof navigator !== "undefined" && "geolocation" in navigator,
+    secure: typeof window !== "undefined" && window.isSecureContext,
+    finding,
+  });
+  const findHere = () => {
+    setFinding(true);
+    setHereError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFinding(false);
+        choose({ name: "Where you are", lat: position.coords.latitude, lon: position.coords.longitude, from: "map" });
+      },
+      () => {
+        setFinding(false);
+        setHereError("This device's location is not available. Choose on the map or type where you are.");
+      },
+      { enableHighAccuracy: true, timeout: 30_000, maximumAge: 60_000 },
+    );
+  };
 
   const choose = (point: RoutePointChoice) => {
     onChange(point);
@@ -135,9 +156,20 @@ export function PointField({
             if (event.key === "Escape" && open) {
               event.stopPropagation();
               setOpen(false);
+            } else if (event.key === "Enter") {
+              // Return takes the first suggestion for what is typed, and never sends the form round it (which emptied the field).
+              event.preventDefault();
+              const first = query === text.trim() ? listed[0] : undefined;
+              if (first?.position)
+                choose({
+                  name: first.kind === "coordinate" ? pointName(first.position) : first.title,
+                  lat: first.position.lat,
+                  lon: first.position.lon,
+                  from: first.kind === "marker" ? "place" : "search",
+                });
             }
           }}
-          placeholder="A saved place, a town, or coordinates"
+          placeholder="A postcode, place, grid ref or coordinates"
           autoComplete="off"
           spellCheck={false}
           aria-controls={open ? listId : undefined}
@@ -211,7 +243,30 @@ export function PointField({
                 ))}
               </ul>
             )
-          ) : saved.length > 0 ? (
+          ) : (
+            <>
+              {here.state === "unavailable" ? (
+                <p className="flex items-start gap-2.5 border-b border-border px-3 py-2 text-small text-ink-muted">
+                  <LocateFixed aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-faint" />
+                  <span className="min-w-0">
+                    <span className="block font-medium">Where I am</span>
+                    {here.reason}
+                  </span>
+                </p>
+              ) : (
+                <button type="button" className={`${row} border-b border-border`} onClick={findHere} disabled={finding}>
+                  <LocateFixed aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 text-ink">{finding ? "Finding where you are…" : "Where I am"}</span>
+                </button>
+              )}
+              {hereError ? (
+                <p className="border-b border-border px-3 py-2 text-small text-danger" role="alert">
+                  {hereError}
+                </p>
+              ) : null}
+            </>
+          )}
+          {query.length >= 2 ? null : saved.length > 0 ? (
             <ul aria-label="Saved places" className="divide-y divide-border">
               {saved.map((marker) => (
                 <li key={marker.id}>

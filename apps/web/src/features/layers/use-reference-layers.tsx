@@ -18,7 +18,7 @@ import type { Credit } from "@/features/maps/map-footer";
 import { overlayBox } from "@/features/repeaters/map/layers";
 import { notify } from "@/lib/notify";
 import { featuresAt, useFeature, useLayersSummary, useOverlay, usePopulationGrid } from "./data";
-import { FeatureCard } from "./feature-card";
+import { type CardWayThere, FeatureCard } from "./feature-card";
 import { LayersPanel } from "./layers-panel";
 import {
   layerColours,
@@ -75,8 +75,11 @@ export function useReferenceLayers({
   browsing,
   onManage,
   onFound,
+  way,
 }: {
   engine: MapEngine | null;
+  /** How far a record is from home, and Directions to it, on its card. */
+  way?: CardWayThere;
   /** No tool is in hand, so a press on the map can open a record. */
   browsing: boolean;
   /** Opens the place where reference data is downloaded and imported. */
@@ -279,6 +282,7 @@ export function useReferenceLayers({
           setSelectedId(null);
           setAlsoHere([]);
         }}
+        way={way}
       />
     ) : null;
 

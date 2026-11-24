@@ -2,7 +2,8 @@
 
 The **Routes** tab of the Maps screen holds every route: drawn by hand, recorded as you
 walk, found by name, or imported from a file. All are drawn on the map, found by search,
-printed and exported as GPX alike. Open one for its distance, ascent and elevation profile.
+printed and exported as GPX alike. Open one for its distance, ascent, walking time and
+elevation profile.
 **Directions** on the same tab (on a phone, at the foot of the map) plans a drive on main roads (and, with walking and cycling added, door to door, on foot or by bicycle): see [road-routes.md](road-routes.md).
 
 ## Drawing a route
@@ -15,6 +16,8 @@ roads: Outpost does not work out a way for you.**
 2. Click or tap to add points. Drag a point to move it; drag the handle mid-leg to add one
    between; press a point and Delete to remove it. Undo is Ctrl/⌘ Z. From the keyboard, move
    the map with the arrow keys and press Enter to add a point at the centre.
+   Press the first point again (with three or more placed) to close the loop of a round walk.
+   While drawing, the card gives the distance and the time to walk it on the flat.
 3. **Name and save**, with a colour. A route has 2 to 2,000 points.
 
 An unsaved route survives a reload in the same tab. Escape or **Cancel** stops, asking first.
@@ -22,6 +25,11 @@ An unsaved route survives a reload in the same tab. Escape or **Cancel** stops, 
 On saving, heights are read from the **terrain installed on this device** for the ascent and
 profile; nothing is downloaded. With no terrain there is no profile, and the panel says so.
 Install terrain later and choose **Fill in heights from terrain**.
+
+**Walking time** is worked out by Naismith's rule: 5 km an hour, and a minute more for every
+10 m climbed. Without heights it is the time on the flat, and says so. It takes no account
+of rough ground, rests or a heavy pack; Tools → Outdoors has the calculator with Langmuir's
+corrections for the descent.
 
 **Edit shape** reshapes any route. For a recording imported from GPX it asks first, since
 saving simplifies the line to about 300 points, joins its segments and drops its times;

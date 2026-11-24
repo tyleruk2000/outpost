@@ -224,3 +224,69 @@ describe("Frequencies to listen to", () => {
     expect(await within(dialog).findByRole("link", { name: "Save as PDF" })).toBeInTheDocument();
   });
 });
+
+describe("in an emergency", () => {
+  const rte = {
+    publisher: "RTÉ",
+    title: "Long wave to end",
+    url: "https://www.rte.ie/news/2023/0331/1367393-long-wave/",
+    checked: "2026-11-17",
+  };
+  const EMERGENCY: FrequencyEntry[] = [
+    {
+      id: "em-gb-radio",
+      kind: "emergency",
+      name: "BBC Radio 2 and Radio 4, and local radio",
+      what: "Where emergency messages go.",
+      expect: "News.",
+      frequencies: [{ khz: 92_000, toKhz: 95_000 }],
+      modes: ["FM"],
+      bands: ["vhf-fm"],
+      where: ["GB"],
+      status: "on-air",
+      sources: [source],
+    },
+    {
+      id: "em-ie-rte-lw-252",
+      kind: "emergency",
+      name: "RTÉ Radio 1 long wave 252 kHz (closed)",
+      what: "It has closed.",
+      expect: "Nothing.",
+      frequencies: [{ khz: 252 }],
+      modes: ["AM"],
+      bands: ["lw"],
+      where: ["IE", "GB"],
+      status: "closed",
+      closed: "2023-04-14",
+      sources: [rte],
+    },
+    {
+      id: "di-16",
+      kind: "distress",
+      name: "Marine VHF channel 16",
+      what: "Calling and distress.",
+      expect: "Calls.",
+      frequencies: [{ khz: 156_800, channel: "16" }],
+      modes: ["FM"],
+      bands: ["vhf-marine"],
+      where: ["world"],
+      status: "on-air",
+      sources: [source],
+    },
+  ];
+
+  it("puts what to tune to first, never a closed station, and the closed ones under their own heading", async () => {
+    load = async () => ({ entries: [...ENTRIES, ...EMERGENCY], guides: [] });
+    renderAt("/radio/frequencies?place=GB");
+    const first = await screen.findByTestId("emergency-first");
+    expect(within(first).getByRole("heading", { name: "In an emergency, tune to" })).toBeInTheDocument();
+    expect(within(first).getByText("BBC Radio 2 and Radio 4, and local radio")).toBeInTheDocument();
+    expect(within(first).queryByText(/RTÉ/)).toBeNull();
+    expect(within(first).getByRole("button", { name: "Distress and calling frequencies" })).toBeInTheDocument();
+    // In the list, the closed station is out of the live rows and under "Closed", with its date.
+    const closed = screen.getByTestId("closed-entries");
+    expect(within(closed).getByText("RTÉ Radio 1 long wave 252 kHz (closed)")).toBeInTheDocument();
+    expect(within(closed).getByText("Closed: 14 April 2023")).toBeInTheDocument();
+    expect(screen.getByText(/Closed: 1 station, kept so that nobody hunts for them/)).toBeInTheDocument();
+  });
+});

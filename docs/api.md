@@ -669,8 +669,8 @@ server on the internet.
 | `GET /api/reference/features` | `bbox`, `zoom`, `layers`, `countries?`, `providers?`, `kinds?` → up to 1,500 `points` or counted `cells`, and `shapes`. Flood zones only from zoom 11, ≤3,000 (`floodZones`: `zoom-in`, `too-many`). |
 | `GET /api/reference/at` | `lat`, `lon`, `layers` → up to ten areas containing the point. |
 | `GET /api/reference/features/:id` | One record with its sources, `airportFrequencies` for an airport, `food` (`FoodFactsDto`) for a food place. |
-| `GET /api/reference/search` | `q`, `layers?`, `limit` (≤100). |
-| `GET /api/reference/nearest` | `lat`, `lon`, `layer` (`food`), `kind?`, `limit` (1 to 20) → nearest hits with distance and bearing, within 100 km. |
+| `GET /api/reference/search` | `q`, `layers?`, `limit` (≤100), `near?` (`lat,lon`: nearest first, each with `distanceMeters` and the `place` it is near). |
+| `GET /api/reference/nearest` | `lat`, `lon`, `layer` (`food`), `kind?`, `limit` (1 to 20), `any?` (`1`: the nearest few of the layer whatever their kind, rather than the nearest of each kind) → nearest hits with distance and bearing, within 100 km. |
 | `GET /api/reference/figures` | Country figures with citations. |
 | `GET /api/reference/population/grid` | `bbox`, `zoom` → cells and legend. |
 | `GET /api/reference/population/sum` | `lat`, `lon`, `radiusKm` (≤300) → people in the circle, two significant figures. |
@@ -680,7 +680,7 @@ server on the internet.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/maps/places` | `q`, `limit` (≤50), `near`, `country` (two letters: the household's, put first with the country `near` is in) → `PlaceSearchResponse`. A position (coordinates, grid reference, locator) fills `coordinate`; `otherReadings` when the text could mean two. |
+| `GET /api/maps/places` | `q`, `limit` (≤50), `near`, `country` (two letters: the household's, put first with the country `near` is in) → `PlaceSearchResponse`. A position (coordinates, grid reference, locator) fills `coordinate`; `otherReadings` when the text could mean two. `notice` when no place had every word and the search was loosened (a kind word, a word left out, a slip of a letter); `nearest` (`hospital`, `pharmacy`, `shelter`, `water`, `fuel`) when the text asks for the nearest of a kind. |
 | `GET /api/maps/places/datasets`, `POST`, `DELETE …/:id` | Place-name datasets: `{ dataset: cities500 \| cities15000 \| country, country?, locationId? }`. |
 | `POST /api/maps/places/os-names/check` | Asks `api.os.uk` for the current OS Open Names edition (`OsNamesCheck`); kept half an hour. |
 | `POST /api/maps/places/os-names` | `{ locationId?, roads? }`: downloads that edition. `409` without a recent check or if installed. |

@@ -208,6 +208,20 @@ describe("where, offline", () => {
     expect(standIn.requests).toEqual([]);
   });
 
+  it("finds a part by its English name before Geofabrik's list is read", async () => {
+    standIn.requests.length = 0;
+    const found = await where("q=Bavaria");
+    expect(found.regionsListed).toBe(false);
+    expect(found.results[0]).toMatchObject({
+      type: "part",
+      name: "Bayern (Bavaria)",
+      country: "DE",
+      part: { regionId: "bayern", name: "Bayern (Bavaria)" },
+    });
+    expect((await where("q=catal")).results[0]).toMatchObject({ part: { regionId: "cataluna" } });
+    expect(standIn.requests).toEqual([]);
+  });
+
   it("finds the country of a point tapped on the map", async () => {
     const found = await where("lat=48.86&lon=2.35");
     expect(found.results[0]).toMatchObject({ type: "country", country: "FR" });
@@ -227,6 +241,13 @@ describe("where, offline", () => {
       }),
     );
     expect((await where("q=germany")).results[0]).toMatchObject({ type: "country", regionId: "germany" });
+    // And by its English name, as Geofabrik's list has it.
+    expect((await where("q=bavaria")).results[0]).toMatchObject({
+      type: "part",
+      name: "Bayern (Bavaria)",
+      regionId: "germany",
+      part: { regionId: "bayern" },
+    });
   });
 
   it("refuses what is not a place to look for", async () => {

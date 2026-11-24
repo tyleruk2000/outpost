@@ -14,10 +14,11 @@ import {
   haversineMeters,
   homeLabel,
   type MarkerDto,
+  type NearestKind,
   type TrackDto,
   type TrackWithGeometryDto,
 } from "@outpost/shared";
-import { CircleAlert, Crosshair, FileUp, PanelLeftOpen, Route as RouteIcon } from "lucide-react";
+import { CircleAlert, Crosshair, FileUp, PanelLeftOpen, Radar, Route as RouteIcon } from "lucide-react";
 import { type DragEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -38,7 +39,7 @@ import { useHouseholdsOnMap } from "@/features/households/map";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { useMeshOnMap } from "@/features/mesh/map";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
-import { SatellitesLayerPanel, useSatellitesOnMap } from "@/features/satellites/map";
+import { passFromParams, SatellitesLayerPanel, useSatellitesOnMap } from "@/features/satellites/map";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useMediaQuery } from "@/lib/use-media-query";
@@ -57,8 +58,8 @@ import {
 import { DirectionsPicker } from "./directions/picker";
 import { DirectionsBar } from "./directions/route-bar";
 import { DirectionsSheet } from "./directions/route-sheet";
-import { useDirections } from "./directions/use-directions";
-import { directionsBounds, endsData } from "./directions/words";
+import { type PickerTarget, useDirections } from "./directions/use-directions";
+import { directionsBounds, endsData, whereIAmState } from "./directions/words";
 import { FindRoutePanel } from "./find-route/find-route-panel";
 import { anyFoundRoute, ROUTE_CREDIT } from "./find-route/source-credit";
 import { PREVIEW_TRACK_ID } from "./find-route/words";
@@ -83,6 +84,7 @@ import { iconOf, pinGlyphOf } from "./lib/place-icons";
 import { pressWord } from "./lib/press";
 import {
   addPoint,
+  closeLoop,
   insertPoint,
   isStoredRouteDraft,
   movePoint,
@@ -125,6 +127,7 @@ import {
 } from "./map-chrome";
 import { creditsFor, MapFooter } from "./map-footer";
 import { type ClearSpace, MapFurniture } from "./map-furniture";
+import { isNearestKind, NearestDialog } from "./nearest/nearest";
 import { ImportMapFilesDialog } from "./panels/import-map-files";
 import type { OfflineIntent } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
@@ -352,6 +355,11 @@ export default function MapsPage() {
   const [offlineIntent, setOfflineIntent] = useState<OfflineIntent>(null);
   const [firstUseDismissed, setFirstUseDismissed] = useState(false);
   const [hereDismissed, setHereDismissed] = useState(false);
+  /** Maps' Nearest (nearest/nearest.tsx): open, and the kind shown, kept on this device. */
+  const [nearestOpen, setNearestOpen] = useState(false);
+  const [nearestKind, setNearestKind] = useStoredState<NearestKind>("outpost.maps.nearest.kind", isNearestKind, "hospital");
+  /** The point of a route waiting for the device to say where it is ("Where I am" in the picker). */
+  const [hereFor, setHereFor] = useState<PickerTarget | null>(null);
   const [rotated, setRotated] = useState(false);
   const [loadError, setLoadError] = useState<string>();
 
@@ -747,7 +755,13 @@ export default function MapsPage() {
     if (!engine) return;
     const change = (apply: (draft: RouteDraft) => RouteDraft) => setRouteDraft((current) => (current ? apply(current) : current));
     const offs = [
-      engine.on("routepoint", ({ index }) => change((draft) => ({ ...draft, selected: draft.selected === index ? null : index }))),
+      engine.on("routepoint", ({ index }) =>
+        change((draft) => {
+          // The first point pressed again closes a round walk; any other press selects the point.
+          const closed = closeLoop(draft.edit, index);
+          return closed ? { ...draft, edit: closed, selected: null } : { ...draft, selected: draft.selected === index ? null : index };
+        }),
+      ),
       engine.on("routemove", ({ index, position }) =>
         change((draft) => ({ ...draft, edit: movePoint(draft.edit, index, position), selected: index })),
       ),
@@ -1161,15 +1175,38 @@ export default function MapsPage() {
     );
   };
 
+  // A link to the nearest of a kind (/maps?nearest=pharmacy, from search): the list opens on it, and the address forgets it.
+  const nearestLinked = new URLSearchParams(location.search).get("nearest");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival
+  useEffect(() => {
+    if (!nearestLinked) return;
+    if (isNearestKind(nearestLinked)) setNearestKind(nearestLinked);
+    setNearestOpen(true);
+    const params = new URLSearchParams(location.search);
+    params.delete("nearest");
+    const rest = params.toString();
+    window.history.replaceState(window.history.state, "", `${location.pathname}${rest ? `?${rest}` : ""}`);
+  }, [nearestLinked, location.key]);
+
   const locate = useGeolocation(
     (fix, first) => {
       if (first) engine?.flyTo(fix, Math.max(engine.getZoom(), 14));
     },
-    (message) => notify.error(message),
+    (message) => {
+      setHereFor(null);
+      notify.error(message);
+    },
   );
   useEffect(() => {
     engine?.setOverlay("o-location", locationData(locate.fix));
   }, [engine, locate.fix]);
+  // "Where I am" in the picker: the point is taken as soon as the device says where it is.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the position arrives for the point waiting
+  useEffect(() => {
+    if (!hereFor || !locate.fix) return;
+    directions.choose(hereFor, { name: "Where you are", lat: locate.fix.lat, lon: locate.fix.lon, from: "map" });
+    setHereFor(null);
+  }, [hereFor, locate.fix]);
   /** Where the device is, while it is being followed: the start of Directions before the household's home. */
   const hereNow = () => (locate.state !== "off" && locate.fix ? { lat: locate.fix.lat, lon: locate.fix.lon } : null);
   const toggleLocate = () => {
@@ -1250,8 +1287,9 @@ export default function MapsPage() {
   const focusSatellite = satellitesLayer.focus;
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival, not on every change
   useEffect(() => {
-    const noradId = Number(new URLSearchParams(location.search).get("satellite"));
-    if (Number.isInteger(noradId) && noradId > 0) focusSatellite(noradId);
+    const params = new URLSearchParams(location.search);
+    const noradId = Number(params.get("satellite"));
+    if (Number.isInteger(noradId) && noradId > 0) focusSatellite(noradId, passFromParams(params));
   }, [location.key]);
   // APRS, aircraft and ships (features/heard), and the one card for anything heard, with the map's tools from there.
   // "Near home" is the current household's home: its saved place, or where a portable household was last said to be.
@@ -1308,6 +1346,10 @@ export default function MapsPage() {
     }, [navigate]),
     // On a phone the raised sheet hid the map that moved to the record, and its card with it.
     onFound: useCallback(() => setDetent("peek"), []),
+    way: {
+      from: directionsHome ? { name: directionsHome.name || "home", lat: directionsHome.lat, lon: directionsHome.lon } : null,
+      onDirections: (to) => startRoadRoute("to", { ...to, from: "search" }),
+    },
   });
 
   /**
@@ -2028,6 +2070,17 @@ export default function MapsPage() {
                 getCenter={() => engine?.getCenter() ?? null}
                 onChoose={chooseResult}
                 onAddPlaceNames={() => navigate("/maps/data?names=1")}
+                onNearest={(kind) => {
+                  setNearestKind(kind);
+                  setNearestOpen(true);
+                }}
+                trailing={
+                  isDesktop ? (
+                    <Button variant="ghost" size="sm" onClick={() => setNearestOpen(true)} className="shrink-0">
+                      <Radar aria-hidden /> Nearest
+                    </Button>
+                  ) : undefined
+                }
                 leading={
                   isDesktop && !panel.open ? (
                     <Tooltip label="Show places, routes and offline maps" side="bottom">
@@ -2213,9 +2266,15 @@ export default function MapsPage() {
             action={
               // Directions under the thumb whenever the tabs are the sheet's first line: the reason most people open a map.
               tool === "browse" && !formInSheet && !routeDraft ? (
-                <Button variant="primary" size="sm" onClick={() => directions.start({ here: hereNow() })}>
-                  <RouteIcon aria-hidden /> Directions
-                </Button>
+                <span className="flex gap-2">
+                  {/* The nearest hospital, pharmacy, shelter, water or fuel, without switching a layer on. */}
+                  <Button size="sm" onClick={() => setNearestOpen(true)}>
+                    <Radar aria-hidden /> Nearest
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => directions.start({ here: hereNow() })}>
+                    <RouteIcon aria-hidden /> Directions
+                  </Button>
+                </span>
               ) : undefined
             }
             first={tool === "sight" ? "sight" : tool === "print" && printInSheet ? "print" : formInSheet ? "form" : "tabs"}
@@ -2232,8 +2291,35 @@ export default function MapsPage() {
           markers={markers.data ?? []}
           home={directions.home}
           getCenter={() => engine?.getCenter() ?? null}
+          whereIAm={whereIAmState({ supported: locate.supported, secure: window.isSecureContext, finding: hereFor !== null })}
+          onWhereIAm={(target) => {
+            setHereFor(target);
+            if (locate.state === "off") locate.start();
+          }}
         />
       ) : null}
+
+      <NearestDialog
+        open={nearestOpen}
+        onOpenChange={setNearestOpen}
+        kind={nearestKind}
+        onKind={setNearestKind}
+        home={
+          directionsHome ? { name: directionsHome.name, lat: directionsHome.lat, lon: directionsHome.lon, at: directionsHome.at } : null
+        }
+        centre={nearestOpen ? (engine?.getCenter() ?? null) : null}
+        onDirections={(hit) => {
+          setNearestOpen(false);
+          startRoadRoute("to", { name: hit.name || hit.kindLabel, lat: hit.lat, lon: hit.lon, from: "search" });
+        }}
+        onShow={(hit, layer) => {
+          setNearestOpen(false);
+          reference.open(hit.id, layer, null);
+          if (!isDesktop) setDetent("peek");
+          // Close in, where the place is not lost under home's mark, and clear of the card that opens over the foot of the map.
+          engine?.flyTo({ lat: hit.lat, lon: hit.lon }, Math.max(engine.getZoom(), 16), isDesktop ? 340 : 290);
+        }}
+      />
 
       <ConfirmDialog
         open={discarding !== null}

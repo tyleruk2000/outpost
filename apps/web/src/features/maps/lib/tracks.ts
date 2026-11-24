@@ -1,5 +1,6 @@
 /** Words for a track's figures, shared by the routes list, the import result and search. */
-import type { TrackDto } from "@outpost/shared";
+import { roadDurationText, type TrackDto } from "@outpost/shared";
+import { naismithMinutes } from "@/features/tools/outdoors/formulas";
 import { formatDate, plural } from "@/lib/utils";
 import { formatDistance, formatDistanceWithMiles, formatHeight } from "./geo";
 
@@ -7,6 +8,18 @@ import { formatDistance, formatDistanceWithMiles, formatHeight } from "./geo";
 export function trackSummary(track: Pick<TrackDto, "distanceMeters" | "ascentMeters">): string {
   const distance = formatDistance(track.distanceMeters);
   return track.ascentMeters === null ? distance : `${distance}, ${formatHeight(track.ascentMeters)} of ascent`;
+}
+
+/**
+ * The time to walk it by Naismith's rule (5 km an hour, and a minute for every 10 m climbed):
+ * "about 4 h 05 min". With no heights, the time on the flat, said as such.
+ */
+/** The time to walk a distance on the flat at Naismith's 5 km an hour: "3 h 22 min". */
+export const flatWalk = (distanceMeters: number): string => roadDurationText(naismithMinutes(distanceMeters, 0).total * 60);
+
+export function walkingTime(distanceMeters: number, ascentMeters: number | null): string {
+  const time = roadDurationText(naismithMinutes(distanceMeters, ascentMeters ?? 0).total * 60);
+  return ascentMeters === null ? `about ${time} on the flat; the climbing is not known` : `about ${time}`;
 }
 
 export interface TrackFact {
@@ -32,6 +45,8 @@ export function trackFacts(
   return [
     { label: "Distance", value: formatDistanceWithMiles(track.distanceMeters) },
     { label: "Ascent", value: track.ascentMeters === null ? noHeights : formatHeight(track.ascentMeters) },
+    // A walk's own question is how long it takes: Naismith's rule, worked out here rather than in another screen.
+    { label: "Walking time", value: walkingTime(track.distanceMeters, track.ascentMeters) },
     { label: "Points", value: plural(track.pointCount, "point") },
   ];
 }

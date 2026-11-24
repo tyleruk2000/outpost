@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { useStoredState } from "../hooks";
 import type { LatLon } from "../lib/geo";
 import { countryName } from "../lib/search";
+import { readStored, writeStored } from "../lib/view";
 import type { MapEngine } from "../map/engine";
 import { useRoadCoverage, useRoadCrossings, useRoadNetworks } from "../road-route/data";
 import { pointName } from "../road-route/point-field";
@@ -28,6 +29,10 @@ import {
   defaultStart,
   directionsBounds,
   type HomeStart,
+  isLastPoint,
+  LAST_POINT_KEY,
+  type LastPoint,
+  lastWhere,
   planKey,
   pointsBounds,
   routeSteps,
@@ -51,7 +56,7 @@ export interface PickerTarget {
   adding: boolean;
 }
 
-export type DirectionsMap = Pick<MapEngine, "getCenter" | "fitBounds">;
+export type DirectionsMap = Pick<MapEngine, "getCenter" | "fitBounds"> & Partial<Pick<MapEngine, "getView" | "jumpTo">>;
 
 /** How a route is started: a point handed in at one end, or nothing (the end is asked). */
 export interface DirectionsStart {
@@ -89,6 +94,12 @@ export function useDirections({
   /** The plan the person stopped: not asked again until they ask. */
   const [stopped, setStopped] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** The map's view when Directions was opened: where the person was looking, before the ends were fitted. */
+  const [startedView, setStartedView] = useState<{ lat: number; lon: number; zoom: number } | null>(null);
+  /** The last point chosen on the map or taken from the device, on this device. */
+  const [lastPoint, setLastPoint] = useState<LastPoint | null>(() => readStored<LastPoint | null>(LAST_POINT_KEY, isLastPoint, null));
+  /** Where the person last was, for the start when the device cannot say (words.ts `lastWhere`). */
+  const near = useMemo(() => lastWhere({ started: startedView, lastPoint }), [startedView, lastPoint]);
 
   const networks = useRoadNetworks(enabled && active);
   const streets = useStreetsStatus(enabled && active);
@@ -185,6 +196,7 @@ export function useDirections({
   const start = useCallback(
     (input: DirectionsStart = {}) => {
       const from = defaultStart({ handed: input.from, here: input.here, home, to: input.to });
+      setStartedView(engine?.getView?.() ?? null);
       setPoints([from, input.to ?? null]);
       setActive(true);
       setView("route");
@@ -196,12 +208,13 @@ export function useDirections({
       else if (!from) focusPicker({ index: 0, adding: false });
       else setPicker(null);
     },
-    [home, focusPicker],
+    [home, focusPicker, engine],
   );
 
   /** Starts with these points and way of travelling, as a saved route's Plan it again hands them over. */
   const startWith = useCallback(
     (again: Array<RoutePointChoice | null>, way: RouteMode) => {
+      setStartedView(engine?.getView?.() ?? null);
       setPoints(again.length >= 2 ? again : [again[0] ?? null, null]);
       setMode(way);
       setActive(true);
@@ -212,7 +225,7 @@ export function useDirections({
       setPicker(null);
       fitted.current = null;
     },
-    [setMode],
+    [setMode, engine],
   );
 
   const close = useCallback(() => {
@@ -230,6 +243,12 @@ export function useDirections({
     (target: PickerTarget, point: RoutePointChoice) => {
       let next = target.adding ? [...points.slice(0, target.index), point, ...points.slice(target.index)] : [...points];
       if (!target.adding) next[target.index] = point;
+      // A point from the map or the device is where the person was: the next start on the map opens there.
+      if (point.from === "centre" || point.from === "map") {
+        const kept = { lat: point.lat, lon: point.lon, at: Date.now() };
+        setLastPoint(kept);
+        writeStored(LAST_POINT_KEY, kept);
+      }
       // The end chosen is where the route started from: the start is asked instead.
       const last = next.length - 1;
       if (target.index === last && next[0] && samePlace(next[0], point) && next[0].from !== "search") next = [null, ...next.slice(1)];
@@ -237,7 +256,7 @@ export function useDirections({
       setStep(null);
       setChoosing(null);
       setStopped(null);
-      const missing = next.findIndex((each) => each === null);
+      const missing = next.indexOf(null);
       if (missing >= 0) focusPicker({ index: missing, adding: false });
       else setPicker(null);
     },
@@ -312,9 +331,12 @@ export function useDirections({
     choose,
     openPicker: focusPicker,
     closePicker,
+    near,
     startChoosing: (target: PickerTarget) => {
       setPicker(null);
       setChoosing(target);
+      // The start is where the person is: the map opens where they last were, not on the other end or the world.
+      if (target.index === 0 && !target.adding && near && engine?.jumpTo) engine.jumpTo(near);
     },
     stopChoosing: () => setChoosing(null),
     /** Uses the point under the cross in the middle of the map for the point being chosen. */

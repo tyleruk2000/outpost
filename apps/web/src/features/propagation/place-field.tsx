@@ -1,7 +1,7 @@
 /**
- * Saying where a station is: typed (coordinates, a grid reference or a locator), chosen
- * from the saved places, or pressed on the offline map. Used wherever the planner takes
- * a position.
+ * Saying where a station is: typed (coordinates, a grid reference, a locator, or the name
+ * of a place among the place names installed for the map), chosen from the saved places,
+ * or pressed on the offline map. Used wherever the planner takes a position.
  */
 import { type MarkerDto, parseCoordinates, toMaidenhead } from "@outpost/shared";
 import { MapPin } from "lucide-react";
@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { usePlaceSearch } from "@/features/maps/data";
+import { placeDetail } from "@/features/maps/lib/search";
+import { errorMessage } from "@/lib/api";
+import { useDebounced } from "@/lib/use-debounced";
 import type { PlaceField } from "./data";
 import { pointFeature } from "./map/layers";
 import type { PlanMapHandle } from "./map/plan-map";
@@ -113,6 +117,38 @@ export function PlacePicker({
   );
 }
 
+/** Places called what was typed, from the place names installed for the map: "Keswick" as well as "NY 26 23". */
+function PlaceNameMatches({ text, label, onChange }: { text: string; label: string; onChange: (value: PlaceField) => void }) {
+  const query = useDebounced(text, 250);
+  const search = usePlaceSearch(query, undefined);
+  const places = search.data && search.data.query === query ? search.data.places.slice(0, 4) : [];
+  if (query.length < 3 || search.isPending) return null;
+  if (search.isError) return <p className="text-small text-danger">{errorMessage(search.error)}</p>;
+  if (places.length === 0)
+    return (
+      <p className="text-small text-ink-muted" role="status">
+        No place called “{query}” among the place names on this Outpost. Type coordinates, a grid reference or a locator, or choose on the
+        map. Place names are added on Maps › Offline maps.
+      </p>
+    );
+  return (
+    <ul aria-label={`${label}: places called “${query}”`} className="divide-y divide-border rounded-control border border-border">
+      {places.map((place) => (
+        <li key={place.id}>
+          <button
+            type="button"
+            className="flex min-h-11 w-full flex-col justify-center px-3 py-1.5 text-left hover:bg-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+            onClick={() => onChange({ text: `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`, name: place.name })}
+          >
+            <span className="text-small font-medium text-ink">{place.name}</span>
+            <span className="text-micro text-ink-muted">{placeDetail(place)}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function PlaceInput({
   label,
   what,
@@ -133,7 +169,7 @@ export function PlaceInput({
   const found = parseCoordinates(value.text);
   const hint = found
     ? `${placeLine(found.lat, found.lon)}${value.name ? ` · ${value.name}` : ""}`
-    : "Coordinates (51.5074, -0.1278), a grid reference or a locator (IO91WM).";
+    : "A place name, coordinates (51.5074, -0.1278), a grid reference or a locator (IO91WM).";
   return (
     <Field label={label} hint={hint} error={error}>
       {(ids) => (
@@ -174,6 +210,7 @@ export function PlaceInput({
               Choose on the map
             </Button>
           </div>
+          {!found && value.text.trim().length >= 3 ? <PlaceNameMatches text={value.text.trim()} label={label} onChange={onChange} /> : null}
           {picking ? (
             <PlacePicker
               what={what}

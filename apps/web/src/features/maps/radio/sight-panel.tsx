@@ -17,7 +17,7 @@ import { pressWord } from "../lib/press";
 import type { MapEngine } from "../map/engine";
 import { locatorOf } from "./locator";
 import { RelaySection } from "./relay";
-import { BANDS, type BandId, describeTerrain, formatFrequency, MAX_ANTENNA_METERS, MAX_MHZ, MIN_MHZ } from "./sight";
+import { ANTENNA_PRESETS, BANDS, type BandId, describeTerrain, formatFrequency, MAX_ANTENNA_METERS, MAX_MHZ, MIN_MHZ } from "./sight";
 import { SIGHT_ICONS } from "./sight-card";
 import { SightChart } from "./sight-chart";
 import type { Sight, SightEnd, SightEndName } from "./use-sight";
@@ -200,6 +200,23 @@ export function SightPanel({
             onChange={(antennaTo) => setSettings((current) => ({ ...current, antennaTo }))}
           />
           <p className="col-span-2 -mt-1.5 text-small text-ink-muted">Height above the ground each antenna stands on, in metres.</p>
+          {/* A handheld on a summit is held at about head height, not on a 10 m mast: one press for either. */}
+          <fieldset className="col-span-2 -mt-1 flex min-w-0 flex-wrap gap-2" aria-label="Both antennas">
+            {ANTENNA_PRESETS.map((preset) => {
+              const chosen = settings.antennaFrom === preset.meters && settings.antennaTo === preset.meters;
+              return (
+                <Button
+                  key={preset.meters}
+                  size="sm"
+                  variant={chosen ? "soft" : "secondary"}
+                  aria-pressed={chosen}
+                  onClick={() => setSettings((current) => ({ ...current, antennaFrom: preset.meters, antennaTo: preset.meters }))}
+                >
+                  {preset.label}
+                </Button>
+              );
+            })}
+          </fieldset>
           <Field label="Band" className={settings.band === "other" ? "" : "col-span-2"}>
             {(ids) => (
               <Select

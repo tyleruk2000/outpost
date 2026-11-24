@@ -209,6 +209,41 @@ test.describe("Directions on a phone, more", () => {
     expect(errors.filter((error) => !/status of 400/.test(error))).toEqual([]);
   });
 
+  test("home from where you are: Directions, Home, Choose on the map (opening where you were), Use this point", async ({ page }, info) => {
+    test.setTimeout(90_000);
+    const errors = watchForErrors(page);
+    // Looking at Leatherhead, close in, before Directions is pressed.
+    await page.goto("/maps?lat=51.296&lon=-0.33&z=14");
+    await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Directions", exact: true }).tap();
+    await page.getByRole("dialog", { name: "Where to?" }).getByRole("option", { name: /^Home/ }).tap();
+    const from = page.getByRole("dialog", { name: "Where from?" });
+    await expect(from).toBeVisible();
+    const rows = from.getByRole("option");
+    // Choose on the map first and largest; then where the device is (on localhost a browser will say); then the saved
+    // places nearest where the map was looking.
+    await expect(rows.nth(0)).toContainText("Choose on the map");
+    await expect(rows.nth(0)).toContainText("Opens where you last looked at the map");
+    expect((await rows.nth(0).boundingBox())!.height).toBeGreaterThanOrEqual(64);
+    await expect(rows.nth(1)).toContainText("Where I am");
+    await expect(rows.nth(2)).toContainText("Leatherhead");
+    await picture(page, info, "directions-from-picker");
+    await rows.nth(0).tap();
+    // The map is back where it was looking, not on home or the far end.
+    await expect.poll(() => new URL(page.url()).searchParams.get("lat")).toMatch(/^51\.29/);
+    await page.getByRole("button", { name: "Use this point as the start" }).tap();
+    await expect(page.getByRole("button", { name: /^From: Point at 51\.29/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "To: Home. Change" })).toBeVisible();
+    const sheet = page.getByRole("region", { name: "Directions" });
+    await expect(sheet.getByRole("heading", { name: /\d+(\.\d+)? k?m/ }).or(sheet.getByText("The route could not be planned"))).toBeVisible(
+      {
+        timeout: 60_000,
+      },
+    );
+    await picture(page, info, "directions-from-point");
+    expect(errors.filter((error) => !/status of 400/.test(error))).toEqual([]);
+  });
+
   test("Directions from a saved place, and quick search in More", async ({ page }) => {
     const errors = watchForErrors(page);
     await page.goto("/maps?lat=49&lon=3&z=5");

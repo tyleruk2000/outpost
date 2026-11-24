@@ -38,6 +38,7 @@ import { PermanentJobError } from "../../core/jobs.ts";
 import { places } from "../../db/schema.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
 import { isOsCode, isStreetLevel, osKindLabel, osProminence } from "./os-names/convert.ts";
+import { editDistance, kindWordOf, nearestKindOf, slipsAllowed } from "./places-forgiving.ts";
 import { ATTRIBUTIONS } from "./source.ts";
 
 export const GEONAMES_BASE_URL = "https://download.geonames.org/export/dump/";
@@ -310,6 +311,9 @@ export interface PlacesService {
  * before Olney, Maryland for someone in England, and Paris, France still before a hamlet.
  */
 const PREFERRED_COUNTRY = 0.4;
+
+/** "Waterloo", "Newport Pagnell": words of a query as a name, for a notice. */
+const titleOf = (words: readonly string[]) => words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
 /** Lower case, without accents: how names are compared when ranking. */
 function fold(text: string): string {
@@ -595,6 +599,29 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     elevation: row.elevation,
   });
 
+  const labelOf = (row: PlaceRow) =>
+    isOsCode(row.featureCode) ? osKindLabel(row.featureCode!) : kindLabelOf(row.featureClass, row.featureCode, row.population);
+
+  /**
+   * Rows whose name is within a slip of a letter or two of each word typed. The full-text
+   * index has no fuzzy matching, so the candidates are the names beginning with the longest
+   * word's first three letters, and each is measured.
+   */
+  function findSlips(words: string[], pool: number): PlaceRow[] {
+    const longest = [...words].sort((a, b) => b.length - a.length)[0];
+    if (!longest || slipsAllowed(longest) === 0) return [];
+    const match = `"${longest.slice(0, 3).replaceAll('"', "")}"*`;
+    const found = new Map<number, PlaceRow>();
+    for (const row of [...(byPopulation.all(match, pool * 10) as PlaceRow[]), ...(byText.all(match, pool * 10) as PlaceRow[])])
+      found.set(row.id, row);
+    return [...found.values()].filter((row) => {
+      const names = fold(`${row.name},${row.asciiName},${row.altNames}`).split(/[^\p{L}\p{N}]+/u);
+      return words.every((word) =>
+        names.some((name) => (slipsAllowed(word) === 0 ? name.startsWith(word) : editDistance(word, name, 2) <= slipsAllowed(word))),
+      );
+    });
+  }
+
   function search(
     query: string,
     searchOptions: { limit?: number; near?: { lat: number; lon: number }; prefer?: string[] } = {},
@@ -622,28 +649,83 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     if (tokens.length === 0) return { query: text, coordinate, ...others, places: [] };
 
     const limit = Math.min(50, Math.max(1, searchOptions.limit ?? 10));
-    // Every word must be there; the last may still be being typed, so all match as prefixes.
-    const match = tokens.map((token) => `"${token.replaceAll('"', "")}"*`).join(" ");
     const pool = Math.max(60, limit * 6);
     const near = searchOptions.near;
     const prefer = new Set((searchOptions.prefer ?? []).map((code) => code.toUpperCase()));
-    // Three views of the matches, because the best answer may be the closest in spelling,
-    // the biggest, or the nearest, and no single ordering surfaces all three.
-    const found = new Map<number, PlaceRow>();
-    const lists: PlaceRow[][] = [byText.all(match, pool) as PlaceRow[], byPopulation.all(match, pool) as PlaceRow[]];
-    if (near) {
-      const shrink = Math.cos((near.lat * Math.PI) / 180) ** 2;
-      lists.push(byDistance.all(match, near.lat, near.lat, near.lon, near.lon, shrink, pool) as PlaceRow[]);
-    }
-    for (const list of lists) for (const row of list) found.set(row.id, row);
+    const nearest = postcode ? null : nearestKindOf(text);
+
+    /** The rows that have every one of these words (the last as a prefix), best first. */
+    const findAll = (words: string[], folded = words.join(" "), kind?: (label: string) => boolean) => {
+      // Every word must be there; the last may still be being typed, so all match as prefixes.
+      const match = words.map((token) => `"${token.replaceAll('"', "")}"*`).join(" ");
+      // Three views of the matches, because the best answer may be the closest in spelling,
+      // the biggest, or the nearest, and no single ordering surfaces all three.
+      const found = new Map<number, PlaceRow>();
+      const lists: PlaceRow[][] = [byText.all(match, pool) as PlaceRow[], byPopulation.all(match, pool) as PlaceRow[]];
+      if (near) {
+        const shrink = Math.cos((near.lat * Math.PI) / 180) ** 2;
+        lists.push(byDistance.all(match, near.lat, near.lat, near.lon, near.lon, shrink, pool) as PlaceRow[]);
+      }
+      for (const list of lists) for (const row of list) found.set(row.id, row);
+      return rankRows([...found.values()], folded, words, kind);
+    };
+    const rankRows = (rows: PlaceRow[], folded: string, words: string[], kind?: (label: string) => boolean) =>
+      rows
+        .map((row) => ({ row, rank: rankOf(row, folded, words, near, prefer), kind: kind ? kind(labelOf(row)) : false }))
+        .sort(
+          (a, b) =>
+            Number(b.kind) - Number(a.kind) ||
+            Number(b.rank.exact) - Number(a.rank.exact) ||
+            Number(a.rank.street) - Number(b.rank.street) ||
+            b.rank.score - a.rank.score,
+        );
 
     const folded = fold(sought).replace(/\s+/g, " ");
-    const ranked = [...found.values()]
-      .map((row) => ({ row, rank: rankOf(row, folded, tokens, near, prefer) }))
-      .sort(
-        (a, b) =>
-          Number(b.rank.exact) - Number(a.rank.exact) || Number(a.rank.street) - Number(b.rank.street) || b.rank.score - a.rank.score,
-      );
+    let ranked = findAll(tokens, folded);
+    let said: string | undefined;
+    if (!postcode && !ranked.some((each) => each.rank.exact)) {
+      // "Waterloo station": no place is called that, but Waterloo's station is a place called Waterloo.
+      const kind = kindWordOf(tokens);
+      if (kind) {
+        const named = findAll(kind.rest, undefined, kind.matches);
+        if (named.some((each) => each.kind) || (ranked.length === 0 && named.length > 0)) {
+          const seen = new Set(named.map((each) => each.row.id));
+          ranked = [
+            ...named.filter((each) => each.kind),
+            ...ranked.filter((each) => !seen.has(each.row.id)),
+            ...named.filter((each) => !each.kind),
+          ];
+          said = named.some((each) => each.kind)
+            ? `Nothing is called “${text}”; showing places called ${titleOf(kind.rest)}, ${kind.plural} first.`
+            : `Nothing is called “${text}”; showing places called ${titleOf(kind.rest)}.`;
+        }
+      }
+    }
+    if (!postcode && ranked.length === 0 && tokens.length >= 2) {
+      // No place has every word: the most words that some place has, leaving out one at a time.
+      let best: { words: string[]; rows: ReturnType<typeof findAll> } | null = null;
+      for (let leave = tokens.length - 1; leave >= 0; leave--) {
+        const words = tokens.filter((_, at) => at !== leave);
+        const rows = findAll(words);
+        if (
+          rows.length > 0 &&
+          (!best || (rows[0]!.rank.exact && !best.rows[0]!.rank.exact) || rows[0]!.rank.score > best.rows[0]!.rank.score + 0.3)
+        )
+          best = { words, rows };
+      }
+      if (best) {
+        ranked = best.rows;
+        said = `No place has all of “${text}”; showing places called ${titleOf(best.words)}.`;
+      }
+    }
+    if (!postcode && ranked.length === 0) {
+      // A slip of a letter or two ("Keswik", "Amblesdie"): names that begin the same way and are within a slip of each word.
+      const slipped = findSlips(tokens, pool);
+      if (slipped.length > 0) {
+        ranked = rankRows(slipped, folded, tokens);
+        said = `Nothing is called “${text}”; showing the nearest spellings.`;
+      }
+    }
     // The same place can be in two datasets (a world list and a country); show it once.
     // OS Open Names says which GeoNames record a settlement is, so it is shown once too.
     const seen = new Set<number>();
@@ -665,7 +747,8 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
       ...others,
       places: results,
       ...(credits.length > 0 ? { credits } : {}),
-      ...(notice ? { notice } : {}),
+      ...(notice || said ? { notice: notice ?? said } : {}),
+      ...(nearest ? { nearest } : {}),
     };
   }
 

@@ -55,6 +55,21 @@ the current view, so a link to it can be kept in a note.
 point to **Settings → HTTPS on your network**
 ([deployment.md](deployment.md#https-on-your-network)).
 
+### Nearest
+
+**Nearest** (at the foot of the map on a phone, beside the search box on a wider screen)
+lists the nearest **hospital**, **pharmacy**, **shelter**, **drinking water** or **fuel**,
+whichever of these are held on this Outpost, without switching a layer on. Each is listed
+with its distance and direction from home (or from the middle of the map) and
+**Directions**; press its name to see it on the map. Searching the map for "pharmacy" or
+"hospital" offers the same list. Distances are in a straight line, from what was held on the
+day it was fetched; nothing is asked of the internet, and it does not say a place is open.
+The places come from **Nearby places** in Offline maps; with none held, **Nearest** says so
+and links there.
+
+A record opened on the map (a hospital, a shop, a shelter) says how far it is from home and
+has **Directions** to it.
+
 ### The height of the ground
 
 The readout shows the ground's height after the coordinates ("57.00000, -3.39897 · 100 m");
@@ -106,7 +121,8 @@ One button, **Add a place**, wherever a map, routes or nearby places are offered
    in France: Rhône-Alpes (smaller) or all of France". This is answered on the device: nothing
    is looked up elsewhere. Or tap a country on the small map of the world, or choose a
    suggestion: where the map is now, home, the whole world, **Draw an area on the map**, or
-   **Import a file**. Nothing is chosen for you.
+   **Import a file**. Nothing is chosen for you. A region Geofabrik names in its own language
+   is found by its English name too: "Bavaria" finds Bayern, "Catalonia" Cataluña.
 2. **What for France?** **Map** and **Routes** are ticked, **Nearby places** is not.
    Ticked, **Nearby places** opens to **Which kinds** (see below). The source file is one
    line under the ticks (see below). **More choices** has the detail of the map, hills and
@@ -114,7 +130,10 @@ One button, **Add a place**, wherever a map, routes or nearby places are offered
    ("Germany comes in 16 parts, 4.3 GB together. All are ticked."): untick the parts you do
    not need, and only those are read. A press anywhere on a row ticks it.
 3. **Check size** asks the map sources how large it is; the first time, it reads Geofabrik's
-   list of regions too (download.geofabrik.de). Nothing is downloaded yet.
+   list of regions too (download.geofabrik.de). Nothing is downloaded yet. The answer, or why
+   it could not be had, is brought into view under the ticks. Geofabrik sends its largest
+   country files (Germany's) from another server, which Outpost does not download from: for
+   such a country the parts are fetched instead, each its own file, and the dialog says so.
 4. **Download · 4.1 GB**. Progress shows at the top of Offline maps and under **Downloads and
    tasks**; you can leave the screen.
 
@@ -326,7 +345,9 @@ line ("Walking and cycling: not set up"), with how to add it.
 ## Layers
 
 The **Layers** tab draws published data over the map: boundaries, airports, hospitals,
-shelters, planning zones and more. See [reference-layers.md](reference-layers.md).
+shelters, planning zones and more. **Find in the reference layers** lists what matches nearest
+home first (or the middle of the map, with no home set), each with its kind, the town it is near
+where the Towns layer is held, and its distance. See [reference-layers.md](reference-layers.md).
 
 ## Where the data comes from
 
@@ -485,7 +506,7 @@ of daylight is softer. It is also on Radio → HF coverage
 
 1. Press **Line of sight between two points** and press the map at A and B (a saved place
    puts the end exactly on it). Or use the ruler's **Check line of sight**, or a repeater's.
-2. Give each aerial's height above the ground and the band or frequency.
+2. Give each aerial's height above the ground (**Handhelds, 1.5 m** or **Masts, 10 m** sets both at once) and the band or frequency.
 3. Read the answer. **Swap A and B** turns it round; Escape puts the tool down.
 
 ### What it shows
@@ -573,7 +594,20 @@ people. Every word typed must match the start of a word in a name; accents are i
 Your own places come first, then the best matches nearest the map's centre. Among places of
 the same name, those in your household's country and in the country the map is over come first:
 for a household in England, Olney finds the town in England before those in the United States,
-whatever part of the world is in view.
+whatever part of the world is in view. A place's other names count too: "Munich" finds München
+and "Bavaria" finds Bayern, where the names held list them.
+
+When no place has every word, the search says so above the list and tries again more loosely:
+
+- A kind of place said with the name ("Waterloo station", "Lake Windermere") finds the places
+  of that name, that kind first.
+- A word no place has ("Ambleside Cumbria") is left out.
+- A slip of a letter, or two letters the wrong way round ("Amblesdie"), finds the nearest
+  spellings.
+
+A word for the nearest of something ("pharmacy", "A&E", "petrol near me") puts **Nearest
+pharmacies** (or hospitals, shelters, drinking water, fuel) first in the list, above any
+street of that name.
 
 ### Limits
 

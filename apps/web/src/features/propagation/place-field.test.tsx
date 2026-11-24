@@ -1,4 +1,5 @@
 import type { MarkerDto } from "@outpost/shared";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -39,7 +40,7 @@ vi.mock("./map/plan-map", () => ({
 
 const home: MarkerDto = { id: "m1", name: "Home base", lat: 54.2, lon: -2.9 } as MarkerDto;
 
-function Harness() {
+function Fields() {
   const [value, setValue] = useState<PlaceField>({ text: "", name: "" });
   return (
     <>
@@ -48,6 +49,55 @@ function Harness() {
     </>
   );
 }
+
+function Harness() {
+  const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  return (
+    <QueryClientProvider client={client}>
+      <Fields />
+    </QueryClientProvider>
+  );
+}
+
+describe("a place typed by name", () => {
+  it("offers the places of that name from the map's place names, and takes one as its position", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), "http://outpost.test");
+        const body =
+          url.pathname === "/api/maps/places"
+            ? {
+                query: url.searchParams.get("q"),
+                coordinate: null,
+                places: [
+                  {
+                    id: 7,
+                    source: "geonames",
+                    name: "Keswick",
+                    country: "GB",
+                    admin1: "ENG",
+                    featureCode: "PPL",
+                    kindLabel: "Village",
+                    lat: 54.6,
+                    lon: -3.13,
+                    population: 5000,
+                    elevation: 93,
+                  },
+                ],
+              }
+            : {};
+        return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+      }),
+    );
+    render(<Harness />);
+    fireEvent.change(screen.getByLabelText("Transmitter"), { target: { value: "Keswick" } });
+    const list = await screen.findByRole("list", { name: "Transmitter: places called “Keswick”" });
+    fireEvent.click(within(list).getByRole("button", { name: /Keswick/ }));
+    expect(screen.getByTestId("value").textContent).toBe('{"text":"54.60000, -3.13000","name":"Keswick"}');
+    vi.unstubAllGlobals();
+  });
+});
 
 describe("choosing a place on the map", () => {
   it("takes a pressed position, or a saved place by name, and nothing until it is confirmed", async () => {

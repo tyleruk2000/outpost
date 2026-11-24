@@ -16,7 +16,7 @@ import {
   type PredictionResult,
 } from "@outpost/shared";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import {
   antennaSummary,
   emptyForm,
   exampleForm,
+  FIELD_NAMES,
   openSaved,
   type PlannerForm,
   rememberedForm,
@@ -87,10 +88,26 @@ export function Planner() {
   const radios = profiles.data?.radios ?? [];
   const engine = engines.data?.[0];
 
+  const formRef = useRef<HTMLFormElement>(null);
+  /** Brings the field that needs putting right into view and puts the cursor in it: on a phone it can be screens above Predict. */
+  const goToProblem = () => {
+    const field = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (!field) return;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    field.scrollIntoView?.({ block: "center", behavior: reduced ? "auto" : "smooth" });
+    field.focus({ preventScroll: true });
+  };
+  const [problemSeen, setProblemSeen] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each press of Predict that found a problem, after the field is marked
+  useEffect(() => {
+    if (problemSeen > 0) goToProblem();
+  }, [problemSeen]);
+
   const run = (next: PlannerForm = form) => {
     const built = requestOf(next, antennas);
     if ("problem" in built) {
       setProblem(built);
+      setProblemSeen((count) => count + 1);
       return;
     }
     setProblem(null);
@@ -156,6 +173,7 @@ export function Planner() {
       ) : null}
 
       <form
+        ref={formRef}
         className="grid gap-x-10 gap-y-8 lg:grid-cols-2"
         noValidate
         onSubmit={(event) => {
@@ -471,7 +489,14 @@ export function Planner() {
               Save this prediction
             </Button>
           ) : null}
-          {problem ? <p className="basis-full text-small text-danger">Not sent: one thing above needs putting right.</p> : null}
+          {problem ? (
+            <p className="basis-full text-small text-danger" role="alert">
+              Not sent: {FIELD_NAMES[problem.field] ?? "one field"} needs putting right. {problem.problem}{" "}
+              <button type="button" onClick={goToProblem} className="min-h-6 font-medium text-primary underline underline-offset-2">
+                Go to {FIELD_NAMES[problem.field]?.toLowerCase() ?? "it"}
+              </button>
+            </p>
+          ) : null}
         </div>
       </form>
 

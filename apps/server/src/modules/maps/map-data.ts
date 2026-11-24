@@ -44,6 +44,7 @@ import { DEFAULT_PLACE_LAYERS, isCountryFileDownload } from "./country-files.ts"
 
 import type { OsNamesService } from "./os-names/index.ts";
 import { OS_DOWNLOADS_API } from "./os-names/source.ts";
+import { exonymsMatching } from "./region-exonyms.ts";
 import { bboxSchema, dayOfBuild } from "./regions.ts";
 import { BUILD_BASE_URL, BUILDS_URL, hostOf } from "./source.ts";
 
@@ -796,6 +797,23 @@ export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
       for (const country of countries.slice(0, 6)) {
         const found = countryResult(country.code);
         if (found) push(found);
+      }
+      // "Bavaria": a part Geofabrik names in its own language, found by its English name, before and after its list is read.
+      for (const { exonym, english } of exonymsMatching(typed, foldName)) {
+        const country = countryOf(exonym.country);
+        const region = listed ? listed.find((each) => each.id === exonym.id) : null;
+        if (!country || region === undefined) continue;
+        push({
+          type: "part",
+          name: `${region?.name ?? exonym.name} (${english})`,
+          country: country.code,
+          countryName: country.name,
+          regionId: wholeOf(country.code)?.id ?? null,
+          part: { regionId: exonym.id, name: `${region?.name ?? exonym.name} (${english})` },
+          bbox: country.bbox,
+          lat: null,
+          lon: null,
+        });
       }
       if (listed) {
         const parts = listed

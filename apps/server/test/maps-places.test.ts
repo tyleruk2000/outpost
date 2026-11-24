@@ -201,6 +201,35 @@ const PLACES = [
     admin1: "WLS",
     population: 3152879,
   },
+  // A neighbourhood and its station of the same name, a town called Hospital, and a region and city known by English names.
+  { id: 6690870, name: "Waterloo", lat: 51.50318, lon: -0.11327, featureClass: "P", featureCode: "PPLX", country: "GB", admin1: "ENG" },
+  { id: 6954999, name: "Waterloo", lat: 51.5032, lon: -0.1123, featureClass: "S", featureCode: "RSTN", country: "GB", admin1: "ENG" },
+  { id: 2963599, name: "Hospital", lat: 52.47, lon: -8.43, featureClass: "P", featureCode: "PPL", country: "GB", population: 600 },
+  {
+    id: 2951839,
+    name: "Bayern",
+    alternates: "Bavaria,Baviera,Bavière",
+    lat: 49.0,
+    lon: 11.5,
+    featureClass: "A",
+    featureCode: "ADM1",
+    country: "DE",
+    admin1: "02",
+    population: 12510331,
+  },
+  {
+    id: 2867714,
+    name: "München",
+    ascii: "Muenchen",
+    alternates: "Munich,Monaco di Baviera,Munchen",
+    lat: 48.13743,
+    lon: 11.57549,
+    featureClass: "P",
+    featureCode: "PPLA",
+    country: "DE",
+    admin1: "02",
+    population: 1260391,
+  },
   // Rows the importer must leave out:
   { id: 9000003, name: "Low Farm", lat: 54.4, lon: -3.0, featureClass: "S", featureCode: "FRM", country: "GB" },
   { id: 9000004, name: "Section of Stream", lat: 54.4, lon: -3.0, featureClass: "H", featureCode: "STMX", country: "GB" },
@@ -209,7 +238,7 @@ const PLACES = [
   { id: 9000007, name: "Undersea Ridge", lat: 54.4, lon: -3.0, featureClass: "U", featureCode: "RDGU", country: "" },
   { id: 9000008, name: "Nowhere", lat: 154.4, lon: -3.0, featureClass: "P", featureCode: "PPL", country: "GB" },
 ];
-const KEPT = 17;
+const KEPT = 22;
 
 function datasetZip(name = "cities500"): Buffer {
   const lines = [...PLACES.map(geonamesLine), "this line\tis not\ta place", ""];
@@ -345,7 +374,7 @@ describe("installing a places dataset", () => {
       publisher: "GeoNames",
     });
     expect(collection.attribution).toContain("geonames.org");
-    expect(collection.meta).toEqual({ places: { countries: ["CA", "CH", "ES", "GB", "PL"], count: KEPT }, dataset: "cities500" });
+    expect(collection.meta).toEqual({ places: { countries: ["CA", "CH", "DE", "ES", "GB", "PL"], count: KEPT }, dataset: "cities500" });
     expect(countRows(collectionId)).toBe(KEPT);
     expect(countRows()).toBe(KEPT);
     expect(fs.existsSync(filePath)).toBe(true);
@@ -379,7 +408,7 @@ describe("installing a places dataset", () => {
 
     const overview = (await app.api("GET", "/api/maps/overview")).body;
     expect(overview.places).toEqual([
-      expect.objectContaining({ id: collectionId, dataset: "cities500", count: KEPT, countries: ["CA", "CH", "ES", "GB", "PL"] }),
+      expect.objectContaining({ id: collectionId, dataset: "cities500", count: KEPT, countries: ["CA", "CH", "DE", "ES", "GB", "PL"] }),
     ]);
     expect(overview.counts.places).toBe(KEPT);
     expect((await app.api("GET", "/api/maps/places/datasets")).body.datasets).toHaveLength(1);
@@ -629,6 +658,41 @@ describe("searching places", () => {
     expect((await search("")).places).toEqual([]);
     expect((await search("zzzzqqq")).places).toEqual([]);
     expect((await app.api("GET", "/api/maps/places")).body).toEqual({ query: "", coordinate: null, places: [] });
+  });
+
+  it("forgives a kind of place said with the name, a word too many, and a slip of a letter", async () => {
+    // "Waterloo station": nothing has both words, so Waterloo, its station first.
+    const station = await search("Waterloo station");
+    expect(station.places.map((place) => place.kindLabel)).toEqual(["Railway station", "Neighbourhood"]);
+    expect(station.notice).toBe("Nothing is called “Waterloo station”; showing places called Waterloo, stations first.");
+    expect((await search("lake windermere")).places[0]).toMatchObject({ name: "Windermere", kindLabel: "Lake" });
+    // A word no place has is left out.
+    const extra = await search("ambleside cumbria");
+    expect(extra.places[0]).toMatchObject({ name: "Ambleside" });
+    expect(extra.notice).toBe("No place has all of “ambleside cumbria”; showing places called Ambleside.");
+    // One letter wrong, or two the wrong way round.
+    expect((await search("Amblesdie")).places[0]).toMatchObject({ name: "Ambleside" });
+    expect((await search("Cardif")).places[0]).toMatchObject({ name: "Cardiff" });
+    expect((await search("Keswik")).places).toEqual([]);
+    // A name that is there is not second-guessed.
+    expect((await search("newport")).notice).toBeUndefined();
+  });
+
+  it("finds a region or city by its English name", async () => {
+    expect((await search("Bavaria")).places[0]).toMatchObject({ name: "Bayern", kindLabel: "Region" });
+    expect((await search("Munich")).places[0]).toMatchObject({ name: "München" });
+    expect((await search("munchen")).places[0]).toMatchObject({ name: "München" });
+  });
+
+  it("says when the words ask for the nearest of a kind", async () => {
+    expect((await search("hospital")).nearest).toBe("hospital");
+    expect((await search("nearest pharmacy")).nearest).toBe("pharmacy");
+    expect((await search("chemist near me")).nearest).toBe("pharmacy");
+    expect((await search("A&E")).nearest).toBe("hospital");
+    expect((await search("petrol")).nearest).toBe("fuel");
+    expect((await search("water")).nearest).toBe("water");
+    expect((await search("hospital road")).nearest).toBeUndefined();
+    expect((await search("waterloo")).nearest).toBeUndefined();
   });
 
   it("recognises a position typed into the same box", async () => {

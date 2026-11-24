@@ -6,18 +6,21 @@
 import {
   type FeatureProvenance,
   HISTORICAL_RECORD_TYPE_LABELS,
+  haversineMeters,
+  initialBearingDeg,
   PROVENANCE_INFO,
   REFERENCE_LAYER_INFO,
   type ReferenceFeatureDetail,
   type ReferenceSourceInfo,
 } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, ExternalLink, FileText, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, FileText, Route as RouteIcon, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { formatPosition } from "@/features/maps/lib/coords";
+import { formatBearing, formatDistanceWithMiles } from "@/features/maps/lib/geo";
 import { MapCard } from "@/features/maps/map-chrome";
 import { Fact, mapCard } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
@@ -182,17 +185,25 @@ function Body({ feature }: { feature: ReferenceFeatureDetail }) {
   );
 }
 
+/** Where a record is measured from (the household's home), and the way there. */
+export interface CardWayThere {
+  from: { name: string; lat: number; lon: number } | null;
+  onDirections: (to: { name: string; lat: number; lon: number }) => void;
+}
+
 export function FeatureCard({
   query,
   alsoHere,
   onOpen,
   onClose,
+  way,
 }: {
   query: UseQueryResult<ReferenceFeatureDetail>;
   /** Other areas that contain the place pressed. */
   alsoHere: Array<{ id: number; name: string; kindLabel: string; provenance: FeatureProvenance }>;
   onOpen: (id: number) => void;
   onClose: () => void;
+  way?: CardWayThere;
 }) {
   if (query.isPending) {
     return (
@@ -212,7 +223,30 @@ export function FeatureCard({
       </MapCard>
     );
   }
-  return <RecordCard feature={query.data} alsoHere={alsoHere} onOpen={onOpen} onClose={onClose} />;
+  return <RecordCard feature={query.data} alsoHere={alsoHere} onOpen={onOpen} onClose={onClose} way={way} />;
+}
+
+/** The layers of places a person goes to, rather than areas, lines or history. */
+const GO_TO_LAYERS = new Set<string>(["hospitals", "emergency", "shelters", "food", "airports", "towns"]);
+
+/** "2.4 km NE of Home" and Directions, for a record that is a point a person could go to (not a historical one). */
+function WayThere({ feature, way }: { feature: ReferenceFeatureDetail; way: CardWayThere }) {
+  if (feature.lat === null || feature.lon === null || feature.historical || !GO_TO_LAYERS.has(feature.layer)) return null;
+  const at = { lat: feature.lat, lon: feature.lon };
+  const name = feature.name || feature.kindLabel;
+  const from = way.from;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+      {from ? (
+        <p className="tabular min-w-0 flex-1 text-small text-ink">
+          {`${formatDistanceWithMiles(haversineMeters(from.lat, from.lon, at.lat, at.lon))} ${formatBearing(initialBearingDeg(from, at)).replace(/^\d+° /, "")} of ${from.name}, in a straight line`}
+        </p>
+      ) : null}
+      <Button size="sm" variant="primary" onClick={() => way.onDirections({ name, ...at })} className="max-md:h-11 md:pointer-coarse:h-11">
+        <RouteIcon aria-hidden /> Directions
+      </Button>
+    </div>
+  );
 }
 
 function RecordCard({
@@ -220,11 +254,13 @@ function RecordCard({
   alsoHere,
   onOpen,
   onClose,
+  way,
 }: {
   feature: ReferenceFeatureDetail;
   alsoHere: Array<{ id: number; name: string; kindLabel: string; provenance: FeatureProvenance }>;
   onOpen: (id: number) => void;
   onClose: () => void;
+  way?: CardWayThere;
 }) {
   const [folded, setFolded] = useState(false);
   const name = feature.name || feature.kindLabel;
@@ -260,6 +296,7 @@ function RecordCard({
       }
     >
       <Body feature={feature} />
+      {way ? <WayThere feature={feature} way={way} /> : null}
       {alsoHere.length > 0 ? (
         <div className="mt-2 border-t border-border pt-2">
           <p className="text-small font-medium text-ink">Also here</p>

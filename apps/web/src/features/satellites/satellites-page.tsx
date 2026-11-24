@@ -68,11 +68,22 @@ import { sampleTrack } from "./ground-track";
 import { GroundTrack } from "./ground-track-map";
 import { byMain } from "./main-transmitter";
 import { type ManualSatellite, parseManualElements } from "./manual";
-import { useChosenSatellite } from "./map";
+import { satelliteMapLink, useChosenSatellite } from "./map";
 import { SatellitePicker } from "./satellite-picker";
 import { SkyPlot } from "./sky-plot";
 import { usePassSchedule } from "./use-schedule";
-import { alwaysUpWords, bothTimes, countdown, dayWords, frequencyWords, geometryWords, lightAt, shiftWords, utcTime } from "./words";
+import {
+  alwaysUpWords,
+  bothTimes,
+  countdown,
+  dayWords,
+  frequencyWords,
+  geometryWords,
+  lightAt,
+  satelliteMatches,
+  shiftWords,
+  utcTime,
+} from "./words";
 
 const PATH = "/radio/satellites";
 const BUCKET_MS = 300_000;
@@ -293,9 +304,7 @@ function PassesTab({
   const needle = query.trim().toLowerCase();
   const visible = schedule.entries.filter(
     (entry) =>
-      entry.pass.los > now &&
-      (!workableOnly || entry.workable) &&
-      (!needle || entry.satellite.name.toLowerCase().includes(needle) || String(entry.satellite.noradId).includes(needle)),
+      entry.pass.los > now && (!workableOnly || entry.workable) && satelliteMatches(entry.satellite.name, entry.satellite.noradId, needle),
   );
   const days: Array<{ day: string; entries: ScheduledPass[] }> = [];
   for (const entry of visible.slice(0, showing)) {
@@ -349,9 +358,13 @@ function PassesTab({
       <p className="mb-2 text-small text-ink-muted" role="status">
         {schedule.computing
           ? `Working out passes: ${schedule.done} of ${schedule.total} satellites…`
-          : `${plural(schedule.entries.length, "pass", "passes")} of amateur satellites, ${workableCount} of them ${WORKABLE_ELEVATION_DEG}° high or more${
-              visible.length > showing ? `; the first ${showing} shown` : ""
-            }. Passes that never rise ${FLOOR_ELEVATION_DEG}° above the horizon are left out.`}
+          : needle
+            ? `${plural(visible.length, "pass", "passes")} matching “${query.trim()}”${
+                visible.length > showing ? `; the first ${showing} shown` : ""
+              }, of ${schedule.entries.length} in all.`
+            : `${plural(schedule.entries.length, "pass", "passes")} of amateur satellites, ${workableCount} of them ${WORKABLE_ELEVATION_DEG}° high or more${
+                visible.length > showing ? `; the first ${showing} shown` : ""
+              }. Passes that never rise ${FLOOR_ELEVATION_DEG}° above the horizon are left out.`}
       </p>
       {schedule.computing && visible.length === 0 ? (
         <div className="grid gap-2">
@@ -798,6 +811,20 @@ function PassPdfDialog({
   );
 }
 
+/** How many hours of passes the One satellite tab lists: a day, or as far as the pass opened from a longer list. */
+export function passSpanHours(fromMs: number, passAos: number | null): number {
+  if (passAos === null) return 24;
+  const needed = Math.ceil((passAos - fromMs) / 3_600_000) + 2;
+  return Math.min(7 * 24 + 2, Math.max(24, needed));
+}
+
+/** "24 hours", "3 days": the reach of the list, as its heading says it. */
+export function spanWords(hours: number): string {
+  if (hours <= 24) return "24 hours";
+  const days = Math.ceil(hours / 24);
+  return `${days} days`;
+}
+
 function OneSatellite({
   satellites,
   transmitters,
@@ -846,14 +873,16 @@ function OneSatellite({
   }, [focusKey]);
   const options = satellites.filter((satellite) => group === "all" || inGroup(satellite, group));
   const bucket = Math.floor(now.getTime() / BUCKET_MS);
+  // A pass opened from the 2-, 3- or 7-day list may be days away: the list here reaches far enough to hold it.
+  const spanHours = passSpanHours(bucket * BUCKET_MS, passAos);
   const passes = useMemo(() => {
     if (!selected || !observer) return [];
     try {
-      return predictPasses(selected.orbit, observer, new Date(bucket * BUCKET_MS), 24, 18);
+      return predictPasses(selected.orbit, observer, new Date(bucket * BUCKET_MS), spanHours, 18);
     } catch {
       return [];
     }
-  }, [selected, observer, bucket]);
+  }, [selected, observer, bucket, spanHours]);
   const live = passes.filter((pass) => pass.los > now);
   const pass = (passAos !== null ? live.find((item) => Math.abs(item.aos.getTime() - passAos) < 60_000) : undefined) ?? live[0] ?? null;
   const path = useMemo(
@@ -971,11 +1000,13 @@ function OneSatellite({
             </Notice>
           ) : null}
 
-          <Section title="Passes in the next 24 hours" className="mt-6">
+          <Section title={`Passes in the next ${spanWords(spanHours)}`} className="mt-6">
             {!observer ? (
               <p className="text-small text-ink-muted">Choose a place above to see passes.</p>
             ) : live.length === 0 ? (
-              <p className="text-small text-ink-muted">No pass over {placeName} in the next 24 hours.</p>
+              <p className="text-small text-ink-muted">
+                No pass over {placeName} in the next {spanWords(spanHours)}.
+              </p>
             ) : (
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
                 {pass ? (
@@ -1001,7 +1032,12 @@ function OneSatellite({
                         <Button
                           onClick={() => {
                             setChosen(selected.noradId);
-                            navigate(`/maps?satellite=${selected.noradId}`);
+                            navigate(
+                              satelliteMapLink(
+                                selected.noradId,
+                                observer && !pass.alwaysUp ? { aos: pass.aos.getTime(), from: observer, place: placeName } : null,
+                              ),
+                            );
                           }}
                         >
                           <MapIcon aria-hidden />

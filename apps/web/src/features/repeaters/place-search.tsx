@@ -48,6 +48,23 @@ export function PlaceSearch({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Opened from a dropdown, which hands the focus back to itself as it closes: the cursor goes to the box after that,
+  // so that what is typed next goes in the box and not nowhere.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const take = () => {
+      const now = document.activeElement;
+      // Only from the dropdown, or from nowhere: never from somewhere the person has gone since.
+      if (now === document.body || now?.getAttribute("role") === "combobox" || now === inputRef.current) inputRef.current?.focus();
+    };
+    inputRef.current?.focus();
+    // Once after the dropdown's own hand-back, and once after its closing animation, whichever is later.
+    const timers = [window.setTimeout(take, 0), window.setTimeout(take, 200)];
+    return () => {
+      for (const timer of timers) window.clearTimeout(timer);
+    };
+  }, [autoFocus]);
   const query = useDebounced(text.trim(), 200);
   const search = usePlaceSearch(query, near ?? undefined);
   const results = useMemo(
@@ -103,7 +120,7 @@ export function PlaceSearch({
           type="search"
           aria-controls={showing ? listId : undefined}
           value={text}
-          autoFocus={autoFocus}
+          ref={inputRef}
           onChange={(event) => {
             setText(event.target.value);
             setActive(0);
@@ -126,7 +143,7 @@ export function PlaceSearch({
               choose(active);
             }
           }}
-          placeholder="Town, saved place, grid ref or locator"
+          placeholder="Town, grid ref or locator"
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
@@ -165,7 +182,7 @@ export function PlaceSearch({
                     <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
                     <span className="min-w-0">
                       <span className="block text-ink">{result.title}</span>
-                      {result.detail ? <span className="block truncate text-micro text-ink-muted">{result.detail}</span> : null}
+                      {result.detail ? <span className="block text-micro break-words text-ink-muted">{result.detail}</span> : null}
                     </span>
                   </button>
                 </li>

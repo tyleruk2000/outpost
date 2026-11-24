@@ -544,10 +544,86 @@ describe("Add a place", () => {
     expect(within(dialog).getByText(/Germany comes in 2 parts\. All are ticked\./)).toBeInTheDocument();
     await user.click(within(dialog).getByText("Choose parts"));
     await user.click(within(dialog).getByRole("checkbox", { name: "Berlin" }));
-    expect(within(dialog).getByText(/1 are ticked\./)).toBeInTheDocument();
+    expect(within(dialog).getByText(/1 of them are ticked\./)).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Check size" }));
     await user.click(await within(dialog).findByRole("button", { name: /^Download · / }));
     await waitFor(() => expect(posted("/api/maps/data/add")).toEqual([{ regionId: "bayern", kinds: ["roads"], keep: false }]));
+  });
+
+  it("fetches a country's parts when Geofabrik sends its whole file from a mirror, and says so where the button is", async () => {
+    const user = userEvent.setup();
+    let asked = 0;
+    const scrolled = vi.fn();
+    serve(mapData({ countryFileChoice: { keep: false, locationId: null } }), {
+      "GET /api/reference/regions": {
+        held: true,
+        readAt: 1,
+        source: "x",
+        regions: [
+          { id: "germany", name: "Germany", country: "DE", parent: null, depth: 0 },
+          { id: "bayern", name: "Bayern", country: "DE", parent: "germany", depth: 1 },
+          { id: "berlin", name: "Berlin", country: "DE", parent: "germany", depth: 1 },
+        ],
+        suggested: [],
+      },
+      "POST /api/reference/estimate": () =>
+        ++asked === 1
+          ? {
+              status: 400,
+              error: {
+                code: "bad_request",
+                message:
+                  "Geofabrik sends Germany's file from another server (a mirror), which Outpost does not download from. Choose its parts instead: each is its own, smaller file.",
+              },
+            }
+          : {
+              estimateId: "e",
+              provider: "osm-extract",
+              items: ["bayern", "berlin"].map((key) => ({
+                key,
+                title: key,
+                layers: [],
+                bytes: 800_000_000,
+                exact: true,
+                basis: "",
+                records: null,
+                host: "download.geofabrik.de",
+                replaces: null,
+              })),
+            },
+    });
+    Element.prototype.scrollIntoView = scrolled;
+    renderScreen(<MapDataPage />, "/maps/data?add=1&country=DE&kinds=roads");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Germany?" });
+    await user.click(within(dialog).getByRole("button", { name: "Check size" }));
+    expect(await within(dialog).findByRole("button", { name: /^Download · 1\.60 GB/ })).toBeInTheDocument();
+    expect(within(dialog).getByText(/each part is fetched as its own file instead/)).toBeInTheDocument();
+    expect(asked).toBe(2);
+    expect(scrolled).toHaveBeenCalled();
+  });
+
+  it("shows why Check size failed and brings it into view", async () => {
+    const user = userEvent.setup();
+    const scrolled = vi.fn();
+    serve(mapData({ countryFileChoice: { keep: false, locationId: null } }), {
+      "GET /api/reference/regions": {
+        held: true,
+        readAt: 1,
+        source: "x",
+        regions: [{ id: "germany", name: "Germany", country: "DE", parent: null, depth: 0 }],
+        suggested: [],
+      },
+      "POST /api/reference/estimate": { status: 502, error: { code: "upstream", message: "Outpost could not reach the map source." } },
+    });
+    Element.prototype.scrollIntoView = scrolled;
+    renderScreen(<MapDataPage />, "/maps/data?add=1&country=DE&kinds=roads");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Germany?" });
+    await user.click(within(dialog).getByRole("button", { name: "Check size" }));
+    expect(await within(dialog).findByText("Could not check the size")).toBeInTheDocument();
+    expect(within(dialog).getByText("Outpost could not reach the map source.")).toBeInTheDocument();
+    await waitFor(() => expect(scrolled).toHaveBeenCalled());
   });
 });
 

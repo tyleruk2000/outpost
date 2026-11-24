@@ -9,7 +9,7 @@
  */
 import fs from "node:fs";
 import { pipeline } from "node:stream/promises";
-import { HISTORICAL_RECORD_TYPES, REFERENCE_IMPORT_FORMATS, REFERENCE_LAYERS } from "@outpost/shared";
+import { HISTORICAL_RECORD_TYPES, haversineMeters, REFERENCE_IMPORT_FORMATS, REFERENCE_LAYERS } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -69,7 +69,23 @@ const bbox = z
 const filterQuery = z.object({ layers: list(REFERENCE_LAYERS), countries: codes, providers: words, kinds: words });
 const overlayQuery = filterQuery.extend({ bbox, zoom: z.coerce.number().min(0).max(24) });
 const atQuery = filterQuery.extend({ lat: z.coerce.number().min(-90).max(90), lon: z.coerce.number().min(-180).max(180) });
-const searchQuery = filterQuery.extend({ q: z.string().max(200).default(""), limit: z.coerce.number().int().min(1).max(100).default(30) });
+const searchQuery = filterQuery.extend({
+  q: z.string().max(200).default(""),
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+  /** "lat,lon": the nearest first, each with its distance and the town it is in or near. */
+  near: z
+    .string()
+    .regex(/^-?\d{1,2}(\.\d+)?,-?\d{1,3}(\.\d+)?$/, "Give near as lat,lon.")
+    .transform((text) => {
+      const [lat, lon] = text.split(",").map(Number) as [number, number];
+      return { lat, lon };
+    })
+    .refine(({ lat, lon }) => Math.abs(lat) <= 90 && Math.abs(lon) <= 180, "Give near as lat,lon.")
+    .optional(),
+});
+
+/** Further than this from every town held, a record is said with no town. */
+const TOWN_WITHIN_METRES = 15_000;
 
 const scopeSchema = z.object({
   countries: z
@@ -319,14 +335,34 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
         layer: z.enum(REFERENCE_LAYERS).default("food"),
         kind: z.string().min(1).max(120).optional(),
         limit: z.coerce.number().int().min(1).max(20).default(5),
+        /** "1": the nearest few whatever their kind, rather than the nearest of each kind. */
+        any: z.enum(["0", "1"]).optional(),
       })
       .parse(request.query);
-    return service.store.nearest({ ...query, kind: query.kind ?? null });
+    const { any, ...rest } = query;
+    return service.store.nearest({ ...rest, kind: query.kind ?? null, anyKind: any === "1" });
   });
 
   app.get("/api/reference/search", async (request) => {
-    const { q, limit, ...filter } = searchQuery.parse(request.query);
-    return { query: q, hits: service.store.search(q, filter, limit) };
+    const { q, limit, near, ...filter } = searchQuery.parse(request.query);
+    if (!near) return { query: q, hits: service.store.search(q, filter, limit) };
+    // From a point (home, or the middle of the map): the nearest of the names that match, with how far and the town.
+    const hits = service.store
+      .search(q, filter, 100)
+      .map((hit) => ({
+        ...hit,
+        distanceMeters: hit.lat !== null && hit.lon !== null ? Math.round(haversineMeters(near.lat, near.lon, hit.lat, hit.lon)) : null,
+      }))
+      .sort((a, b) => (a.distanceMeters ?? Number.POSITIVE_INFINITY) - (b.distanceMeters ?? Number.POSITIVE_INFINITY))
+      .slice(0, limit);
+    return {
+      query: q,
+      hits: hits.map((hit) => {
+        if (hit.lat === null || hit.lon === null || hit.layer === "towns") return { ...hit, place: null };
+        const town = service.store.nearest({ lat: hit.lat, lon: hit.lon, layer: "towns", kind: null, limit: 1, anyKind: true }).hits[0];
+        return { ...hit, place: town && town.distanceMeters <= TOWN_WITHIN_METRES ? town.name : null };
+      }),
+    };
   });
 
   /** Historical records for the nuclear preparedness workspace's records browser. */

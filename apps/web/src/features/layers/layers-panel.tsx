@@ -22,8 +22,9 @@ import { ErrorState } from "@/components/page";
 import { Input } from "@/components/ui/input";
 import { Select, Skeleton, Switch } from "@/components/ui/misc";
 import { useHomeCountry } from "@/features/frequencies/home-country";
+import { useHome } from "@/features/households/home";
 import { addLayerLink, addLayerText, COUNTRY_LAYERS, WORLD_LAYERS } from "@/features/maps/data-page/nearby-kinds";
-import type { LatLon } from "@/features/maps/lib/geo";
+import { formatDistance, type LatLon } from "@/features/maps/lib/geo";
 import { api } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { useLayerSearch } from "./data";
@@ -136,8 +137,13 @@ export function LayersPanel({
 }) {
   const [text, setText] = useState("");
   const layers = useMemo(() => [...(summary.data?.layers ?? [])].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id)), [summary.data]);
-  // Every installed layer is searched; opening what is found switches its layer on.
-  const found = useLayerSearch(text, { layers: layers.map((layer) => layer.id) });
+  // Every installed layer is searched; opening what is found switches its layer on. Nearest home first, with how far and the
+  // town: rows that each said "Pharmacy · Pharmacy" in no order were no use for finding the one down the road.
+  const { home } = useHome();
+  const from = home ? { lat: home.lat, lon: home.lon } : centre;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read once per search, so the list does not reshuffle as the map moves
+  const near = useMemo(() => from, [text, home?.lat, home?.lon]);
+  const found = useLayerSearch(text, { layers: layers.map((layer) => layer.id) }, near);
   const shown = layers.filter((layer) => choice.layers.includes(layer.id));
   const countries = [...new Set(shown.flatMap((layer) => layer.countries))].sort();
   const providers = new Map(shown.flatMap((layer) => layer.providers.map((provider) => [provider.id, provider.name] as const)));
@@ -208,7 +214,14 @@ export function LayersPanel({
             ) : found.data && found.data.hits.length === 0 ? (
               <p className="mt-2 text-small text-ink-muted">Nothing by that name in the reference layers.</p>
             ) : (
-              <ul className="mt-1 divide-y divide-border" aria-label="Found in the reference layers">
+              <ul
+                className="mt-1 divide-y divide-border"
+                aria-label={
+                  near
+                    ? `Found in the reference layers, nearest ${home ? "home" : "the middle of the map"} first`
+                    : "Found in the reference layers"
+                }
+              >
                 {(found.data?.hits ?? []).map((hit) => (
                   <li key={hit.id}>
                     <button
@@ -219,8 +232,18 @@ export function LayersPanel({
                       }
                     >
                       <ProvenanceMark provenance={hit.provenance} colour={colours[hit.layer]} />
-                      <span className="min-w-0 flex-1 truncate">{hit.name || hit.kindLabel}</span>
-                      <span className="shrink-0 text-ink-muted">{hit.kindLabel}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{hit.name || hit.kindLabel}</span>
+                        <span className="block truncate text-micro text-ink-muted">
+                          {[hit.name ? hit.kindLabel : null, hit.place ? `near ${hit.place}` : null].filter(Boolean).join(" · ")}
+                        </span>
+                      </span>
+                      {typeof hit.distanceMeters === "number" ? (
+                        <span className="tabular shrink-0 text-micro text-ink-muted">
+                          {formatDistance(hit.distanceMeters)}
+                          <span className="sr-only">{home ? " from home" : " from the middle of the map"}</span>
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 ))}
