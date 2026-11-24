@@ -25,6 +25,7 @@ export function PanelTabs({
   onTabChange,
   onTabPress,
   counts,
+  hideTabs = false,
   children,
 }: {
   tab: PanelTab;
@@ -32,6 +33,11 @@ export function PanelTabs({
   /** Any press on a tab, including the one already showing: on a phone it raises the lowered sheet. */
   onTabPress?: () => void;
   counts: Partial<Record<PanelTab, number>>;
+  /**
+   * On a phone, while a form has the sheet (Plan a route, a place being added or changed, Find a route): the row of
+   * names is put away so the form starts at the top of the sheet. The form's own first line leads back.
+   */
+  hideTabs?: boolean;
   children: Record<PanelTab, ReactNode>;
 }) {
   return (
@@ -40,7 +46,7 @@ export function PanelTabs({
           (its full name is still its accessible name). Where they do not (larger text, a zoomed page, counts in the
           hundreds) the row takes a second line: a name that had slid off the edge of a row that scrolls was a tab nobody found.
           The two lines sit close: each name has its own height to touch, and the map has little enough room there. */}
-      <TabsList className="shrink-0 gap-y-0 px-4 max-[23rem]:gap-x-3 max-[23rem]:px-3">
+      <TabsList hidden={hideTabs} className="shrink-0 gap-y-0 px-4 max-[23rem]:gap-x-3 max-[23rem]:px-3">
         {PANEL_TABS.map((item) => (
           <TabsTrigger
             key={item}
@@ -119,6 +125,86 @@ export function nearestDetent(height: number, areaHeight: number, peek = PEEK_HE
 }
 
 /**
+ * What of the map area the browser is showing just now, where the phone's keyboard is up:
+ * iOS leaves the page its full height and lays the keyboard over its foot, so a sheet held
+ * to the foot of the map area had its fields under the keyboard. `inset` is how much of the
+ * area's foot is covered; `height` how much of the area is still to be seen. With no
+ * keyboard (or no `visualViewport`) the whole area.
+ */
+export function keyboardFit(
+  area: { top: number; bottom: number },
+  viewport: { offsetTop: number; height: number } | null,
+): { inset: number; height: number } {
+  const whole = { inset: 0, height: Math.max(0, area.bottom - area.top) };
+  if (!viewport) return whole;
+  const bottom = Math.min(area.bottom, viewport.offsetTop + viewport.height);
+  const top = Math.max(area.top, viewport.offsetTop);
+  const inset = Math.max(0, Math.round(area.bottom - bottom));
+  // A pixel or two is the browser rounding, not a keyboard.
+  if (inset < 2) return whole;
+  return { inset, height: Math.max(0, Math.round(bottom - top)) };
+}
+
+/** Below this much room to show, a sheet being typed in takes all of it, over the search box too. */
+export const SHORT_ROOM = 440;
+
+/**
+ * The sheet's height while a field in it is being typed in, or null for its height at rest. With the keyboard up the
+ * sheet stands on it and takes what is left above (`keyboardFit`); where that is little (a phone's keyboard leaves
+ * about 300 px), it takes all of it, the search box over the map too: the form's own first line leads back, and the
+ * field and its suggestions are what is wanted. Lowered, it stays lowered.
+ */
+export function typingHeight(detent: Detent, typing: { inset: number; height: number } | null, peek = PEEK_HEIGHT): number | null {
+  if (!typing || detent === "peek") return null;
+  if (typing.height < SHORT_ROOM) return typing.height;
+  return typing.inset > 0 ? detentHeight("full", typing.height, peek) : null;
+}
+
+/**
+ * `keyboardFit` for the map area the sheet sits in, while a field in the sheet has focus (the keyboard up for the
+ * search box over the map leaves the sheet as it is); followed as the keyboard comes and goes and the page is panned
+ * under it.
+ */
+function useTypingFit(sheet: RefObject<HTMLElement | null>): { inset: number; height: number } | null {
+  const [fit, setFit] = useState<{ inset: number; height: number } | null>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const element = sheet.current;
+        const box = element?.parentElement?.getBoundingClientRect();
+        if (!element || !box) return;
+        const field = document.activeElement;
+        const typing =
+          element.contains(field) &&
+          (field instanceof HTMLTextAreaElement ||
+            (field instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "range"].includes(field.type)));
+        // The box is in the page's own coordinates, as the visual viewport's offset is.
+        const next = keyboardFit(box, viewport ? { offsetTop: viewport.offsetTop, height: viewport.height } : null);
+        setFit((current) => (!typing ? null : current?.inset === next.inset && current.height === next.height ? current : next));
+      });
+    };
+    measure();
+    viewport?.addEventListener("resize", measure);
+    viewport?.addEventListener("scroll", measure);
+    window.addEventListener("resize", measure);
+    document.addEventListener("focusin", measure);
+    document.addEventListener("focusout", measure);
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport?.removeEventListener("resize", measure);
+      viewport?.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
+      document.removeEventListener("focusin", measure);
+      document.removeEventListener("focusout", measure);
+    };
+  }, [sheet]);
+  return fit;
+}
+
+/**
  * How tall the lowered sheet has to be to show its handle and the whole row of tab names,
  * measured from the page: the names are the only way into the panel, so none of them may
  * end up below the edge of the sheet whatever size the text is.
@@ -128,8 +214,11 @@ function usePeekHeight(sheet: RefObject<HTMLElement | null>, first: string): num
   // biome-ignore lint/correctness/useExhaustiveDependencies: `first` is here so that a new first line is found and measured
   useLayoutEffect(() => {
     const element = sheet.current;
-    // The row of tab names, or the first line of a tool that has taken the sheet over (its title and its close button).
-    const tabs = element?.querySelector<HTMLElement>('[data-sheet-peek], [role="tablist"]');
+    // The row of tab names, or the first line of a tool or form that has taken the sheet over (its title and its way
+    // back): the first of them that is on show.
+    const tabs = [...(element?.querySelectorAll<HTMLElement>('[data-sheet-peek], [role="tablist"]') ?? [])].find(
+      (each) => each.getClientRects().length > 0,
+    );
     if (!element || !tabs || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       // From the top of the sheet to the foot of the row, whatever height the sheet itself has just now.
@@ -183,14 +272,31 @@ export function MobileSheet({
     return () => observer.disconnect();
   }, []);
 
-  const height = dragHeight ?? detentHeight(detent, areaHeight, peek);
+  // With the keyboard up for a field in the sheet, the sheet stands on the keyboard and takes what is left above it,
+  // so the field being typed in is never under the keyboard (typingHeight).
+  const typing = useTypingFit(sheet);
+  const height = dragHeight ?? typingHeight(detent, typing, peek) ?? detentHeight(detent, areaHeight, peek);
+  const lift = typing?.inset ?? 0;
+  const keyboard = typing && typingHeight(detent, typing, peek) !== null ? typing : null;
+  // Once the sheet has settled on the keyboard, the field being typed in is scrolled into what is left of it.
+  useEffect(() => {
+    if (!keyboard) return;
+    const timer = window.setTimeout(() => {
+      const field = document.activeElement;
+      if (field instanceof HTMLElement && sheet.current?.contains(field)) field.scrollIntoView?.({ block: "nearest" });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [keyboard]);
   useLayoutEffect(() => {
     const area = sheet.current?.parentElement;
     area?.style.setProperty("--sheet-height", `${height}px`);
+    // Messages (toasts) stand above the sheet rather than over its handle and first line.
+    document.documentElement.style.setProperty("--sheet-toast-lift", `${hidden ? 0 : height + lift}px`);
     return () => {
       area?.style.removeProperty("--sheet-height");
+      document.documentElement.style.removeProperty("--sheet-toast-lift");
     };
-  }, [height]);
+  }, [height, lift, hidden]);
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -231,7 +337,7 @@ export function MobileSheet({
         "outpost-sheet absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[14px] border-t border-border bg-page shadow-float",
         dragHeight === null && "transition-[height] duration-(--duration-slow)",
       )}
-      style={{ height }}
+      style={{ height, bottom: lift || undefined }}
     >
       <button
         type="button"

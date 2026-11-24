@@ -129,6 +129,18 @@ describe("arriving at a named place on a screen", () => {
 });
 
 describe("quick search that is still arriving", () => {
+  it("answers the press at once with its frame, saying it is loading, and closes as it would", async () => {
+    palette.mode = "never";
+    show();
+    await press({ key: "k", ctrlKey: true });
+    const dialog = screen.getByRole("dialog", { name: "Search and go to" });
+    expect(dialog).toHaveTextContent("Loading quick search…");
+    await act(async () => {
+      screen.getByRole("button", { name: "Close quick search" }).click();
+    });
+    expect(screen.queryByRole("dialog", { name: "Search and go to" })).not.toBeInTheDocument();
+  });
+
   it("does not take the letters typed for it as shortcuts", async () => {
     palette.mode = "never";
     show();

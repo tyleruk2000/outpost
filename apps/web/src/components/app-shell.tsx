@@ -1,3 +1,5 @@
+import { Search, X } from "lucide-react";
+import { Dialog } from "radix-ui";
 import { Component, lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { AccessNotice } from "@/features/access/access-notice";
@@ -13,7 +15,7 @@ import { RouteAnnouncer } from "./route-announcer";
 import { ScreenErrorBoundary } from "./screen-error";
 import { useScrollMemory } from "./scroll-memory";
 import { Sidebar } from "./sidebar";
-import { Skeleton } from "./ui/misc";
+import { Skeleton, Spinner } from "./ui/misc";
 import { UpdateNotice } from "./update-notice";
 
 /**
@@ -54,6 +56,55 @@ export function isTyping(target: EventTarget | null): boolean {
   if (!element) return false;
   if (element.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(element.tagName)) return true;
   return element.closest('[role="menu"], [role="listbox"], [role="dialog"], [role="alertdialog"], [role="textbox"]') !== null;
+}
+
+/** After this long still loading, quick search says so and what to do. */
+export const PALETTE_SLOW_MS = 15_000;
+
+/**
+ * Quick search's own frame while its code is fetched the first time: a press on the search
+ * icon is answered at once, where before nothing at all happened until the code came (and
+ * on an iPhone whose connections to the server were all taken, it never came).
+ */
+function PaletteLoading({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => setSlow(true), PALETTE_SLOW_MS);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-(--z-overlay) bg-overlay data-[state=open]:animate-fade" />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className="fixed top-[12dvh] left-1/2 z-(--z-dialog) w-[calc(100vw-1.5rem)] max-w-[40rem] -translate-x-1/2 overflow-hidden rounded-panel border border-border bg-raised shadow-dialog focus:outline-none data-[state=open]:animate-enter max-md:top-3"
+        >
+          <Dialog.Title className="sr-only">Search and go to</Dialog.Title>
+          <div className="flex h-13 items-center gap-3 border-b border-border px-4">
+            <Search aria-hidden className="size-[18px] shrink-0 text-ink-muted" />
+            <p role="status" className="flex-1 text-body text-ink-muted">
+              {slow ? "Quick search is taking a long time to load." : "Loading quick search…"}
+            </p>
+            {slow ? null : <Spinner label="Loading" delay />}
+            <Dialog.Close
+              aria-label="Close quick search"
+              className="-mr-2 grid size-11 shrink-0 place-content-center rounded-control text-ink-muted hover:text-ink"
+            >
+              <X aria-hidden className="size-5" strokeWidth={1.6} />
+            </Dialog.Close>
+          </div>
+          {slow ? (
+            <p className="px-4 py-3 text-small text-ink-muted">
+              The server may be busy, or this browser may have many Outpost tabs open. Close the ones not in use, then close this and try
+              again.
+            </p>
+          ) : null}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
 }
 
 function PageFallback() {
@@ -206,7 +257,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
       <RouteAnnouncer />
       {paletteWanted ? (
         <PaletteBoundary key={paletteAttempt} onFailed={paletteFailed}>
-          <Suspense fallback={null}>
+          <Suspense fallback={<PaletteLoading open={paletteOpen} onOpenChange={setPaletteOpen} />}>
             <Palette open={paletteOpen} onOpenChange={setPaletteOpen} onNewPage={onNewPage} />
           </Suspense>
         </PaletteBoundary>

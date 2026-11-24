@@ -107,17 +107,28 @@ function locationsMark(data: StorageLocationsResponse | undefined): string | und
   return data?.locations.map((location) => `${location.id}|${location.status}|${location.path}`).join("\n");
 }
 
-/** After this long hidden, the stream is closed; the server then keeps nothing open for a tab nobody is looking at. */
-export const HIDDEN_CLOSE_MS = 60_000;
 /** Waits between attempts to reach a server that is not answering: 1 s, doubling, at most a minute. */
 export const reconnectDelayMs = (failures: number) => Math.min(60_000, 1000 * 2 ** Math.max(0, failures - 1));
 
 /**
- * One stream per tab, for as long as the tab is being looked at. While it is hidden,
- * events still mark what they change as stale but nothing is fetched until the tab is
- * shown again, and after a minute hidden the stream is closed. A stream that fails is
- * opened again after a wait that grows, so a server that is off for the night is not
- * asked every three seconds.
+ * One stream per tab, for as long as the tab is being looked at: closed the moment the tab
+ * is hidden or the page put away (`pagehide`, which is also how Safari keeps a page for
+ * Back), and opened again when it is shown, when what is on screen is fetched once in case
+ * an event was missed. A stream that fails is opened again after a wait that grows, so a
+ * server that is off for the night is not asked every three seconds.
+ *
+ * Why at once and not after a while: a browser speaking HTTP/1.1 to Outpost (plain http on
+ * a home network) gives one address six connections, shared by every tab. Each open stream
+ * holds one for good, so on an iPhone with six Outpost tabs open (the five behind kept
+ * theirs) nothing else could be asked at all: the search icon did nothing and a route
+ * point's search said "Searching" for ever. Only a tab being looked at needs to hear.
+ *
+ * One stream shared by all the tabs (a BroadcastChannel with one tab elected to listen, or
+ * a SharedWorker) is not done: once hidden tabs let go, an iPhone has one stream whatever
+ * is open, and the leader would have to keep its stream while hidden, which is the fault
+ * this mends; the election, a leader that is frozen or closed and the hand-over add more
+ * than they save. Several Outpost windows side by side on a computer each keep one, and
+ * the HTTPS listener (HTTP/2, one connection for everything) has no such limit.
  */
 export function EventsProvider({ children, enabled }: { children: ReactNode; enabled: boolean }) {
   const client = useQueryClient();
@@ -131,7 +142,6 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
     // Events may have been missed: everything on screen is fetched again once the stream is back.
     let missed = false;
     let retry: number | undefined;
-    let hiding: number | undefined;
     let flush: number | undefined;
     const pending = new Set<string>();
     const staleWhileHidden = new Set<string>();
@@ -232,18 +242,16 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
       }
     };
 
+    // Put away: the stream lets go of its connection at once (see above), and a wait to try again is dropped.
+    const letGo = () => {
+      window.clearTimeout(retry);
+      retry = undefined;
+      if (!source) return;
+      close();
+      missed = true;
+    };
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        hiding ??= window.setTimeout(() => {
-          hiding = undefined;
-          if (!source) return;
-          close();
-          missed = true;
-        }, HIDDEN_CLOSE_MS);
-        return;
-      }
-      window.clearTimeout(hiding);
-      hiding = undefined;
+      if (document.visibilityState === "hidden") return letGo();
       // What changed while hidden is fetched now, once, for the screen that is showing.
       for (const key of staleWhileHidden)
         void client.refetchQueries({ queryKey: JSON.parse(key) as string[], type: "active", stale: true });
@@ -272,14 +280,22 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
       if (seenLocations !== undefined && mark !== seenLocations) invalidate(dependsOnLocations);
       seenLocations = mark;
     });
-    open();
+    // A tab opened behind the one being looked at waits until it is shown.
+    if (document.visibilityState !== "hidden") open();
+    // Back from the browser's page cache (Back or Forward in Safari): shown again without a new page.
+    const onPageShow = () => {
+      if (document.visibilityState !== "hidden") onVisibility();
+    };
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", letGo);
+    window.addEventListener("pageshow", onPageShow);
     window.addEventListener("online", onOnline);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", letGo);
+      window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("online", onOnline);
       window.clearTimeout(retry);
-      window.clearTimeout(hiding);
       window.clearTimeout(flush);
       unwatch();
       close();

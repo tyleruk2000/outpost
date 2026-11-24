@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider, useQueries, useQuery } from "@tanstack/react-query";
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EventsProvider, HIDDEN_CLOSE_MS, reconnectDelayMs, useServerEvent } from "./events";
+import { EventsProvider, reconnectDelayMs, useServerEvent } from "./events";
 
 class FakeEventSource {
   static all: FakeEventSource[] = [];
@@ -115,9 +115,8 @@ describe("live events", () => {
     const { fetch } = mount();
     await act(() => vi.advanceTimersByTimeAsync(10));
     expect(fetch).toHaveBeenCalledTimes(1);
+    act(() => FakeEventSource.all[0]!.emit("notes.changed"));
     act(() => setVisibility("hidden"));
-    act(() => FakeEventSource.all[0]!.emit("notes.changed"));
-    act(() => FakeEventSource.all[0]!.emit("notes.changed"));
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(fetch).toHaveBeenCalledTimes(1);
     act(() => setVisibility("visible"));
@@ -125,18 +124,48 @@ describe("live events", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("closes the stream after a minute hidden and opens it again when shown", async () => {
+  it("lets go of the stream the moment the tab is hidden, and opens it again when shown", async () => {
+    // Six tabs each holding a stream took all six connections Safari gives an address over HTTP/1.1.
     const { fetch } = mount();
     await act(() => vi.advanceTimersByTimeAsync(10));
     act(() => setVisibility("hidden"));
-    await act(() => vi.advanceTimersByTimeAsync(HIDDEN_CLOSE_MS));
     expect(FakeEventSource.open).toHaveLength(0);
+    await act(() => vi.advanceTimersByTimeAsync(120_000));
+    expect(FakeEventSource.all).toHaveLength(1);
     act(() => setVisibility("visible"));
     expect(FakeEventSource.open).toHaveLength(1);
     // Events may have been missed while it was closed: the screen's data is fetched again once.
     act(() => FakeEventSource.open[0]!.onopen!());
     await act(() => vi.advanceTimersByTimeAsync(10));
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets go when the page is put away, and opens again when it comes back from the page cache", () => {
+    mount();
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+    expect(FakeEventSource.open).toHaveLength(0);
+    act(() => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+    expect(FakeEventSource.open).toHaveLength(1);
+  });
+
+  it("does not open a stream for a tab opened behind another until it is shown", () => {
+    visibility = "hidden";
+    mount();
+    expect(FakeEventSource.all).toHaveLength(0);
+    act(() => setVisibility("visible"));
+    expect(FakeEventSource.open).toHaveLength(1);
+  });
+
+  it("drops a wait to try again once the tab is hidden", async () => {
+    mount();
+    act(() => FakeEventSource.all[0]!.onerror!());
+    act(() => setVisibility("hidden"));
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(FakeEventSource.all).toHaveLength(1);
   });
 
   it("fetches everything again, from nothing, when the current household changes, and only household lists otherwise", async () => {

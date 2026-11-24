@@ -91,7 +91,8 @@ const MODE_KEY = "outpost.maps.roadRoute.mode";
 const isUnits = (value: unknown): value is RoadDistanceUnit => value === "km" || value === "miles";
 
 const header = (label: string, onBack: () => void) => (
-  <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
+  // The sheet's first line on a phone while this has the sheet (its tabs put away): what shows when it is lowered.
+  <div data-sheet-peek className="flex items-center gap-1 border-b border-border px-2 py-1.5">
     <Button variant="ghost" size="sm" onClick={onBack} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
       <ArrowLeft /> {label}
     </Button>
@@ -338,17 +339,18 @@ export function RoadRoutePanel({
   const setPoint = (index: number, point: RoutePointChoice | null) =>
     setPoints((current) => current.map((each, at) => (at === index ? point : each)));
 
+  const intro =
+    mode === "drive"
+      ? "Planned directions for a drive: the main roads, which way, the junctions and the places on the signs. Not turn by turn, and never live. Worked out on this device from the roads kept for each country."
+      : `${MODE_LINES[mode]} Worked out on this device; never live.`;
   return (
     <div key="plan" className="flex min-h-0 flex-1 flex-col">
       {header("Routes", onClose)}
-      <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
+      <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4 max-md:gap-3 max-md:pt-3">
         <div>
           <h3 className="font-title text-lead text-ink">Plan a route</h3>
-          <p className="mt-1 text-small text-ink-muted">
-            {mode === "drive"
-              ? "Planned directions for a drive: the main roads, which way, the junctions and the places on the signs. Not turn by turn, and never live. Worked out on this device from the roads kept for each country."
-              : `${MODE_LINES[mode]} Worked out on this device; never live.`}
-          </p>
+          {/* On a phone the fields come first and this is said under them: above them it pushed From below the keyboard. */}
+          <p className="mt-1 text-small text-ink-muted max-md:hidden">{intro}</p>
         </div>
 
         {installed_ ? (
@@ -456,8 +458,10 @@ export function RoadRoutePanel({
               <StreetsUnavailable status={streets.data!} mode={mode} country={routeCountry} onOpenStreets={onOpenStreets} />
             ) : null}
 
-            {/* Kept in view at the foot of the panel while a notice above pushes it down (1280 × 800 with the roads notice). */}
-            <div className="sticky bottom-0 z-10 -mx-4 -mb-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border bg-page px-4 py-2.5">
+            {/* Kept in view at the foot of the panel while a notice above pushes it down (1280 × 800 with the roads notice).
+                On a phone an ordinary last row of the form: kept over the foot of the sheet it lay over the suggestions
+                for To, and a finger on one pressed Plan route. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 md:sticky md:bottom-0 md:z-10 md:-mx-4 md:-mb-1 md:border-t md:border-border md:bg-page md:px-4 md:py-2.5 max-md:pt-1">
               <Button
                 type="submit"
                 variant="primary"
@@ -528,6 +532,8 @@ export function RoadRoutePanel({
             ) : null}
           </form>
         )}
+
+        <p className="text-small text-ink-muted md:hidden">{intro}</p>
 
         {streets.data && !streets.data.installed ? (
           <p className="text-small text-ink-muted">
@@ -652,6 +658,7 @@ function RouteBody({
   onFit,
   onOpenNetworks,
   from,
+  totals = true,
 }: {
   route: RoadRouteResult;
   name: string;
@@ -660,10 +667,12 @@ function RouteBody({
   onFit: () => void;
   onOpenNetworks?: () => void;
   from: { what: string; path: string };
+  /** False where the distance and time are already shown above (a route just planned, before its name to save it under). */
+  totals?: boolean;
 }) {
   return (
     <>
-      <RouteTotals route={route} />
+      {totals ? <RouteTotals route={route} /> : null}
       <RouteWarnings route={route} onOpenNetworks={onOpenNetworks} />
       <div className="grid gap-1.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -714,6 +723,9 @@ function PlannedRoute({
         <h3 ref={heading} tabIndex={-1} className="font-title text-lead break-words text-ink focus:outline-none">
           {title}
         </h3>
+        {/* How far and how long first: what was asked for, ahead of saving it (at half a phone's height, the name
+            to save it under had been all there was to see). */}
+        <RouteTotals route={route} />
         <form
           className="grid gap-2"
           aria-label="Save this route"
@@ -756,6 +768,7 @@ function PlannedRoute({
           onLeg={onLeg}
           onFit={onFit}
           onOpenNetworks={onOpenNetworks}
+          totals={false}
           from={{ what: "a road route planned on the map", path: "/maps?tab=routes" }}
         />
       </div>

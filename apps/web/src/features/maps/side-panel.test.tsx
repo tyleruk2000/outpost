@@ -1,6 +1,35 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { detentHeight, nearestDetent, PanelTabs, PEEK_HEIGHT } from "./side-panel";
+import { detentHeight, keyboardFit, nearestDetent, PanelTabs, PEEK_HEIGHT, typingHeight } from "./side-panel";
+
+describe("the sheet with a phone's keyboard up", () => {
+  // The map area of an iPhone at 390 by 664: under the 52 px bar, over the 64 px bar of screens.
+  const area = { top: 52, bottom: 600 };
+
+  it("measures how much of the map area the keyboard covers, and what is left to see", () => {
+    expect(keyboardFit(area, null)).toEqual({ inset: 0, height: 548 });
+    expect(keyboardFit(area, { offsetTop: 0, height: 664 })).toEqual({ inset: 0, height: 548 });
+    // The keyboard 300 px tall: the foot of the area under it, 312 px of the area left.
+    expect(keyboardFit(area, { offsetTop: 0, height: 364 })).toEqual({ inset: 236, height: 312 });
+    // Safari panned the page up by 40 px to show the field: the top of the area is out of sight too.
+    expect(keyboardFit(area, { offsetTop: 40, height: 364 })).toEqual({ inset: 196, height: 352 });
+    // A pixel of rounding is not a keyboard.
+    expect(keyboardFit(area, { offsetTop: 0, height: 599.4 })).toEqual({ inset: 0, height: 548 });
+  });
+
+  it("takes all the room left while a field in it is typed in, and keeps its height otherwise", () => {
+    expect(typingHeight("half", null)).toBeNull();
+    // Little room: all of it, the search box over the map too.
+    expect(typingHeight("half", { inset: 236, height: 312 })).toBe(312);
+    expect(typingHeight("full", { inset: 0, height: 248 })).toBe(248);
+    // Room enough: full height above the keyboard, the search box still showing.
+    expect(typingHeight("half", { inset: 300, height: 600 })).toBe(532);
+    // No keyboard and room enough (a tablet's keyboard, say): as it was.
+    expect(typingHeight("half", { inset: 0, height: 600 })).toBeNull();
+    // Lowered stays lowered.
+    expect(typingHeight("peek", { inset: 236, height: 312 })).toBeNull();
+  });
+});
 
 describe("the heights the sheet rests at", () => {
   it("are the handle and the tab row, half the map, and all but the search box", () => {

@@ -279,21 +279,32 @@
 [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] [data-description] {
   color: var(--ink-muted);
 }
-/* The close and action buttons (Undo) are drawn small, but on a phone a finger gets 44 px round them. */
+/*
+ * Where the pointer is a finger the close and action buttons (Undo, Open it) are 44 px and their words 16 px, drawn so:
+ * the close button was a 20 px disc on the toast's corner, the action 32 px with 12 px words. The close button sits at
+ * the toast's right, inside it, after the action; the toast keeps room for it.
+ */
 @media (pointer: coarse) {
-  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] [data-close-button]::after {
-    content: "";
-    position: absolute;
-    inset: -12px;
+  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast][data-sonner-toast] {
+    padding-right: 3.25rem;
+  }
+  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] [data-close-button][data-close-button] {
+    inset: 50% 0.25rem auto auto;
+    transform: translateY(-50%);
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+  }
+  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] [data-close-button] svg {
+    width: 1rem;
+    height: 1rem;
   }
   [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] :is([data-button], [data-cancel]) {
-    position: relative;
-    height: 2rem;
-  }
-  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] :is([data-button], [data-cancel])::after {
-    content: "";
-    position: absolute;
-    inset: -6px -4px;
+    height: 2.75rem;
+    padding-inline: 0.875rem;
+    font-size: 1rem;
   }
 }
 

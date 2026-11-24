@@ -601,6 +601,18 @@ describe("searching places", () => {
     expect((await app.api("GET", "/api/maps/places?q=london&near=here")).status).toBe(400);
   });
 
+  it("puts the household's country first, and the country the map is over, among places of one name", async () => {
+    // With no country to go by, the bigger London.
+    expect((await search("london")).places[0]).toMatchObject({ country: "GB" });
+    // A household in Canada: its London first, the whole world in view (the middle of the map in the Atlantic).
+    expect((await search("london", "&country=ca&near=30.0,-40.0")).places[0]).toMatchObject({ country: "CA" });
+    // The map over Ottawa, 500 km from London, Ontario: still Canada's first, by the country the map is over.
+    expect((await search("london", "&near=45.42,-75.70")).places[0]).toMatchObject({ country: "CA" });
+    // A capital of nine million still comes before a small place of the same name at home.
+    expect((await search("london", "&country=GB")).places.map((place) => place.country)).toEqual(["GB", "CA"]);
+    expect((await app.api("GET", "/api/maps/places?q=london&country=GBR")).status).toBe(400);
+  });
+
   it("limits results, shows a place once, and survives odd input", async () => {
     expect((await search("n", "&limit=2")).places).toHaveLength(2);
     expect((await app.api("GET", "/api/maps/places?q=london&limit=500")).status).toBe(400);

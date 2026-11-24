@@ -153,8 +153,9 @@ export function PlaceEditor({
         onSave();
       }}
     >
-      <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
-        <Button variant="ghost" size="sm" onClick={onClose}>
+      {/* The sheet's first line on a phone while the form has the sheet (its tabs put away). */}
+      <div data-sheet-peek className="flex items-center gap-1 border-b border-border px-2 py-1.5">
+        <Button variant="ghost" size="sm" onClick={onClose} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
           <ArrowLeft /> Places
         </Button>
       </div>
@@ -380,7 +381,8 @@ export function PlacesList({
             }}
             placeholder="Filter by name"
             aria-label="Filter saved places by name"
-            className="pl-8 text-small"
+            // 16 px where the pointer is a finger: smaller, and Safari on an iPhone zooms the page in on focus.
+            className="pl-8 text-small max-md:text-body md:pointer-coarse:text-body"
           />
         </div>
         {canAddOnMap ? (

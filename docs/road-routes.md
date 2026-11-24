@@ -91,6 +91,11 @@ choose from your saved places, or press **Map centre**. You can also press and h
 here**. Then press **Plan route**. The first route after a while takes longest, up to a
 minute on a small computer, while the routes are read.
 
+On a phone the form takes the whole panel, with its fields at the top; **← Routes** at the
+top leads back. With the keyboard up, the field you are typing in and its list of
+suggestions stay above the keyboard. Once planned, the panel lowers to show the route, with
+its distance and time first.
+
 The route is drawn on the map: the main roads bold, a crossing dashed. Under it come the
 totals and the directions: the start ("Join the A24"), a line for each road, the crossing
 in a band of its own, each via point as a rule across, and the end ("Leave the N205, then

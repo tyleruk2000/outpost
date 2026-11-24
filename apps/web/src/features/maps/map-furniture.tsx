@@ -118,8 +118,9 @@ export function MapFurniture({
         const free = all.clientHeight - top - 16 - height(".outpost-credits") - 6 - CLEAR_MIN;
         setRoom(free >= coordinates + sun ? "all" : sunLine && free >= sun ? "sun" : "none");
       }
-      // The insets and gaps of the column: 12 px above the search box, 8 px between rows, 10 px above the sheet.
-      latest.current?.({ top: 12 + top + 8, bottom: bottom > 0 ? 10 + bottom + 8 : 10 });
+      // The insets and gaps of the column: 12 px above the search box, 8 px between rows, 16 px above the sheet (the
+      // sheet's handle reaches 8 px up, and the credits' "N more" reaches 8 px down to be 44 px to touch).
+      latest.current?.({ top: 12 + top + 8, bottom: bottom > 0 ? 16 + bottom + 8 : 16 });
     };
     report();
     const observer = new ResizeObserver(report);
@@ -154,7 +155,7 @@ export function MapFurniture({
       data-docked={docked && !covered ? "" : undefined}
       className={cn(
         "outpost-furniture pointer-events-none absolute inset-x-[12px] top-[12px] z-10 flex flex-col gap-[8px]",
-        docked && !covered ? "bottom-0" : "bottom-[calc(var(--sheet-height,0px)+10px)]",
+        docked && !covered ? "bottom-0" : "bottom-[calc(var(--sheet-height,0px)+16px)]",
       )}
     >
       <div ref={head} className="grid shrink-0 grid-cols-[minmax(0,1fr)] gap-[8px]">

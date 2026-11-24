@@ -296,12 +296,20 @@ export interface PlacesService {
   /** Downloads a GeoNames list again; the one held stays, and is searched, until the new one is read in. */
   update(collectionId: string): Promise<DownloadRow>;
   installer: Installer;
-  search(query: string, options?: { limit?: number; near?: { lat: number; lon: number } }): PlaceSearchResponse;
+  /** `prefer`: countries (two letters) whose places come before others of the same standing: the household's, the map's. */
+  search(query: string, options?: { limit?: number; near?: { lat: number; lon: number }; prefer?: string[] }): PlaceSearchResponse;
   datasets(): PlacesDataset[];
   count(): number;
   /** Deletes the rows of one dataset; the full-text index follows through its triggers. */
   removeRows(collectionId: string): Promise<number>;
 }
+
+/**
+ * Added to the score of a place in a country put first (the household's, the map's): more than
+ * the population of a small town gives, less than a capital's, so that Olney in England comes
+ * before Olney, Maryland for someone in England, and Paris, France still before a hamlet.
+ */
+const PREFERRED_COUNTRY = 0.4;
 
 /** Lower case, without accents: how names are compared when ranking. */
 function fold(text: string): string {
@@ -537,9 +545,9 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
    * is); whether it is a place, hill or the like rather than a road or postcode, which
    * share their names by the thousand ("Ambleside" is a town and thirty roads); and
    * then a score of how well the text matches, the population, the distance from the
-   * middle of the map and the kind of place.
+   * middle of the map, the kind of place, and whether it is in a country put first.
    */
-  function rankOf(row: PlaceRow, query: string, tokens: string[], near?: { lat: number; lon: number }) {
+  function rankOf(row: PlaceRow, query: string, tokens: string[], near?: { lat: number; lon: number }, prefer?: ReadonlySet<string>) {
     const name = fold(row.name);
     const ascii = fold(row.asciiName);
     const alternates = fold(row.altNames)
@@ -569,7 +577,7 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     return {
       exact,
       street: isOsCode(row.featureCode) && isStreetLevel(row.featureClass),
-      score: text + population * 0.6 + distance * 0.8 + prominence,
+      score: text + population * 0.6 + distance * 0.8 + prominence + (row.country && prefer?.has(row.country) ? PREFERRED_COUNTRY : 0),
     };
   }
 
@@ -587,7 +595,10 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     elevation: row.elevation,
   });
 
-  function search(query: string, searchOptions: { limit?: number; near?: { lat: number; lon: number } } = {}): PlaceSearchResponse {
+  function search(
+    query: string,
+    searchOptions: { limit?: number; near?: { lat: number; lon: number }; prefer?: string[] } = {},
+  ): PlaceSearchResponse {
     const text = query.trim().slice(0, 200);
     // Nearly always one reading or none; a few four-character texts are both a grid reference and a locator.
     const [reading, ...otherReadings] = parseCoordinateReadings(text);
@@ -615,6 +626,7 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     const match = tokens.map((token) => `"${token.replaceAll('"', "")}"*`).join(" ");
     const pool = Math.max(60, limit * 6);
     const near = searchOptions.near;
+    const prefer = new Set((searchOptions.prefer ?? []).map((code) => code.toUpperCase()));
     // Three views of the matches, because the best answer may be the closest in spelling,
     // the biggest, or the nearest, and no single ordering surfaces all three.
     const found = new Map<number, PlaceRow>();
@@ -627,7 +639,7 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
 
     const folded = fold(sought).replace(/\s+/g, " ");
     const ranked = [...found.values()]
-      .map((row) => ({ row, rank: rankOf(row, folded, tokens, near) }))
+      .map((row) => ({ row, rank: rankOf(row, folded, tokens, near, prefer) }))
       .sort(
         (a, b) =>
           Number(b.rank.exact) - Number(a.rank.exact) || Number(a.rank.street) - Number(b.rank.street) || b.rank.score - a.rank.score,

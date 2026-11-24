@@ -210,7 +210,7 @@ function SunBody({
           // Inside a place's form, Enter here would otherwise save the place.
           onKeyDown={(event) => event.key === "Enter" && event.preventDefault()}
           aria-label="Date"
-          className="tabular w-auto min-w-0 flex-1 text-small"
+          className="tabular w-auto min-w-0 flex-1 text-small max-md:text-body md:pointer-coarse:text-body"
         />
         <Button variant="ghost" size="icon" aria-label="The day after" onClick={() => choose(addDays(date, 1))}>
           <ChevronRight />

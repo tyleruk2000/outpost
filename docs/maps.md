@@ -502,7 +502,10 @@ position are not drawn.
 Place names come with a map on **Offline maps**: a country's **Map** brings its places, hills,
 waters, parks and landmarks (GeoNames), and **The whole world** brings every town over 500
 people. Every word typed must match the start of a word in a name; accents are ignored.
-Your own places come first, then the best matches nearest the map's centre.
+Your own places come first, then the best matches nearest the map's centre. Among places of
+the same name, those in your household's country and in the country the map is over come first:
+for a household in England, Olney finds the town in England before those in the United States,
+whatever part of the world is in view.
 
 ### Limits
 
