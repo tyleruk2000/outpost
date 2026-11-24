@@ -79,6 +79,8 @@ export interface ScoreParts {
   matchedAs?: string[];
   /** The terms it does not hold, as typed. */
   missing?: string[];
+  /** The words it holds are far apart, so their coverage counted for less (`SPREAD`). */
+  apart?: boolean;
 }
 
 interface Token {
@@ -330,13 +332,43 @@ export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScorePar
     phrase: Math.max(...near.map((part) => part.phrase)),
     frequency: frequent / total,
   };
+  const spread = spreadFactor(terms, found, parts.closeness);
   const score =
-    SCORE_WEIGHTS.coverage * parts.coverage +
+    SCORE_WEIGHTS.coverage * parts.coverage * spread +
     SCORE_WEIGHTS.title * parts.title +
     SCORE_WEIGHTS.closeness * parts.closeness +
     SCORE_WEIGHTS.phrase * parts.phrase +
     SCORE_WEIGHTS.frequency * parts.frequency;
-  return { score: Math.round(score * 1000) / 1000, ...parts, found, of, inTitle: wholeInTitle, saidOtherwise, matchedAs, missing };
+  return {
+    score: Math.round(score * 1000) / 1000,
+    ...parts,
+    found,
+    of,
+    inTitle: wholeInTitle,
+    saidOtherwise,
+    matchedAs,
+    missing,
+    apart: spread < 1 - SPREAD.penalty / 2,
+  };
+}
+
+/**
+ * Holding the words is worth less when they are far apart. "Car battery flat" is about one
+ * thing; a radio manual whose passage says "car" at its start and "the battery is flat" at
+ * its end holds all three words and is about something else. Coverage counts in full while
+ * the words found stand within about four times their own length of each other (closeness
+ * `SPREAD.closeEnough` or more, in the title or in one passage), and loses up to
+ * `SPREAD.penalty` of itself as they spread further apart. Measured on the evaluation set
+ * (docs/development/answers-and-search.md).
+ */
+export const SPREAD = { penalty: 0.2, closeEnough: 0.25 } as const;
+
+function spreadFactor(terms: ScoringTerm[], found: number, closeness: number): number {
+  const present = terms.length > 1 ? Math.min(found, terms.length) : 0;
+  if (present < 2) return 1;
+  // Closeness is scaled by how many of the terms are there; what counts here is how near those that are there stand.
+  const tight = Math.min(1, closeness / ((present - 1) / (terms.length - 1)) / SPREAD.closeEnough);
+  return 1 - SPREAD.penalty * (1 - tight);
 }
 
 /**
@@ -362,6 +394,7 @@ function wordsReason(parts: ScoreParts): string {
   if (parts.inTitle === parts.of) return `${all} in the title`;
   if (parts.phrase === 1) return `${all}, side by side`;
   if (parts.closeness >= 0.5) return `${all}, close together`;
+  if (parts.apart) return `${all}, far apart`;
   return all;
 }
 

@@ -7,7 +7,7 @@
 import { type EmergencyPlanInput, emptyPlanBody, type PlanBody } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { collapseSameTitles, sameTitleKey } from "../src/modules/search/cards.ts";
-import { adjusted, adjustFor, intentOf, MOST_FAVOUR, OTHER_SENSE } from "../src/modules/search/intent.ts";
+import { adjusted, adjustFor, intentOf, MOST_FAVOUR, OTHER_SENSE, OTHER_SUBJECT } from "../src/modules/search/intent.ts";
 import { createOwners } from "../src/modules/search/owners.ts";
 import { expandQuery, parseQuery } from "../src/modules/search/query.ts";
 import { reasonFor, scoreFields, scoringTerms } from "../src/modules/search/score.ts";
@@ -65,6 +65,25 @@ describe("the kind of question", () => {
       article: true,
     });
     expect(garage.notes).toEqual(["favoured: vehicle source"]);
+  });
+
+  it("lowers a collection plainly about another subject, but never one for the whole household", () => {
+    const flat = intent("car battery flat");
+    const radio = adjustFor(flat, { title: "Best practices", collection: "Radio communications", tags: [] });
+    expect(radio.factor).toBe(OTHER_SUBJECT);
+    expect(radio.notes).toEqual(["on another subject"]);
+    // The question's own subjects: vehicles, and batteries (electricity).
+    expect(adjustFor(flat, { title: "Battery basics", collection: "Engineering and electronics", tags: [] }).factor).toBe(1);
+    expect(adjustFor(flat, { title: "Car battery", collection: "Motor Vehicle Mechanics Q&A", tags: [], article: true }).factor).toBe(1.2);
+    // Preparedness is about every question; a woodshop is not about a first aid kit.
+    const kit = intent("first aid kit list");
+    expect(adjustFor(kit, { title: "Emergency supply list", collection: "Disaster preparedness", tags: [] }).factor).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(adjustFor(kit, { title: "Woodshop first aid", collection: "Woodworking Q&A", tags: [], article: true }).factor).toBeLessThan(1);
+    // A question naming no subject, and a collection naming none, are left alone.
+    expect(adjustFor(intent("signal for rescue"), { title: "X6100", collection: "Radio communications", tags: [] }).factor).toBe(1);
+    expect(adjustFor(flat, { title: "Physics", collection: "Science and education", tags: [] }).factor).toBe(1);
   });
 
   it("favours how-to sources for how-to questions, safety guidance for using a generator safely, and caps the two together", () => {
@@ -144,6 +163,24 @@ describe("why this result", () => {
     expect(reasonFor(scoreFields(terms("tyre pressure"), { title: "Tire pressure", text: "" }))).toBe(
       "All 2 words in the title; also matched tire",
     );
+  });
+
+  it("counts words held far apart for less than words together, and says so", () => {
+    const question = terms("car battery flat");
+    const filler = " the antenna, the belt clip and the channel list are checked after every update and kept clean".repeat(3);
+    const apart = scoreFields(question, {
+      title: "Best practices",
+      text: `Charge it in the car.${filler}. Leave the battery half charged, not flat.`,
+    });
+    const together = scoreFields(question, { title: "Best practices", text: `If the car battery is flat, jump start it.${filler}.` });
+    const titled = scoreFields(question, { title: "Car battery flat after sitting for 9 months", text: "It will not start." });
+    expect(apart.apart).toBe(true);
+    expect(reasonFor(apart)).toBe("All 3 words, far apart");
+    expect(together.apart).toBe(false);
+    expect(apart.score).toBeLessThan(together.score - 0.05);
+    expect(titled.score).toBeGreaterThan(together.score);
+    // Coverage itself is untouched: it still decides which results hold most of what was asked.
+    expect(apart.coverage).toBeCloseTo(together.coverage, 5);
   });
 
   it("is said for every result of a search", async () => {

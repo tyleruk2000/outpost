@@ -11,13 +11,21 @@ import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { findGuides, useGuideIndex } from "@/features/help/guide-places";
 import { api } from "@/lib/api";
-import { type ReferenceSearch, referenceProgress, referenceTrouble, useReferenceSearch, useSteadyOrder } from "@/lib/reference-search";
+import {
+  oneList,
+  REFERENCE_SETTLE_MS,
+  type ReferenceSearch,
+  referenceProgress,
+  referenceTrouble,
+  useReferenceSearch,
+  useSteadyOrder,
+} from "@/lib/reference-search";
 import { cn, plural } from "@/lib/utils";
 import { AnswerArea, AnswerHint } from "./answer";
 
 const PAGE_SIZE = 20;
-/** How many reference articles "Everything" shows under a person's own results: the best of all collections. */
-const REFERENCE_SHOWN = 5;
+/** How long after the last keystroke the words typed are searched for. */
+const TYPING_SETTLE_MS = 220;
 /** How many screens a search offers to go to, at most: the quick search's matching, on the search page. */
 const PLACES_SHOWN = 3;
 
@@ -324,42 +332,40 @@ function SearchAll({ reference, onAll, className }: { reference: ReferenceSearch
   );
 }
 
-/** While the pointer or focus holds the list still: how many articles are waiting to be put in their places. */
-function Waiting({ count }: { count: number }) {
+/** While the pointer, a finger or focus holds the list still: how many results are waiting to be put in their places. */
+function Waiting({ count, noun = "article" }: { count: number; noun?: string }) {
   if (count === 0) return null;
   return (
     <p className="tabular mt-2 text-small text-ink-muted" role="status">
-      {plural(count, "more article")} found, put in place once you move away from the list.
+      {plural(count, `more ${noun}`)} found, put in place once you move away from the list.
     </p>
   );
 }
 
 /**
  * One line under the count of a person's own results that says where the search of
- * reference collections has got to. It is there from the first results and always one
- * line high, so that nothing below it moves when the collections answer.
+ * reference collections has got to, and how many of their articles are in the list. It is
+ * there from the first results and always one line high, so that nothing below it moves
+ * when the collections answer.
  */
-function ReferenceLine({ reference, onShow }: { reference: ReferenceSearch; onShow: () => void }) {
+function ReferenceLine({ reference, inList, firstPage }: { reference: ReferenceSearch; inList: number; firstPage: boolean }) {
   const found = reference.results.length;
   const missing = reference.missing.length;
+  const where =
+    !firstPage || inList === 0
+      ? `${plural(found, "article")} in reference collections, under Reference`
+      : inList === found
+        ? `${plural(found, "article")} from reference collections ${found === 1 ? "is" : "are"} in this list`
+        : `The best ${inList} of ${found} articles from reference collections are in this list`;
   return (
     <p className="tabular mt-1 truncate text-small text-ink-muted" role="status">
-      {reference.status !== "done" ? (
-        referenceProgress(reference)
-      ) : reference.problem ? (
-        "Reference collections were not searched; the reason is below."
-      ) : (
-        <>
-          {found > 0 ? (
-            <button type="button" onClick={onShow} className="text-primary underline underline-offset-2">
-              {plural(found, "article")} in reference collections
-            </button>
-          ) : (
-            "No article in your reference collections matches"
-          )}
-          {missing > 0 ? `. ${plural(missing, "collection")} ${missing === 1 ? "is" : "are"} missing; see below.` : "."}
-        </>
-      )}
+      {reference.status !== "done"
+        ? referenceProgress(reference)
+        : reference.problem
+          ? "Reference collections were not searched; the reason is below."
+          : `${found > 0 ? where : "No article in your reference collections matches"}${
+              missing > 0 ? `. ${plural(missing, "collection")} ${missing === 1 ? "is" : "are"} missing; see below.` : "."
+            }`}
     </p>
   );
 }
@@ -396,7 +402,7 @@ export default function SearchPage() {
         },
         { replace: true },
       );
-    }, 220);
+    }, TYPING_SETTLE_MS);
     return () => window.clearTimeout(timer);
   }, [draft, q, setParams]);
 
@@ -420,7 +426,14 @@ export default function SearchPage() {
     enabled: q.trim().length > 0,
     placeholderData: keepPreviousData,
   });
-  const reference = useReferenceSearch(q, search.data?.referenceToCome === true, exact, allCollections);
+  // The words in the address have already waited `TYPING_SETTLE_MS` after the last keystroke; the collections wait the rest.
+  const reference = useReferenceSearch(
+    q,
+    search.data?.referenceToCome === true,
+    exact,
+    allCollections,
+    Math.max(0, REFERENCE_SETTLE_MS - TYPING_SETTLE_MS),
+  );
   // One list in score order; still while the pointer is over it, so that nothing moves under it.
   const steady = useSteadyOrder(reference.results, `${q}\n${exact}\n${allCollections}`);
 
@@ -460,6 +473,18 @@ export default function SearchPage() {
   // what the reference collections hold, which are on this device too. The server ranks it last as well (docs/search.md).
   const everything = kind === "";
   const own = data ? (everything ? data.results.filter((result) => result.kind !== "catalog") : data.results) : [];
+  // On "Everything", one list: the best reference articles go in among a person's own where their scores put them, on
+  // the first page; when more pages of the person's own follow, only those that rank on this one. Every article is under
+  // Reference.
+  const morePages = Boolean(data && data.total > page * PAGE_SIZE);
+  const lastOwn = own.at(-1)?.score;
+  const merged =
+    everything && page === 1 && referenceBelow
+      ? oneList(own, reference.results, { above: morePages && lastOwn !== undefined ? lastOwn : undefined })
+      : own;
+  // Still while a pointer, finger or focus is in it: nothing moves under what is about to be pressed.
+  const list = useSteadyOrder(merged, `${q}\n${exact}\n${allCollections}\n${kind}\n${page}\n${mode ?? ""}`);
+  const inList = merged.filter((result) => result.kind === "reference").length;
   const toDownload = everything && data ? data.results.filter((result) => result.kind === "catalog") : [];
   // Added once the reference collections have answered, so that it never moves under a finger.
   const toDownloadShown = toDownload.length > 0 && !(referenceBelow && reference.status !== "done");
@@ -695,7 +720,8 @@ export default function SearchPage() {
                   </p>
                 ) : null}
                 {data.placesFirst && data.places.length > 0 ? <PlacesStrip places={data.places} /> : null}
-                {referenceBelow ? <ReferenceLine reference={reference} onShow={() => setParam("kind", "reference")} /> : null}
+                {referenceBelow ? <ReferenceLine reference={reference} inList={inList} firstPage={page === 1} /> : null}
+                {referenceBelow && reference.instead ? <Instead suggestion={reference.instead} className="mt-1" /> : null}
                 {data.warnings.map((warning) => (
                   <Notice
                     key={warning.source}
@@ -712,47 +738,32 @@ export default function SearchPage() {
                     {warning.message}
                   </Notice>
                 ))}
-                {own.length > 0 ? (
-                  <ol className="mt-1 divide-y divide-border">
-                    {own.map((result) => (
+                {list.shown.length > 0 ? (
+                  // Reference articles join it as they come, in score order; a person's own never wait for them.
+                  <ol className="mt-1 divide-y divide-border" {...list.hold}>
+                    {list.shown.map((result) => (
                       <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
                     ))}
                   </ol>
+                ) : null}
+                <Waiting count={list.waiting} noun="result" />
+                {referenceBelow ? (
+                  <>
+                    <ReferenceTrouble reference={reference} />
+                    {reference.status === "searching" ? <StillSearching reference={reference} className="mt-2" /> : null}
+                    {reference.status === "done" && reference.results.length > inList ? (
+                      <Button className="mt-4" onClick={() => setParam("kind", "reference")}>
+                        See all {reference.results.length} reference results
+                      </Button>
+                    ) : null}
+                    <SearchAll reference={reference} onAll={() => setParam("collections", "all")} className="mt-4" />
+                  </>
                 ) : null}
                 {data.total > PAGE_SIZE ? (
                   <Pager page={page} pages={Math.ceil(data.total / PAGE_SIZE)} onPage={(next) => setParam("page", String(next))} />
                 ) : null}
                 {!data.placesFirst && data.places.length > 0 ? <PlacesStrip places={data.places} /> : null}
               </div>
-              {referenceBelow ? (
-                // Always after a person's own results, and only ever added to at its end: nothing above it moves.
-                <section aria-labelledby="reference-results" className="mt-8 border-t border-border pt-5">
-                  <h2 id="reference-results" className="text-lead font-medium text-ink">
-                    In reference collections
-                  </h2>
-                  <ReferenceTrouble reference={reference} />
-                  {reference.instead ? <Instead suggestion={reference.instead} className="mt-1" /> : null}
-                  {steady.shown.length > 0 ? (
-                    <>
-                      <p className="mt-1 text-small text-ink-muted">The best matches across your reference collections.</p>
-                      <ol className="divide-y divide-border" {...steady.hold}>
-                        {steady.shown.slice(0, REFERENCE_SHOWN).map((result) => (
-                          <ResultRow key={`${result.kind}:${result.entityId}`} result={result} heading="h3" />
-                        ))}
-                      </ol>
-                    </>
-                  ) : reference.status === "done" && trouble.length === 0 ? (
-                    <p className="mt-2 text-small text-ink-muted">No article in your reference collections matches.</p>
-                  ) : null}
-                  {reference.status === "searching" ? <StillSearching reference={reference} className="mt-2" /> : null}
-                  {reference.status === "done" && reference.results.length > REFERENCE_SHOWN ? (
-                    <Button className="mt-4" onClick={() => setParam("kind", "reference")}>
-                      See all {reference.results.length} reference results
-                    </Button>
-                  ) : null}
-                  <SearchAll reference={reference} onAll={() => setParam("collections", "all")} className="mt-4" />
-                </section>
-              ) : null}
               {toDownloadShown ? (
                 <section aria-labelledby="download-results" className="mt-8 border-t border-border pt-5">
                   <h2 id="download-results" className="text-lead font-medium text-ink">

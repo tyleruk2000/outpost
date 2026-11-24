@@ -43,6 +43,9 @@ export const NAUTILUS_UUID = "5d1c0b6e-2f3a-4c7d-9e8f-0a1b2c3d4e5f";
 export const SLOW_WORD = "slowcoach";
 export const SLOW_ARTICLE = "The slowcoach of the shelf";
 export const SLOW_DELAY_MS = 2500;
+/** Searching for both these words finds, at once, one article with both in its title: for the test of one ranked list. */
+export const QUICK_WORDS = ["lantern", "wick"];
+export const QUICK_ARTICLE = "Lantern wick trimming";
 
 export interface ListedDocument {
   title: string;
@@ -332,8 +335,15 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
     if (url.startsWith("/search?")) {
       const nothing =
         '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>0</opensearch:totalResults></channel></rss>';
+      const pattern = new URL(url, "http://kiwix").searchParams.get("pattern")?.toLowerCase() ?? "";
+      if (QUICK_WORDS.every((word) => pattern.includes(word))) {
+        return send(
+          "application/xml",
+          `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>1</opensearch:totalResults><item><title>${QUICK_ARTICLE}</title><link>${root}/guide</link><description>...trim the <b>lantern</b> <b>wick</b> square before lighting...</description></item></channel></rss>`,
+        );
+      }
       // One word is found, slowly, as an archive on a network share is: for the tests of search answering in two parts.
-      if (new URL(url, "http://kiwix").searchParams.get("pattern")?.toLowerCase() !== SLOW_WORD) return send("application/xml", nothing);
+      if (pattern !== SLOW_WORD) return send("application/xml", nothing);
       setTimeout(() => {
         if (response.destroyed) return;
         send(

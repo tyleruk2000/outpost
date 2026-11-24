@@ -218,6 +218,17 @@ describe("did you mean", () => {
     expect((await search(test, "boyl")).didYouMean?.query).toBe("boil");
   });
 
+  it("takes a slip of the first key for the far commoner word, not a rare one that starts as typed", async () => {
+    const test = await app();
+    // "vatter" is in two passages (a name, say); "battery" in many. Both are one edit from "vattery".
+    note(test, "v1", "Letters", "Dear Vatter, the harvest is in.");
+    note(test, "v2", "More letters", "Vatter wrote back.");
+    for (let index = 0; index < 45; index += 1) note(test, `b${index}`, `Battery ${index}`, "The battery is flat; charge the battery.");
+    expect((await search(test, "car vattery flat")).didYouMean).toEqual({ query: "car battery flat", words: ["battery"] });
+    // As common as each other, the word that starts as typed still wins.
+    expect((await search(test, "vattr")).didYouMean?.query).toBe("vatter");
+  });
+
   it("follows the library as passages change", async () => {
     const test = await app();
     note(test, "a", "Compass", "Read the compass bearing. Set the compass on the map.");

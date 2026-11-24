@@ -62,7 +62,9 @@ test.describe("search with a slow reference collection", () => {
     expect(own.referenceToCome).toBe(true);
   });
 
-  test("the page shows a person's own results at once and adds the collection's article below without moving them", async ({ page }) => {
+  test("the page shows a person's own results at once and puts the collection's article in the same list when it comes", async ({
+    page,
+  }) => {
     const errors = watchForErrors(page);
     await page.goto("/search?q=slowcoach");
     // The page is also in the sidebar's tree; the result is the one in the content.
@@ -72,15 +74,17 @@ test.describe("search with a slow reference collection", () => {
     // The collection has not answered: the page says so, and its article is not there yet.
     await expect(page.getByText("Still searching reference collections…").first()).toBeVisible();
     await expect(page.getByRole("link", { name: ARTICLE })).toHaveCount(0);
-    const before = await own.boundingBox();
-
     const article = page.getByRole("link", { name: ARTICLE });
     await expect(article).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Still searching/)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "1 article in reference collections" })).toBeVisible();
-    // What was already there is exactly where it was, and the newcomer is beneath it.
-    expect(await own.boundingBox()).toEqual(before);
-    expect((await article.boundingBox())!.y).toBeGreaterThan(before!.y);
+    await expect(page.getByText("1 article from reference collections is in this list.")).toBeVisible();
+    // One list, in score order: the article is a row of the same list as the page of the person's own.
+    await expect(
+      content
+        .getByRole("list")
+        .filter({ has: page.getByRole("link", { name: "Slowcoach checklist" }) })
+        .getByRole("link", { name: ARTICLE }),
+    ).toBeVisible();
     await expect(page.getByRole("tab", { name: /^Reference/ })).toContainText("1");
 
     await page.getByRole("tab", { name: /^Reference/ }).click();

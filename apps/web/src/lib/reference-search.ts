@@ -13,11 +13,20 @@
  * collection they came from. A collection may answer twice: first with its titles, which
  * come quickly, then with its full text, which replaces them.
  *
- * Typing something else closes the connection, and the server stops asking collections
- * it has not asked yet. `useSteadyOrder` keeps the list still under a person's pointer.
+ * Nothing is asked until the words have stood still for a moment (`REFERENCE_SETTLE_MS`
+ * after the last keystroke), so that a phone does not start a search of every collection
+ * for each letter typed. Typing something else closes the connection, and the server stops
+ * asking collections it has not asked yet. `oneList` puts the articles among a person's own
+ * results; `useSteadyOrder` keeps the list still under a person's pointer or finger.
  */
-import type { ReferenceSearchEvent, ReferenceSearchMissing, SearchResult, SearchSuggestion } from "@outpost/shared";
-import { type FocusEvent, useEffect, useRef, useState } from "react";
+import {
+  REFERENCE_BESIDE_OWN,
+  type ReferenceSearchEvent,
+  type ReferenceSearchMissing,
+  type SearchResult,
+  type SearchSuggestion,
+} from "@outpost/shared";
+import { type FocusEvent, type PointerEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 
 export interface ReferenceSearch {
@@ -75,7 +84,10 @@ function after(held: Held, event: ReferenceSearchEvent): Held {
   if (event.type === "start") {
     return { ...held, search: { ...search, collections: event.collections, more: event.more ?? 0, instead: event.instead ?? null } };
   }
-  if (event.type === "widen") return { ...held, search: { ...search, collections: search.collections + event.collections, more: 0 } };
+  if (event.type === "widen") {
+    const more = Math.max(0, search.more - event.collections);
+    return { ...held, search: { ...search, collections: search.collections + event.collections, more } };
+  }
   if (event.type === "collection") {
     const parts = new Map(held.parts);
     parts.delete(event.collectionId);
@@ -87,12 +99,26 @@ function after(held: Held, event: ReferenceSearchEvent): Held {
 }
 
 /**
- * Searches reference collections for `q` while `enabled`. Give it text that has
- * already settled (the callers wait a moment after the last keystroke). `exact` asks
+ * How long the words must stand still, from the last keystroke, before reference
+ * collections are asked. Searching them takes seconds of kiwix-serve's time on a small
+ * computer, and a search begun for "car vatt" is wasted once "car battery" is typed.
+ */
+export const REFERENCE_SETTLE_MS = 350;
+
+/**
+ * Searches reference collections for `q` while `enabled`, once `q` has stayed the same
+ * for `settleMs` (callers that already wait after a keystroke pass what is left of
+ * `REFERENCE_SETTLE_MS`). A newer `q` cancels the one before, asked or not. `exact` asks
  * for only what was typed, without other spellings or ways of saying it; `all` asks
  * every collection, not only those likeliest to hold the answer.
  */
-export function useReferenceSearch(q: string, enabled: boolean, exact = false, all = false): ReferenceSearch {
+export function useReferenceSearch(
+  q: string,
+  enabled: boolean,
+  exact = false,
+  all = false,
+  settleMs = REFERENCE_SETTLE_MS,
+): ReferenceSearch {
   // The words and how to search them, as one key: any of them changing is a new search.
   const wanted = enabled && q.trim() ? `${exact ? "1" : "0"}${all ? "1" : "0"}${q.trim()}` : "";
   const [state, setState] = useState<{ q: string; held: Held }>({ q: "", held: { search: NOTHING, parts: new Map() } });
@@ -108,20 +134,28 @@ export function useReferenceSearch(q: string, enabled: boolean, exact = false, a
       setState((current) => (controller.signal.aborted || current.q !== wanted ? current : { q: wanted, held: change(current.held) }));
     const finish = (problem: string | null) => (held: Held) =>
       held.search.status === "done" && !problem ? held : { ...held, search: { ...held.search, status: "done" as const, problem } };
-    api
-      .lines<ReferenceSearchEvent>(
-        "/api/search/reference",
-        { q: wanted.slice(2), exact: wanted[0] === "1" ? "1" : undefined, scope: wanted[1] === "1" ? "all" : undefined },
-        (event) => apply((held) => after(held, event)),
-        controller.signal,
-      )
-      .then(
-        // An answer that stops without its last line was cut short.
-        () => apply((held) => (held.search.status === "done" ? held : finish(LOST)(held))),
-        () => apply(finish(LOST)),
-      );
-    return () => controller.abort();
-  }, [wanted]);
+    const ask = () => {
+      api
+        .lines<ReferenceSearchEvent>(
+          "/api/search/reference",
+          { q: wanted.slice(2), exact: wanted[0] === "1" ? "1" : undefined, scope: wanted[1] === "1" ? "all" : undefined },
+          (event) => apply((held) => after(held, event)),
+          controller.signal,
+        )
+        .then(
+          // An answer that stops without its last line was cut short.
+          () => apply((held) => (held.search.status === "done" ? held : finish(LOST)(held))),
+          () => apply(finish(LOST)),
+        );
+    };
+    // Until the words settle nothing is asked, so a search typed over before then costs nothing.
+    const timer = settleMs > 0 ? window.setTimeout(ask, settleMs) : undefined;
+    if (settleMs <= 0) ask();
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [wanted, settleMs]);
 
   // Between a new search being asked and the effect starting it, what is held belongs to the last one.
   return state.q === wanted ? state.held.search : wanted ? { ...NOTHING, status: "searching" } : NOTHING;
@@ -129,11 +163,46 @@ export function useReferenceSearch(q: string, enabled: boolean, exact = false, a
 
 const keyOf = (result: SearchResult) => `${result.kind}:${result.entityId}`;
 
+/** How many reference articles "Everything" puts among a person's own results: the best of every collection. */
+export const REFERENCE_IN_LIST = 10;
+
+/**
+ * A person's own results and reference articles as one list in score order, on the one
+ * scale both are scored on. An article counts `REFERENCE_BESIDE_OWN` of its score here, as
+ * on the server, so that between two nearly as good the page the person kept comes first.
+ * The person's own keep the order the server gave them; the articles (best first) go in
+ * among them where their scores fall, before the first of the person's own that scores
+ * less. At most `most` articles; with `above`, only those scoring more than it (the last
+ * result of a page that more pages follow), so that a page holds only what ranks on it.
+ */
+export function oneList(
+  own: SearchResult[],
+  reference: SearchResult[],
+  { most = REFERENCE_IN_LIST, above }: { most?: number; above?: number } = {},
+): SearchResult[] {
+  const articles = reference
+    .slice(0, most)
+    .map((result) => ({ ...result, score: Math.round(result.score * REFERENCE_BESIDE_OWN * 1000) / 1000 }))
+    .filter((result) => above === undefined || result.score > above);
+  const list: SearchResult[] = [];
+  let next = 0;
+  for (const item of own) {
+    while (next < articles.length && articles[next]!.score > item.score) list.push(articles[next++]!);
+    list.push(item);
+  }
+  return [...list, ...articles.slice(next)];
+}
+
+/** How long a list stays still after a finger leaves it: a flicked page goes on scrolling after the finger lifts. */
+export const TOUCH_LINGER_MS = 1500;
+
 /**
  * Shows `items` in their order, except while the pointer is over the list or focus is in
  * it: then what is shown stays where it is, and what comes meanwhile waits (`waiting`
  * says how many) until the pointer or focus leaves, when the list takes its new order.
- * Nothing moves under a pointer about to press it. `key` changing (a new search) lets go.
+ * Nothing moves under a pointer about to press it. A finger lets go `TOUCH_LINGER_MS`
+ * after it lifts, and later while the page goes on scrolling, so that a phone's list does
+ * not move under the eyes mid-flick. `key` changing (a new search) lets go.
  */
 export function useSteadyOrder<T extends SearchResult>(
   items: T[],
@@ -143,7 +212,7 @@ export function useSteadyOrder<T extends SearchResult>(
   waiting: number;
   hold: {
     onPointerEnter: () => void;
-    onPointerLeave: () => void;
+    onPointerLeave: (event: PointerEvent<HTMLElement>) => void;
     onFocus: () => void;
     onBlur: (event: FocusEvent<HTMLElement>) => void;
   };
@@ -151,6 +220,26 @@ export function useSteadyOrder<T extends SearchResult>(
   const [pointer, setPointer] = useState(false);
   const [focus, setFocus] = useState(false);
   const frozen = useRef<{ key: string; order: string[] } | null>(null);
+  // Set while a finger has left the list and the list is still held for a moment (`TOUCH_LINGER_MS`).
+  const linger = useRef<number | undefined>(undefined);
+  const letGoLater = () => {
+    window.clearTimeout(linger.current);
+    linger.current = window.setTimeout(() => {
+      linger.current = undefined;
+      setPointer(false);
+    }, TOUCH_LINGER_MS);
+  };
+  useEffect(() => () => window.clearTimeout(linger.current), []);
+  // While it lingers, the page still moving (a flick goes on after the finger lifts) holds it longer.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: letGoLater only touches a ref and a state setter
+  useEffect(() => {
+    if (!pointer) return;
+    const moved = () => {
+      if (linger.current !== undefined) letGoLater();
+    };
+    window.addEventListener("scroll", moved, { passive: true });
+    return () => window.removeEventListener("scroll", moved);
+  }, [pointer]);
   const holding = pointer || focus;
   if (!holding || frozen.current?.key !== key) frozen.current = holding ? { key, order: items.map(keyOf) } : null;
   let shown = items;
@@ -163,8 +252,16 @@ export function useSteadyOrder<T extends SearchResult>(
     shown,
     waiting: items.length - shown.length,
     hold: {
-      onPointerEnter: () => setPointer(true),
-      onPointerLeave: () => setPointer(false),
+      onPointerEnter: () => {
+        window.clearTimeout(linger.current);
+        linger.current = undefined;
+        setPointer(true);
+      },
+      onPointerLeave: (event) => {
+        // A mouse that leaves lets go at once; a finger lifted, a moment later.
+        if (!event.pointerType || event.pointerType === "mouse") setPointer(false);
+        else letGoLater();
+      },
       onFocus: () => setFocus(true),
       onBlur: (event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocus(false);

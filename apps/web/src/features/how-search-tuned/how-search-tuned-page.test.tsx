@@ -15,6 +15,7 @@ import {
   CPR_QUERY,
   CPR_RESULTS,
   dcg,
+  EVERYDAY_SEARCHES,
   GRADED_EXAMPLES,
   ndcg,
   OWNER_RESULTS,
@@ -174,8 +175,12 @@ describe("the page's figures", () => {
   });
 
   it("quote the evaluation set as it is", () => {
-    const set = (queries as unknown as { queries: Array<{ q: string; grades: Record<string, number>; pi: string[] }> }).queries;
+    const all = (queries as unknown as { queries: Array<{ q: string; grades: Record<string, number>; pi: string[]; sets?: string[] }> })
+      .queries;
+    // The household questions the page measures, and the everyday searches added after (step 6).
+    const set = all.filter((each) => !each.sets || each.sets.includes("household"));
     expect(set).toHaveLength(56);
+    expect(all.filter((each) => each.sets?.includes("everyday"))).toHaveLength(EVERYDAY_SEARCHES);
     for (const example of GRADED_EXAMPLES) {
       const query = set.find((each) => each.q === example.q)!;
       expect(Object.values(query.grades)).toEqual(example.grades.map(([, grade]) => grade));

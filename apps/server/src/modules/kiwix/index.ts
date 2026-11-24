@@ -665,7 +665,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       if (outcome.message) throw new Error(outcome.message);
       return results;
     },
-    async searchInParts({ q, alternate, parsed, scope = "routed", rank, signal, budgetMs, onStart, onWiden, onPart }) {
+    async searchInParts({ q, alternate, parsed, scope = "routed", rank, signal, budgetMs, onStart, onWiden, onPart, widen = true }) {
       if (!(await connection.isUp())) {
         onStart?.(0, 0);
         return {
@@ -813,8 +813,11 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       await searchSet(first, referenceShape.firstEach);
       let more = rest.length;
       let collectionsAsked = first.length;
-      // Too little found where it was most likely: the rest after all, while there is time.
-      if (more > 0 && good < referenceShape.enoughGood && !waiting.aborted) {
+      // Too little found where it was most likely: the rest after all, while there is time. Not when the person's own
+      // library already holds plenty with every word (`widen` false): on a Raspberry Pi the other thirty-one archives
+      // took three to six seconds more, mostly asking their titles one at a time, for "cpr on a child" or "storm
+      // warning" with seven and seventeen of the person's own. They wait behind "Search all reference collections".
+      if (widen && more > 0 && good < referenceShape.enoughGood && !waiting.aborted) {
         onWiden?.(more);
         collectionsAsked += more;
         more = 0;

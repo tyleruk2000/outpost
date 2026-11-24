@@ -72,30 +72,47 @@ export function createSuggester(sqlite: Database.Database) {
     if (word.length < 3 || !/^\p{L}+$/u.test(word)) return null;
     const limit = word.length <= 4 ? 1 : 2;
     const own = stem(word);
-    let best: { term: string; distance: number; doc: number; sameStart: boolean } | null = null;
+    type Candidate = { term: string; distance: number; doc: number; sameStart: boolean };
+    let best: Candidate | null = null;
+    /** The best word starting with another letter: a slip of the first key ("vattery" for "battery"). */
+    let otherStart: Candidate | null = null;
+    const consider = (row: { term: string; doc: number }) => {
+      if (row.doc < MIN_PASSAGES || Math.abs(row.term.length - word.length) > limit || row.term === word) return;
+      // A small word ("and" for "sand") says nothing about what was looked for.
+      if (row.term.length < 3 || STOP_WORDS.has(row.term)) return;
+      if (stem(row.term) === own) return;
+      const distance = editDistance(word, row.term, limit);
+      if (distance > limit) return;
+      if (held > 0 && (distance > 1 || row.doc < Math.max(10, held * COMMONER))) return;
+      const candidate = { term: row.term, distance, doc: row.doc, sameStart: row.term[0] === word[0] };
+      const better = (than: Candidate | null) =>
+        !than ||
+        candidate.distance < than.distance ||
+        (candidate.distance === than.distance && candidate.sameStart && !than.sameStart) ||
+        (candidate.distance === than.distance && candidate.sameStart === than.sameStart && candidate.doc > than.doc);
+      if (better(best)) best = candidate;
+      if (!candidate.sameStart && better(otherStart)) otherStart = candidate;
+    };
     // Words with the same first letter, then (for a slip at the start: "rpurify", "uprify") the second.
     for (const letter of [...new Set([word[0]!, word[1]!])]) {
-      for (const row of words().iterate(letter, nextLetter(letter)) as Iterable<{ term: string; doc: number }>) {
-        if (row.doc < MIN_PASSAGES || Math.abs(row.term.length - word.length) > limit || row.term === word) continue;
-        // A small word ("and" for "sand") says nothing about what was looked for.
-        if (row.term.length < 3 || STOP_WORDS.has(row.term)) continue;
-        if (stem(row.term) === own) continue;
-        const distance = editDistance(word, row.term, limit);
-        if (distance > limit) continue;
-        if (held > 0 && (distance > 1 || row.doc < Math.max(10, held * COMMONER))) continue;
-        const sameStart = row.term[0] === word[0];
-        if (
-          !best ||
-          distance < best.distance ||
-          (distance === best.distance && sameStart && !best.sameStart) ||
-          (distance === best.distance && sameStart === best.sameStart && row.doc > best.doc)
-        ) {
-          best = { term: row.term, distance, doc: row.doc, sameStart };
-        }
-      }
-      if (best?.sameStart) break;
+      for (const row of words().iterate(letter, nextLetter(letter)) as Iterable<{ term: string; doc: number }>) consider(row);
+      if ((best as Candidate | null)?.sameStart) break;
     }
-    return best?.term ?? null;
+    // The first letter mistyped or left out: every other first letter, looked up as a whole word (52 lookups, not a scan).
+    for (let code = 97; code <= 122; code += 1) {
+      const letter = String.fromCharCode(code);
+      if (letter === word[0]) continue;
+      for (const guess of [letter + word.slice(1), letter + word]) {
+        // The next string after the word, as a bound: the word followed by its smallest successor, "\u0001".
+        for (const row of words().iterate(guess, `${guess}\u0001`) as Iterable<{ term: string; doc: number }>) consider(row);
+      }
+    }
+    // Among words as near, one starting as typed is likelier, unless one starting otherwise is far commoner:
+    // "vatter", in two passages, is not what "vattery" meant; "battery", in hundreds, is.
+    const chosen = best as Candidate | null;
+    const other = otherStart as Candidate | null;
+    if (chosen?.sameStart && other && other.distance === chosen.distance && other.doc >= chosen.doc * COMMONER) return other.term;
+    return chosen?.term ?? null;
   }
 
   /**
@@ -111,7 +128,7 @@ export function createSuggester(sqlite: Database.Database) {
       if (parsed.quoted?.[index] || parsed.joined?.[index] || term.includes(" ") || STOP_WORDS.has(term.toLowerCase())) return;
       const held = counts[index] ?? 0;
       if (held > 0 && !(nothingFound && held <= RARE_PASSAGES)) return;
-      const word = nearest(term, held);
+      const word = safely(() => nearest(term, held));
       if (word) changes.push({ typed: term, word });
     });
     if (changes.length === 0) return null;
@@ -127,4 +144,17 @@ export function createSuggester(sqlite: Database.Database) {
   }
 
   return { suggest, nearest };
+}
+
+/**
+ * A suggestion is an extra, and never worth failing a search for. The word list is read
+ * through SQLite's fts5vocab, which reports "database disk image is malformed" for some
+ * words when the index of a passage was taken out with other text than it was put in with.
+ */
+function safely(find: () => string | null): string | null {
+  try {
+    return find();
+  } catch {
+    return null;
+  }
 }

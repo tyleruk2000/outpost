@@ -43,7 +43,6 @@ describe("what can be opened now, and what would have to be downloaded", () => {
       "Search",
       "Go to",
       "Kit for a power cut",
-      "In reference collections",
       "Drinking water",
       "Available to download",
       "Water Treatment Library",
@@ -109,15 +108,15 @@ describe("the search page, with reference collections answering later", () => {
     expect(server.reference[0]!.q).toBe("water");
     // Nothing has come from any collection, and the page says so rather than looking finished.
     expect(screen.getAllByText("Still searching reference collections…").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "In reference collections" })).toBeInTheDocument();
     expect(tab(/^Reference$/)).toBeInTheDocument();
 
     await server.send({ type: "start", collections: 3 });
     expect(screen.getAllByText("Still searching reference collections… 0 of 3 searched.").length).toBeGreaterThan(0);
   });
 
-  it("adds reference articles below a person's own as they come, as one list in score order", async () => {
-    const server = serveSearch(() => ownAnswer(OWN));
+  it("puts reference articles among a person's own as they come, as one list in score order", async () => {
+    const scored = (result: ReturnType<typeof ownResult>, score: number) => ({ ...result, score });
+    const server = serveSearch(() => ownAnswer([scored(OWN[0]!, 0.9), scored(OWN[1]!, 0.6)]));
     show("/search?q=water");
     const first = await screen.findByRole("link", { name: "Water purification" });
     const second = screen.getByRole("link", { name: "Water kit" });
@@ -125,41 +124,27 @@ describe("the search page, with reference collections answering later", () => {
     await waitFor(() => expect(server.reference).toHaveLength(1));
     await server.send({ type: "start", collections: 3, more: 4, ranked: true });
 
+    // On the one scale, an article counting 0.95 of its score: 0.8 goes above a page of 0.6, 0.5 below it.
     await server.send(collectionLine("Appropedia", ["Water filter", 0.8], ["Rainwater", 0.5]));
-    expect(titles()).toEqual([
-      "Search",
-      "Go to",
-      "Water purification",
-      "Water kit",
-      "In reference collections",
-      "Water filter",
-      "Rainwater",
-    ]);
+    expect(titles()).toEqual(["Search", "Go to", "Water purification", "Water filter", "Water kit", "Rainwater"]);
     expect(screen.getAllByText("Still searching reference collections… 1 of 3 searched.").length).toBeGreaterThan(0);
 
     // A first look at a collection (its titles) does not count as its answer; its full answer takes its place.
     await server.send({ ...collectionLine("Knots", ["Water knot", 0.6]), done: false });
     expect(screen.getAllByText("Still searching reference collections… 1 of 3 searched.").length).toBeGreaterThan(0);
-    await server.send(collectionLine("Wikivoyage"), collectionLine("Knots", ["Water knot", 0.9]));
-    // Across collections, best first: the newcomer goes where its score puts it.
-    expect(titles()).toEqual([
-      "Search",
-      "Go to",
-      "Water purification",
-      "Water kit",
-      "In reference collections",
-      "Water knot",
-      "Water filter",
-      "Rainwater",
-    ]);
-    // A person's own results are the very same elements, where they were.
+    await server.send(collectionLine("Wikivoyage"), collectionLine("Knots", ["Water knot", 0.92]));
+    // Across collections, best first: the newcomer goes where its score puts it, and a page kept wins a near tie.
+    expect(titles()).toEqual(["Search", "Go to", "Water purification", "Water knot", "Water filter", "Water kit", "Rainwater"]);
+    // A person's own results are the very same elements.
     expect(screen.getByRole("link", { name: "Water purification" })).toBe(first);
     expect(screen.getByRole("link", { name: "Water kit" })).toBe(second);
     expect(screen.getAllByRole("status")[0]).toBe(status);
+    // Nothing to press to see them: they are in the list.
+    expect(screen.queryByRole("heading", { name: "In reference collections" })).not.toBeInTheDocument();
 
     await server.end({ searched: 3, more: 4 });
     expect(screen.queryByText(/Still searching/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "3 articles in reference collections" })).toBeInTheDocument();
+    expect(screen.getByText("3 articles from reference collections are in this list.")).toBeInTheDocument();
     expect(within(tab(/^Reference/)).getByText("3")).toBeInTheDocument();
     // The counts of a person's own kinds are the server's, untouched by what came later.
     expect(within(tab(/^Documents/)).getByText("1")).toBeInTheDocument();
@@ -169,6 +154,44 @@ describe("the search page, with reference collections answering later", () => {
     await userEvent.click(screen.getByRole("button", { name: "Search all reference collections" }));
     await waitFor(() => expect(server.reference).toHaveLength(2));
     expect(server.reference[1]).toMatchObject({ q: "water", scope: "all" });
+  });
+
+  it("keeps the one list still under the pointer, and puts newcomers in place after", async () => {
+    const user = userEvent.setup();
+    const server = serveSearch(() => ownAnswer([{ ...OWN[0]!, score: 0.5 }]));
+    show("/search?q=water");
+    const own = await screen.findByRole("link", { name: "Water purification" });
+    const list = own.closest("ol")!;
+    await waitFor(() => expect(server.reference).toHaveLength(1));
+    await user.hover(list);
+    await server.send({ type: "start", collections: 1, ranked: true }, collectionLine("Knots", ["Water knot", 0.9]));
+    const shown = () =>
+      within(list)
+        .getAllByRole("link")
+        .map((link) => link.textContent);
+    expect(shown()).toEqual(["Water purification"]);
+    expect(screen.getByText("1 more result found, put in place once you move away from the list.")).toBeInTheDocument();
+    await user.unhover(list);
+    expect(shown()).toEqual(["Water knot", "Water purification"]);
+  });
+
+  it("puts on a page only the articles that rank on it, when more pages of a person's own follow", async () => {
+    const many = Array.from({ length: 20 }, (_, index) => ({
+      ...ownResult(`d${index}`, `Water page ${index + 1}`),
+      score: 0.9 - index * 0.01,
+    }));
+    const server = serveSearch(() => ownAnswer(many, { total: 45 }));
+    show("/search?q=water");
+    await screen.findByRole("link", { name: "Water page 1" });
+    await waitFor(() => expect(server.reference).toHaveLength(1));
+    await server.send({ type: "start", collections: 1 }, collectionLine("Knots", ["Water knot", 0.88], ["Rope", 0.3]));
+    await server.end({ searched: 1 });
+    const headings = titles();
+    // 0.88 × 0.95 is 0.836: after the page of 0.84, before the one of 0.83.
+    expect(headings.indexOf("Water knot")).toBe(headings.indexOf("Water page 8") - 1);
+    expect(headings).not.toContain("Rope");
+    expect(screen.getByText("The best 1 of 2 articles from reference collections are in this list.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "See all 2 reference results" })).toBeInTheDocument();
   });
 
   it("keeps the reference list still while the pointer is over it, and puts newcomers in place after", async () => {

@@ -304,6 +304,22 @@ describe("reference search, routed", () => {
     expect(widened.at(-1)).toMatchObject({ type: "end", searched: 10, more: 0 });
   });
 
+  it("does not search the rest when the person's own library already holds plenty with every word", async () => {
+    const { app, base } = await world(library());
+    for (let index = 0; index < 5; index += 1) {
+      app.ctx.services.search.upsert({
+        kind: "note",
+        entityId: `swing-${index}`,
+        title: `Garden swing ${index}`,
+        url: `/notes/${index}`,
+        sections: [{ text: "The swing needs oil." }],
+      });
+    }
+    const asked = await lines(base, "swing");
+    expect(asked.some((line) => line.type === "widen")).toBe(false);
+    expect(asked.at(-1)).toMatchObject({ type: "end", more: 4 });
+  });
+
   it("puts a title that is the answer above long pages, and leaves list pages out", async () => {
     const { base } = await world([
       shelf(1, "WikiMed Medical Encyclopedia", [], {

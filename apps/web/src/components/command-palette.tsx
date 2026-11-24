@@ -15,7 +15,7 @@ import { useNavigate } from "react-router";
 import { searchRowFocus } from "@/components/ui/input";
 import { findGuides, useGuideIndex } from "@/features/help/guide-places";
 import { api } from "@/lib/api";
-import { referenceProgress, useReferenceSearch, useSteadyOrder } from "@/lib/reference-search";
+import { REFERENCE_SETTLE_MS, referenceProgress, useReferenceSearch, useSteadyOrder } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
 import { useDebounced } from "@/lib/use-debounced";
 import { modKey } from "@/lib/utils";
@@ -40,6 +40,8 @@ const itemClass =
   "flex cursor-default items-center gap-3 rounded-control px-3 py-2 text-small text-ink data-[selected=true]:bg-primary-soft data-[selected=true]:text-primary-soft-ink max-md:py-3 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted";
 /** How many reference articles the palette lists: the best of all collections searched, as one list. */
 const REFERENCE_SHOWN = 5;
+/** How long after the last keystroke the words typed are searched for. */
+const TYPING_SETTLE_MS = 140;
 
 function ResultItem({ result, onSelect }: { result: SearchResult; onSelect: () => void }) {
   const kind = kindOf(result.kind);
@@ -80,7 +82,7 @@ export function CommandPalette({
   const navigate = useNavigate();
   const { resolved, setTheme } = useTheme();
   const [query, setQuery] = useState("");
-  const debounced = useDebounced(query.trim(), 140);
+  const debounced = useDebounced(query.trim(), TYPING_SETTLE_MS);
   const focusReturn = useFocusReturn();
 
   useEffect(() => {
@@ -95,7 +97,14 @@ export function CommandPalette({
     placeholderData: (previous) => previous,
     staleTime: 10_000,
   });
-  const reference = useReferenceSearch(debounced, open && debounced.length > 1 && results.data?.referenceToCome === true);
+  // The collections wait the rest of REFERENCE_SETTLE_MS from the last keystroke: one search per pause, not per letter.
+  const reference = useReferenceSearch(
+    debounced,
+    open && debounced.length > 1 && results.data?.referenceToCome === true,
+    false,
+    false,
+    REFERENCE_SETTLE_MS - TYPING_SETTLE_MS,
+  );
 
   const go = (to: string) => {
     onOpenChange(false);
