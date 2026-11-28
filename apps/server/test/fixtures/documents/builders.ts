@@ -12,11 +12,57 @@ const pdfString = (value: string) => `(${value.replace(/([\\()])/g, "\\$1")})`;
  * A minimal PDF with one page per entry of `pages`; each entry is the lines of text on
  * that page (an empty array gives a page with no text, like a scan). Offsets in the
  * cross-reference table are computed from the bytes actually written.
+ *
+ * `outline` gives it bookmarks, as a book's table of contents is kept: each goes to a
+ * page (counted from 1), by its page directly or, with `named`, by a named destination.
  */
-export function buildPdf(pages: string[][], info: { title?: string; author?: string } = {}): Buffer {
+export interface PdfBookmark {
+  title: string;
+  page: number;
+  named?: boolean;
+  children?: PdfBookmark[];
+}
+
+export function buildPdf(pages: string[][], info: { title?: string; author?: string; outline?: PdfBookmark[] } = {}): Buffer {
   const objects: string[] = [];
   const pageId = (index: number) => 4 + index * 2;
-  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  const outline = info.outline ?? [];
+  const names: string[] = [];
+  if (outline.length > 0) {
+    // Numbered after the pages: the outline's root, then each bookmark in the order met.
+    let next = 4 + pages.length * 2;
+    const rootId = next++;
+    const place = (items: PdfBookmark[], parentId: number): { first: number; last: number; count: number } => {
+      const ids = items.map(() => next++);
+      let count = items.length;
+      items.forEach((item, index) => {
+        const kids = item.children?.length ? place(item.children, ids[index]!) : null;
+        if (kids) count += kids.count;
+        const target = `[${pageId(item.page - 1)} 0 R /XYZ 0 792 0]`;
+        let dest = target;
+        if (item.named) {
+          const name = `dest${names.length + 1}`;
+          names.push(`/${name} ${target}`);
+          dest = `/${name}`;
+        }
+        objects[ids[index]!] = [
+          `<< /Title ${pdfString(item.title)} /Parent ${parentId} 0 R /Dest ${dest}`,
+          index > 0 ? `/Prev ${ids[index - 1]} 0 R` : "",
+          index < items.length - 1 ? `/Next ${ids[index + 1]} 0 R` : "",
+          kids ? `/First ${kids.first} 0 R /Last ${kids.last} 0 R /Count ${kids.count}` : "",
+          ">>",
+        ]
+          .filter(Boolean)
+          .join(" ");
+      });
+      return { first: ids[0]!, last: ids.at(-1)!, count };
+    };
+    const top = place(outline, rootId);
+    objects[rootId] = `<< /Type /Outlines /First ${top.first} 0 R /Last ${top.last} 0 R /Count ${top.count} >>`;
+    objects[1] = `<< /Type /Catalog /Pages 2 0 R /Outlines ${rootId} 0 R${names.length ? ` /Dests << ${names.join(" ")} >>` : ""} >>`;
+  } else {
+    objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  }
   objects[2] = `<< /Type /Pages /Kids [${pages.map((_, index) => `${pageId(index)} 0 R`).join(" ")}] /Count ${pages.length} >>`;
   objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
   pages.forEach((lines, index) => {
@@ -85,7 +131,7 @@ function jpegSize(jpeg: Buffer): { width: number; height: number; colours: numbe
  * image may use PNG's own row filters), and a JPEG is placed whole. Pictures are taken
  * to be 150 dots per inch. Pages given as lines of text, or as nothing, can be mixed in.
  */
-export function buildScannedPdf(pages: ScanPage[]): Buffer {
+export function buildScannedPdf(pages: ScanPage[], options: { outline?: Array<{ title: string; page: number }> } = {}): Buffer {
   const objects: Buffer[] = [];
   const add = (dictionary: string, stream?: Buffer) => {
     objects.push(
@@ -143,8 +189,23 @@ export function buildScannedPdf(pages: ScanPage[]): Buffer {
     );
   }
 
+  // Bookmarks, one level, after everything else: the root, then one object for each.
+  let outlineRef = "";
+  const outline = options.outline ?? [];
+  if (outline.length > 0) {
+    const rootId = objects.length + 3;
+    const itemId = (index: number) => rootId + 1 + index;
+    add(`<< /Type /Outlines /First ${itemId(0)} 0 R /Last ${itemId(outline.length - 1)} 0 R /Count ${outline.length} >>`);
+    outline.forEach((item, index) => {
+      const prev = index > 0 ? ` /Prev ${itemId(index - 1)} 0 R` : "";
+      const next = index < outline.length - 1 ? ` /Next ${itemId(index + 1)} 0 R` : "";
+      add(`<< /Title ${pdfString(item.title)} /Parent ${rootId} 0 R /Dest [${pageIds[item.page - 1]} 0 R /XYZ 0 792 0]${prev}${next} >>`);
+    });
+    outlineRef = ` /Outlines ${rootId} 0 R`;
+  }
+
   const all = [
-    Buffer.from("<< /Type /Catalog /Pages 2 0 R >>", "latin1"),
+    Buffer.from(`<< /Type /Catalog /Pages 2 0 R${outlineRef} >>`, "latin1"),
     Buffer.from(`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`, "latin1"),
     ...objects,
   ];

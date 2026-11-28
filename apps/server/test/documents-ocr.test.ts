@@ -297,6 +297,23 @@ describe("reading a scanned PDF", () => {
     });
   });
 
+  it("puts what it reads under the chapter a scanned book's bookmarks give the page", async () => {
+    const content = buildScannedPdf([firstPng, secondPng], {
+      outline: [
+        { title: "Chapter 1: Camp", page: 1 },
+        { title: "Chapter 2: Light", page: 2 },
+      ],
+    });
+    const scan = await add({ name: "scanned book.pdf", content });
+    const done = await read(scan.id);
+    const sections = await sectionsOf(done.id);
+    expect(sections.map((section: { page: number; heading: string | null }) => [section.page, section.heading])).toEqual([
+      [1, "Chapter 1: Camp"],
+      [2, "Chapter 2: Light"],
+    ]);
+    expect((await search("lantern")).results[0].passages[0]).toMatchObject({ page: 2, heading: "Chapter 2: Light" });
+  });
+
   it("reads pages that were scanned upside down or on their side", async () => {
     const scan = await add({
       name: "any way up.pdf",

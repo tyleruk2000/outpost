@@ -693,6 +693,9 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 ### Fixed
 
 - Search counts every match, so every page can be reached.
+- A whole book found by its words says which chapter matched: a PDF's bookmarks name the
+  chapter of each page, scanned pages read by OCR included, and are searched and shown
+  as other documents' headings are. A PDF added before gets them with **Read text again**.
 - "Bicarbonate of soda" also finds "baking soda" and "bicarb", and "accident and
   emergency" the other names for it: a name in the table of other ways of saying things
   with a small word in it never matched, as the small words are left out of a search first.

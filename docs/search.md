@@ -115,7 +115,7 @@ results with some."
 
 | Kind | What is indexed |
 | --- | --- |
-| Documents | Title, author or file name, category, tags, and the text, page by page for PDFs; for scans, the OCR text once read. A book chapter is a document. |
+| Documents | Title, author or file name, category, tags, and the text, page by page for PDFs; for scans, the OCR text once read. A book chapter is a document. A PDF's bookmarks name the chapter of each page: it is searched with the page and shown with a result, so a whole book found by its words says which chapter matched. A PDF added before this was read without them; **Read text again** in its details adds them. |
 | Notes | Title, parent pages' titles, tags, and the text under each heading. |
 | Installed collections | Title, publisher, description. |
 | Catalogue entries | What Explore lists, so you can find something to download. |

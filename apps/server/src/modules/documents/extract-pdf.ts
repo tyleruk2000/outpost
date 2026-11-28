@@ -2,6 +2,11 @@
  * Text from a PDF, one section per page so that a search result can open the document
  * at the page it matched.
  *
+ * A book's bookmarks (its outline) name the chapter each page falls in: a page's heading
+ * is the last bookmark at or before it, the most particular one where they nest ("Chapter
+ * 1: Batteries", not "Part one"). Headings are searched and shown as other formats'
+ * headings are, so a whole book found by its words says which chapter matched.
+ *
  * Runs only inside the extraction worker: parsing a large PDF is long, synchronous
  * work that would otherwise stall every other request to the server.
  */
@@ -44,6 +49,68 @@ function openError(error: unknown): ExtractionError {
   );
 }
 
+/** Bookmarks read at most: a table of contents, not every paragraph of a generated file. */
+const MAX_BOOKMARKS = 5_000;
+
+interface OutlineItem {
+  title?: unknown;
+  dest?: unknown;
+  items?: OutlineItem[];
+}
+
+type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
+
+/**
+ * Where each bookmark goes, as [page, depth, title], in the order of the outline. A
+ * bookmark that goes to no page (a link to a web address, a broken destination) is left
+ * out. Never throws: a book without a readable outline is read without one.
+ */
+async function bookmarks(pdf: PdfDocument): Promise<Array<{ page: number; depth: number; order: number; title: string }>> {
+  const outline = (await pdf.getOutline().catch(() => null)) as OutlineItem[] | null;
+  if (!outline?.length) return [];
+  const found: Array<{ page: number; depth: number; order: number; title: string }> = [];
+  const pageOf = async (dest: unknown): Promise<number | null> => {
+    const explicit = typeof dest === "string" ? await pdf.getDestination(dest) : dest;
+    if (!Array.isArray(explicit) || explicit.length === 0) return null;
+    const target = explicit[0];
+    // A page given by its number, as some writers do, or by a reference to the page itself.
+    if (Number.isInteger(target)) return (target as number) + 1;
+    if (target && typeof target === "object") return (await pdf.getPageIndex(target as Parameters<PdfDocument["getPageIndex"]>[0])) + 1;
+    return null;
+  };
+  const walk = async (items: OutlineItem[], depth: number) => {
+    for (const item of items) {
+      if (found.length >= MAX_BOOKMARKS) return;
+      const title = clean(item.title);
+      const page = await pageOf(item.dest).catch(() => null);
+      if (title && page !== null && page >= 1 && page <= pdf.numPages) found.push({ page, depth, order: found.length, title });
+      if (item.items?.length) await walk(item.items, depth + 1);
+    }
+  };
+  await walk(outline, 0);
+  return found;
+}
+
+/** The heading of each page from 1 to `pages`: the last bookmark at or before it, the deepest among those at one page. */
+function headingsByPage(
+  marks: Array<{ page: number; depth: number; order: number; title: string }>,
+  pages: number,
+): Array<string | undefined> {
+  const byPage = new Map<number, { depth: number; order: number; title: string }>();
+  for (const mark of marks) {
+    const held = byPage.get(mark.page);
+    // On one page, the deepest bookmark names it; between equally deep ones, the last in the outline.
+    if (!held || mark.depth > held.depth || (mark.depth === held.depth && mark.order > held.order)) byPage.set(mark.page, mark);
+  }
+  const headings: Array<string | undefined> = [];
+  let current: string | undefined;
+  for (let page = 1; page <= pages; page += 1) {
+    current = byPage.get(page)?.title ?? current;
+    headings[page] = current;
+  }
+  return headings;
+}
+
 export async function extractPdf(file: string, maxPages: number, onProgress: (progress: ExtractProgress) => void): Promise<Extracted> {
   const data = new Uint8Array(await fs.promises.readFile(file));
   // verbosity 0: the parser's own warnings about odd files would otherwise fill the log.
@@ -58,19 +125,27 @@ export async function extractPdf(file: string, maxPages: number, onProgress: (pr
     const notes: string[] = [];
     let unreadable = 0;
     let blank = 0;
+    const headings = headingsByPage(await bookmarks(pdf), limit);
+    /** The headings of pages without text, for OCR. */
+    const pageHeadings: Record<number, string> = {};
 
     for (let number = 1; number <= limit; number += 1) {
       try {
         const page = await pdf.getPage(number);
         const content = await page.getTextContent();
         const text = pageText(content.items as TextItem[]);
-        if (text) sections.push({ page: number, text });
-        else blank += 1;
+        const heading = headings[number];
+        if (text) sections.push(heading ? { page: number, heading, text } : { page: number, text });
+        else {
+          blank += 1;
+          if (heading) pageHeadings[number] = heading;
+        }
         // Frees the page's parsed objects; without it memory grows with every page.
         page.cleanup();
       } catch {
         // One broken page should not cost the rest of the document.
         unreadable += 1;
+        if (headings[number]) pageHeadings[number] = headings[number]!;
       }
       onProgress({ current: number, total: limit, message: `Reading page ${number} of ${limit}` });
     }
@@ -102,6 +177,7 @@ export async function extractPdf(file: string, maxPages: number, onProgress: (pr
       meta: { title: title && !JUNK_TITLE.test(title) ? title : undefined, author: clean(info?.Author) },
       notes,
       pagesWithoutText: blank + unreadable,
+      ...(Object.keys(pageHeadings).length > 0 ? { pageHeadings } : {}),
     };
   } finally {
     // Ends the document's parser and frees everything it loaded.

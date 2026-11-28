@@ -35,7 +35,7 @@ import { bookChapters, collections, documents, documentTags, tags } from "../../
 import type { LocationRow } from "../storage/service.ts";
 import { readAudioFacts } from "./audio-tags.ts";
 import { ExtractionFailure, runExtraction } from "./extract-host.ts";
-import type { Extracted, ExtractedSection, ExtractKind } from "./extract-types.ts";
+import { type Extracted, type ExtractedSection, type ExtractKind, withHeading } from "./extract-types.ts";
 import { createExtractedStore } from "./extracted-store.ts";
 import {
   assertContentMatches,
@@ -603,7 +603,11 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       const ownPages = new Set(result.sections.map((section) => section.page ?? 0));
       const pageless = result.sections.some((section) => section.page === undefined);
       const stillScanned = (page: number) => !ownPages.has(page) && !(page === 0 && pageless);
-      const fromOcr = before.sections.filter((section) => section.ocr && stillScanned(section.page ?? 0));
+      // Kept, under the heading the file now gives its page (its bookmarks may have changed).
+      const pageHeadings = result.pageHeadings ?? {};
+      const fromOcr = before.sections
+        .filter((section) => section.ocr && stillScanned(section.page ?? 0))
+        .map((section) => withHeading(section, section.page === undefined ? undefined : pageHeadings[section.page]));
       const ocrPages = before.ocrPages.filter(stillScanned);
       const sections = [...result.sections, ...fromOcr].sort((a, b) => (a.page ?? 0) - (b.page ?? 0));
 
@@ -614,7 +618,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       // What OCR could try: the PDF pages that gave no text, or the one picture of an image.
       const scanPages = kind === "pdf" ? (result.pagesWithoutText ?? 0) : kind === "image" && ocr.kindOf(row) ? 1 : 0;
 
-      await extracted.write(id, sections, ocrPages);
+      await extracted.write(id, sections, ocrPages, pageHeadings);
       const patch: Partial<DocumentRow> = {
         extraction,
         extractionDetail: detail,

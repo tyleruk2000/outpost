@@ -24,6 +24,12 @@ export interface ExtractedSection {
   chapter?: number;
 }
 
+/** The section under `heading`, or with none when there is none. */
+export function withHeading(section: ExtractedSection, heading: string | undefined): ExtractedSection {
+  const { heading: _old, ...rest } = section;
+  return heading ? { ...rest, heading } : rest;
+}
+
 export interface Extracted {
   sections: ExtractedSection[];
   /** Pages in the whole PDF (not only those read); null for other types. */
@@ -37,6 +43,11 @@ export interface Extracted {
    * (a picture of text) looks like.
    */
   pagesWithoutText?: number;
+  /**
+   * For PDFs with bookmarks: the heading of each page that gave no text, by page number,
+   * for the text OCR reads from it later.
+   */
+  pageHeadings?: Record<number, string>;
 }
 
 export interface ExtractProgress {
