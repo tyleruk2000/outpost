@@ -122,8 +122,14 @@ Range request (`bytes=start-end`, the answer's `Content-Range` checked and no mo
 read than asked). The bytes are written over the stretch and the scan goes on from there,
 at most 8 stretches and 64 MiB in all; then the whole file is checked against Geofabrik's
 MD5. A server that answers 200 with the whole file is not read on, and nothing changes; a
-repair that does not bring back the MD5 puts every byte back. Once repaired, Storage's own
-check runs and marks the file intact. Tests: `country-file-repair.test.ts` (a local server
+repair that does not bring back the MD5 puts every byte back. A `Content-Range` that is
+not the stretch asked for, or whose total is `*` or not the file's size, a body longer or
+shorter than asked, are refused. The bytes written over are kept on the disk beside the
+file (`<file>.outpost-repair-undo`, written and synced before the file is touched) until
+the MD5 matches; one found after a power cut puts the file back, soon after start and before
+any repair. A repair started again by a restart asks nothing of Geofabrik: it ends as failed,
+"not finished: press Repair again". Once repaired, Storage's own check runs and marks the
+file intact. Tests: `country-file-repair.test.ts` (a local server
 with and without Range), `map-data.test.ts`.
 
 `POST /api/maps/data/add` adds a country's roads, places and country file in one press, with

@@ -6,10 +6,12 @@
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHttpClient } from "../src/core/http.ts";
-import { findDamage, repairCountryFile } from "../src/modules/maps/country-file-repair.ts";
+import { findDamage, repairCountryFile, restoreFromUndo, undoPathOf } from "../src/modules/maps/country-file-repair.ts";
 import { type FileServer, startFileServer } from "./fixtures/downloads/file-server.ts";
 import { buildPbf } from "./fixtures/layers/builders.ts";
 import { tempDir } from "./temp.ts";
@@ -119,5 +121,90 @@ describe("repairing a damaged country file", () => {
     const shortFile = fileWith(short);
     await expect(repair(shortFile, undefined, "0".repeat(32))).rejects.toThrow(/put back as it was/);
     expect(fs.readFileSync(shortFile).equals(short)).toBe(true);
+  });
+
+  it("keeps the way back on the disk until the checksum is matched, and puts the file back from it after a power cut", async () => {
+    const { copy } = damaged();
+    const file = fileWith(copy);
+    let patched: Buffer | null = null;
+    let undo: Buffer | null = null;
+    await repairCountryFile({
+      filePath: file,
+      url: server.url("/europe/monaco-261121.osm.pbf"),
+      bytes: good.length,
+      md5,
+      client,
+      allowedHosts: [server.host],
+      progress: (message) => {
+        // The moment before the checksum: the file is already written over, and the undo is beside it.
+        if (message.startsWith("Checking")) {
+          patched = fs.readFileSync(file);
+          undo = fs.readFileSync(undoPathOf(file));
+        }
+      },
+    });
+    expect(fs.existsSync(undoPathOf(file))).toBe(false);
+    // As a power cut would have left it: the file written over, the undo beside it.
+    fs.writeFileSync(file, patched!);
+    fs.writeFileSync(undoPathOf(file), undo!);
+    expect(await restoreFromUndo(file)).toBe(true);
+    expect(fs.readFileSync(file).equals(copy)).toBe(true);
+    expect(fs.existsSync(undoPathOf(file))).toBe(false);
+    expect(await restoreFromUndo(file)).toBe(false);
+  });
+
+  describe("an answer that is not the stretch asked for", () => {
+    let odd: http.Server;
+    let origin = "";
+    /** Answers 206 as `kind` says, whatever was asked. */
+    let kind: "star" | "other-total" | "other-range" | "long" | "short" = "star";
+    beforeAll(async () => {
+      odd = http.createServer((request, response) => {
+        const [, a, b] = /^bytes=(\d+)-(\d+)$/.exec(request.headers.range ?? "")!.map(Number) as [number, number, number];
+        const piece = good.subarray(a, b + 1);
+        const range =
+          kind === "star"
+            ? `bytes ${a}-${b}/*`
+            : kind === "other-total"
+              ? `bytes ${a}-${b}/${good.length + 1}`
+              : kind === "other-range"
+                ? `bytes ${a + 1}-${b + 1}/${good.length}`
+                : `bytes ${a}-${b}/${good.length}`;
+        const body =
+          kind === "long" ? Buffer.concat([piece, Buffer.alloc(100)]) : kind === "short" ? piece.subarray(0, piece.length - 10) : piece;
+        // No length said, so that a body longer or shorter than asked reaches the reader.
+        response.writeHead(206, { "content-range": range });
+        response.end(body);
+      });
+      await new Promise<void>((resolve) => odd.listen(0, "127.0.0.1", resolve));
+      origin = `http://127.0.0.1:${(odd.address() as AddressInfo).port}`;
+    });
+    afterAll(async () => {
+      await new Promise((resolve) => odd.close(resolve));
+    });
+
+    it.each([
+      ["star", /different stretch|size kept/],
+      ["other-total", /different stretch|size kept/],
+      ["other-range", /different stretch/],
+      ["long", /more than the stretch/],
+      ["short", /came short/],
+    ] as const)("refuses %s, changing nothing", async (which, said) => {
+      kind = which;
+      const { copy } = damaged();
+      const file = fileWith(copy);
+      await expect(
+        repairCountryFile({
+          filePath: file,
+          url: `${origin}/monaco.osm.pbf`,
+          bytes: good.length,
+          md5,
+          client,
+          allowedHosts: ["127.0.0.1"],
+        }),
+      ).rejects.toThrow(said);
+      expect(fs.readFileSync(file).equals(copy)).toBe(true);
+      expect(fs.existsSync(undoPathOf(file))).toBe(false);
+    });
   });
 });

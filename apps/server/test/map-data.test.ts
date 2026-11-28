@@ -9,8 +9,11 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import type { DownloadDetail, ManagedItemsResponse, MapDataItem, MapDataResponse, UsageResponse } from "@outpost/shared";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { jobs } from "../src/db/schema.ts";
 import { datedFilesIn, dateOfName } from "../src/modules/layers/adapters/geofabrik-file.ts";
+import { COUNTRY_FILE_REPAIR_JOB } from "../src/modules/maps/country-file-repair.ts";
 import { countryOfArea } from "../src/modules/maps/map-data.ts";
 import { buildPbf } from "./fixtures/layers/builders.ts";
 import { createGeofabrikStandIn } from "./fixtures/layers/geofabrik-stand-in.ts";
@@ -300,6 +303,29 @@ describe("one country file for roads and places", () => {
     expect(end).toBeGreaterThanOrEqual(at);
     expect(fs.readFileSync(file).equals(body)).toBe(true);
     expect(rowOf(await data(), "extract")).toMatchObject([{ state: "ready" }]);
+  });
+
+  it("never asks Geofabrik again by itself when a repair is started again by a restart", async () => {
+    const [kept] = app.ctx.services.collections.list({ kind: "extract" });
+    const file = app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath);
+    const bytes = fs.readFileSync(file);
+    bytes[Math.floor(bytes.length * 0.6)]! ^= 0xff;
+    fs.writeFileSync(file, bytes);
+    // As the server leaves a task it was running when it stopped: queued again, "Resuming after restart".
+    const job = app.ctx.jobs.enqueue(
+      COUNTRY_FILE_REPAIR_JOB,
+      { collectionId: kept!.id },
+      { title: "Monaco: source file: repair", subject: `collection:${kept!.id}`, maxAttempts: 1, paused: true },
+    );
+    app.ctx.db.update(jobs).set({ progressMessage: "Resuming after restart" }).where(eq(jobs.id, job.id)).run();
+    standIn.ranges.length = 0;
+    standIn.requests.length = 0;
+    app.ctx.jobs.resume(job.id);
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(job.id)).toMatchObject({ state: "failed", error: expect.stringMatching(/not finished: press Repair again/) });
+    expect(standIn.requests).toEqual([]);
+    expect(fs.readFileSync(file).equals(bytes)).toBe(true);
+    fs.writeFileSync(file, body);
   });
 
   it("says when a kept file has gone missing, and removes it only when asked", async () => {

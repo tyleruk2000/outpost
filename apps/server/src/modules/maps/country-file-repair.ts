@@ -142,7 +142,9 @@ async function fetchStretch(
     !range ||
     Number(range[1]) !== stretch.start ||
     Number(range[2]) !== stretch.end - 1 ||
-    (range[3] !== "*" && Number(range[3]) !== bytes)
+    // The whole file's size must be given, and be the size kept: "*" says nothing of which file this is.
+    range[3] === "*" ||
+    Number(range[3]) !== bytes
   ) {
     await drop();
     throw new AppError(
@@ -174,6 +176,60 @@ async function md5Of(filePath: string, signal?: AbortSignal): Promise<string> {
   return hash.digest("hex");
 }
 
+/** Where the bytes a repair writes over are kept until Geofabrik's checksum is matched: beside the file. */
+export const undoPathOf = (filePath: string) => `${filePath}.outpost-repair-undo`;
+const UNDO_MAGIC = "OUTPOST-REPAIR-UNDO 1\n";
+
+/** Writes the undo file in full and to the disk, before any byte of the file is changed. */
+async function writeUndo(filePath: string, originalSize: number, undo: Array<{ start: number; bytes: Buffer }>): Promise<void> {
+  const head = Buffer.from(`${UNDO_MAGIC}${JSON.stringify({ originalSize, stretches: undo.map((u) => [u.start, u.bytes.length]) })}\n`);
+  const target = undoPathOf(filePath);
+  const handle = await fs.promises.open(`${target}.tmp`, "w");
+  try {
+    await handle.writeFile(Buffer.concat([head, ...undo.map((u) => u.bytes)]));
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  await fs.promises.rename(`${target}.tmp`, target);
+}
+
+/**
+ * Puts a file back as it was before a repair that did not finish (the server stopped while
+ * it ran), from the undo file beside it, and removes the undo file. Returns whether there
+ * was one. An undo file that cannot be read is left where it is, and the file untouched.
+ */
+export async function restoreFromUndo(filePath: string): Promise<boolean> {
+  const target = undoPathOf(filePath);
+  await fs.promises.rm(`${target}.tmp`, { force: true });
+  let data: Buffer;
+  try {
+    data = await fs.promises.readFile(target);
+  } catch {
+    return false;
+  }
+  const end = data.indexOf(10, UNDO_MAGIC.length);
+  if (data.toString("utf8", 0, UNDO_MAGIC.length) !== UNDO_MAGIC || end < 0) return false;
+  const head = JSON.parse(data.toString("utf8", UNDO_MAGIC.length, end)) as { originalSize: number; stretches: Array<[number, number]> };
+  const handle = await fs.promises.open(filePath, "r+");
+  try {
+    let at = end + 1;
+    const pieces = head.stretches.map(([start, length]) => {
+      const piece = { start, bytes: data.subarray(at, at + length) };
+      at += length;
+      return piece;
+    });
+    // Last first: a stretch fetched twice holds the original bytes in its first entry.
+    for (const { start, bytes } of pieces.reverse()) await handle.write(bytes, 0, bytes.length, start);
+    await handle.truncate(head.originalSize);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  await fs.promises.rm(target, { force: true });
+  return true;
+}
+
 export interface RepairResult {
   stretches: Stretch[];
   /** Bytes fetched in all. */
@@ -195,21 +251,15 @@ export async function repairCountryFile(input: {
   progress?: (message: string) => void;
 }): Promise<RepairResult> {
   const { filePath, bytes, signal } = input;
+  // A repair cut short before: put back first, so that this one starts from the file as it was.
+  await restoreFromUndo(filePath);
   const originalSize = (await fs.promises.stat(filePath)).size;
   if (originalSize > bytes)
     throw new AppError("bad_request", "The file is larger than Geofabrik's, so it cannot be repaired in place. Download it again.");
   const undo: Array<{ start: number; bytes: Buffer }> = [];
   const stretches: Stretch[] = [];
   let fetched = 0;
-  const putBack = async () => {
-    const handle = await fs.promises.open(filePath, "r+");
-    try {
-      for (const { start, bytes: old } of undo.reverse()) await handle.write(old, 0, old.length, start);
-      await handle.truncate(originalSize);
-    } finally {
-      await handle.close();
-    }
-  };
+  const putBack = () => restoreFromUndo(filePath);
   try {
     let from = 0;
     for (;;) {
@@ -225,7 +275,10 @@ export async function repairCountryFile(input: {
         const old = Buffer.alloc(stretch.end - stretch.start);
         const { bytesRead } = await handle.read(old, 0, old.length, stretch.start);
         undo.push({ start: stretch.start, bytes: old.subarray(0, bytesRead) });
+        // The way back is on the disk before the file is touched, so that a power cut leaves both.
+        await writeUndo(filePath, originalSize, undo);
         await handle.write(fresh, 0, fresh.length, stretch.start);
+        await handle.sync();
       } finally {
         await handle.close();
       }
@@ -242,6 +295,7 @@ export async function repairCountryFile(input: {
           ? "No damaged stretch was found, but the file does not match Geofabrik's checksum. Download it again."
           : "The file still does not match Geofabrik's checksum after the repair, so it was put back as it was. Download it again.",
       );
+    await fs.promises.rm(undoPathOf(filePath), { force: true });
     return { stretches, fetched };
   } catch (error) {
     if (undo.length > 0) await putBack();
@@ -260,9 +314,14 @@ export function createCountryFileRepair(ctx: AppContext, client: HttpClient) {
   const { collections, storage } = ctx.services;
   ctx.jobs.register<{ collectionId: string }>(COUNTRY_FILE_REPAIR_JOB, {
     queue: "import",
-    async run({ payload, signal, progress }) {
+    async run({ payload, signal, progress, job }) {
       const row = collections.get(payload.collectionId);
       if (!row) throw new PermanentJobError("The source file has been removed, so there is nothing to repair.");
+      // Started again by a restart, not by a press: nothing is asked of Geofabrik; the file is put back as it was.
+      if (job.progressMessage === "Resuming after restart") {
+        if (storage.isAvailable(row.locationId)) await restoreFromUndo(storage.resolve(row.locationId, row.relPath));
+        throw new PermanentJobError("Outpost stopped while the repair was under way, so it was not finished: press Repair again.");
+      }
       const meta = (row.meta as { countryFile?: { sourceUrl?: string; md5?: string | null } }).countryFile;
       if (!meta?.sourceUrl || !meta.md5)
         throw new PermanentJobError("Outpost does not have Geofabrik's checksum for this file, so it cannot repair it. Download it again.");
@@ -292,6 +351,21 @@ export function createCountryFileRepair(ctx: AppContext, client: HttpClient) {
       ctx.events.publish({ type: "maps.changed" });
     },
   });
+  // Soon after start: a repair cut short by a power cut has its file put back from the undo beside it.
+  const leftOver = setTimeout(() => {
+    void (async () => {
+      for (const row of collections.list({ kind: "extract" })) {
+        if (!storage.isAvailable(row.locationId)) continue;
+        try {
+          if (await restoreFromUndo(storage.resolve(row.locationId, row.relPath)))
+            ctx.log.info({ collection: row.id }, "A source file's unfinished repair was put back as it was");
+        } catch (error) {
+          ctx.log.warn({ err: error, collection: row.id }, "A source file's unfinished repair could not be put back");
+        }
+      }
+    })();
+  }, 0);
+  leftOver.unref();
   return {
     start(collectionId: string): { taskId: string } {
       const row = collections.get(collectionId);
