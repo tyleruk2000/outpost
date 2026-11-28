@@ -177,7 +177,13 @@ export function routeWords(parsed: ParsedQuery): RouteWords {
     .flatMap((term, index) => [term, ...(parsed.alternatives?.[index] ?? [])])
     .flatMap((term) => term.split(" "));
   const all = [...words, ...(parsed.ignored ?? [])].map((word) => word.toLowerCase());
-  return { words, howTo: all.some((word) => HOW_TO_WORDS.has(word)) };
+  return { words, howTo: all.some((word) => HOW_TO_WORDS.has(word)) || asksWhatToDo(parsed.ignored ?? []) };
+}
+
+/** "What to do for a burn", "what do I do if…": the small words left out of a search still say it asks what to do. */
+export function asksWhatToDo(ignored: string[]): boolean {
+  const words = ignored.map((word) => word.toLowerCase());
+  return words.includes("what") && words.includes("do");
 }
 
 const tokens = (text: string) =>
@@ -203,7 +209,12 @@ function profileOf(archive: ArchiveProfile): { strong: string; weak: string } {
   };
 }
 
-/** Remembers which archives gave good results for which words, lately. Kept in memory only; it starts again on restart. */
+/**
+ * Remembers which archives gave good results for which words, lately. Held in memory, and
+ * kept in the database by the kiwix module (`saved`, read back by `createRouteMemory`), so
+ * that what was learned outlives a restart. The words are what people searched for: erasing
+ * everything erases them (`clear`).
+ */
 export interface RouteMemory {
   /** Notes how an archive did for the words of a search: whether it gave a good result. */
   record(words: string[], archiveId: string, good: boolean): void;
@@ -211,11 +222,42 @@ export interface RouteMemory {
   share(words: string[], archiveId: string): number;
   /** Forgets an archive, when it is removed or changes. */
   forget(archiveId: string): void;
+  /** Forgets everything. */
+  clear(): void;
+  /** What it holds, as plain data for JSON, oldest word first. */
+  saved(): SavedRoutes;
 }
 
-export function createRouteMemory(limit = 2000): RouteMemory {
-  // word stem → archive → how its last searches went, newest last; a Map keeps insertion order, so the oldest word goes first.
+/** `RouteMemory.saved()`: each word's stem, with each archive's last outcomes for it, oldest first. */
+export interface SavedRoutes {
+  version: 1;
+  words: Array<[word: string, archives: Array<[archiveId: string, outcomes: boolean[]]>]>;
+}
+
+/** The last outcomes kept for a word and an archive: an archive that stops answering well loses its place. */
+const OUTCOMES_KEPT = 10;
+
+/** What was saved, if it is in the form `saved` gives; anything else is nothing. */
+function readSaved(saved: unknown, limit: number): Map<string, Map<string, boolean[]>> {
   const seen = new Map<string, Map<string, boolean[]>>();
+  const value = saved as Partial<SavedRoutes> | null;
+  if (!value || typeof value !== "object" || value.version !== 1 || !Array.isArray(value.words)) return seen;
+  for (const entry of value.words.slice(-limit)) {
+    if (!Array.isArray(entry) || typeof entry[0] !== "string" || !Array.isArray(entry[1])) continue;
+    const archives = new Map<string, boolean[]>();
+    for (const pair of entry[1]) {
+      if (!Array.isArray(pair) || typeof pair[0] !== "string" || !Array.isArray(pair[1])) continue;
+      if (!pair[1].every((outcome) => typeof outcome === "boolean")) continue;
+      archives.set(pair[0], (pair[1] as boolean[]).slice(-OUTCOMES_KEPT));
+    }
+    if (archives.size > 0) seen.set(entry[0], archives);
+  }
+  return seen;
+}
+
+export function createRouteMemory(limit = 2000, saved?: unknown): RouteMemory {
+  // word stem → archive → how its last searches went, newest last; a Map keeps insertion order, so the oldest word goes first.
+  const seen = readSaved(saved, limit);
   return {
     record(words, archiveId, good) {
       for (const word of new Set(words.map((item) => stem(item.toLowerCase())))) {
@@ -223,8 +265,7 @@ export function createRouteMemory(limit = 2000): RouteMemory {
         if (archives) seen.delete(word);
         else archives = new Map();
         seen.set(word, archives);
-        // Only the last ten searches count, so an archive that stops answering well loses its place.
-        archives.set(archiveId, [...(archives.get(archiveId) ?? []), good].slice(-10));
+        archives.set(archiveId, [...(archives.get(archiveId) ?? []), good].slice(-OUTCOMES_KEPT));
         while (seen.size > limit) seen.delete(seen.keys().next().value!);
       }
     },
@@ -239,6 +280,10 @@ export function createRouteMemory(limit = 2000): RouteMemory {
     forget(archiveId) {
       for (const archives of seen.values()) archives.delete(archiveId);
     },
+    clear() {
+      seen.clear();
+    },
+    saved: () => ({ version: 1, words: [...seen].map(([word, archives]) => [word, [...archives]]) }),
   };
 }
 

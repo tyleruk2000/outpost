@@ -23,6 +23,8 @@ interface StoredText {
   sections: ExtractedSection[];
   /** Pages OCR has been run on, whether or not it found text; 0 stands for an image. */
   ocrPages?: number[];
+  /** The headings (from a PDF's bookmarks) of pages without text of their own, for what OCR reads from them. */
+  pageHeadings?: Record<string, string>;
 }
 
 /** OCR results waiting to be made part of the document's text. */
@@ -35,13 +37,15 @@ interface StoredOcrProgress {
 export interface StoredDocumentText {
   sections: ExtractedSection[];
   ocrPages: number[];
+  /** Headings of pages without text of their own, by page number. */
+  pageHeadings: Record<number, string>;
 }
 
 export interface ExtractedStore {
   read(documentId: string): Promise<ExtractedSection[]>;
-  /** The sections, and which pages OCR has already been run on. */
+  /** The sections, which pages OCR has already been run on, and the headings of pages without text. */
   readAll(documentId: string): Promise<StoredDocumentText>;
-  write(documentId: string, sections: ExtractedSection[], ocrPages?: number[]): Promise<void>;
+  write(documentId: string, sections: ExtractedSection[], ocrPages?: number[], pageHeadings?: Record<number, string>): Promise<void>;
   /** Removes everything kept for a document, unfinished OCR included. */
   remove(documentId: string): Promise<void>;
   readOcrProgress(documentId: string): Promise<OcrPage[]>;
@@ -65,13 +69,18 @@ export function createExtractedStore(ctx: AppContext): ExtractedStore {
   async function readAll(documentId: string): Promise<StoredDocumentText> {
     try {
       const stored = JSON.parse(await fs.promises.readFile(fileFor(documentId), "utf8")) as StoredText;
+      const pageHeadings: Record<number, string> = {};
+      for (const [page, heading] of Object.entries(stored.pageHeadings ?? {})) {
+        if (Number.isInteger(Number(page)) && typeof heading === "string") pageHeadings[Number(page)] = heading;
+      }
       return {
         sections: Array.isArray(stored.sections) ? stored.sections : [],
         ocrPages: Array.isArray(stored.ocrPages) ? stored.ocrPages.filter((page) => Number.isInteger(page)) : [],
+        pageHeadings,
       };
     } catch {
       // Not extracted yet, or the file was lost: the document simply has no text.
-      return { sections: [], ocrPages: [] };
+      return { sections: [], ocrPages: [], pageHeadings: {} };
     }
   }
 
@@ -82,9 +91,10 @@ export function createExtractedStore(ctx: AppContext): ExtractedStore {
       return (await readAll(documentId)).sections;
     },
 
-    async write(documentId, sections, ocrPages = []) {
+    async write(documentId, sections, ocrPages = [], pageHeadings = {}) {
       const stored: StoredText = { version: 1, documentId, extractedAt: Date.now(), sections };
       if (ocrPages.length > 0) stored.ocrPages = ocrPages;
+      if (Object.keys(pageHeadings).length > 0) stored.pageHeadings = pageHeadings;
       await writeJson(fileFor(documentId), stored);
     },
 

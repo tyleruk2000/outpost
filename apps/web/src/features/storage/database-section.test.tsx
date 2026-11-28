@@ -227,6 +227,31 @@ describe("the Database section", () => {
     expect(screen.getByText("Tree 12 page 340 cell 0: invalid page number 9999")).toBeTruthy();
   });
 
+  it("offers to build a broken search index again, and does not send a person to a backup for it", async () => {
+    const line =
+      "The search index (its words) does not match the passages it was built from (SQLite: database disk image is malformed). Notes and files are not affected: it can be built again from them.";
+    const broken = status({
+      lastCheck: { kind: "full", at: Date.now(), milliseconds: 900, ok: false, problems: [line], searchIndex: "broken" },
+    });
+    const rebuilding = status({
+      ...broken,
+      active: {
+        id: "j1",
+        type: "database.rebuild-search",
+        title: "Build the search index again",
+        state: "running",
+      } as DatabaseStatus["active"],
+    });
+    serve(broken, rebuilding);
+    show();
+    expect(await screen.findByText(line)).toBeTruthy();
+    expect(screen.getByText(/Only the search index is affected/)).toBeTruthy();
+    expect(screen.queryByText(/Restoring the most recent backup/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Build the search index again" }));
+    expect(requests.map((request) => request.call)).toEqual(["POST /api/database/rebuild-search-index"]);
+    expect(await screen.findByText("Building the search index again from your notes and files.")).toBeTruthy();
+  });
+
   it("asks before reclaiming space, saying what it costs", async () => {
     serve(status());
     show();

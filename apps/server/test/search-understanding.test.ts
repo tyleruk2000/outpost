@@ -73,6 +73,39 @@ describe("other ways of saying a word", () => {
     expect(expandQuery(parseQuery("burns ")).also).toEqual(["scald"]);
   });
 
+  it("knows a phrase of the table by its words that matter, since the small ones are dropped first", () => {
+    // "of" and "and" are left out of what is searched before the table is read.
+    const soda = expandQuery(parseQuery("bicarbonate of soda "));
+    expect(soda.also).toEqual(["baking soda", "bicarb"]);
+    expect(soda.parsed).toMatchObject({ required: ["bicarbonate soda"], joined: [true], ignored: ["of"], prefixLast: false });
+    expect(expandQuery(parseQuery("how much bicarbonate of soda in scones")).also).toContain("baking soda");
+    expect(expandQuery(parseQuery("accident and emergency ")).also).toContain("emergency room");
+    // And the other way: the phrase is asked for as written, small words and all.
+    expect(expandQuery(parseQuery("baking soda ")).also).toEqual(["bicarbonate of soda", "bicarb"]);
+    expect(toFtsQuery(expandQuery(parseQuery("bicarb ")).parsed)).toBe('("bicarb" OR "bicarbonate of soda" OR "baking soda")');
+  });
+
+  it("finds the ways of preserving food for 'preserve', beside food, one way only", () => {
+    const also = (q: string) => expandQuery(parseQuery(q)).also;
+    expect(also("how to preserve fish")).toEqual(["canner", "curing", "smoking", "salting", "drying", "pickling"]);
+    expect(also("preserving vegetables ")).toContain("pickling");
+    // Not without food, and not the other way round.
+    expect(also("preserve old brick ")).toEqual([]);
+    expect(also("smoking fish ")).not.toContain("preserve");
+    expect(also("smoking fish ")).not.toContain("canner");
+  });
+
+  it("never takes one word for a phrase of the table that has more", () => {
+    // "can" and "being" are left out of a search, but a phrase is not one word because of it.
+    const also = (q: string) => expandQuery(parseQuery(q)).also;
+    expect(also("gas ")).not.toContain("jerry can");
+    expect(also("gas ")).not.toContain("jerrycan");
+    expect(also("fuel gauge ")).not.toContain("jerry can");
+    expect(also("bottle opener ")).not.toContain("tin opener");
+    expect(also("sick child ")).not.toContain("vomiting");
+    expect(also("feeling sick ")).not.toContain("vomiting");
+  });
+
   it("carries a spelling's ending over, and leaves other words alone", () => {
     expect(spellingsOf("colours")).toEqual(["colors"]);
     expect(spellingsOf("sterilising")).toEqual(["sterilizing"]);
@@ -147,6 +180,18 @@ describe("other ways of saying a word", () => {
 
     // "The power was cut": the words near each other, and the other name for it.
     expect(ids(await search(test, "power cut")).sort()).toEqual(["cut", "outage"]);
+  });
+
+  it("finds the other name for a phrase that has a small word in it, both ways", async () => {
+    const test = await app();
+    note(test, "uk", "Soda bread", "Mix the flour with a teaspoon of bicarbonate of soda.");
+    note(test, "us", "Pancakes", "Add one teaspoon of baking soda.");
+    note(test, "other", "Soda water", "Bicarbonate is not needed here; buy soda water.");
+    const uk = await search(test, "bicarbonate of soda");
+    expect(ids(uk)).toContain("us");
+    expect(ids(uk)[0]).toBe("uk");
+    expect(uk.alsoSearched).toEqual(["baking soda", "bicarb"]);
+    expect(ids(await search(test, "baking soda")).sort()).toEqual(["uk", "us"]);
   });
 
   it("asks each reference collection once more for the other spelling, and no more", async () => {

@@ -151,7 +151,7 @@ describe("how search was tuned", () => {
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(5);
     expect(within(rows[0]!).getByText("7.00")).toBeVisible();
-    expect(screen.getByText(/nDCG@5 = 9\.71 ÷ 12\.07 = 0\.804/)).toBeVisible();
+    expect(screen.getByText(/nDCG@5 = 9\.71 ÷ 12\.85 = 0\.756/)).toBeVisible();
     const grades = CPR_RESULTS.map((result) => result.grade);
     expect(ndcg(grades, CPR_IDEAL)).toBeCloseTo(metrics.ndcg(grades, CPR_IDEAL), 12);
     expect(dcg(grades)).toBeCloseTo(metrics.dcg(grades), 12);

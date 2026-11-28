@@ -672,6 +672,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   a save from an older copy and offer a choice; at most 500 power plans.
 - **Finding your way**: Downloads, Storage and Settings always in view; child screens lead
   back; one name for each thing; Settings lists its sections.
+- **Reference collections searched widely answer sooner**: their title searches, a tenth
+  of a second each on a Pi, use every place at kiwix-serve the full-text searches leave
+  free instead of going one at a time (never more than its four at once). Thirty
+  archives had waited three to six seconds for their titles alone.
 - **Quick search** finds screens and Settings sections by everyday words, and lists the
   shortcuts; Search puts what is on this device first.
 - **One way everywhere**: one look for toasts, separators, dates, empty states and
@@ -700,6 +704,27 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 ### Fixed
 
 - Search counts every match, so every page can be reached.
+- "How to preserve fish" finds the canning guide: "preserve" beside a food also finds
+  canning, curing, smoking, salting, drying and pickling it.
+- Which reference collections answered well for which words is remembered across a
+  restart, so the likeliest are still asked first; **Erase everything** forgets it.
+- "What to do for a burn" and "treat a burn" put first aid first, not encyclopaedia
+  articles named for the injury (or "Ken Burns"): asked what to do about an injury or an
+  illness, an encyclopaedia's article says what it is.
+- A whole book found by its words says which chapter matched: a PDF's bookmarks name the
+  chapter of each page, scanned pages read by OCR included, and are searched and shown
+  as other documents' headings are. A PDF added before gets them with **Read text again**.
+- "Bicarbonate of soda" also finds "baking soda" and "bicarb", and "accident and
+  emergency" the other names for it: a name in the table of other ways of saying things
+  with a small word in it never matched, as the small words are left out of a search first.
+- **Run the full check** under Storage, Database also checks the search index against
+  the passages it was built from, says in words when they differ, and offers **Build the
+  search index again** instead of a restore.
+- Encrypting a page no longer breaks the search index ("database disk image is
+  malformed" from "Did you mean"). A passage retitled or retagged had been changed in
+  place, which SQLite 3.54's erasing delete cannot then take out cleanly; passages are now
+  put back under new numbers with their vectors, and both indexes are built again once at
+  the update (a few seconds on a Pi), which also repairs one already broken.
 - CSV numbers read by the file's own decimal mark, with ambiguous cells refused.
 - Answers decline only when the model says the passages do not hold the answer.
 - Stream errors on a full or unplugged drive fail the download, not the process.

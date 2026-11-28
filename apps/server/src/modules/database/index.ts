@@ -39,6 +39,7 @@ const QUEUE = "database";
 const SUBJECT = "database";
 export const CHECK_JOB = "database.check";
 export const VACUUM_JOB = "database.vacuum";
+export const REBUILD_SEARCH_JOB = "database.rebuild-search";
 
 export interface DiskSpace {
   freeBytes: number;
@@ -299,6 +300,24 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
     onSettled: changed,
   });
 
+  // The search index is built from the passages, which are built from people's notes and files: building it again
+  // loses nothing. It holds the write lock while it runs (a few seconds for a large library on a Raspberry Pi).
+  ctx.jobs.register<Record<string, never>>(REBUILD_SEARCH_JOB, {
+    queue: QUEUE,
+    async run(run) {
+      run.progress({ message: "Building the search index again from the passages" });
+      const started = performance.now();
+      ctx.sqlite.transaction(() => {
+        ctx.sqlite.exec("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')");
+        ctx.sqlite.exec("INSERT INTO chunks_words(chunks_words) VALUES ('rebuild')");
+      })();
+      // Checked again at once, so that what the screen says of the last check is true now.
+      ctx.jobs.enqueue(CHECK_JOB, { kind: "full" }, { title: "Check the database fully", subject: SUBJECT });
+      return { milliseconds: Math.round(performance.now() - started) };
+    },
+    onSettled: changed,
+  });
+
   ctx.jobs.register<Record<string, never>>(VACUUM_JOB, {
     queue: QUEUE,
     async run(run) {
@@ -429,6 +448,12 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
       { kind },
       { title: kind === "quick" ? "Check the database" : "Check the database fully", subject: SUBJECT },
     );
+    return { job: toJobDto(job) };
+  });
+
+  app.post("/api/database/rebuild-search-index", async () => {
+    if (activeJob()) throw conflict("The database is already being checked or tidied. Wait for that to finish.");
+    const job = ctx.jobs.enqueue(REBUILD_SEARCH_JOB, {}, { title: "Build the search index again", subject: SUBJECT });
     return { job: toJobDto(job) };
   });
 

@@ -22,7 +22,7 @@ import { documents } from "../../db/schema.ts";
 import { OcrFailure, runOcr } from "../ocr/host.ts";
 import { engineInstalled, installedLanguages, LANGUAGE_FOLDER, languageName, parseLanguages } from "../ocr/tesseract-assets.ts";
 import { DEFAULT_PROVIDER, MAX_OCR_PAGES, MAX_PDF_BYTES, MAX_SOURCE_PIXELS, type OcrLanguageFile, type OcrPage } from "../ocr/types.ts";
-import { type ExtractedSection, tidyText } from "./extract-types.ts";
+import { type ExtractedSection, tidyText, withHeading } from "./extract-types.ts";
 import type { ExtractedStore, StoredDocumentText } from "./extracted-store.ts";
 import { formatForExt } from "./file-types.ts";
 
@@ -217,7 +217,13 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
         attempted.add(key);
         const text = tidyText(result.text);
         if (text) {
-          read.set(key, result.page === null ? { text, ocr: true } : { text, ocr: true, page: result.page });
+          // A scanned book's bookmarks still name the chapter of the page read.
+          read.set(
+            key,
+            result.page === null
+              ? { text, ocr: true }
+              : withHeading({ text, ocr: true, page: result.page }, stored.pageHeadings[result.page]),
+          );
           found += 1;
         } else {
           read.delete(key);
@@ -230,6 +236,7 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
         id,
         sections,
         [...attempted].sort((a, b) => a - b),
+        stored.pageHeadings,
       );
 
       const patch: Partial<DocumentRow> = {

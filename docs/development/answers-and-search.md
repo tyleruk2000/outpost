@@ -146,6 +146,22 @@ passages (Settings quotes 45); a Raspberry Pi 5 about four minutes. About 3 ms t
 question with 57,800 passages and 10 ms to embed it; on a 57,600-passage library, own
 results p95 about 35 ms on the laptop.
 
+### Passages are never changed in place
+
+`chunks_fts` and `chunks_words` are external-content FTS5 tables kept in step by insert
+and delete triggers. A passage is never `UPDATE`d (migration 0049 refuses it): a new title
+or new tags put each passage back under a new number, its vectors copied across, and the
+rows of the vector matrix in memory take the new numbers (`onChunksRenumbered`; the
+matrix is let go and read again only if that cannot be done). The reason: an encrypting save
+turns on FTS5 `secure-delete` for that save (`scrubbing`), and in SQLite 3.54 erasing a
+passage that had earlier been deleted and put back under the same number in the ordinary
+way breaks the index (`fts5: checksum mismatch`, then "database disk image is malformed"
+from the `fts5vocab` word list). Numbers used once, new ones for anything re-indexed, and
+the index stayed sound in every sequence tried (`test/search-index-sound.test.ts`
+reproduces the break through the API: rename and tag a page, then encrypt it).
+Check an index against its passages with `INSERT INTO chunks_fts(chunks_fts, rank)
+VALUES ('integrity-check', 1)`: without the `1` an index out of step with them passes.
+
 ### Keyword pass
 
 Keyword ranking (`modules/search/keyword.ts`, `score.ts`):
@@ -236,11 +252,19 @@ Reference archives (`modules/kiwix`):
   (3) results scoring `GOOD_SCORE` (0.6), and otherwise on `scope=all`.
 - Full text (`referenceShape.firstEach`, 8, from each routed archive) goes through Outpost's
   own queue three at a time, because kiwix-serve works four at a time and finishes searches
-  whose caller has gone; title search (`suggest`, for `titleWords`) through a second queue,
-  one at a time. A collection's titles go out as a `done: false` part, replaced by its last.
+  whose caller has gone; title search (`suggest`, for `titleWords`) through a second queue.
+  The two share `referenceTimings.placesAtOnce` (4) places (`createPlaces`): full text is
+  asked first and takes its three, titles the fourth, and a place given back goes to a
+  waiting title search first. One at a time, a widened search of thirty archives on a Pi
+  waited three to six seconds for its titles alone (`test/search-reference-routing.test.ts`,
+  "on a slow computer", replays it with 100 ms title searches: 2.5 s before, under 1.8 s
+  after). A collection's titles go out as a `done: false` part, replaced by its last.
 - `junk.ts` drops list pages before scoring; `rank` (the search service's `rescore`, with
   `titleIsAnswer` and `TITLE_MATCH_BONUS` where the archive's prior reaches
   `TITLE_ANSWER_PRIOR`) puts every article on the one scale.
+- `RouteMemory` is kept in `library_meta` under `search.routes` (`ROUTES_KEY`): written ten
+  seconds after a search teaches it something and when the server stops, read back at start,
+  and deleted by **Erase everything** (`forgetSearches`), since its words are what was searched.
 - `search-health.ts` marks an archive refused (400s) or failing (three in a row) in
   `meta.kiwix.search`, so it is searched by titles only and not warned about.
 
@@ -254,12 +278,19 @@ order under a pointer, focus, or a finger for 1.5 s after it lifts and while the
 
 ### Measuring search
 
-`scripts/search-eval/queries.json` holds 99 questions in three sets (`sets`): the 56 household
+`scripts/search-eval/queries.json` holds 104 questions in four sets (`sets`): the 56 household
 questions, 31 everyday searches tried on a Raspberry Pi ("car battery flat", "ration food for
 a family", "storm warning"; five are in both), and 17 asked in the persona tests of 24 November
 2026 ("persona": "can I take paracetamol and ibuprofen together", "bleeding wont stop", four
-keyboard-mashings marked `nonsense`). A query's `titleNeeds` caps a title without it at grade 1;
-`not` grades a title in another sense 0. Each has graded answers
+keyboard-mashings marked `nonsense`), and 5 on preserving fish ("fish", 28 November 2026:
+"how to preserve fish" and smoking, salting, drying and canning it, graded against the
+catalogue's USDA canning guide for seafood; nothing in the catalogue covers salting or drying
+fish, and the recorded collections were not recorded for these questions). A query's `titleNeeds` caps a title without it at grade 1;
+`not` grades a title in another sense 0. A title-only hit (no snippet, from a title search)
+whose title holds the first pattern and nothing but the question's words ("Burn" for "what to
+do for a burn") is graded 2: it has no text that could hold the other patterns, so it could
+otherwise never be more than 1, while "Ken Burns" stays 1 (`titleOnly`, `gradeByPattern` in
+`metrics.mjs`; added 28 November 2026, which moved nDCG@5 from 0.772 to 0.776). Each has graded answers
 in the fixture library (`library.mjs`, item id → 0–3) and patterns for grading any
 library's results. `reference.json` is what 37 reference collections answered to them,
 with each collection's description, category, tags and language, recorded from a real
@@ -276,6 +307,12 @@ word).
   useful, below 0.6 on the persona set, when the medicine question's first two are not grade 3 or
   "bleeding wont stop" shows a brake page, when keyboard-mashing finds anything by meaning alone, and below success@3 80% or with any list page among the reference
   collections' own results. `SEARCH_EVAL_OUT=table.txt` writes both tables.
+- `scripts/search-eval/held-out.json`: 20 questions written on 28 November 2026 before the
+  changes after it, graded the same way, that nothing is ever tuned on. The test reports them
+  on their own line ("held-out questions (not tuned on)") and asserts nothing about them: a
+  wide gap below the main set says the main set has been overfitted. First run: nDCG@5
+  0.400, success@3 80%, one question with no result ("child has diarrhoea"), against 0.769
+  and 97% on the main set.
 - `node scripts/search-eval.mjs http://host:8080` runs it against a running Outpost with
   GET requests only and grades by pattern, each set apart as well (a dropped connection is
   asked once more); `--rescore` also orders that server's

@@ -197,8 +197,10 @@ the last backup.
 - **Earlier versions of pages**: **Clear earlier versions** erases them, leaving the
   pages ([notes-and-imports.md](notes-and-imports.md#earlier-versions)).
 - **Check the database** runs SQLite's quick check; **Run the full check** also checks
-  every index. Both only read. If problems are found, restore the newest backup that
-  passed its check.
+  every index, and that the search index matches the passages it was built from. Both
+  only read. If problems are found, restore the newest backup that passed its check. If
+  only the search index is out of step, **Build the search index again** rebuilds it from
+  your notes and files instead (seconds on a Pi; saving waits meanwhile), and checks again.
 - **Reclaim unused space** rewrites the file smaller. It needs room for two copies and
   no job running; while it runs nothing can be saved, and it cannot be stopped part way.
   Only at the computer Outpost runs on, or with `OUTPOST_ALLOW_REMOTE_ERASE=true`.

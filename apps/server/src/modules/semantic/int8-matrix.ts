@@ -171,6 +171,8 @@ export interface Int8Matrix {
   /** Writes a row for the chunk, adding one if it has none. */
   set(chunkId: number, vector: Float32Array): void;
   has(chunkId: number): boolean;
+  /** Gives a chunk's row another chunk's number, the vector unchanged. False when `from` has no row or `to` has one. */
+  renumber(from: number, to: number): boolean;
   /** The `limit` rows nearest `vector` by their 8-bit similarity, best first. */
   nearest(vector: Float32Array, limit: number): Array<{ chunkId: number; score: number }>;
 }
@@ -241,6 +243,14 @@ export function createInt8Matrix(dimensions: number, capacity = 1024, options: {
       return room * (stride + 8);
     },
     has: (chunkId) => rowOf.has(chunkId),
+    renumber(from, to) {
+      const row = rowOf.get(from);
+      if (row === undefined || rowOf.has(to)) return false;
+      rowOf.delete(from);
+      rowOf.set(to, row);
+      ids[row] = to;
+      return true;
+    },
     set(chunkId, vector) {
       let row = rowOf.get(chunkId);
       if (row === undefined) {
