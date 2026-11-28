@@ -821,7 +821,7 @@ Worked out by VOACAP on the server, offline. Types: `propagation.ts`,
 | `POST /api/radio/propagation/second-model/engine/build` | Builds P.533 here (job on `engine-build`), installed only if the result matches the recorded file. `415` where no compiler exists. |
 | `POST /api/radio/propagation/second-model/maps/download` | The ITU's maps (25 files, 137 MB). |
 | `POST /api/radio/propagation/second-model/compare` | The `predict` body, run by both models with isotropic 0 dBi antennas → `SecondModelComparison`. `415 second-model-unavailable`; `400` for power under 1 W or SSN outside 1 to 311. |
-| `GET`, `POST /api/radio/communication-plans`, `GET`, `PATCH`, `DELETE …/:id` | Communication plans: `name`, `notes`, `stations` (≤8), `date`, `fromUtc`, `toUtc`, `bands`, `mode`, `requiredSnrDb`, `referenceBandwidthHz`, `solar`, `links`. `PATCH` with `baseUpdatedAt` → `409 changed-elsewhere`. |
+| `GET`, `POST /api/radio/communication-plans`, `GET`, `PATCH`, `DELETE …/:id` | Communication plans: `name`, `notes`, `stations` (≤8; each with an optional `callsign`, letters, figures and strokes, kept in capitals), `date`, `fromUtc`, `toUtc`, `bands`, `mode`, `requiredSnrDb`, `referenceBandwidthHz`, `solar`, `links`. `PATCH` with `baseUpdatedAt` → `409 changed-elsewhere`. |
 | `POST /api/radio/communication-plans/import` | `{ text }`: a plan file from an export (`format: outpost-communication-plan`) or a bare plan → a new plan; links to pages and documents not held here are dropped. |
 | `POST …/communication-plans/:id/matrix`, `GET` | Works the plan out (≤56 runs) → `PlanResult`; the last result if the plan is unchanged. |
 | `GET /api/radio/observations` | The contact log: `limit` (≤500), `offset`; `imports`, `importing`, `adif`. |

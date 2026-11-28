@@ -139,7 +139,8 @@ frequency.
 **Radio**, **Communication plans** says which band serves each pair of stations at which hour.
 
 1. **New plan**, and name it.
-2. **Add a station** for each place (up to eight): where, power, antenna, noise.
+2. **Add a station** for each place (up to eight): where, power, antenna, noise, and its
+   call sign if it has one (printed with it in the household book).
 3. **When, and on what**: date, hours (UTC), bands, mode, sunspot number. If another device saved
    the plan meanwhile, choose **Keep my change** or **Take theirs**.
 4. **Work out the plan.** Each pair is asked both ways on every band.

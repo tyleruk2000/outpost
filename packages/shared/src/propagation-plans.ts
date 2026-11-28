@@ -32,7 +32,17 @@ export interface PlanStation {
   antennaName: string;
   /** Man-made noise where this station listens. */
   noise: NoiseEnvironment;
+  /**
+   * The station's call sign, in capitals, or "" for none. A plan saved before stations had
+   * one reads with "". The household book prints it, and without one looks for a contact
+   * named like the station.
+   */
+  callsign: string;
 }
+
+/** Letters, figures and strokes, as call signs are written (M0ABC, G4XYZ/P, EI2ABC/MM). */
+export const PLAN_CALLSIGN = /^[A-Z0-9]+(?:\/[A-Z0-9]+)*$/;
+export const PLAN_CALLSIGN_MAX = 16;
 
 export interface PlanLink {
   kind: "note" | "document";

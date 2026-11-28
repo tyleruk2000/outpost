@@ -32,6 +32,7 @@ const station = (id: string, name: string, lat: number, lon: number, patch: Reco
   antenna: dipole,
   antennaName: "Low horizontal dipole, 5 m",
   noise: "residential" as const,
+  callsign: "",
   ...patch,
 });
 
@@ -365,6 +366,30 @@ describe("two devices editing one plan", () => {
     });
     expect(third.body.plan).toMatchObject({ name: "From the computer", notes: "From the phone" });
     expect((await app.api("PATCH", `/api/radio/communication-plans/${plan.id}`, family)).status).toBe(200);
+    await app.api("DELETE", `/api/radio/communication-plans/${plan.id}`);
+  });
+});
+
+describe("a station's call sign", () => {
+  it("is kept with the station, tidied, and is empty for a station without one or a plan saved before there was one", async () => {
+    const withSigns = {
+      ...family,
+      stations: [station("home", "Home base", 51.5, -0.13, { callsign: " m0abc/p " }), station("shelter", "Remote shelter", 54.46, -3.09)],
+    };
+    const plan = (await app.api("POST", "/api/radio/communication-plans", withSigns)).body.plan as CommunicationPlan;
+    expect(plan.stations.map((each) => each.callsign)).toEqual(["M0ABC/P", ""]);
+    const refused = await app.api("POST", "/api/radio/communication-plans", {
+      ...family,
+      stations: [station("home", "Home base", 51.5, -0.13, { callsign: "not a call sign!" })],
+    });
+    expect(refused.status).toBe(400);
+    expect(JSON.stringify(refused.body.error)).toContain("A call sign is letters, figures and");
+    // A plan saved before stations had a call sign: its stations read with none.
+    const stored = app.ctx.sqlite.prepare("SELECT stations FROM communication_plans WHERE id = ?").pluck().get(plan.id) as string;
+    const old = JSON.parse(stored).map(({ callsign: _gone, ...rest }: Record<string, unknown>) => rest);
+    app.ctx.sqlite.prepare("UPDATE communication_plans SET stations = ? WHERE id = ?").run(JSON.stringify(old), plan.id);
+    const read = (await app.api("GET", `/api/radio/communication-plans/${plan.id}`)).body.plan as CommunicationPlan;
+    expect(read.stations.map((each) => each.callsign)).toEqual(["", ""]);
     await app.api("DELETE", `/api/radio/communication-plans/${plan.id}`);
   });
 });

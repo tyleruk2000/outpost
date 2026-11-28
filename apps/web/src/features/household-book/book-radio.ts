@@ -19,6 +19,7 @@ import {
   OPERATING_MODES,
   type PlanChoice,
   type PlanResult,
+  type PlanStation,
   planBandLabel,
   planHours,
   planRecommendation,
@@ -90,9 +91,14 @@ const bandWords = (bandId: string) => {
 const modeOf = (plan: CommunicationPlan, result: PlanResult | null) =>
   result?.mode.label ?? OPERATING_MODES.find((mode) => mode.id === plan.mode)?.label ?? plan.mode;
 
-/** A contact's call sign, where a station is named by it or after the contact. */
-function callSignOf(name: string, contacts: ContactDto[]): string {
-  const key = name.trim().toLocaleLowerCase();
+/**
+ * A station's call sign: its own, given in the radio plan; else, for a station saved
+ * without one, a contact's, where the station is named by it or after the contact.
+ */
+function callSignOf(station: Pick<PlanStation, "name" | "callsign">, contacts: ContactDto[]): string {
+  const own = (station.callsign ?? "").trim();
+  if (own) return own.toUpperCase();
+  const key = station.name.trim().toLocaleLowerCase();
   const contact = contacts.find(
     (each) =>
       each.callsign.trim() && (each.callsign.trim().toLocaleLowerCase() === key || each.displayName.trim().toLocaleLowerCase() === key),
@@ -322,7 +328,7 @@ function planContent(own: BookRadioPlan, input: RadioPlansInput, first: boolean,
       `${station.powerWatts} W`,
       station.antennaName || "Not named",
     ]);
-  const signs = plan.stations.map((station) => callSignOf(station.name, input.contacts));
+  const signs = plan.stations.map((station) => callSignOf(station, input.contacts));
   const withSigns = signs.some(Boolean);
   content.push({
     stack: [
@@ -334,7 +340,11 @@ function planContent(own: BookRadioPlan, input: RadioPlansInput, first: boolean,
       ),
       ...(withSigns
         ? []
-        : [note("The plan names its stations; a call sign is shown where a contact has the station's name or call sign.")]),
+        : [
+            note(
+              "Give a station its call sign in the radio plan and it is printed here; without one, a contact with the station's name or call sign gives it.",
+            ),
+          ]),
     ],
     unbreakable: true,
   } as Content);

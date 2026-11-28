@@ -11,6 +11,8 @@ import {
   type CommunicationPlan,
   HF_BANDS,
   noiseSetting,
+  PLAN_CALLSIGN,
+  PLAN_CALLSIGN_MAX,
   PLAN_MAX_STATIONS,
   PLAN_MIN_STATIONS,
   type PlanDirection,
@@ -43,6 +45,14 @@ const station = z.object({
   antenna,
   antennaName: z.string().max(80).default(""),
   noise,
+  callsign: z
+    .string()
+    .max(PLAN_CALLSIGN_MAX + 8)
+    .default("")
+    .transform((value) => value.trim().toUpperCase())
+    .refine((value) => value === "" || (value.length <= PLAN_CALLSIGN_MAX && PLAN_CALLSIGN.test(value)), {
+      message: `A call sign is letters, figures and strokes (G4XYZ/P), at most ${PLAN_CALLSIGN_MAX}.`,
+    }),
 });
 
 const hour = z.number().int().min(1).max(24);
@@ -130,7 +140,8 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
       id: row.id,
       name: row.name,
       notes: row.notes,
-      stations: row.stations as unknown as PlanStation[],
+      // A station saved before stations had a call sign has none.
+      stations: (row.stations as unknown as PlanStation[]).map((each) => ({ ...each, callsign: each.callsign ?? "" })),
       date: row.date,
       fromUtc: row.fromUtc,
       toUtc: row.toUtc,

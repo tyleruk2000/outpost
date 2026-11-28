@@ -53,6 +53,7 @@ const station = (id: string, name: string, lat: number, lon: number) => ({
   antenna: dipole,
   antennaName: "Low horizontal dipole, 5 m",
   noise: "residential" as const,
+  callsign: "",
 });
 
 export function planOf(patch: Partial<CommunicationPlan> = {}): CommunicationPlan {

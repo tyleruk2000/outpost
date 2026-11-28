@@ -5,6 +5,8 @@ import {
   type MarkerDto,
   NOISE_ENVIRONMENTS,
   type NoiseEnvironment,
+  PLAN_CALLSIGN,
+  PLAN_CALLSIGN_MAX,
   type PlanStation,
   parseCoordinates,
   type RadioProfile,
@@ -48,11 +50,12 @@ export function StationDialog({
     return antennas.find((item) => sameAntennaSpec(item, station.antenna))?.id ?? KEPT;
   };
   const [name, setName] = useState(station?.name ?? "");
+  const [callsign, setCallsign] = useState(station?.callsign ?? "");
   const [place, setPlace] = useState<PlaceField>(station ? { text: `${station.lat}, ${station.lon}`, name: "" } : { text: "", name: "" });
   const [powerWatts, setPowerWatts] = useState(String(station?.powerWatts ?? 5));
   const [antennaId, setAntennaId] = useState(startAntenna);
   const [noise, setNoise] = useState<NoiseEnvironment>(station?.noise ?? "residential");
-  const [problem, setProblem] = useState<{ field: "name" | "place" | "power" | "antenna"; text: string } | null>(null);
+  const [problem, setProblem] = useState<{ field: "name" | "callsign" | "place" | "power" | "antenna"; text: string } | null>(null);
   const error = (field: NonNullable<typeof problem>["field"]) => (problem?.field === field ? problem.text : undefined);
 
   const picked = antennaId === KEPT && station ? station.antenna : antennaOf(antennaId, antennas)?.spec;
@@ -62,6 +65,9 @@ export function StationDialog({
     const found = parseCoordinates(place.text);
     const called = name.trim() || place.name.trim();
     if (!called) return setProblem({ field: "name", text: "Give the station a name: Home base, Remote shelter." });
+    const sign = callsign.trim().toUpperCase();
+    if (sign && !PLAN_CALLSIGN.test(sign))
+      return setProblem({ field: "callsign", text: "A call sign is letters, figures and strokes: G4XYZ, M0ABC/P." });
     if (!found)
       return setProblem({ field: "place", text: "Say where the station is: a saved place, a press on the map, coordinates or a locator." });
     const watts = powerWatts.trim() === "" ? Number.NaN : Number(powerWatts);
@@ -77,6 +83,7 @@ export function StationDialog({
       antenna: chosen.spec,
       antennaName: chosen.name,
       noise,
+      callsign: sign,
     });
   };
 
@@ -87,6 +94,20 @@ export function StationDialog({
           <Field label="Name" error={error("name")}>
             {(ids) => (
               <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={60} placeholder="Home base" />
+            )}
+          </Field>
+          <Field label="Call sign" hint="If the station has one. The household book prints it with the station." error={error("callsign")}>
+            {(ids) => (
+              <Input
+                {...ids}
+                value={callsign}
+                onChange={(event) => setCallsign(event.target.value)}
+                maxLength={PLAN_CALLSIGN_MAX}
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="G4XYZ"
+              />
             )}
           </Field>
           <PlaceInput
