@@ -310,6 +310,40 @@ A drive needs **Routes** for every country it passes through, added under
 one button to add them. Across the sea, both sides need routes, joined by a car ferry or
 the Channel Tunnel ([road-routes.md](road-routes.md#adding-routes-for-a-place)).
 
+### "The streets service … is not answering" (walking, cycling, door to door)
+
+Walking and cycling is built, but its container is stopped or still starting. Drives
+and a drive's reachable area carry on over the main roads meanwhile. On the computer
+Outpost runs on:
+
+```bash
+docker compose --profile routes ps valhalla
+docker compose --profile routes logs --tail 100 valhalla
+docker compose --profile routes up -d valhalla
+```
+
+"The streets service (valhalla) is not running" means its container was never started:
+`COMPOSE_PROFILES=routes` is missing from `.env` (`./deploy/pi/install.sh --street-routes`
+puts it there). "Something answers at the streets service's address, but it is not
+Valhalla" means `OUTPOST_VALHALLA_URL` points at another program. "The streets service's
+status cannot be read" means its status file is damaged: restart the container, as above
+([deployment.md](deployment.md#street-routes)).
+
+### "No way joins these points", "That is too far for this way of travelling", or "away from every street"
+
+The streets service planned nothing for these points. No way joins them on foot or by
+bicycle (a river with no bridge, a motorway); or the distance is beyond what it plans for
+a walk or a ride (drive, or choose nearer points); or a point is off every street and path
+it holds (move it onto one). "Walking and cycling is not added for France" means the
+streets built do not cover that country: add them under **Offline maps**
+([road-routes.md](road-routes.md#door-to-door-walking-and-cycling)).
+
+### "The streets service on this device is older than Outpost and stops at 2 hours"
+
+A reachable area over 2 hours needs the streets service from the same release as
+Outpost. Rebuild and restart it; the streets already built are kept:
+`git pull && docker compose --profile routes up -d --build valhalla`.
+
 ### "That area is too large to download at this detail in one go"
 
 Choose less detail under **More choices** in **Add a place**, or split the area. One map is

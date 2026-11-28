@@ -228,9 +228,21 @@ export async function registerUpdate(app: FastifyInstance, ctx: AppContext): Pro
     try {
       const { response } = await client.fetch(url, { signal });
       if (!response.ok) throw new AppError("upstream", `The release page answered ${response.status} for ${url}.`);
-      const bytes = Buffer.from(await response.arrayBuffer());
-      if (bytes.length > MAX_SMALL) throw new AppError("upstream", "The release page sent far more than a release manifest.");
-      return bytes;
+      // Read as it comes and stopped past the limit, so a page that never ends is not held in memory.
+      const tooMuch = () => new AppError("upstream", "The release page sent far more than a release manifest.");
+      if (Number(response.headers.get("content-length") ?? 0) > MAX_SMALL) {
+        await response.body?.cancel();
+        throw tooMuch();
+      }
+      const chunks: Buffer[] = [];
+      let total = 0;
+      for await (const chunk of response.body ?? []) {
+        total += chunk.byteLength;
+        // Leaving the loop by a throw cancels the stream.
+        if (total > MAX_SMALL) throw tooMuch();
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
     } catch (error) {
       const sentence = networkSentence(error, "The release page");
       throw sentence ? new AppError("offline", sentence) : error;

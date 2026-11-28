@@ -307,6 +307,33 @@ describe("checking for a newer version", () => {
     expect((await w.status()).staged).toMatchObject({ release: NEXT, source: "online" });
   });
 
+  it("stops reading a release page that sends far more than a manifest, without holding it all", async () => {
+    let sent = 0;
+    let stopped = false;
+    const server = http.createServer((_request, response) => {
+      // No length given, and no end: a page that would fill the memory of a small computer.
+      const chunk = Buffer.alloc(64 * 1024, 0x20);
+      const pump = () => {
+        while (!stopped && sent < 64 * 1024 * 1024) {
+          sent += chunk.length;
+          if (!response.write(chunk)) return void response.once("drain", pump);
+        }
+        response.end();
+      };
+      response.on("close", () => {
+        stopped = true;
+      });
+      pump();
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const w = await world({ OUTPOST_UPDATE_URL: `http://127.0.0.1:${(server.address() as AddressInfo).port}` });
+    const checked = (await w.app.api("POST", "/api/update/check")).body as UpdateStatus;
+    expect(checked.latest?.message).toBe("The release page sent far more than a release manifest.");
+    // Stopped soon after the most a manifest can be (256 KB), not at the end of 64 MB.
+    expect(sent).toBeLessThan(8 * 1024 * 1024);
+  });
+
   it("says why when the release page cannot be reached", async () => {
     const w = await world({ OUTPOST_UPDATE_URL: "http://127.0.0.1:9" });
     const checked = (await w.app.api("POST", "/api/update/check")).body as UpdateStatus;

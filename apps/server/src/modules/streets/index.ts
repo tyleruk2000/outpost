@@ -359,7 +359,8 @@ export function createStreetsService(ctx: AppContext): StreetsService {
   async function reach(request: StreetsReachRequest, signal?: AbortSignal): Promise<StreetsReachResult> {
     const [point] = resolvePoints([request.point]);
     const minutes = [...new Set(request.minutes)].sort((a, b) => a - b);
-    const ready = (await connection.describe()).state === "ready";
+    const described = await connection.describe();
+    const ready = described.state === "ready";
     const where = { lat: point!.lat, lon: point!.lon, name: point!.name };
     if (request.source !== "main-roads" && ready) {
       const tileset = tiles.tileset()!;
@@ -383,6 +384,12 @@ export function createStreetsService(ctx: AppContext): StreetsService {
         madeAt: Date.now(),
       };
     }
+    // Walking and cycling built, but the service down or its status unreadable: say that, not "add it".
+    if (request.mode !== "drive" && (described.state === "not-answering" || described.state === "problem"))
+      throw new AppError(
+        described.state === "not-answering" ? "offline" : "bad_request",
+        described.message ?? "Streets for routes are not ready.",
+      );
     if (request.mode !== "drive")
       throw new AppError(
         ready ? "bad_request" : "unsupported",

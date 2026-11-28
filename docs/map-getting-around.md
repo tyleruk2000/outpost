@@ -38,8 +38,9 @@ over every street (**Streets**), by car or bicycle. **On foot it works over the 
 (below), so it needs only terrain on **Offline maps**, not streets. Drives are for
 free-flowing traffic with no stops, rides for a steady pace on the flat; over 2 hours on
 foot (and over an hour by bicycle) no rests are counted, so a real day's walk covers much
-less. A long time takes longer to work out: a 2 hour drive can take tens of seconds on a
-Raspberry Pi, an 8 hour walk about ten, with a bar showing how far it has got. **Print or
+less. A long time takes longer to work out, with a bar showing how far it has got: on a
+Raspberry Pi 5 an hour's drive over Great Britain's streets took about 5 seconds; 2 hours,
+and walks over the terrain, have not been timed on a Pi. **Print or
 save as PDF** in the card opens the map's print with the areas on it. See
 [road-routes.md](road-routes.md#reachable-from-here).
 

@@ -103,7 +103,8 @@ under **Heights and details**. **Why this shape: look along one direction** show
 ground along any bearing. It counts only line of sight: power, aerials, woods and buildings
 are not counted, and radio often reaches less.
 
-A new point takes a second or two on a Raspberry Pi, since the ground is read out to 100 km.
+A new point takes longer than another height at the same one, since the ground is read out to
+100 km (about 0.6 s on a laptop; not yet timed on a Raspberry Pi).
 A bar on the card fills as it goes, and the ground in sight is drawn out to 25 km first, then
 50 km, then all of it. Other heights at the same point come back at once. While they are
 worked out, the last answer stays on the map, faded. Heights are asked for once you stop

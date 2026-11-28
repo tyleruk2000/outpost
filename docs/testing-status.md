@@ -261,7 +261,8 @@ of what each feature does are in its own guide.
   radio range, are untried; Safari older than 16.4 gets unpacked tiles two to three times larger.
 
 - **Directions**: routes built and planned from real Geofabrik source files (Great Britain,
-  France and smaller ones) on a Mac only; building a country's routes on a Raspberry Pi is unmeasured. Routes
+  France and smaller ones) on a Mac; on one Raspberry Pi 5, Great Britain's routes built in 168 s (367 MB at
+  most, [street-routes-measurements.md](development/street-routes-measurements.md)); France's is unmeasured on a Pi. Routes
   through Germany and Austria (downloaded by Land) untried. The printed route card not printed or
   followed on a drive; directions compared with one person's own written route only.
 - **Walking and cycling**: built on one Raspberry Pi 5 (8 GB, SD card) for Kent, Greater London and

@@ -651,6 +651,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - `apps/server/test/eval/tools-eval.ts` and `scripts/write-which-model.mjs` for model
   trials.
 - README screenshots made from demonstration data, and `scripts/check-readme-links.mjs`.
+- `docs/development/pi-only-review.md`: what works on a Raspberry Pi alone, what is
+  unmeasured or risky there, and a checklist of what to measure on the Pi.
 
 ### Raspberry Pi, first run on real hardware (17 November 2026)
 
@@ -793,6 +795,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   country rather than **Other areas**. A map of a part of a country (England, a region the
   regions layer knows) is of the part, not the whole country, and is named for it; a town
   finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
+- A walk's or a ride's reachable area, with walking and cycling built but the streets
+  service stopped, says the service is not answering and where to look, rather than
+  asking to add walking and cycling again. Troubleshooting lists the streets service's
+  messages.
 - Add a place: the kinds of nearby places read from the source file say what each takes
   after **Check size** ("up to 120 MB", the most they can take, from the source file's size), as the kinds from their
   own source did; a part of a country can be found in **Where?** before Geofabrik's list has

@@ -220,8 +220,8 @@ found once Geofabrik's list of regions has been read, which the first **Check si
 
 Sizes run from Cumbria's 46 MB to England's 1.72 GB and the United States' 12.3 GB. The
 file is deleted once read or kept, as you choose on the source file's line. A state the
-size of Ohio takes about a minute and 650 MB of memory to read on a Mac, a few minutes on
-a Raspberry Pi; on a Pi with 1 GB start Outpost with a capped heap. Germany's whole-country
+size of Ohio takes about a minute and 650 MB of memory to read on a Mac; it has not yet
+been timed on a Raspberry Pi. Germany's whole-country
 file is on another host, which Outpost does not follow: choose its Länder.
 
 ### A second source for the United States (not built)

@@ -633,6 +633,12 @@ export const GUIDES: Guide[] = [
     about: "What each screen needs from outside, and what it says when that is missing.",
   },
   {
+    slug: "pi-only-review",
+    file: "development/pi-only-review.md",
+    group: "developers",
+    about: "What works on a Raspberry Pi alone, what is unmeasured there, and what to measure.",
+  },
+  {
     slug: "releases",
     file: "development/releases.md",
     group: "developers",

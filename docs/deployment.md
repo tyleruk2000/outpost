@@ -505,8 +505,11 @@ NTFS need the mount options `uid=1000,gid=1000`. Mount drives at a fixed place
   cgroup_memory=1` to `/boot/firmware/cmdline.txt`. Choose 8 GB to run an embedding
   server on the board too, or to index very large PDFs.
 - Leave **Documents processed at once** at 1 and downloads at 1 or 2 at a time.
-- Search by meaning reads about a thousand passages every four minutes on a Pi 5. For a
-  large library, let a laptop [do the reading](search-by-meaning.md#reading-the-library-on-a-faster-computer).
+- Search by meaning reads about a thousand passages every four minutes on a Pi 5, so
+  60,000 passages take about four hours the first time; the Pi does it on its own, in the
+  background, and carries on after a restart. A laptop can [do the reading
+  instead](search-by-meaning.md#reading-the-library-on-a-faster-computer) if you have one, but it
+  is never needed.
 
 #### Street routes
 

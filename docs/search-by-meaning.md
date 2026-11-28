@@ -28,8 +28,9 @@ With the built-in model:
 | Disk | 2.2 MB per thousand passages. |
 | Memory | About 300 MB while in use (twice that during a build), given back after five idle minutes, plus 400 bytes a passage. |
 
-The progress line shows the real time left. A faster computer can [do the reading
-instead](#reading-the-library-on-a-faster-computer).
+The progress line shows the real time left. A Raspberry Pi builds the index on its own;
+if you also have a faster computer, it can [do the reading
+instead](#reading-the-library-on-a-faster-computer), but nothing needs it.
 
 ## Choosing where the model runs
 
@@ -87,7 +88,8 @@ from other models" until you delete them, and the new model builds its own. See
 
 ## Reading the library on a faster computer
 
-A laptop can do a Raspberry Pi's reading for it, about eight times as fast. On the laptop,
+Optional: a Raspberry Pi reads the library by itself, and this only saves time. A laptop
+can do a Pi's reading for it, about eight times as fast. On the laptop,
 in a copy of Outpost's source with the model fetched (`node
 scripts/fetch-embedding-model.mjs`), give the Pi's address:
 

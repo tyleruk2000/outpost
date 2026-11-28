@@ -82,7 +82,7 @@ Names, with nothing more to choose: postcodes, roads, settlements, hills, waters
 - Not every name on a Landranger or Explorer map, and no heights.
 - Not covered: Northern Ireland, the Isle of Man and the Channel Islands.
 - 103 MB to download; 519 MB in the database with streets, 366 MB without (untick streets
-  first). Reading takes five to ten minutes on a Raspberry Pi.
+  first). Reading them has not yet been timed on a Raspberry Pi.
 - OS publishes a new edition every three months; **Update** on the row asks for it.
 - The Open Government Licence credit is shown on the map while the names are installed
   ([sources.md](sources.md)).
