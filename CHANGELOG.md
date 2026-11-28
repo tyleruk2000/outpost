@@ -693,6 +693,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 ### Fixed
 
 - Search counts every match, so every page can be reached.
+- Which reference collections answered well for which words is remembered across a
+  restart, so the likeliest are still asked first; **Erase everything** forgets it.
 - "What to do for a burn" and "treat a burn" put first aid first, not encyclopaedia
   articles named for the injury (or "Ken Burns"): asked what to do about an injury or an
   illness, an encyclopaedia's article says what it is.

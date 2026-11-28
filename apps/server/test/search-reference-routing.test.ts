@@ -114,6 +114,25 @@ describe("choosing which reference collections to search first", () => {
     expect(memory.share(["stove"], "woodworking")).toBe(0);
   });
 
+  it("keeps what it learned in a form it can be made from again, and ignores a form it does not know", () => {
+    const memory = createRouteMemory();
+    for (let time = 0; time < 3; time += 1) memory.record(["stove"], "woodworking", true);
+    memory.record(["burn"], "wikimed", false);
+    const again = createRouteMemory(2000, JSON.parse(JSON.stringify(memory.saved())));
+    expect(again.share(["stove"], "woodworking")).toBe(1);
+    expect(again.share(["burn"], "wikimed")).toBe(0);
+    expect(first("stove", again)[0]).toBe("woodworking");
+    for (const odd of [
+      null,
+      7,
+      { version: 99, words: [] },
+      { version: 1, words: "x" },
+      { version: 1, words: [["stove", [["a", "yes"]]]] },
+    ]) {
+      expect(createRouteMemory(2000, odd).share(["stove"], "a")).toBe(0);
+    }
+  });
+
   it("searches every archive at once when only a couple would be left over, and always those whose list already matched", () => {
     expect(routeArchives(ARCHIVES.slice(0, 8), route("water")).rest).toEqual([]);
     const plan = routeArchives(ARCHIVES, route("water"), { always: new Set(["ted"]) });
@@ -302,6 +321,40 @@ describe("reference search, routed", () => {
     const widened = await lines(base, "swing");
     expect(widened.find((line) => line.type === "widen")).toMatchObject({ collections: 4 });
     expect(widened.at(-1)).toMatchObject({ type: "end", searched: 10, more: 0 });
+  });
+
+  it("remembers across a restart which archive answered well, and forgets it when everything is erased", async () => {
+    const { app, base, kiwix } = await world(library());
+    const bicycles = library().find((book) => book.title === "Bicycles Q&A")!.name;
+    // The first time, Bicycles Q&A is not among the likeliest for "swing": it is asked only when the search widens.
+    const once = await lines(base, "swing");
+    const firstWave = (all: Line[]) => all.find((line) => line.type === "start")!.collections as number;
+    expect(kiwix.started.slice(0, firstWave(once)).some((entry) => entry.startsWith(`${bicycles}:`))).toBe(false);
+    await kiwix.idle();
+
+    const dir = app.dir;
+    await app.app.close();
+    const again = await createTestApp({ OUTPOST_KIWIX_URL: kiwix.url }, dir);
+    cleanups.push(() => again.close());
+    const againBase = await again.app.listen({ port: 0, host: "127.0.0.1" });
+    const asked = kiwix.started.length;
+    const twice = await lines(againBase, "swing");
+    expect(kiwix.started.slice(asked, asked + firstWave(twice)).some((entry) => entry.startsWith(`${bicycles}:`))).toBe(true);
+
+    // What was searched for is a person's own: erasing everything takes it too, and nothing brings it back.
+    await again.app.close();
+    const third = await createTestApp({ OUTPOST_KIWIX_URL: kiwix.url }, dir);
+    cleanups.push(() => third.close());
+    expect((third.ctx.sqlite.prepare("SELECT count(*) AS n FROM library_meta WHERE key = 'search.routes'").get() as { n: number }).n).toBe(
+      1,
+    );
+    const erase = await third.api("POST", "/api/manage/cleanup/everything", { confirm: "Erase everything" });
+    expect(erase.status).toBe(200);
+    await third.ctx.jobs.whenIdle();
+    await third.app.close();
+    const fourth = await createTestApp({ OUTPOST_KIWIX_URL: kiwix.url }, dir);
+    cleanups.push(() => fourth.close());
+    expect(fourth.ctx.sqlite.prepare("SELECT count(*) AS n FROM library_meta WHERE key = 'search.routes'").get()).toEqual({ n: 0 });
   });
 
   it("does not search the rest when the person's own library already holds plenty with every word", async () => {

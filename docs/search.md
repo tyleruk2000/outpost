@@ -224,7 +224,7 @@ archives are asked.
   the question's topic (medical words to medical collections, car words to motor
   mechanics, and so on), those whose title or description uses its words, a general
   encyclopaedia, manuals and questions-and-answers for "how to…", and those that answered
-  the same words well recently. When those find little, the next eight likeliest are asked
+  the same words well recently (remembered across restarts; **Erase everything** forgets it). When those find little, the next eight likeliest are asked
   straight away; **Search all reference collections** under the results asks every one.
 - **Not for every letter.** While you type, the collections are asked once the words have
   stood still for about a third of a second, and a search typed over is dropped.

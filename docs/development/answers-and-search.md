@@ -262,6 +262,9 @@ Reference archives (`modules/kiwix`):
 - `junk.ts` drops list pages before scoring; `rank` (the search service's `rescore`, with
   `titleIsAnswer` and `TITLE_MATCH_BONUS` where the archive's prior reaches
   `TITLE_ANSWER_PRIOR`) puts every article on the one scale.
+- `RouteMemory` is kept in `library_meta` under `search.routes` (`ROUTES_KEY`): written ten
+  seconds after a search teaches it something and when the server stops, read back at start,
+  and deleted by **Erase everything** (`forgetSearches`), since its words are what was searched.
 - `search-health.ts` marks an archive refused (400s) or failing (three in a row) in
   `meta.kiwix.search`, so it is searched by titles only and not warned about.
 
@@ -280,7 +283,11 @@ questions, 31 everyday searches tried on a Raspberry Pi ("car battery flat", "ra
 a family", "storm warning"; five are in both), and 17 asked in the persona tests of 24 November
 2026 ("persona": "can I take paracetamol and ibuprofen together", "bleeding wont stop", four
 keyboard-mashings marked `nonsense`). A query's `titleNeeds` caps a title without it at grade 1;
-`not` grades a title in another sense 0. Each has graded answers
+`not` grades a title in another sense 0. A title-only hit (no snippet, from a title search)
+whose title holds the first pattern and nothing but the question's words ("Burn" for "what to
+do for a burn") is graded 2: it has no text that could hold the other patterns, so it could
+otherwise never be more than 1, while "Ken Burns" stays 1 (`titleOnly`, `gradeByPattern` in
+`metrics.mjs`; added 28 November 2026, which moved nDCG@5 from 0.772 to 0.776). Each has graded answers
 in the fixture library (`library.mjs`, item id → 0–3) and patterns for grading any
 library's results. `reference.json` is what 37 reference collections answered to them,
 with each collection's description, category, tags and language, recorded from a real

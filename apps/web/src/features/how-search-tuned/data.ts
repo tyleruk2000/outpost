@@ -68,7 +68,7 @@ export const CPR_RESULTS: Array<{ title: string; where: string; grade: number }>
   { title: "I accidentally removed some paint from my child’s toy…", where: "Woodworking Q&A", grade: 1 },
 ];
 /** The best five grades there are to be had for it, from every graded item and recorded article. */
-export const CPR_IDEAL = [3, 2, 2, 2, 1];
+export const CPR_IDEAL = [3, 2, 2, 2, 2];
 
 /** Three questions of the evaluation set, as written in it. */
 export const GRADED_EXAMPLES: Array<{ q: string; grades: Array<[string, number]>; patterns: string[] }> = [

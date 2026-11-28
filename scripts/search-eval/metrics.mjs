@@ -35,10 +35,30 @@ export function gradeById(query, result) {
   return query.grades[result.entityId] ?? 0;
 }
 
+/** Small words a title is read without, when asking whether it is made of the question's words. */
+const SMALL = new Set("a an the and or of to in on at by for from with how what when where why do does is are i my".split(" "));
+const roughStem = (word) => word.toLowerCase().replace(/(ies|es|s)$/, "");
+const titleWords = (text) =>
+  text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word && !SMALL.has(word));
+
+/** True when a result shows nothing but its title: a title search's hit, no snippet. */
+export function titleOnly(result) {
+  return !(result.passages ?? []).some((passage) => passage.segments.some((segment) => segment.text.trim()));
+}
+
 /**
  * A real library's result: all patterns in the title 3, all anywhere 2, any in the title 1.
  * `not` (a title in another sense) grades 0; `titleNeeds` caps a title without it at 1: a page
  * about another medicine that mentions this one in passing is not the answer.
+ *
+ * A title-only hit (no snippet) has no text to hold the patterns its title does not: it could
+ * never earn 2. So one whose title holds the first pattern (what the question is about) and
+ * is made of nothing but the question's words ("Burn" for "what to do for a burn",
+ * "Hypothermia" for "signs of hypothermia") is graded 2: that subject's own article, whose
+ * text is not seen. "Ken Burns" or "Burn Away" hold words the question does not: still 1.
  */
 export function gradeByPattern(query, result) {
   const patterns = query.pi.map((source) => new RegExp(source, "i"));
@@ -49,6 +69,11 @@ export function gradeByPattern(query, result) {
   if (patterns.every((pattern) => pattern.test(title))) return Math.min(cap, 3);
   const text = resultText(result);
   if (patterns.every((pattern) => pattern.test(text))) return Math.min(cap, 2);
+  if (titleOnly(result) && patterns[0].test(title) && query.q) {
+    const asked = new Set(titleWords(query.q).map(roughStem));
+    const words = titleWords(title);
+    if (words.length > 0 && words.every((word) => asked.has(roughStem(word)))) return Math.min(cap, 2);
+  }
   return patterns.some((pattern) => pattern.test(title)) ? 1 : 0;
 }
 

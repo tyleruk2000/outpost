@@ -70,6 +70,11 @@ export interface BookDto {
   ready: boolean;
 }
 
+/** The key in `library_meta` that keeps which archives answered well for which words (routing.ts `RouteMemory`). */
+export const ROUTES_KEY = "search.routes";
+/** How soon after a search what it taught is written down. */
+const ROUTES_SAVE_MS = 10_000;
+
 export interface KiwixService {
   connection: KiwixConnection;
   /** Rewrites the library file from the installed collections. */
@@ -77,6 +82,8 @@ export interface KiwixService {
   books(token: string): Promise<BookDto[]>;
   /** Searches of archives at kiwix-serve now, and searches waiting their turn. */
   searchLoad(): { running: number; waiting: number };
+  /** Forgets which archives answered well for which words: what people searched for. For erasing everything. */
+  forgetSearches(): void;
   /** The English Wikipedia copies, for other modules to look an article up in (Satellites: About this satellite). */
   wikipedia: WikipediaArchives;
 }
@@ -416,6 +423,8 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     adding?.cancel(row.id);
     files?.forget(row.id);
     lists?.forget(row.id);
+    memory.forget(row.id);
+    saveRoutesSoon();
     const remaining = zimCollections().filter((other) => other.id !== row.id && servable(other));
     await writeLibrary(config.kiwix.libraryPath, remaining.map(toLibraryBook));
   });
@@ -459,6 +468,12 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         .filter((book): book is BookDto => Boolean(book));
     },
     searchLoad: () => queue.load(),
+    forgetSearches() {
+      memory.clear();
+      clearTimeout(routesTimer);
+      routesTimer = undefined;
+      ctx.sqlite.prepare("DELETE FROM library_meta WHERE key = ?").run(ROUTES_KEY);
+    },
     wikipedia: {
       list() {
         return zimCollections()
@@ -639,7 +654,39 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   ctx.onClose.push(() => queue.close());
 
   // Which archives answered well for which words lately, and which cannot be searched by their full text.
-  const memory = createRouteMemory();
+  // Kept in the database, so that what was learned outlives a restart: written a little after a search teaches it
+  // something, and when the server stops.
+  const readRoutes = () => {
+    const row = ctx.sqlite.prepare("SELECT value FROM library_meta WHERE key = ?").get(ROUTES_KEY) as { value: string } | undefined;
+    try {
+      return row ? JSON.parse(row.value) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const memory = createRouteMemory(2000, readRoutes());
+  let routesTimer: NodeJS.Timeout | undefined;
+  const saveRoutes = () => {
+    clearTimeout(routesTimer);
+    routesTimer = undefined;
+    ctx.sqlite
+      .prepare("INSERT INTO library_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run(ROUTES_KEY, JSON.stringify(memory.saved()));
+  };
+  const saveRoutesSoon = () => {
+    if (routesTimer) return;
+    routesTimer = setTimeout(() => {
+      try {
+        saveRoutes();
+      } catch (error) {
+        log.warn({ err: error }, "what reference search learned could not be kept");
+      }
+    }, ROUTES_SAVE_MS);
+    routesTimer.unref();
+  };
+  ctx.onClose.push(() => {
+    if (routesTimer) saveRoutes();
+  });
   const health = createSearchHealth({
     read: (id) => {
       const row = collections.get(id);
@@ -814,7 +861,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
             else missing.push({ collectionId: row.id, title: row.title, reason: failure === "failed" ? "failed" : "slow" });
             const goodHere = results.filter((result) => result.score >= GOOD_SCORE).length;
             good += goodHere;
-            if (answered) memory.record(route.words, row.id, goodHere > 0);
+            if (answered) {
+              memory.record(route.words, row.id, goodHere > 0);
+              saveRoutesSoon();
+            }
             if (!answered && results.length === 0) return;
             onPart({ collectionId: row.id, title: row.title, results, done: true });
           }),
