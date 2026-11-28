@@ -620,7 +620,7 @@ describe("Add a place", () => {
     await user.click(within(dialog).getByRole("button", { name: "Check size" }));
     const download = await within(dialog).findByRole("button", { name: /^Download · / });
     // Each kind ticked says what its places take, from the source file's size (5.4 GB here); one left unticked says nothing.
-    expect(within(fromFile).getByRole("checkbox", { name: "Hospitals" })).toHaveAccessibleDescription(/up to 25\.\d MB/);
+    expect(within(fromFile).getByRole("checkbox", { name: "Hospitals" })).toHaveAccessibleDescription(/up to 126 MB/);
     expect(within(fromFile).getByRole("checkbox", { name: "Food and supplies" })).not.toHaveAccessibleDescription(/up to/);
     expect(within(dialog).getByText(/Nothing more is downloaded for these: each size is the most its places take/)).toBeInTheDocument();
     await user.click(download);

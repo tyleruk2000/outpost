@@ -793,7 +793,7 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   regions layer knows) is of the part, not the whole country, and is named for it; a town
   finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
 - Add a place: the kinds of nearby places read from the source file say what each takes
-  after **Check size** ("up to 23 MB", from the source file's size), as the kinds from their
+  after **Check size** ("up to 120 MB", the most they can take, from the source file's size), as the kinds from their
   own source did; a part of a country can be found in **Where?** before Geofabrik's list has
   been read, with **Read the list of parts** under the search, instead of choosing the
   country and pressing **Check size** first.

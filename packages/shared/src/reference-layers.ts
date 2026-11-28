@@ -701,14 +701,14 @@ export interface ReferenceRegionsResponse {
 
 /**
  * Places in a megabyte of a source file (a Geofabrik extract), at most, for what reading it takes
- * in the database. Worked out from Monaco's extract of 16 November 2026 (708,123 bytes: 84 places
- * of food and supplies, 23 of the five point layers between them), a city state: a region with
- * countryside holds fewer a megabyte.
+ * in the database. Worked out from Monaco's extract of 16 November 2026 (708,123 bytes, 0.675 MiB:
+ * 84 places of food and supplies, 23 of the five point layers between them), a city state, and
+ * rounded up (food was 120, which is less than Monaco's own 124): a region with countryside holds
+ * fewer a megabyte.
  */
-const FOOD_PER_MB = 120;
-/** Between the five point layers. */
+const FOOD_PER_MB = 125;
+/** The five point layers between them; any one of them could hold them all, so each is allowed all of it. */
 const POINTS_PER_MB = 35;
-const POINT_LAYERS = ["hospitals", "emergency", "shelters", "military", "nuclear"];
 const DATABASE_BYTES_PER_RECORD = 700;
 /**
  * Routes and rights of way are lines: few records, each holding every point of its line. Not
@@ -717,16 +717,16 @@ const DATABASE_BYTES_PER_RECORD = 700;
  */
 const LINE_BYTES_PER_MB = 60_000;
 
-/** The most one layer read from a source file of this many bytes is likely to take in the database. */
-export function layerAllowance(bytes: number, layer: string): number {
+/** The most the database is likely to hold for a source file of this many bytes read for these layers: an upper bound. */
+export function databaseAllowance(bytes: number, layers: readonly string[]): number {
   const mb = bytes / 1048576;
-  if (layer === "food") return Math.round(mb * FOOD_PER_MB * DATABASE_BYTES_PER_RECORD);
-  if (layer === "routes" || layer === "rights-of-way") return Math.round(mb * LINE_BYTES_PER_MB);
-  if (POINT_LAYERS.includes(layer)) return Math.round((mb * POINTS_PER_MB * DATABASE_BYTES_PER_RECORD) / POINT_LAYERS.length);
-  return 0;
+  const points = layers.some((layer) => layer !== "food" && layer !== "routes" && layer !== "rights-of-way");
+  const records = mb * ((layers.includes("food") ? FOOD_PER_MB : 0) + (points ? POINTS_PER_MB : 0));
+  const lines = new Set(layers.filter((layer) => layer === "routes" || layer === "rights-of-way")).size;
+  return Math.round(records * DATABASE_BYTES_PER_RECORD + mb * lines * LINE_BYTES_PER_MB);
 }
 
-/** The most the database is likely to hold for a source file of this many bytes read for these layers: each layer's, added. */
-export function databaseAllowance(bytes: number, layers: readonly string[]): number {
-  return [...new Set(layers)].reduce((sum, layer) => sum + layerAllowance(bytes, layer), 0);
+/** The most one layer read from a source file of this many bytes is likely to take: each kind's "up to", alone. */
+export function layerAllowance(bytes: number, layer: string): number {
+  return databaseAllowance(bytes, [layer]);
 }
