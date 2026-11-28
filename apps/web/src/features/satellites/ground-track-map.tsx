@@ -8,7 +8,7 @@
  * The geometry is ground-track.ts, which the PDF draws from as well.
  */
 import { compassPoint } from "@outpost/shared";
-import { type ReactNode, useMemo, useState } from "react";
+import { memo, type ReactNode, useMemo, useState } from "react";
 import { Disclosure } from "@/components/page";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
@@ -52,14 +52,7 @@ function KeyItem({ mark, children }: { mark: ReactNode; children: ReactNode }) {
   );
 }
 
-export function GroundTrack({
-  orbit,
-  observer,
-  placeName,
-  now,
-  pass,
-  passes,
-}: {
+type GroundTrackProps = {
   orbit: Orbit;
   observer: ObserverLocation | null;
   placeName: string;
@@ -68,14 +61,37 @@ export function GroundTrack({
   pass: SatellitePass | null;
   /** Passes over the place in the next day, to say when next where none is drawn. */
   passes: SatellitePass[];
-}) {
+};
+
+const minuteOf = (at: Date) => Math.floor(at.getTime() / 60_000);
+
+/**
+ * The track is drawn to the minute, so a page whose clock ticks each second (the readout above it) does not draw
+ * it again until the minute turns. The list of passes is handed down fresh each tick; it is the same while it
+ * holds the same passes.
+ */
+export function sameTrack(a: GroundTrackProps, b: GroundTrackProps): boolean {
+  return (
+    a.orbit === b.orbit &&
+    a.observer === b.observer &&
+    a.placeName === b.placeName &&
+    a.pass === b.pass &&
+    minuteOf(a.now) === minuteOf(b.now) &&
+    a.passes.length === b.passes.length &&
+    a.passes.every((item, index) => item === b.passes[index])
+  );
+}
+
+export const GroundTrack = memo(GroundTrackDrawn, sameTrack);
+
+function GroundTrackDrawn({ orbit, observer, placeName, now, pass, passes }: GroundTrackProps) {
   const [chosen, setChosen] = useState<Stretch>("2");
   const passable = pass && !pass.alwaysUp ? pass : null;
   const stretch: Stretch = chosen === "pass" && !passable ? "2" : chosen;
   const [frame, measured] = useWidth();
   const width = measured > 0 ? measured : 640;
   const { land, settled } = useLand();
-  const minute = Math.floor(now.getTime() / 60_000);
+  const minute = minuteOf(now);
   const still = useMemo(() => {
     try {
       return stationary(orbit);

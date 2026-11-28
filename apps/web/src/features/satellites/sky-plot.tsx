@@ -61,15 +61,16 @@ export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: Satell
           />
         ))}
         <path d={`M${C - R} ${C}H${C + R}M${C} ${C - R}V${C + R}`} stroke="var(--chart-grid)" />
+        {/* The compass letters start 9 out from the horizon, clear of a rise or set mark on it (6.5 out with its halo). */}
         {(
           [
-            ["N", C, C - R - 6],
-            ["E", C + R + 9, C + 4],
-            ["S", C, C + R + 14],
-            ["W", C - R - 9, C + 4],
+            ["N", C, C - R - 9, "middle"],
+            ["E", C + R + 9, C + 4, "start"],
+            ["S", C, C + R + 18, "middle"],
+            ["W", C - R - 9, C + 4, "end"],
           ] as const
-        ).map(([label, x, y]) => (
-          <text key={label} x={x} y={y} textAnchor="middle" fontSize="12" fill="var(--color-ink-muted)">
+        ).map(([label, x, y, anchor]) => (
+          <text key={label} x={x} y={y} textAnchor={anchor} fontSize="12" fill="var(--color-ink-muted)">
             {label}
           </text>
         ))}
