@@ -476,7 +476,10 @@ export default function PlanPage() {
             {current.stations.map((station) => (
               <li key={station.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
                 <span className="min-w-0">
-                  <span className="block truncate text-ink">{station.name}</span>
+                  <span className="block truncate text-ink">
+                    {station.name}
+                    {station.callsign ? <span className="tabular text-ink-muted"> · {station.callsign}</span> : null}
+                  </span>
                   <span className="tabular block text-small text-ink-muted">
                     {station.lat.toFixed(2)}, {station.lon.toFixed(2)} · {toMaidenhead(station.lat, station.lon, 6)} · {station.powerWatts}{" "}
                     W · {station.antennaName || "An antenna with no name"} ·{" "}

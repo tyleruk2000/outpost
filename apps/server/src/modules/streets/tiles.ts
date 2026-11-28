@@ -135,6 +135,22 @@ const STAGES: Record<string, string> = {
   remove: "Removing the streets",
 };
 
+/**
+ * A stage's words with the time left of the build: what is left by the clock, or what the
+ * stages after this one take if more. Once this stage has run past where the estimate had
+ * it ended (a Pi building Great Britain for over an hour), no countdown can be trusted: it
+ * says so instead of "about 2 minutes left" while the long stage goes on.
+ */
+export function timeLeftText(words: string, stages: string[], at: number, expectedMs: number, elapsedMs: number): string {
+  const share = (list: string[]) => list.reduce((sum, s) => sum + (STAGE_SHARE[s] ?? 0), 0);
+  const total = share(stages) || 1;
+  const after = (expectedMs * share(stages.slice(at + 1))) / total;
+  const byClock = expectedMs - elapsedMs;
+  if (byClock < after) return `${words}: taking longer than usual`;
+  const left = Math.max(1, Math.round(byClock / 60_000));
+  return `${words}: about ${left} minute${left === 1 ? "" : "s"} left of the build`;
+}
+
 function stagesOf(payload: StreetsBuildPayload): string[] {
   if (payload.import) return ["import", "swap"];
   return [...((payload.files?.length ?? 0) > 1 ? ["merge"] : []), "admins", "tiles", "extract", "swap"];
@@ -396,14 +412,8 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
         const at = Math.max(0, stages.indexOf(stage));
         const words = STAGES[stage] ?? status!.message ?? stage;
         let message = words;
-        if (payload.expectedMs && status!.startedAt) {
-          // What the stages after this one take, at least; or what is left of the whole by the clock, if more.
-          const after = stages.slice(at + 1).reduce((sum, s) => sum + (STAGE_SHARE[s] ?? 0), 0);
-          const total = stages.reduce((sum, s) => sum + (STAGE_SHARE[s] ?? 0), 0) || 1;
-          const byClock = payload.expectedMs - (Date.now() - status!.startedAt);
-          const left = Math.max(1, Math.round(Math.max((payload.expectedMs * after) / total, byClock) / 60_000));
-          message = `${words}: about ${left} minute${left === 1 ? "" : "s"} left of the build`;
-        }
+        if (payload.expectedMs && status!.startedAt)
+          message = timeLeftText(words, stages, at, payload.expectedMs, Date.now() - status!.startedAt);
         progress({ current: at, total: stages.length, message, ...(stage !== lastStage ? { stage: words } : {}) });
         if (stage !== lastStage) ctx.events.publish({ type: "streets.changed" });
         lastStage = stage;

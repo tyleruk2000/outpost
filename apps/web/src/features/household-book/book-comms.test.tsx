@@ -236,6 +236,30 @@ describe("radio plans in the book", () => {
     expect(all).toContain("Radio plans: worked out on this Outpost with VOACAP (VOACAP Version 16.1207W)");
   });
 
+  it("prints each station's own call sign, and a contact's only where the station has none", () => {
+    const signed = planOf({
+      ...family,
+      stations: [{ ...stations[0]!, callsign: "M0XYZ" }, stations[1]!, { ...third, name: "Gran" }],
+    });
+    const contacts = [
+      // Named like the first station, with another sign: the station's own is the one printed.
+      { displayName: "Home base", callsign: "G0OLD", phones: [] },
+      { displayName: "Remote shelter", callsign: "2e0aaa", phones: [] },
+    ] as unknown as BookInputs["emergencyContacts"];
+    const all = contentText(
+      makeBook(inputs({ radioPlans: [{ plan: signed, result: familyMatrix }], emergencyContacts: contacts })).document.content,
+    );
+    expect(all).toContain("Call sign");
+    // The stations' table: name, then call sign.
+    expect(all).toMatch(/Home base M0XYZ /);
+    expect(all).toMatch(/Remote shelter 2E0AAA /);
+    const none = contentText(
+      makeBook(inputs({ radioPlans: [{ plan: planOf({ ...family, stations: [stations[0]!, stations[1]!] }), result: null }] })).document
+        .content,
+    );
+    expect(none).toContain("Give a station its call sign in the radio plan");
+  });
+
   it("leaves out a radio plan not chosen, and says when none is in", () => {
     const some = contentText(
       makeBook(inputs({ answers: { ...inputs().answers, radioPlanChoice: "some", radioPlanIds: ["rp2"] } })).document.content,

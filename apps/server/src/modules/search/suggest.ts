@@ -150,7 +150,7 @@ export function createSuggester(sqlite: Database.Database, failed: (error: unkno
 /**
  * A suggestion is an extra, and never worth failing a search for; but a word list that
  * cannot be read means the index is broken, which is said, not hidden. (It was broken by
- * erasing a passage that had been changed in place: see migration 0048.)
+ * erasing a passage that had been changed in place: see migration 0049.)
  */
 function safely(find: () => string | null, failed: (error: unknown) => void): string | null {
   try {

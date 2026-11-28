@@ -45,8 +45,15 @@ POST /api/roads/route ─▶ graph.ts: every installed network joined in memory
   motorway carriageway or a slip road) within 40 km, in a piece of network every point
   can reach; then A* by time, the estimate being straight-line distance at 120 km/h.
 - **directions.ts**: the path as lines (below). **countries.ts**: which country a point is
-  in, from Natural Earth outlines (`country-outlines.json`, written by
-  `scripts/write-country-outlines.mjs`).
+  in, from the server's own country outlines (`layers/borders.ts`, Natural Earth 1:10m),
+  so a town by a border (Freilassing, Vancouver) or Lesotho is in the right country.
+  `inNorthernIreland` and `reachesNorthernIreland`: a network's build records in its
+  `stats` whether its junctions reach Northern Ireland (Geofabrik's United Kingdom does, its
+  Great Britain does not; never judged by region id). A network built before that was
+  recorded is read once, soon after start (`recordNorthernIreland`), and the answer kept;
+  until then its box says. One that does not is named Great Britain
+  (`networkName`, service.ts), covers no point there in coverage, and plan.ts never joins a
+  point there to a node in Great Britain.
 - **speeds.ts**: the speed table (below).
 
 ## Directions
@@ -92,6 +99,9 @@ How the path becomes lines:
    times that, fold into the line before (or the one after, at a start or after a
    crossing); an A–B–A dog-leg folds into A. More than 28 road lines left: the shortest
    fold until 28.
+5. The same road on, signed for a place its earlier signs already named, or after a
+   stretch whose signs named no place at all, is one line for the later place; a place
+   not signed before is a line of its own (A26 for Reims, then for Troyes).
 
 On the real Great Britain and France networks, the owner's own trip (Leatherhead to
 Chamonix, 1,075 km) comes out at 15 lines, against the owner's 10:
@@ -264,16 +274,20 @@ was planned in.
 `apps/web/src/features/maps/road-route/`: `road-route-panel.tsx` (the Routes tab's **Road
 route**: form, planned route, saved route, saved list), `point-field.tsx` (a point from the
 map's search, saved places or the map centre), `directions.tsx`, `plain-text.tsx`,
-`road-networks.tsx` (Offline maps, **Road networks for routes**), `layers.ts` (the
-`o-road-route` overlay), `route-map.ts` and `route-card.ts` (the print-kit card; the
+`layers.ts` (the `o-road-route` overlay), `route-map.ts` and `route-card.ts` (the print-kit card; the
 installed maps are read before the overview is drawn), `words.ts` (start and end lines,
 crossing choices, and `legLines`, which cuts the route's geometry into each leg's part by
 the legs' ends). Query keys start with `roads`; `roads.changed` refreshes them. The map's
-point menu has **Road route from here / to here**; `/maps?offline=roads` opens the networks.
+point menu has **Road route from here / to here**; road networks are added and listed on
+Map data (`data-page/`; `/maps?offline=roads` leads to `/maps/data?add=1&kinds=roads`).
 A region's roads come from its country file, one download read for roads and places
 together and then kept or deleted as the person chose (`POST /api/maps/data/add`, see
 [map data](maps.md#map-data-and-country-files)); a kept file is read again with no
-download. Building from a file of the person's own in storage is offered through the API.
+download. A file of the person's own in storage is built from in **Add a place → Routes from
+your own file** (`data-page/own-roads-file.tsx`: location, path, name, country), as
+`POST /api/roads/networks` with `locationId` and `relPath`; the path is resolved inside the
+location and checked with links followed (`resolveFollowingLinks`), and a folder is refused.
+The file is never moved or deleted.
 Tests: `road-route.test.tsx`, `e2e/tests/road-routes*.spec.ts` (networks built from the
 server fixtures in storage).
 

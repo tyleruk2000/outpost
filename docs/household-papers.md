@@ -122,7 +122,12 @@ current one, and its screen says which under the title, with **Change**.
   caravan, a car, a hiking group) has no address on its cards: they say who it is
   travelling with and what kit Supplies holds for it.
 - **Keep on this phone** keeps the current household's sheets, and the phone says whose
-  they are.
+  they are. Each household's sheets are a copy of their own: keeping the caravan's does not
+  replace home's. Out of reach, the phone shows every household's copy it holds, each under
+  its name, and each is brought up to date from its own household when the server is back.
+  A copy kept before this is matched to its household by the name it was kept under, and
+  left as it was if no household has that name. A household removed at home keeps its copy
+  on the phone, and its row under Kept says so, with **Remove** beside it.
 
 ## On paper together
 

@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { localId, plural } from "@/lib/utils";
 import { RowTools, removeAt, replaceAt } from "./list-edit";
+import { onlyInWords } from "./words";
 
 export function SourceLine({ source }: { source: string }) {
   const found = sourceById(source);
@@ -173,6 +174,7 @@ function TakenOut({ out, onPutBack }: { out: TemplateStep[]; onPutBack: (step: T
               <span className="text-ink-muted">
                 {PLAN_PHASES.find((phase) => phase.id === step.phase)?.label}. <SourceLine source={step.source} />
               </span>
+              {onlyInWords(step.onlyIn) ? <span className="block text-ink-muted">{onlyInWords(step.onlyIn)}.</span> : null}
             </span>
             <Button onClick={() => onPutBack(step)}>Put back</Button>
           </li>

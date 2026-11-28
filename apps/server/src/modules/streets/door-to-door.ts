@@ -90,7 +90,8 @@ export async function doorToDoor(input: {
   async function ends(from: Point, to: Point, door: Point, which: "start" | "end"): Promise<StreetDirections | null> {
     try {
       const reply = await client.route({ points: [from, to], costing: "auto", ...(input.signal ? { signal: input.signal } : {}) });
-      return streetDirections(reply, { units, costing: "auto" });
+      // The streets from the door end where the main-road lines begin: "Join Kingston Road (B2430), then the main roads below".
+      return streetDirections(reply, { units, costing: "auto", ...(which === "start" ? { endsOnMainRoad: join.road } : {}) });
     } catch (error) {
       if (input.signal?.aborted) throw error;
       const why = input.endProblem(error, door);

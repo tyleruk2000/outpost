@@ -39,6 +39,12 @@ for one household shows in another.
   a short line for each other household that keeps something.
 - **Export everything** takes every household's list, one file each, named after the
   household. The CSV on the Supplies screen is the current household's.
+- **Bring in a CSV file** reads the file against the current household's supplies and
+  brings it into that household, and says so ("They go into Caravan's supplies"). If
+  Outpost is set to another household before you press, nothing is brought in: read the
+  file again.
+- Each household can keep up to 5,000 items; one household's count does not take from
+  another's.
 
 ## Use-by and best before
 

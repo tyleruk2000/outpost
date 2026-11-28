@@ -149,7 +149,7 @@ results p95 about 35 ms on the laptop.
 ### Passages are never changed in place
 
 `chunks_fts` and `chunks_words` are external-content FTS5 tables kept in step by insert
-and delete triggers. A passage is never `UPDATE`d (migration 0048 refuses it): a new title
+and delete triggers. A passage is never `UPDATE`d (migration 0049 refuses it): a new title
 or new tags put each passage back under a new number, its vectors copied across, and the
 rows of the vector matrix in memory take the new numbers (`onChunksRenumbered`; the
 matrix is let go and read again only if that cannot be done). The reason: an encrypting save

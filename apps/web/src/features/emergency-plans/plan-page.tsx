@@ -16,7 +16,7 @@ import {
   sourcesOfPlan,
   templateById,
 } from "@outpost/shared";
-import { Copy, ListChecks, Printer, TriangleAlert } from "lucide-react";
+import { BookOpen, Copy, ListChecks, Printer, TriangleAlert } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
@@ -324,6 +324,11 @@ export default function EmergencyPlanPage() {
             <Button asChild>
               <Link to={`/prepare/plans/${id}/cards`} onClick={() => void flush()}>
                 <Printer aria-hidden /> Cards to print
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to={`/prepare/plans/${id}/read`} onClick={() => void flush()}>
+                <BookOpen aria-hidden /> Read the plan
               </Link>
             </Button>
           </>

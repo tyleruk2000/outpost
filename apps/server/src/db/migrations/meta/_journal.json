@@ -341,8 +341,15 @@
     {
       "idx": 48,
       "version": "6",
-      "when": 1795863565639,
-      "tag": "0048_search_passages_never_updated",
+      "when": 1795867675991,
+      "tag": "0048_job_interruptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "6",
+      "when": 1795871049318,
+      "tag": "0049_search_passages_never_updated",
       "breakpoints": true
     }
   ]

@@ -56,6 +56,17 @@ export function useAddMapData() {
   });
 }
 
+/** A damaged kept source file, repaired on a press: only the damaged stretch is fetched again. */
+export function useRepairSourceFile() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (collectionId: string) => api.post<{ taskId: string }>("/api/maps/data/repair", { collectionId }),
+    onSuccess: () => {
+      for (const key of [["maps"], ["jobs"]]) void client.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
 /** Asks the source, on a press, how large and how new its newest copy is. Nothing is downloaded. */
 export function useCheckUpdate() {
   return useMutation({

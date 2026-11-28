@@ -42,6 +42,9 @@ const shortDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "n
 
 const footerRight = (made: Date) => `Made ${shortDate(made)} in Outpost · print again after a change`;
 
+/** " · For Caravan" after a heading when there are several households; nothing with one. */
+const forHousehold = (plan: Readable) => (plan.household ? ` · For ${printable(plan.household)}` : "");
+
 // ── Wallet cards ─────────────────────────────────────────────────────────────
 
 export interface KitWalletCard {
@@ -122,7 +125,8 @@ export function kitWalletCard(plan: Readable, person: ReadPerson, made: Date): K
       front.text(person.medical.trim(), size);
     }
     // The foot of the front: the plan and the caveat, small and grey, set from the bottom up.
-    const foot = wrapLine(`${printable(plan.name)}, made ${shortDate(made)}. Our own plan: follow official warnings.`, 5.6, inner);
+    const owner = plan.household ? `, for ${printable(plan.household)}` : "";
+    const foot = wrapLine(`${printable(plan.name)}${owner}, made ${shortDate(made)}. Our own plan: follow official warnings.`, 5.6, inner);
     foot.slice(-2).forEach((line, index, lines) => {
       svg += svgText(pad, H - 5 - (lines.length - 1 - index) * 6.8, line, { size: 5.6, fill: C.muted });
     });
@@ -231,7 +235,7 @@ export function walletDocument(
           {
             width: "*",
             stack: [
-              { text: `Wallet cards · ${printable(plan.name)}`, fontSize: 14, bold: true, lineHeight: 1 },
+              { text: `Wallet cards · ${printable(plan.name)}${forHousehold(plan)}`, fontSize: 14, bold: true, lineHeight: 1 },
               {
                 text: "Cut along the corner marks, fold along the broken line, printed sides out. Print at actual size (100%): each card is then the size of a bank card.",
                 fontSize: 7.5,
@@ -253,7 +257,7 @@ export function walletDocument(
     paper: options.paper,
     title: `Wallet cards, ${plan.name}`,
     made: options.made,
-    footerName: `Wallet cards · ${printable(plan.name)}`,
+    footerName: `Wallet cards · ${printable(plan.name)}${forHousehold(plan)}`,
     footerRight: footerRight(options.made),
     parts: [{ kind: "plain", content }],
   });
@@ -330,7 +334,13 @@ export function fridgeDocument(plan: Readable, options: { made: Date; paper: Car
   const size = options.size ?? fridgeSize(plan, options.paper);
   const small = Math.max(9.5, size * 0.72);
   const content: Content[] = [
-    { text: `Fridge sheet · ${printable(plan.kind)}`, fontSize: 8.5, bold: true, color: C.accent, characterSpacing: 0.4 },
+    {
+      text: `Fridge sheet · ${printable(plan.kind)}${forHousehold(plan)}`,
+      fontSize: 8.5,
+      bold: true,
+      color: C.accent,
+      characterSpacing: 0.4,
+    },
     { text: printable(plan.name), fontSize: 22, bold: true, lineHeight: 1.05, margin: [0, 2, 0, 8] },
     callout(
       "act",
@@ -416,7 +426,7 @@ export function fridgeDocument(plan: Readable, options: { made: Date; paper: Car
     paper: options.paper,
     title: `Fridge sheet, ${plan.name}`,
     made: options.made,
-    footerName: `Fridge sheet · ${printable(plan.name)}`,
+    footerName: `Fridge sheet · ${printable(plan.name)}${forHousehold(plan)}`,
     footerRight: footerRight(options.made),
     parts: [{ kind: "plain", content }],
   });
@@ -428,7 +438,7 @@ export function fridgeDocument(plan: Readable, options: { made: Date; paper: Car
 export function grabDocument(plan: Readable, options: { made: Date; paper: CardPaper }): TDocumentDefinitions {
   const box = { canvas: [{ type: "rect", x: 0, y: 0, w: 11, h: 11, lineWidth: 1, lineColor: C.ink, r: 1.5 }], margin: [0, 2, 0, 0] };
   const content: Content[] = [
-    { text: `Grab list · ${printable(plan.kind)}`, fontSize: 8.5, bold: true, color: C.accent, characterSpacing: 0.4 },
+    { text: `Grab list · ${printable(plan.kind)}${forHousehold(plan)}`, fontSize: 8.5, bold: true, color: C.accent, characterSpacing: 0.4 },
     { text: printable(plan.name), fontSize: 22, bold: true, lineHeight: 1.05, margin: [0, 2, 0, 4] },
     { text: "What to take if we have to leave. Tick each as it goes in the bag.", fontSize: 11, color: C.muted, margin: [0, 0, 0, 10] },
   ];
@@ -487,7 +497,7 @@ export function grabDocument(plan: Readable, options: { made: Date; paper: CardP
     paper: options.paper,
     title: `Grab list, ${plan.name}`,
     made: options.made,
-    footerName: `Grab list · ${printable(plan.name)}`,
+    footerName: `Grab list · ${printable(plan.name)}${forHousehold(plan)}`,
     footerRight: footerRight(options.made),
     parts: [{ kind: "plain", content }],
   });

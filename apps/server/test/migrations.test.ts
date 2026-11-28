@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, describe, expect, it } from "vitest";
 import { migrationsDir } from "../src/core/paths.ts";
 import { openDatabase } from "../src/db/client.ts";
@@ -57,7 +59,7 @@ describe("database migrations", () => {
       }
       for (const trigger of ["chunks_fts_ai", "chunks_fts_ad", "chunks_not_updated", "places_fts_ai", "places_fts_ad"])
         expect(names, trigger).toContain(trigger);
-      // Passages are put back under new numbers, never changed in place (0048).
+      // Passages are put back under new numbers, never changed in place (0049).
       for (const trigger of ["chunks_fts_au", "chunks_words_au"]) expect(names, trigger).not.toContain(trigger);
       const applied = sqlite.prepare("SELECT count(*) AS n FROM __drizzle_migrations").get() as { n: number };
       expect(applied.n).toBe(migrationFiles().length);
@@ -117,6 +119,48 @@ describe("database migrations", () => {
       expect(sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH 'granite'").get()).toEqual({ n: 1 });
     } finally {
       sqlite.close();
+    }
+  });
+
+  it("brings a database from before the last two migrations to the same schema as a new one, with its passages still found", () => {
+    // The migrations up to 0047 alone, from a folder of their own, as an installation of that time had them.
+    const older = tempDir("outpost-migrations-0047-");
+    dirs.push(older);
+    fs.mkdirSync(path.join(older, "meta"));
+    const journal = JSON.parse(fs.readFileSync(path.join(migrationsDir, "meta/_journal.json"), "utf8")) as {
+      entries: Array<{ tag: string }>;
+    };
+    const kept = journal.entries.filter((entry) => Number(entry.tag.slice(0, 4)) <= 47);
+    expect(kept.length).toBe(journal.entries.length - 2);
+    fs.writeFileSync(path.join(older, "meta/_journal.json"), JSON.stringify({ ...journal, entries: kept }));
+    for (const entry of kept) fs.copyFileSync(path.join(migrationsDir, `${entry.tag}.sql`), path.join(older, `${entry.tag}.sql`));
+
+    const file = tempDb();
+    const raw = new Database(file);
+    migrate(drizzle(raw), { migrationsFolder: older });
+    raw.prepare("INSERT INTO search_entities (kind, entity_id, title, url, updated_at) VALUES ('note', 'n', 'Hut', '/n', 1)").run();
+    raw
+      .prepare(
+        "INSERT INTO chunks (entity_row_id, ordinal, title, text, content_hash, index_version) VALUES (1, 0, 'Hut', 'granite tor', 'h', 1)",
+      )
+      .run();
+    // As upsert did then: in place. The rebuild of 0049 leaves the index matching the passages all the same.
+    raw.prepare("UPDATE chunks SET tags = 'walks'").run();
+    raw.close();
+
+    const schema = (db: Database.Database) =>
+      db.prepare("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name").all();
+    const upgraded = openDatabase(file).sqlite;
+    const fresh = openDatabase(tempDb()).sqlite;
+    try {
+      expect(schema(upgraded)).toEqual(schema(fresh));
+      for (const table of ["jobs", "chunks"]) expect(upgraded.pragma(`table_info(${table})`)).toEqual(fresh.pragma(`table_info(${table})`));
+      for (const index of ["chunks_fts", "chunks_words"])
+        upgraded.prepare(`INSERT INTO ${index}(${index}, rank) VALUES ('integrity-check', 1)`).run();
+      expect(upgraded.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH 'granite'").get()).toEqual({ n: 1 });
+    } finally {
+      upgraded.close();
+      fresh.close();
     }
   });
 

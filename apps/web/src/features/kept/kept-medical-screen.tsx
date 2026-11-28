@@ -6,7 +6,7 @@
  * that passphrase, in memory only: nothing opened is written anywhere, and it closes when
  * the screen does. A sheet locked to a key opens only where that key is.
  */
-import { localDay, type MedicalRecord, type MedicalSheet } from "@outpost/shared";
+import { FIRST_HOUSEHOLD_ID, localDay, type MedicalRecord, type MedicalSheet } from "@outpost/shared";
 import { CircleAlert, LockKeyhole } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -22,13 +22,17 @@ import type { Block } from "@/features/propagation/plans/document";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { DEVICE } from "./device";
-import { MEDICAL_ID, MEDICAL_PATH } from "./keep";
-import { getKept, type KeptMedical, readKeptJson } from "./store";
+import { MEDICAL_PATH } from "./keep";
+import { type KeptMedical, listKept, readKeptJson } from "./store";
 
-type Found =
-  | { state: "loading" }
-  | { state: "not-kept" }
-  | { state: "kept"; item: KeptMedical; sheets: MedicalSheet[]; householdName: string | null };
+type Found = { state: "loading" } | { state: "not-kept" } | { state: "kept"; copies: Copy[] };
+
+/** One household's kept sheets. */
+interface Copy {
+  item: KeptMedical;
+  sheets: MedicalSheet[];
+  householdName: string | null;
+}
 
 /** A sheet's words, as its printed page has them. */
 function SheetBlocks({ blocks }: { blocks: Block[] }) {
@@ -175,16 +179,14 @@ export default function KeptMedicalScreen() {
   useEffect(() => {
     let live = true;
     void (async () => {
-      const item = await getKept("medical", MEDICAL_ID);
-      const copy = item
-        ? await readKeptJson<{ sheets: MedicalSheet[]; householdName?: string | null }>("medical", MEDICAL_ID, MEDICAL_PATH)
-        : undefined;
-      if (live)
-        setFound(
-          item && copy
-            ? { state: "kept", item, sheets: copy.sheets, householdName: copy.householdName ?? item.householdName ?? null }
-            : { state: "not-kept" },
-        );
+      // Every household's copy kept here: which household Outpost is set to cannot be asked out of reach.
+      const copies: Copy[] = [];
+      for (const item of await listKept()) {
+        if (item.kind !== "medical") continue;
+        const copy = await readKeptJson<{ sheets: MedicalSheet[]; householdName?: string | null }>("medical", item.id, MEDICAL_PATH);
+        if (copy) copies.push({ item, sheets: copy.sheets, householdName: copy.householdName ?? item.householdName ?? null });
+      }
+      if (live) setFound(copies.length > 0 ? { state: "kept", copies } : { state: "not-kept" });
     })().catch(() => live && setFound({ state: "not-kept" }));
     return () => {
       live = false;
@@ -213,24 +215,52 @@ export default function KeptMedicalScreen() {
       </Page>
     );
   }
+  const several = found.copies.length > 1;
   return (
     <Page width="reading">
       <h1 className="font-title text-title text-ink">Medical sheets</h1>
-      {found.householdName ? <p className="mt-1 text-small text-ink-muted">For {found.householdName}</p> : null}
+      {several ? (
+        <p className="mt-2 max-w-[60ch] text-small text-ink-muted">
+          The copies kept on this {DEVICE}, one for each household. A change made since on the server is not in them.
+        </p>
+      ) : null}
+      {found.copies.map((copy) => (
+        <CopySheets key={copy.item.id} copy={copy} several={several} />
+      ))}
+    </Page>
+  );
+}
+
+/** One household's copy: headed by its name when several are kept, said with its age. */
+function CopySheets({ copy, several }: { copy: Copy; several: boolean }) {
+  // A copy made while there was one household has no name of its own.
+  const name = copy.householdName ?? (copy.item.id === FIRST_HOUSEHOLD_ID ? "the first household" : "a household");
+  const body = (
+    <>
+      {!several && copy.householdName ? <p className="mt-1 text-small text-ink-muted">For {copy.householdName}</p> : null}
       <p className="mt-2 max-w-[60ch] text-small text-ink-muted">
-        The copy kept on this {DEVICE}, from {formatDateTime(found.item.refreshedAt)}. A change made since on the server is not in it.
+        {several
+          ? `Kept ${formatDateTime(copy.item.refreshedAt)}.`
+          : `The copy kept on this ${DEVICE}, from ${formatDateTime(copy.item.refreshedAt)}. A change made since on the server is not in it.`}
       </p>
-      {found.sheets.length === 0 ? (
+      {copy.sheets.length === 0 ? (
         <p className="mt-6 text-body text-ink-muted">There were no medical sheets when the copy was made.</p>
       ) : (
         <div className="mt-6 grid gap-8">
-          {found.sheets.map((sheet) => (
+          {copy.sheets.map((sheet) => (
             <section key={sheet.id} aria-label={`Medical sheet: ${sheet.name}`}>
               {sheet.encrypted || !sheet.record ? <LockedSheet sheet={sheet} /> : <SheetBlocks blocks={shown(sheet, sheet.record)} />}
             </section>
           ))}
         </div>
       )}
-    </Page>
+    </>
+  );
+  if (!several) return body;
+  return (
+    <section aria-label={`For ${name}`} className="mt-10">
+      <h2 className="font-title text-heading text-ink">For {name}</h2>
+      {body}
+    </section>
   );
 }

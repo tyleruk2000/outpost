@@ -14,6 +14,7 @@
 import type { RoadDistanceUnit, StreetDirections, StreetFerry, StreetLine, StreetLineKind } from "@outpost/shared";
 import { roadDistanceText } from "@outpost/shared";
 import { simplifyIndices } from "../roads/build.ts";
+import { ownName } from "../roads/plan.ts";
 import { type Costing, decodePolyline6, type Maneuver, type RouteReply } from "./client.ts";
 
 const EROUTE = /^E ?\d{1,3}$/;
@@ -197,13 +198,24 @@ function lineFor(
   }
 }
 
+/** "Join Kingston Road (B2430), then the main roads below": where the streets from a door meet Outpost's main-road lines. */
+function joinMainRoad(street: string | null, mainRoad: string | null): string {
+  // The street of the last turn, only when it is the main road ("Leatherhead Road (A24)"); a side street just short of it is not.
+  const carries = street !== null && (mainRoad === null || street === mainRoad || street.includes(`(${mainRoad})`));
+  const road = carries ? street : mainRoad;
+  if (!road) return "Then the main roads below";
+  return `Join ${ROAD_REF.test(road) ? `the ${road}` : road}, then the main roads below`;
+}
+
 /**
  * The lines for a Valhalla route. `viaNames` names the points between legs (for walks and
- * rides through via points): each leg's arrival there becomes a "Via …" line.
+ * rides through via points): each leg's arrival there becomes a "Via …" line. With
+ * `endsOnMainRoad` (the start of a door-to-door drive, given the main road it meets, or
+ * null), the arrival is where the main-road lines take over, not the end.
  */
 export function streetDirections(
   reply: RouteReply,
-  options: { units: RoadDistanceUnit; costing: Costing; viaNames?: Array<string | null> },
+  options: { units: RoadDistanceUnit; costing: Costing; viaNames?: Array<string | null>; endsOnMainRoad?: string | null },
 ): StreetDirections {
   const lines: Draft[] = [];
   const ferries: StreetFerry[] = [];
@@ -224,8 +236,12 @@ export function streetDirections(
       }
       let drafted = lineFor(m, leg.maneuvers[i + 1], previous, options.costing);
       if (drafted && !last && (m.type === 4 || m.type === 5 || m.type === 6)) {
-        const viaName = options.viaNames?.[legIndex] ?? null;
+        // Named as the main-road planner names it: a name for its role only ("via") or its position is none, and the street it is on says where.
+        const viaName = ownName(options.viaNames?.[legIndex]) ?? previous?.name ?? wayName(m.street_names);
         drafted = { kind: "via", text: viaName ? `Via ${viaName}` : `Via point ${legIndex + 1}`, name: null };
+      } else if (drafted && last && options.endsOnMainRoad !== undefined && (m.type === 4 || m.type === 5 || m.type === 6)) {
+        const street = previous?.name ?? wayName(m.street_names);
+        drafted = { kind: "arrive", text: joinMainRoad(street, options.endsOnMainRoad), name: null };
       }
       if (!drafted) {
         if (previous) {

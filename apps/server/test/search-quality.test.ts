@@ -72,7 +72,14 @@ describe("search quality on the household evaluation set", () => {
   const heldOutRows: Row[] = [];
   // biome-ignore lint/suspicious/noExplicitAny: rows of a plain JavaScript module
   const referenceRows: any[] = [];
+  let evaluate: (into: Row[], queries?: Query[]) => Promise<void>;
+  /** Set once the first hook has finished: the passes with search by meaning build on what it set up. */
+  let keywordDone = false;
 
+  // Each pass over the questions is a hundred searches, each asking 37 reference collections: some 15 s on a
+  // quiet machine, and several times that on one running every other test file too. The keyword passes are
+  // set up here and the passes with search by meaning in a hook of their own (below), each with room for a
+  // loaded machine: together, in one hook, they took 75 s of its 120 on a quiet one.
   beforeAll(async () => {
     const books = recorded.collections.map((collection, index) => ({
       uuid: uuidFor(index + 1),
@@ -99,7 +106,7 @@ describe("search quality on the household evaluation set", () => {
     }
     for (const entity of library()) app.ctx.services.search.upsert(entity);
     const pool = recorded.collections.flatMap((collection) => collection.hits).map(asResult);
-    const evaluate = async (into: Row[], queries = loadQueries() as Query[]) => {
+    evaluate = async (into: Row[], queries = loadQueries() as Query[]) => {
       for (const query of queries) {
         const started = performance.now();
         let { body } = await app.api("GET", `/api/search?q=${encodeURIComponent(query.q)}&limit=20`);
@@ -131,19 +138,12 @@ describe("search quality on the household evaluation set", () => {
       if (query.pi.length === 0) continue;
       referenceRows.push(measureReference(query, await readReference(base, query.q)));
     }
-    // Search by meaning on, with the model that comes with Outpost: the index is built, then the same searches.
-    if (modelPresent) {
-      // The keyword searches again first: a second pass differs a little from the first (reference collections
-      // answer from what they have read since), and that, not the first, is what meaning is compared with.
-      await evaluate(keywordAgain);
-      await app.api("PATCH", "/api/settings", { "search.semantic.enabled": true });
-      await app.ctx.services.semantic.settled();
-      await app.ctx.jobs.whenIdle();
-      await evaluate(meaningRows);
-    }
+    keywordDone = true;
+  }, 180_000);
+  afterAll(async () => {
     // A file, not the console: the test runner keeps a passing test's output to itself.
     if (process.env.SEARCH_EVAL_OUT) {
-      const withMeaning = modelPresent
+      const withMeaning = meaningRows.length
         ? `${formatTable(meaningRows)}\n\n${formatSummary("fixture library, keyword again", summarise(keywordAgain))}\n${formatSummary("fixture library, with search by meaning", summarise(meaningRows))}\n${formatSummary("fixture library, with search by meaning, household questions", summarise(household(meaningRows)))}\n${formatSummary("fixture library, with search by meaning, everyday searches", summarise(everyday(meaningRows)))}\n${formatSummary("fixture library, with search by meaning, persona questions", summarise(persona(meaningRows)))}\nFound by meaning alone for keyboard-mashing: ${persona(
             meaningRows,
           )
@@ -156,10 +156,8 @@ describe("search quality on the household evaluation set", () => {
         `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n${formatSummary("fixture library, persona questions", summarise(persona(rows)))}\n${formatSummary("held-out questions (not tuned on)", summarise(heldOutRows))}\n\n${formatTable(heldOutRows)}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
       );
     }
-  }, 120_000);
-  afterAll(async () => {
-    await app.close();
-    await kiwix.close();
+    await app?.close();
+    await kiwix?.close();
   });
 
   it("puts a useful answer in the first three for nearly every question, and finds something for every one", () => {
@@ -190,17 +188,6 @@ describe("search quality on the household evaluation set", () => {
     ).toEqual([]);
   });
 
-  it.skipIf(!modelPresent)(
-    "does at least as well with search by meaning on, and puts the first aid manual first for rescue breaths",
-    () => {
-      const summary = summarise(meaningRows);
-      expect(summary.success3).toBeGreaterThanOrEqual(0.95);
-      expect(summary.zeroResultRate).toBe(0);
-      expect(summarise(household(meaningRows)).ndcg5).toBeGreaterThanOrEqual(summarise(household(keywordAgain)).ndcg5);
-      expect(meaningRows.find((row) => row.q === "rescue breaths for a child")!.titles[0]).toBe("First aid manual");
-    },
-  );
-
   it("answers the persona tests' medicine and first aid questions with pages about them", () => {
     const medicine = rows.find((row) => row.q === "can I take paracetamol and ibuprofen together")!;
     // The painkillers' own page and the encyclopaedia's article on the two together, before a page on another medicine.
@@ -210,12 +197,6 @@ describe("search quality on the household evaluation set", () => {
     expect(bleeding.titles.slice(0, 3)).toContain("First aid manual");
     // Low beside the others: "how to pick a lock" and "sunrise tomorrow" have no answer in the recorded collections.
     expect(summarise(persona(rows)).ndcg5).toBeGreaterThanOrEqual(0.6);
-  });
-
-  it.skipIf(!modelPresent)("finds nothing by meaning alone for keyboard-mashing, with search by meaning on", () => {
-    const mashing = persona(meaningRows).filter((row) => !row.expects);
-    expect(mashing.length).toBeGreaterThanOrEqual(4);
-    for (const row of mashing) expect(row.byMeaningAlone, `${row.q}: ${row.titles.join(" | ")}`).toBe(0);
   });
 
   it("puts first aid before encyclopaedia articles named for the injury when asked what to do for a burn", () => {
@@ -233,5 +214,40 @@ describe("search quality on the household evaluation set", () => {
   it("answers the owner's question with the car battery page first", () => {
     const row = rows.find((candidate) => candidate.q === "How to change car battery")!;
     expect(row.titles[0]).toBe("Car maintenance manual");
+  });
+
+  // With the model that comes with Outpost, when its files are here: the index is built, then the same searches.
+  describe.skipIf(!modelPresent)("with search by meaning on", () => {
+    // biome-ignore lint/suspicious/noDuplicateTestHooks: a hook of its own on purpose, with its own time (see the first)
+    beforeAll(async () => {
+      if (!keywordDone) throw new Error("Not tried: the keyword passes before these did not finish (see the first hook's error).");
+      // The keyword searches again first: a second pass differs a little from the first (reference collections
+      // answer from what they have read since), and that, not the first, is what meaning is compared with.
+      await evaluate(keywordAgain);
+      await app.api("PATCH", "/api/settings", { "search.semantic.enabled": true });
+      await app.ctx.services.semantic.settled();
+      // Building the index is real work (some 15 s on a quiet machine). whenIdle gives up quietly after its
+      // timeout, so the index is checked to be built rather than taken to be: graded on half an index, the
+      // measures below would fail for a reason that is not search's.
+      await app.ctx.jobs.whenIdle(150_000);
+      const built = app.ctx.jobs.list({ types: ["semantic.index"] });
+      expect(built.length).toBeGreaterThan(0);
+      expect(built.filter((job) => job.state !== "succeeded").map((job) => `${job.state}: ${job.error ?? ""}`)).toEqual([]);
+      await evaluate(meaningRows);
+    }, 300_000);
+
+    it("does at least as well with search by meaning on, and puts the first aid manual first for rescue breaths", () => {
+      const summary = summarise(meaningRows);
+      expect(summary.success3).toBeGreaterThanOrEqual(0.95);
+      expect(summary.zeroResultRate).toBe(0);
+      expect(summarise(household(meaningRows)).ndcg5).toBeGreaterThanOrEqual(summarise(household(keywordAgain)).ndcg5);
+      expect(meaningRows.find((row) => row.q === "rescue breaths for a child")!.titles[0]).toBe("First aid manual");
+    });
+
+    it("finds nothing by meaning alone for keyboard-mashing, with search by meaning on", () => {
+      const mashing = persona(meaningRows).filter((row) => !row.expects);
+      expect(mashing.length).toBeGreaterThanOrEqual(4);
+      for (const row of mashing) expect(row.byMeaningAlone, `${row.q}: ${row.titles.join(" | ")}`).toBe(0);
+    });
   });
 });

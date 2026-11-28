@@ -25,10 +25,12 @@ import { Badge, Progress } from "@/components/ui/misc";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
 import { mapTaskTitle } from "@/features/downloads/download-text";
 import { MoveItemsDialog } from "@/features/manage/item-dialogs";
+import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { detailLabel } from "../lib/detail";
 import { isUnderWay, MapDataMenu, MapDataProgress, StateMark, touchSize } from "./pattern";
 import { removable } from "./remove-dialog";
+import { useRepairSourceFile } from "./use-map-data";
 import {
   BUNDLE_COLUMNS,
   BUNDLE_NAMES,
@@ -171,11 +173,33 @@ export function ItemState({ item, context, title }: { item: MapDataItem; context
           Failed: {line}
         </p>
       ) : null}
+      {item.state === "damaged" && item.kind === "extract" && item.collectionId ? (
+        <RepairSourceFile collectionId={item.collectionId} hosts={item.update?.hosts ?? []} />
+      ) : null}
       {item.state === "ready" && !item.ageless && overAYearOld(item.dataDate, context.now) ? (
         <p>
           <Badge>Over a year old</Badge>
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** A damaged source file: fetch only the damaged stretch again, saying from where before the press. */
+function RepairSourceFile({ collectionId, hosts }: { collectionId: string; hosts: string[] }) {
+  const repair = useRepairSourceFile();
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <Button size="sm" className={touchSize} disabled={repair.isPending || repair.isSuccess} onClick={() => repair.mutate(collectionId)}>
+        Repair the damaged part
+      </Button>
+      <span className={cn("text-small", repair.isError ? "text-danger" : "text-ink-muted")}>
+        {repair.isSuccess
+          ? "Repairing: follow it in Downloads and tasks."
+          : repair.isError
+            ? errorMessage(repair.error)
+            : `Fetches only the damaged part again${hosts.length > 0 ? `, from ${hosts.join(" and ")}` : ""}, not the whole file.`}
+      </span>
     </div>
   );
 }

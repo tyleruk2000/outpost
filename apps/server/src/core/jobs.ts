@@ -116,6 +116,9 @@ export function paceOf(points: readonly PacePoint[]): number | null {
 /** The longest a timer may be set for; a job due later than this is looked at again then. */
 const LONGEST_WAIT_MS = 2 ** 31 - 1;
 
+/** How many times in a row the server may stop while a job runs, with no orderly stop, before it is not started again. */
+export const MAX_INTERRUPTIONS = 3;
+
 /** Delay before retry `attempt` (1-based): 2s, 4s, 8s … capped at 5 minutes, with jitter. */
 export function retryDelayMs(attempt: number, random: () => number = Math.random): number {
   const base = Math.min(2_000 * 2 ** (attempt - 1), 300_000);
@@ -188,13 +191,34 @@ export class JobQueue {
   start(): void {
     if (this.started) return;
     this.started = true;
-    const left = this.db.select({ id: jobs.id }).from(jobs).where(eq(jobs.state, "running")).all();
-    this.db
-      .update(jobs)
-      .set({ state: "queued", updatedAt: Date.now(), progressMessage: "Resuming after restart" })
-      .where(eq(jobs.state, "running"))
-      .run();
-    for (const { id } of left) this.note(id, "restarted", "queued", null);
+    // A row still running was cut short with no orderly stop (an orderly stop leaves its job queued, see
+    // execute): the process died while it ran, killed, out of memory, or the power cut. On a Raspberry Pi a power
+    // cut is ordinary, so it does not use one of the job's attempts: the run is given its attempt back and the
+    // interruption counted apart. Only a job that keeps going down with the server, MAX_INTERRUPTIONS times in a
+    // row, is not started again: it would otherwise take the server down on every start.
+    const left = this.db.select().from(jobs).where(eq(jobs.state, "running")).all();
+    const now = Date.now();
+    for (const row of left) {
+      const interruptions = row.interruptions + 1;
+      const attempts = Math.max(0, row.attempts - 1);
+      if (interruptions >= MAX_INTERRUPTIONS) {
+        const error = `Outpost stopped while this was running, ${interruptions} times, so it was not started again. Resume it to try again.`;
+        this.db
+          .update(jobs)
+          .set({ state: "failed", attempts, interruptions, error, errorKind: "interrupted", finishedAt: now, updatedAt: now })
+          .where(eq(jobs.id, row.id))
+          .run();
+        this.note(row.id, "state", "failed", error);
+        void this.settle(this.require(row.id));
+      } else {
+        this.db
+          .update(jobs)
+          .set({ state: "queued", attempts, interruptions, updatedAt: now, progressMessage: "Resuming after restart" })
+          .where(eq(jobs.id, row.id))
+          .run();
+        this.note(row.id, "restarted", "queued", null);
+      }
+    }
     this.prune();
     this.pump();
   }
@@ -275,7 +299,7 @@ export class JobQueue {
     if (job.state !== "paused" && job.state !== "failed") {
       throw new AppError("conflict", `This job is ${job.state} and cannot be resumed.`);
     }
-    this.update(id, { state: "queued", error: null, errorKind: null, runAfter: 0, attempts: 0 }, { kind: "resumed" });
+    this.update(id, { state: "queued", error: null, errorKind: null, runAfter: 0, attempts: 0, interruptions: 0 }, { kind: "resumed" });
     queueMicrotask(() => this.pump());
     return this.require(id);
   }
@@ -628,7 +652,7 @@ export class JobQueue {
       const result = await handler.run(run);
       ended = true;
       flush(true);
-      this.update(job.id, { state: "succeeded", result: result ?? null, finishedAt: Date.now() });
+      this.update(job.id, { state: "succeeded", result: result ?? null, finishedAt: Date.now(), interruptions: 0 });
     } catch (error) {
       ended = true;
       flush(true);
@@ -642,7 +666,15 @@ export class JobQueue {
           ...(error instanceof StoppedWithResult ? { result: error.result } : {}),
         });
       } else if (reason === "shutdown") {
-        // Leave the row as running; start() on the next boot queues it again.
+        // Stopped in good order: the run did not fail and was not cut short by a crash, so it uses neither an attempt
+        // nor an interruption. Queued for the next start (written quietly: the server is going down), which tells it
+        // apart from a row still running, left by a process that died.
+        this.db
+          .update(jobs)
+          .set({ state: "queued", attempts: Math.max(0, attempt - 1), updatedAt: Date.now(), progressMessage: "Resuming after restart" })
+          .where(eq(jobs.id, job.id))
+          .run();
+        this.note(job.id, "restarted", "queued", null);
       } else {
         const network = classifyNetworkError(error);
         const permanent = error instanceof PermanentJobError || error instanceof AppError;
@@ -664,6 +696,7 @@ export class JobQueue {
             {
               state: "queued",
               runAfter: Date.now() + delay,
+              interruptions: 0,
               error: said,
               errorKind: kind,
               progressMessage: network === "offline" ? "Waiting for a connection" : "Waiting to retry",
@@ -672,7 +705,7 @@ export class JobQueue {
           );
         } else {
           this.log.error({ job: job.id, err: error }, "job failed");
-          this.update(job.id, { state: "failed", error: said, errorKind: kind, finishedAt: Date.now() });
+          this.update(job.id, { state: "failed", error: said, errorKind: kind, finishedAt: Date.now(), interruptions: 0 });
         }
       }
     } finally {

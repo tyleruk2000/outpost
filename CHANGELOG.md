@@ -17,7 +17,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - One Node 24 server (TypeScript, Fastify) serving the web app and an HTTP API from one
   SQLite database and a set of folders; migrations applied at start.
 - A background job queue in the database: named queues with limits, pause, resume,
-  cancel, retries with growing pauses, and jobs that survive a restart.
+  cancel, retries with growing pauses, and jobs that survive a restart. Neither an
+  orderly stop nor a power cut uses up one of a job's attempts; a job that was running
+  when the server died three times in a row is not started again, with a note to resume
+  it, so that one which takes the server down cannot do so on every start.
 - Live updates to the browser over one server-sent-events stream.
 - An orderly stop on SIGTERM or SIGINT: stop accepting, end live streams, give requests
   three seconds, stop jobs so they resume, close the database; exit anyway after eight
@@ -308,6 +311,14 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   press, with postcode search however typed.
 - The height of the ground under the pointer or at the centre (`GET /api/maps/height`),
   and **Settings → Appearance → Heights** for metres or feet.
+- **Repair the damaged part** of a kept source file that no longer matches its checksum:
+  only the damaged stretch is fetched again from Geofabrik with a bounded Range request,
+  then the whole file is checked against Geofabrik's checksum; if that fails, or Geofabrik
+  sends the whole file instead, the file is left exactly as it was.
+- **Routes from your own file**, in **Add a place**: routes built from an OpenStreetMap
+  source file (`.osm.pbf`) already in a storage location, by its path. Nothing is
+  downloaded and the file is left where it is; a link to a file outside every storage
+  location is not followed.
 
 #### Reference layers for the map
 
@@ -717,6 +728,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - CSV numbers read by the file's own decimal mark, with ambiguous cells refused.
 - Answers decline only when the model says the passages do not hold the answer.
 - Stream errors on a full or unplugged drive fail the download, not the process.
+- A download whose server sends no length and more than the stated size is held to
+  that size on every attempt; the retry no longer takes and installs whatever it is sent.
 - "Reclaim unused space" waits for writes under way, and blocks all writes, `/dav/` too.
 - A refused reference import leaves nothing behind.
 - Wrong-size search-by-meaning vectors are refused.
@@ -746,7 +759,19 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - A failed decryption no longer leaves the Encryption screen busy.
 - An HF basis sentence is dated, not "(today)"; a map page made twice a day is one
   document; `formatDuration` never says "60 seconds".
+- On a phone, the Directions sheet shows a walk's or a ride's climb and its steepest
+  stretch under the totals, as the panel does.
 - Many small layout fixes on phones and narrow windows.
+- Road routes put Freilassing in Germany, Vancouver in Canada and Maseru in Lesotho: they
+  use the same country outlines as the rest of Outpost, not a coarser copy.
+- Road routes say **Great Britain** for the United Kingdom's roads when those are Great
+  Britain's alone (England, Scotland and Wales), and no longer take a point in Northern
+  Ireland as covered by them or join it to a road across the North Channel.
+- Offline maps lists a map under the country most of its land is in, by the country
+  outlines, not by boxes: Bavaria under Germany, a map imported from a file under its
+  country rather than **Other areas**. A map of a part of a country (England, a region the
+  regions layer knows) is of the part, not the whole country, and is named for it; a town
+  finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
 
 ### Security
 

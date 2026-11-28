@@ -13,7 +13,7 @@ import type { RouteReply } from "../src/modules/streets/client.ts";
 import { addressProblem } from "../src/modules/streets/connection.ts";
 import { MAX_CELLS_ACROSS, mainRoadsReach, traceRings } from "../src/modules/streets/main-roads-reach.ts";
 import { streetDirections, streetDistanceText, wayName } from "../src/modules/streets/narrative.ts";
-import { estimateBuild } from "../src/modules/streets/tiles.ts";
+import { estimateBuild, timeLeftText } from "../src/modules/streets/tiles.ts";
 import { waitFor } from "./fixtures/downloads/file-server.ts";
 import { buildArchive } from "./fixtures/maps/archive.ts";
 import { type Ground, groundTiles, worldOf } from "./fixtures/maps/terrain.ts";
@@ -168,6 +168,63 @@ describe("words for streets", () => {
     expect(lines[2]!.distanceM).toBe(2000);
   });
 
+  it("ends the streets from a door where they join the main road, not at 'the end'", () => {
+    const m = (type: number, extra: Record<string, unknown> = {}) => ({
+      type,
+      instruction: "",
+      length: 0.5,
+      time: 30,
+      begin_shape_index: 0,
+      end_shape_index: 0,
+      ...extra,
+    });
+    const reply = (maneuvers: unknown[]) =>
+      ({
+        trip: { summary: { length: 1, time: 60 }, legs: [{ summary: { length: 1, time: 60 }, shape: "", maneuvers }] },
+      }) as unknown as RouteReply;
+    const toMainRoad = streetDirections(
+      reply([m(1, { street_names: ["Bell Lane"], bearing_after: 42 }), m(15, { street_names: ["Kingston Road", "B2430"] }), m(4)]),
+      { units: "km", costing: "auto", endsOnMainRoad: "B2430" },
+    );
+    expect(toMainRoad.lines.map((l) => l.text)).toEqual([
+      "Drive north-east on Bell Lane",
+      "Turn left onto Kingston Road (B2430)",
+      "Join Kingston Road (B2430), then the main roads below",
+    ]);
+    expect(toMainRoad.lines.at(-1)!.kind).toBe("arrive");
+    // A last street with no name: the main road's number.
+    const unnamed = streetDirections(reply([m(1, { bearing_after: 42 }), m(4)]), { units: "km", costing: "auto", endsOnMainRoad: "B2430" });
+    expect(unnamed.lines.at(-1)!.text).toBe("Join the B2430, then the main roads below");
+    // The last turn on a side street just short of the main road: the main road is named, not the side street.
+    const sideStreet = streetDirections(
+      reply([m(1, { street_names: ["Bell Lane"], bearing_after: 42 }), m(15, { street_names: ["Cobham Road"] }), m(4)]),
+      { units: "km", costing: "auto", endsOnMainRoad: "A24" },
+    );
+    expect(sideStreet.lines.at(-1)!.text).toBe("Join the A24, then the main roads below");
+    const onIt = streetDirections(reply([m(1, { bearing_after: 42 }), m(10, { street_names: ["A24", "Leatherhead Road"] }), m(4)]), {
+      units: "km",
+      costing: "auto",
+      endsOnMainRoad: "A24",
+    });
+    expect(onIt.lines.at(-1)!.text).toBe("Join Leatherhead Road (A24), then the main roads below");
+    // A via point with no name of its own: the street it is on, else its number.
+    const viaReply = {
+      trip: {
+        summary: { length: 2, time: 120 },
+        legs: [
+          { summary: { length: 1, time: 60 }, shape: "", maneuvers: [m(1, { street_names: ["Bell Lane"] }), m(4)] },
+          { summary: { length: 1, time: 60 }, shape: "", maneuvers: [m(1, { street_names: ["Bell Lane"] }), m(4)] },
+        ],
+      },
+    } as unknown as RouteReply;
+    expect(streetDirections(viaReply, { units: "km", costing: "pedestrian", viaNames: ["via"] }).lines[1]!.text).toBe("Via Bell Lane");
+    expect(streetDirections(viaReply, { units: "km", costing: "pedestrian", viaNames: ["Mickleham"] }).lines[1]!.text).toBe(
+      "Via Mickleham",
+    );
+    const nothing = streetDirections(reply([m(1, { bearing_after: 42 }), m(4)]), { units: "km", costing: "auto", endsOnMainRoad: null });
+    expect(nothing.lines.at(-1)!.text).toBe("Then the main roads below");
+  });
+
   it("traces areas from cells, keeping cells that touch at a corner apart", () => {
     const size = 4;
     const mask = new Uint8Array(size * size);
@@ -203,6 +260,21 @@ describe("words for streets", () => {
     expect(kentAndSussex.minutes).toBeLessThan(5);
     expect(kentAndSussex.freeSpaceBytes).toBe(76_786_201 * 4);
     expect(estimateBuild([], 2_205_301_182, false, 4e9).warnings.join(" ")).toMatch(/4 GB of memory/);
+  });
+
+  it("counts down a build, and says it is taking longer than usual once past the estimate", () => {
+    const stages = ["admins", "tiles", "extract", "swap"];
+    const hour = 60 * 60_000;
+    const tiles = (elapsedMs: number) => timeLeftText("Building walking and cycling (the long part)", stages, 1, hour, elapsedMs);
+    expect(tiles(20 * 60_000)).toBe("Building walking and cycling (the long part): about 40 minutes left of the build");
+    // The Pi's Great Britain build past an hour, the long stage still going: not "about 2 minutes left".
+    expect(tiles(65 * 60_000)).toBe("Building walking and cycling (the long part): taking longer than usual");
+    expect(tiles(59 * 60_000)).toBe("Building walking and cycling (the long part): taking longer than usual");
+    // Packing on time, then late.
+    expect(timeLeftText("Packing the streets", stages, 2, hour, 58 * 60_000)).toBe(
+      "Packing the streets: about 2 minutes left of the build",
+    );
+    expect(timeLeftText("Packing the streets", stages, 2, hour, 70 * 60_000)).toBe("Packing the streets: taking longer than usual");
   });
 
   it("keeps the streets service's address on this computer or its network", () => {
@@ -538,6 +610,36 @@ describe("with the streets service", () => {
       mode: "walk",
     });
     expect((await app.api("DELETE", `/api/roads/routes/${saved.id}`)).status).toBe(200);
+    // A ride and a door-to-door drive save alike, each as planned and with its way of travelling.
+    const ride = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "cycle" }))
+      .body as StreetsRouteResult;
+    const savedRide = await app.api("POST", "/api/roads/routes", { name: "Box Hill ride", route: ride });
+    expect(savedRide.status).toBe(200);
+    expect(savedRide.body).toMatchObject({ mode: "cycle", fromTo: "Leatherhead to Box Hill" });
+    await installGreatBritainRoads(app);
+    const door = (await app.api("POST", "/api/streets/route", { points: [FETCHAM, DOVER], mode: "drive-door" })).body as StreetsRouteResult;
+    expect(door.spine).toBe("main-roads");
+    const savedDoor = (await app.api("POST", "/api/roads/routes", { name: "To Dover", route: door })).body as SavedRoadRouteDto;
+    expect(savedDoor).toMatchObject({ mode: "drive-door", distanceM: door.summary.distanceM });
+    expect((await app.api("GET", `/api/roads/routes/${savedDoor.id}`)).body.route).toEqual(door);
+    for (const id of [(savedRide.body as SavedRoadRouteDto).id, savedDoor.id])
+      expect((await app.api("DELETE", `/api/roads/routes/${id}`)).status).toBe(200);
+    // A via point named only for its role, or pressed on the map, is named by where it is: never "Via via".
+    // The recorded walk is one leg; through a via point Valhalla answers with two.
+    const recordedWalk = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures/streets/walk.json"), "utf8"));
+    const twoLegs = { ...recordedWalk, trip: { ...recordedWalk.trip, legs: [recordedWalk.trip.legs[0], recordedWalk.trip.legs[0]] } };
+    standIn.override = (p) => (p === "/route" ? { status: 200, body: JSON.stringify(twoLegs) } : null);
+    try {
+      for (const name of ["via", "Point at 51.2700, -0.3200"]) {
+        const viaWalk = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, { ...via, name }, BOX_HILL], mode: "walk" }))
+          .body as StreetsRouteResult;
+        const viaLine = viaWalk.streets!.lines.find((l) => l.kind === "via")!;
+        expect(viaLine.text).toMatch(/^Via /);
+        expect(viaLine.text).not.toMatch(/^Via (via|Point at)/i);
+      }
+    } finally {
+      standIn.override = null;
+    }
     // Something not a route at all is refused.
     const odd = await app.api("POST", "/api/roads/routes", { name: "x", route: { mode: "walk" } });
     expect(odd.status).toBe(400);
@@ -562,6 +664,8 @@ describe("with the streets service", () => {
     expect(trip.road!.legs.at(-1)!.detail).toMatch(/then the streets to the door$/);
     expect(trip.start!.lines[0]!.text).toBe("Drive north-east on Bell Lane");
     expect(trip.start!.lines.at(-1)!.kind).toBe("arrive");
+    expect(trip.start!.lines.at(-1)!.text).toMatch(/^Join .+, then the main roads below$/);
+    expect(trip.end!.lines.at(-1)!.text).toMatch(/^Arrive at the end/);
     expect(trip.end!.lines.map((l) => l.text)).toContain("At the roundabout, take the 3rd exit onto York Street (A256)");
     expect(trip.summary.distanceM).toBe(trip.road!.summary.distanceM + trip.start!.distanceM + trip.end!.distanceM);
     expect(trip.geometry.coordinates.length).toBe(2 + trip.road!.geometry.coordinates.length);

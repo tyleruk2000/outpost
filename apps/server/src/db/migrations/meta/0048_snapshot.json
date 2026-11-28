@@ -1,8 +1,8 @@
 {
-  "id": "8b458944-971c-460f-8fcc-9f4583285a57",
-  "prevId": "62abac6f-d3b3-47dc-9c3e-617afa735977",
   "version": "6",
   "dialect": "sqlite",
+  "id": "278e1057-7dab-4ed5-82f6-bfa9a5742b8c",
+  "prevId": "62abac6f-d3b3-47dc-9c3e-617afa735977",
   "tables": {
     "antenna_profiles": {
       "name": "antenna_profiles",
@@ -474,15 +474,15 @@
         "board_messages_file_id_board_files_id_fk": {
           "name": "board_messages_file_id_board_files_id_fk",
           "tableFrom": "board_messages",
+          "tableTo": "board_files",
           "columnsFrom": [
             "file_id"
           ],
-          "tableTo": "board_files",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -564,28 +564,28 @@
         "book_chapters_collection_id_collections_id_fk": {
           "name": "book_chapters_collection_id_collections_id_fk",
           "tableFrom": "book_chapters",
+          "tableTo": "collections",
           "columnsFrom": [
             "collection_id"
           ],
-          "tableTo": "collections",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "book_chapters_document_id_documents_id_fk": {
           "name": "book_chapters_document_id_documents_id_fk",
           "tableFrom": "book_chapters",
+          "tableTo": "documents",
           "columnsFrom": [
             "document_id"
           ],
-          "tableTo": "documents",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -658,15 +658,15 @@
         "book_details_document_id_documents_id_fk": {
           "name": "book_details_document_id_documents_id_fk",
           "tableFrom": "book_details",
+          "tableTo": "documents",
           "columnsFrom": [
             "document_id"
           ],
-          "tableTo": "documents",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1003,15 +1003,15 @@
         "chat_messages_conversation_id_chat_conversations_id_fk": {
           "name": "chat_messages_conversation_id_chat_conversations_id_fk",
           "tableFrom": "chat_messages",
+          "tableTo": "chat_conversations",
           "columnsFrom": [
             "conversation_id"
           ],
-          "tableTo": "chat_conversations",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1129,15 +1129,15 @@
         "chunks_entity_row_id_search_entities_id_fk": {
           "name": "chunks_entity_row_id_search_entities_id_fk",
           "tableFrom": "chunks",
+          "tableTo": "search_entities",
           "columnsFrom": [
             "entity_row_id"
           ],
-          "tableTo": "search_entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1317,15 +1317,15 @@
         "collections_location_id_storage_locations_id_fk": {
           "name": "collections_location_id_storage_locations_id_fk",
           "tableFrom": "collections",
+          "tableTo": "storage_locations",
           "columnsFrom": [
             "location_id"
           ],
-          "tableTo": "storage_locations",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1525,15 +1525,15 @@
         "contact_pages_contact_id_contacts_id_fk": {
           "name": "contact_pages_contact_id_contacts_id_fk",
           "tableFrom": "contact_pages",
+          "tableTo": "contacts",
           "columnsFrom": [
             "contact_id"
           ],
-          "tableTo": "contacts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -1579,15 +1579,15 @@
         "contact_tags_contact_id_contacts_id_fk": {
           "name": "contact_tags_contact_id_contacts_id_fk",
           "tableFrom": "contact_tags",
+          "tableTo": "contacts",
           "columnsFrom": [
             "contact_id"
           ],
-          "tableTo": "contacts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2075,15 +2075,15 @@
         "document_highlights_document_id_documents_id_fk": {
           "name": "document_highlights_document_id_documents_id_fk",
           "tableFrom": "document_highlights",
+          "tableTo": "documents",
           "columnsFrom": [
             "document_id"
           ],
-          "tableTo": "documents",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2113,28 +2113,28 @@
         "document_tags_document_id_documents_id_fk": {
           "name": "document_tags_document_id_documents_id_fk",
           "tableFrom": "document_tags",
+          "tableTo": "documents",
           "columnsFrom": [
             "document_id"
           ],
-          "tableTo": "documents",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "document_tags_tag_id_tags_id_fk": {
           "name": "document_tags_tag_id_tags_id_fk",
           "tableFrom": "document_tags",
+          "tableTo": "tags",
           "columnsFrom": [
             "tag_id"
           ],
-          "tableTo": "tags",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2337,15 +2337,15 @@
         "documents_location_id_storage_locations_id_fk": {
           "name": "documents_location_id_storage_locations_id_fk",
           "tableFrom": "documents",
+          "tableTo": "storage_locations",
           "columnsFrom": [
             "location_id"
           ],
-          "tableTo": "storage_locations",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2539,15 +2539,15 @@
         "downloads_location_id_storage_locations_id_fk": {
           "name": "downloads_location_id_storage_locations_id_fk",
           "tableFrom": "downloads",
+          "tableTo": "storage_locations",
           "columnsFrom": [
             "location_id"
           ],
-          "tableTo": "storage_locations",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2732,15 +2732,15 @@
         "drive_merge_actions_merge_id_drive_merges_id_fk": {
           "name": "drive_merge_actions_merge_id_drive_merges_id_fk",
           "tableFrom": "drive_merge_actions",
+          "tableTo": "drive_merges",
           "columnsFrom": [
             "merge_id"
           ],
-          "tableTo": "drive_merges",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2970,28 +2970,28 @@
         "embeddings_chunk_id_chunks_id_fk": {
           "name": "embeddings_chunk_id_chunks_id_fk",
           "tableFrom": "embeddings",
+          "tableTo": "chunks",
           "columnsFrom": [
             "chunk_id"
           ],
-          "tableTo": "chunks",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "embeddings_model_id_embedding_models_id_fk": {
           "name": "embeddings_model_id_embedding_models_id_fk",
           "tableFrom": "embeddings",
+          "tableTo": "embedding_models",
           "columnsFrom": [
             "model_id"
           ],
-          "tableTo": "embedding_models",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -3960,15 +3960,15 @@
         "historical_records_feature_id_reference_features_id_fk": {
           "name": "historical_records_feature_id_reference_features_id_fk",
           "tableFrom": "historical_records",
+          "tableTo": "reference_features",
           "columnsFrom": [
             "feature_id"
           ],
-          "tableTo": "reference_features",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4444,15 +4444,15 @@
         "job_events_job_id_jobs_id_fk": {
           "name": "job_events_job_id_jobs_id_fk",
           "tableFrom": "job_events",
+          "tableTo": "jobs",
           "columnsFrom": [
             "job_id"
           ],
-          "tableTo": "jobs",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4519,15 +4519,15 @@
         "job_samples_job_id_jobs_id_fk": {
           "name": "job_samples_job_id_jobs_id_fk",
           "tableFrom": "job_samples",
+          "tableTo": "jobs",
           "columnsFrom": [
             "job_id"
           ],
-          "tableTo": "jobs",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4644,6 +4644,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": 1
+        },
+        "interruptions": {
+          "name": "interruptions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "run_after": {
           "name": "run_after",
@@ -5620,15 +5628,15 @@
         "note_links_source_id_notes_id_fk": {
           "name": "note_links_source_id_notes_id_fk",
           "tableFrom": "note_links",
+          "tableTo": "notes",
           "columnsFrom": [
             "source_id"
           ],
-          "tableTo": "notes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5667,28 +5675,28 @@
         "note_tags_note_id_notes_id_fk": {
           "name": "note_tags_note_id_notes_id_fk",
           "tableFrom": "note_tags",
+          "tableTo": "notes",
           "columnsFrom": [
             "note_id"
           ],
-          "tableTo": "notes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "note_tags_tag_id_tags_id_fk": {
           "name": "note_tags_tag_id_tags_id_fk",
           "tableFrom": "note_tags",
+          "tableTo": "tags",
           "columnsFrom": [
             "tag_id"
           ],
-          "tableTo": "tags",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5773,15 +5781,15 @@
         "note_versions_note_id_notes_id_fk": {
           "name": "note_versions_note_id_notes_id_fk",
           "tableFrom": "note_versions",
+          "tableTo": "notes",
           "columnsFrom": [
             "note_id"
           ],
-          "tableTo": "notes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6857,15 +6865,15 @@
         "radio_observations_import_id_observation_imports_id_fk": {
           "name": "radio_observations_import_id_observation_imports_id_fk",
           "tableFrom": "radio_observations",
+          "tableTo": "observation_imports",
           "columnsFrom": [
             "import_id"
           ],
-          "tableTo": "observation_imports",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7580,15 +7588,15 @@
         "repeaters_list_id_repeater_lists_id_fk": {
           "name": "repeaters_list_id_repeater_lists_id_fk",
           "tableFrom": "repeaters",
+          "tableTo": "repeater_lists",
           "columnsFrom": [
             "list_id"
           ],
-          "tableTo": "repeater_lists",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -9516,9 +9524,9 @@
   "views": {},
   "enums": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
+    "tables": {},
+    "columns": {}
   },
   "internal": {
     "indexes": {

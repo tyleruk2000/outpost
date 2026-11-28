@@ -32,10 +32,11 @@ import { markers, roadNetworks, roadRoutes } from "../../db/schema.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
 import { createRegionIndex } from "../layers/adapters/geofabrik-regions.ts";
 import { buildNetwork } from "./build.ts";
+import { reachesNorthernIreland } from "./countries.ts";
 import { coverageOf } from "./coverage.ts";
 import { buildGraph, type Graph } from "./graph.ts";
 import { readNetworkFile, writeNetworkFile } from "./network-file.ts";
-import { type PlanPoint, planRoute, roadCredit } from "./plan.ts";
+import { ownName, type PlanPoint, planRoute, roadCredit } from "./plan.ts";
 import { releaseWorkspace } from "./route.ts";
 
 export const BUILD_JOB = "roads.build";
@@ -91,7 +92,7 @@ export interface RoadsService {
   }): Promise<{ downloadId: string | null; jobId: string | null }>;
   /** Builds (or rebuilds) a region's network from its country file, replacing the region's network once built. */
   buildFromCountryFile(input: CountryFileBuild): Promise<{ id: string; dataDate: string | null }>;
-  installFile(input: BuildFromFileInput): { jobId: string };
+  installFile(input: BuildFromFileInput): Promise<{ jobId: string }>;
   update(id: string): Promise<{ downloadId: string | null; jobId: string | null }>;
   remove(id: string): Promise<void>;
   crossings(): Promise<RoadCrossingDto[]>;
@@ -111,20 +112,36 @@ export interface RoadsService {
   ): Promise<Record<string, unknown>>;
   /** For tests and measurements: the graph as loaded now. */
   loadGraph(): Promise<Graph>;
+  /** Works out, from each network's own file, whether its roads reach Northern Ireland, for those built before that was recorded. Returns how many. */
+  recordNorthernIreland(): Promise<number>;
   close(): void;
 }
 
-/** A point's name as given, unless it is only a word for its role ("via", "Via 1", "start"): then none, so its place is named instead. */
-export function ownName(name: string | null | undefined): string | null {
-  const text = name?.trim() ?? "";
-  return !text || /^(via|via point|point|start|end|from|to|stop)( ?\d+)?$/i.test(text) ? null : text;
+export { ownName };
+
+/**
+ * Whether a network's roads reach Northern Ireland, by its own junctions, never by its
+ * region's name (Geofabrik's United Kingdom holds Northern Ireland, its Great Britain does
+ * not): as recorded at its build, or worked out once from its file for one built before
+ * (`recordNorthernIreland`). Until then, whether its box reaches there.
+ */
+export function networkReachesNorthernIreland(row: Pick<NetworkRow, "bbox" | "stats">): boolean {
+  const found = row.stats?.northernIreland;
+  if (typeof found === "boolean") return found;
+  const box = row.bbox;
+  return Boolean(box && box[0] < -5.43 && box[2] > -8.18 && box[1] < 55.25 && box[3] > 54.03);
+}
+
+/** "Great Britain" for a United Kingdom network whose roads stop short of Northern Ireland; else its own name. */
+export function networkName(row: Pick<NetworkRow, "name" | "country" | "bbox" | "stats">): string {
+  return row.country === "GB" && row.name === "United Kingdom" && !networkReachesNorthernIreland(row) ? "Great Britain" : row.name;
 }
 
 export function toNetworkDto(row: NetworkRow, available: boolean): RoadNetworkDto {
   return {
     id: row.id,
     regionId: row.regionId,
-    name: row.name,
+    name: networkName(row),
     country: row.country,
     dataDate: row.dataDate,
     builtAt: row.builtAt,
@@ -135,6 +152,7 @@ export function toNetworkDto(row: NetworkRow, available: boolean): RoadNetworkDt
     extract: row.extract,
     source: row.source,
     bbox: row.bbox ?? null,
+    northernIreland: networkReachesNorthernIreland(row),
     available,
   };
 }
@@ -188,7 +206,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
           const file = resolveInside(ctx.config.dataDir, row.relPath);
           try {
             sources.push({
-              network: { id: row.id, name: row.name, country: row.country, dataDate: row.dataDate },
+              network: { id: row.id, name: networkName(row), country: row.country, dataDate: row.dataDate },
               data: await readNetworkFile(file),
             });
           } catch (error) {
@@ -263,7 +281,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
         source: input.source,
         bbox: [west, south, east, north].map((v) => Math.round(v * 1e5) / 1e5) as [number, number, number, number],
         extract: input.extract,
-        stats: { ...data.stats },
+        stats: { ...data.stats, northernIreland: reachesNorthernIreland(data.nodeLat, data.nodeLon) },
         builtAt: now,
         createdAt: now,
         updatedAt: now,
@@ -350,10 +368,18 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     return { id: row.id, dataDate: row.dataDate };
   }
 
-  function installFile(input: BuildFromFileInput) {
+  /** A person's own file in a storage location: inside it, and through a link only to another location or the storage roots. */
+  async function ownFile(input: Pick<BuildFromFileInput, "locationId" | "relPath">): Promise<string> {
+    const file = await ctx.services.storage.resolveFollowingLinks(input.locationId, input.relPath);
+    const stat = await fs.promises.stat(file).catch(() => null);
+    if (!stat) throw notFound("That file");
+    if (!stat.isFile()) throw badRequest("That is a folder: give the path of the .osm.pbf file in it.");
+    return file;
+  }
+
+  async function installFile(input: BuildFromFileInput) {
     // Resolving now says at once if the path is wrong; the job resolves it again.
-    const file = ctx.services.storage.resolve(input.locationId, input.relPath);
-    if (!fs.existsSync(file)) throw notFound("That file");
+    await ownFile(input);
     const job = ctx.jobs.enqueue(BUILD_JOB, input as unknown as Record<string, unknown>, {
       title: `${input.name}: routes`,
       maxAttempts: 1,
@@ -366,7 +392,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     signal: AbortSignal,
     progress: (current: number, total: number | null, message: string, unit?: string | null) => void,
   ) {
-    const filePath = ctx.services.storage.resolve(input.locationId, input.relPath);
+    const filePath = await ownFile(input);
     const bytes = (await fs.promises.stat(filePath)).size;
     const row = await build({
       filePath,
@@ -391,11 +417,43 @@ export function createRoadsService(ctx: AppContext): RoadsService {
   const phaseOf = (state: string, downloading: boolean): RoadBuildingPhase =>
     state === "failed" ? "failed" : state === "queued" || state === "paused" ? "waiting" : downloading ? "downloading" : "building";
 
+  /** Once, for networks built before their build recorded it: read each one's file and keep the answer in its stats. */
+  async function recordNorthernIreland(): Promise<number> {
+    let done = 0;
+    for (const row of rows()) {
+      if (typeof row.stats?.northernIreland === "boolean") continue;
+      let reaches: boolean;
+      try {
+        const data = await readNetworkFile(resolveInside(ctx.config.dataDir, row.relPath));
+        reaches = reachesNorthernIreland(data.nodeLat, data.nodeLon);
+      } catch (error) {
+        ctx.log.warn({ err: error, network: row.id }, "A road network could not be read to see whether it reaches Northern Ireland");
+        continue;
+      }
+      ctx.db
+        .update(roadNetworks)
+        .set({ stats: { ...(row.stats ?? {}), northernIreland: reaches } })
+        .where(eq(roadNetworks.id, row.id))
+        .run();
+      done += 1;
+    }
+    if (done > 0) changed();
+    return done;
+  }
+  // Soon after start, in the background: a file read per older network, once.
+  let recording: NodeJS.Timeout | null = setTimeout(() => {
+    recording = null;
+    void recordNorthernIreland().catch((error) =>
+      ctx.log.warn({ err: error }, "Road networks could not be looked at for Northern Ireland"),
+    );
+  }, 5_000);
+  recording.unref();
+
   function list(): RoadNetworksResponse {
     const jobs = ctx.jobs.list({ states: ["queued", "running", "paused"], types: [BUILD_JOB] });
     const downloads = ctx.services.downloads.unfinished().filter(isRoadsDownload);
     const fromCountryFiles = ctx.services.countryFiles.pending().filter((entry) => entry.roads);
-    const credit = roadCredit(rows().map((r) => ({ id: r.id, name: r.name, country: r.country, dataDate: r.dataDate })));
+    const credit = roadCredit(rows().map((r) => ({ id: r.id, name: networkName(r), country: r.country, dataDate: r.dataDate })));
     const progressOf = (id: string) => {
       const row = ctx.services.downloads.get(id);
       if (!row) return { receivedBytes: null, totalBytes: null, etaSeconds: null };
@@ -501,13 +559,13 @@ export function createRoadsService(ctx: AppContext): RoadsService {
         throw badRequest("Outpost no longer knows which file this network was built from: install it again.");
       return {
         downloadId: null,
-        ...installFile({
+        ...(await installFile({
           locationId: row.extract.locationId,
           relPath: row.extract.relPath,
           name: row.name,
           country: row.country,
           replaces: row.id,
-        }),
+        })),
       };
     },
     async remove(id) {
@@ -593,8 +651,10 @@ export function createRoadsService(ctx: AppContext): RoadsService {
       changed();
       return saved;
     },
+    recordNorthernIreland,
     close() {
       if (idle) clearTimeout(idle);
+      if (recording) clearTimeout(recording);
       forget();
     },
   };

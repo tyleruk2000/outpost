@@ -571,9 +571,10 @@ function fold(legs: Draft[]): Draft[] {
       continue;
     }
     // The same road on, signed for a place its earlier signs already gave ("Birmingham;Preston",
-    // then "Preston"): one line, for that place, its European routes together ("M6 (E05 - E22)").
-    // A place the signs had not given before ("A26 (E17) - Reims (A4)" then "A26 (E17) - Troyes")
-    // is a line of its own, as the owner writes it.
+    // then "Preston"), or after signs that gave no place at all ("M6(N)"): one line, for that
+    // place, its European routes together ("M6 (E05 - E22)"). A place the signs had not given
+    // before ("A26 (E17) - Reims (A4)" then "A26 (E17) - Troyes") is a line of its own, as the
+    // owner writes it.
     if (
       prev &&
       prev.kind === "road" &&
@@ -581,7 +582,7 @@ function fold(legs: Draft[]): Draft[] {
       prev.road &&
       prev.road === leg.road &&
       leg.towards &&
-      signedPlaces(prev).some((place) => samePlace(place, leg.towards))
+      (!prev.towards || signedPlaces(prev).some((place) => samePlace(place, leg.towards)))
     ) {
       merge(prev, leg);
       prev.towards = leg.towards;

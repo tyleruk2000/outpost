@@ -23,10 +23,11 @@ signed to follow, spelt as the sign spells it. Under it, smaller: which way, the
 to join and to leave at ("leave at J10 (Ardley) for Bicester", "exit 21" outside Britain
 and Ireland), the distance and the time. A long trip comes out at fifteen to thirty lines.
 A new line starts where the road or the place to follow changes; a road signed again for a
-place its signs gave before stays one line, with its European routes together ("M6 (E05 -
-E22 - E18) - Preston"). An A road with no sign of its own takes the place the next road is
-signed for ("A501 - Preston"); with none, it is its number alone. A via point reads by its
-name ("Via Oxford").
+place its signs gave before, or first signed only with its own number ("M6(N)"), stays one
+line, with its European routes together ("M6 (E05 - E22 - E18) - Preston"). An A road with
+no sign of its own takes the place the next road is signed for ("A501 - Preston"); with
+none, it is its number alone. A via point reads by its name ("Via Oxford"); one with no
+name, or only its position, reads by the place the road to it was signed for.
 
 Everything is worked out on this device from the routes you have added under Offline maps. Once the
 countries you need are added, nothing goes on the internet.
@@ -77,8 +78,10 @@ Germany (and some other large countries) comes in parts: all are ticked, and the
 Each place's **⋯** menu has **Update**, which reads its source file again (downloading it
 when none is kept) and replaces the routes, and **Remove…**, which lets you tick what to
 remove (saved routes keep their directions). Routes can also be built from an `.osm.pbf`
-file already in your storage, through the API only (see
-[the developer page](development/road-routes.md)); that file is yours and is never deleted.
+file already in your storage: in **Add a place**, choose **Routes from your own file**, the
+storage location and the file's path in it (`maps/kent-latest.osm.pbf`), a name and, if you
+like, its country, then **Build routes**. Nothing is downloaded; that file is yours and is
+never moved or deleted.
 
 ## Planning a route
 
@@ -167,13 +170,18 @@ Once they are, Outpost works out on this device, from the country outlines it ho
 countries the route touches: each point's own, and those the straight line between points
 crosses for more than a corner. Before you press anything it says what is missing:
 
-- **France has no roads yet**: "This route runs through France. United Kingdom is
+- **France has no roads yet**: "This route runs through France. Great Britain is
   ready." **Add roads for France** opens **Add a place** for France alone, which asks
   the size first; it needs a connection once. Several are named together ("France and
   Switzerland have no roads yet") and added with one press. The route waits until then, saying
   "Add France first".
 - **Only part of France has roads**: roads are kept for a part of the country and a point
   of the route is outside it. **Add roads for all of France**.
+- **Great Britain and Northern Ireland**: roads kept for England, Scotland and Wales alone
+  (Geofabrik's Great Britain, or a file of your own) are called **Great Britain**, not the
+  United Kingdom, by what their roads reach. A point in Northern Ireland is not taken as
+  covered by them, nor joined to a road across the sea: the message says Northern Ireland's
+  roads are not held, and **Add roads for all of the United Kingdom** brings them.
 - **On their way**: while a country's roads download and are built, the panel shows it in
   the words of Offline maps with a bar: "France: Downloading 1.20 of 4.90 GB, 18 minutes left",
   then "Building". You can leave the screen. When they are ready it says "France is
@@ -211,7 +219,7 @@ form plans a drive, as above; one line under it says the other ways exist.
 | Way | What you get |
 | --- | --- |
 | **Drive** | The main-road lines above, unchanged. |
-| **Door to door** | The same main-road lines, with the streets from your door to the first main road and from the last one to your door. Each end is one line, "From your door to the A24 (8 turns, 2.1 km)", which opens to its turns. Under 15 km between the doors, or with no routes added, the whole drive is turn by turn instead. |
+| **Door to door** | The same main-road lines, with the streets from your door to the first main road and from the last one to your door. Each end is one line, "From your door to the A24 (8 turns, 2.1 km)", which opens to its turns; the turns from your door end where they join the main road ("Join Leatherhead Road (A24), then the main roads below"). Under 15 km between the doors, or with no routes added, the whole drive is turn by turn instead. |
 | **Walk** | Turn by turn on streets and paths: "Turn left onto Church Street (B2450)", each with the distance to the next. Timed over the hills (below). |
 | **Cycle** | The same by bicycle, on streets, lanes and cycle paths. Timed over the hills too. |
 
