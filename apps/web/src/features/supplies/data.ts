@@ -113,8 +113,9 @@ export const useBought = () =>
 export const previewImport = (text: string) => api.post<ImportPreview>("/api/supplies/import/preview", { text });
 export const useApplyImport = () =>
   useChange(
-    (rows: Array<{ action: ImportAction; id?: string; item: SupplyItemInput }>) =>
-      api.post<ImportResult>("/api/supplies/import/apply", { rows }),
+    // The household the file was read against: the server brings nothing in if Outpost has been set to another since.
+    (input: { householdId: string; rows: Array<{ action: ImportAction; id?: string; item: SupplyItemInput }> }) =>
+      api.post<ImportResult>("/api/supplies/import/apply", input),
     { quiet: true },
   );
 

@@ -48,6 +48,8 @@ function show(
     household?: Household;
     shopping?: ShoppingList;
     lookup?: unknown;
+    /** What reading a CSV file answers. */
+    preview?: unknown;
     view?: string;
     /** The households, the first current; left out, the one first household. */
     households?: string[];
@@ -63,6 +65,8 @@ function show(
       if (init?.method && init.method !== "GET") {
         const body = init.body ? JSON.parse(String(init.body)) : null;
         server.posted.push({ path: `${init.method} ${pathname}`, body });
+        if (pathname === "/api/supplies/import/preview") return json(options.preview);
+        if (pathname === "/api/supplies/import/apply") return json({ added: 1, updated: 0, skipped: 0 });
         if (pathname.endsWith("/adjust")) return json({ item: item({ quantity: 9 }) });
         if (pathname === "/api/supplies/items" && options.refuseAdd)
           return json({ error: { code: "bad_request", message: options.refuseAdd } }, 400);
@@ -413,6 +417,34 @@ describe("Supplies with several households", () => {
     const line = await screen.findByTestId("for-household");
     expect(line).toHaveTextContent("For Caravan");
     expect(within(line).getByRole("link", { name: "Change" })).toHaveAttribute("href", "/prepare/households");
+  });
+
+  it("brings a CSV file into the household it was read for, and says which", async () => {
+    const server = show({
+      items: [item({})],
+      households: ["Caravan", "Home"],
+      preview: {
+        household: { id: "household", name: "Caravan" },
+        ignoredColumns: [],
+        rows: [
+          {
+            line: 2,
+            item: { name: "Rice", category: "food", quantity: 1, unit: "", location: "", notes: "" },
+            error: null,
+            warnings: [],
+            duplicateOf: null,
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Bring in a CSV file" }));
+    await user.upload(screen.getByLabelText("Choose a file"), new File(["Name\nRice"], "rice.csv", { type: "text/csv" }));
+    expect(await screen.findByText(/They go into Caravan.s supplies/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Bring in 1 row" }));
+    await waitFor(() => expect(server.posted.some((post) => post.path === "POST /api/supplies/import/apply")).toBe(true));
+    const applied = server.posted.find((post) => post.path === "POST /api/supplies/import/apply")!.body as { householdId: string };
+    expect(applied.householdId).toBe("household");
   });
 
   it("says the people listed are the current household's, and links to the other households", async () => {

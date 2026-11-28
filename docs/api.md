@@ -1086,7 +1086,7 @@ reaches out. Dates are `YYYY-MM-DD`; routes about today take `?today=`.
 | `GET /api/supplies/shopping`, `POST …/work-out`, `POST`, `PATCH`, `DELETE …/:id` | The shopping list; work it out again (own lines kept); lines. |
 | `POST /api/supplies/shopping/:id/bought` | Adds to stock and takes the line off or lowers it. |
 | `GET /api/supplies/export.csv` | Every row. |
-| `POST /api/supplies/import/preview`, `/apply` | `{ text ≤2 MB }` → `ImportPreview`; `{ rows }` applied all or nothing. |
+| `POST /api/supplies/import/preview`, `/apply` | `{ text ≤2 MB }` → `ImportPreview` (with the `household` it was read against); `{ householdId?, rows }` applied all or nothing, 409 if another household is current since. |
 
 ## Devices on this network
 

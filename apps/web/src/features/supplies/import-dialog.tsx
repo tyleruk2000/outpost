@@ -3,6 +3,9 @@
  * person says. Rows that are already in the supplies (by Outpost's own id from an
  * export, or the same product in the same place with the same date) are skipped,
  * updated or added again, as chosen; rows that cannot be read are listed with why.
+ * The file is read against the current household's supplies and brought into that
+ * household only: with several, the dialog names it, and if Outpost is set to another
+ * before the press, the server refuses and nothing is brought in.
  */
 import { categoryLabel, type ImportPreview, SUPPLY_LIMITS } from "@outpost/shared";
 import { FileUp } from "lucide-react";
@@ -12,6 +15,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Segmented, Spinner } from "@/components/ui/misc";
+import { useHousehold } from "@/features/households/use-household";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 import { previewImport, useApplyImport } from "./data";
@@ -26,6 +30,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [duplicates, setDuplicates] = useState<Duplicates>("skip");
   const apply = useApplyImport();
+  const several = useHousehold().data?.several ?? false;
+  /** "your supplies", or "Caravan's supplies" when there are several households. */
+  const whose = several && preview ? `${preview.household.name}'s supplies` : "your supplies";
 
   const read = async (file: File | undefined) => {
     if (!file) return;
@@ -56,21 +63,24 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       if (duplicates === "update") return { action: "update" as const, id: row.duplicateOf.id, item: row.item! };
       return { action: duplicates === "add" ? ("add" as const) : ("skip" as const), item: row.item! };
     });
-    apply.mutate(rows, {
-      onSuccess: (result) => {
-        toast.success(
-          [
-            result.added > 0 ? `${plural(result.added, "row")} added` : null,
-            result.updated > 0 ? `${plural(result.updated, "item")} updated` : null,
-            result.skipped > 0 ? `${plural(result.skipped, "duplicate")} skipped` : null,
-          ]
-            .filter(Boolean)
-            .join(", ") || "Nothing was changed.",
-        );
-        onClose();
+    apply.mutate(
+      { householdId: preview.household.id, rows },
+      {
+        onSuccess: (result) => {
+          toast.success(
+            [
+              result.added > 0 ? `${plural(result.added, "row")} added` : null,
+              result.updated > 0 ? `${plural(result.updated, "item")} updated` : null,
+              result.skipped > 0 ? `${plural(result.skipped, "duplicate")} skipped` : null,
+            ]
+              .filter(Boolean)
+              .join(", ") || "Nothing was changed.",
+          );
+          onClose();
+        },
+        onError: (error) => setProblem(errorMessage(error)),
       },
-      onError: (error) => setProblem(errorMessage(error)),
-    });
+    );
   };
 
   return (
@@ -109,15 +119,18 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           {preview ? (
             <>
               <p className="text-body text-ink">
-                {plural(preview.rows.length, "row")} in the file: {fresh.length} new, {same.length} already in your supplies,{" "}
-                {failed.length} that cannot be read.
+                {plural(preview.rows.length, "row")} in the file: {fresh.length} new, {same.length} already in {whose}, {failed.length} that
+                cannot be read.
                 {preview.ignoredColumns.length > 0 ? ` Columns not read: ${preview.ignoredColumns.join(", ")}.` : ""}
+                {several ? ` They go into ${whose}.` : ""}
               </p>
               {same.length > 0 ? (
                 <div className="grid gap-1.5">
-                  <span className="text-small font-medium text-ink">The {plural(same.length, "row")} already in your supplies</span>
+                  <span className="text-small font-medium text-ink">
+                    The {plural(same.length, "row")} already in {whose}
+                  </span>
                   <Segmented<Duplicates>
-                    label="Rows already in your supplies"
+                    label={`Rows already in ${whose}`}
                     value={duplicates}
                     onChange={setDuplicates}
                     options={[
@@ -144,7 +157,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                         </span>
                         {row.duplicateOf ? (
                           <span className="block text-warning">
-                            Already in your supplies{row.duplicateOf.by === "id" ? " (exported from here)" : ""}:{" "}
+                            Already in {whose}
+                            {row.duplicateOf.by === "id" ? " (exported from here)" : ""}:{" "}
                             {duplicates === "skip" ? "skipped" : duplicates === "update" ? "will be updated" : "will be added again"}.
                           </span>
                         ) : null}

@@ -98,7 +98,11 @@ sheets (`theirMedicalSheets`). The 409 says all of this before anything goes.
 `PUT /api/supplies/household` still takes `members`: they are the current household's
 people. One left out leaves that household, and goes from the People list only if it is
 in no other household. Every other supplies route is the current household's; an item or
-shopping line of another household is 404. `GET /api/supplies/outlooks` gives every
+shopping line of another household is 404. The 5,000-item limit is per household. A CSV
+preview answers `household` (`{ id, name }`, the current one it was read against) and
+`POST /api/supplies/import/apply` takes it back as `householdId`: if another household
+has been made current since, the apply is 409 and nothing is brought in (left out, by an
+older page: the current household). `GET /api/supplies/outlooks` gives every
 household's days of food and water, the current one first (Home's lines).
 
 Types: `HouseholdDto` (named so because `Household` is still the supplies settings type,
