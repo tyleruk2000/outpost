@@ -52,9 +52,11 @@ export function templatesWhereLine(
   return `${where} templates are drawn mostly from UK guidance (GOV.UK, the Met Office, the British Red Cross), with some from Queensland in Australia, the Netherlands and the United States. Outpost has no templates from your own country's government. Check every step against its advice: the numbers, services and warnings where you are may differ.`;
 }
 
-/** The country a new plan is for: Home's, else the device's region; null when neither is known. */
-export const planCountry = (country: { code: string } | null, region: string | null = deviceRegion()): string | null =>
-  country?.code ?? region;
+/**
+ * The country a new plan's steps are chosen for: the household's home country only. The
+ * device's region is not enough to take a step out, so with no home country every step is kept.
+ */
+export const planCountry = (country: { code: string } | null): string | null => country?.code ?? null;
 
 /** "For the UK only: it names the UK's own services", for a template step marked for some countries; null for one for anywhere. */
 export function onlyInWords(onlyIn: string[] | undefined): string | null {

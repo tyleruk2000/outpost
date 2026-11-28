@@ -80,8 +80,9 @@ export interface TemplateStep {
   /** Within severe weather: which kind. */
   subKind?: "storm" | "cold" | "heat";
   /**
-   * The countries (ISO 3166 codes) whose own services, numbers, bodies or pages the step
-   * names: 105, Floodline, 999, the NHS, the Met Office, GOV.UK, the British Red Cross. A
+   * The countries (ISO 3166 codes) whose own services, bodies or pages are the step's
+   * substance: 105, Floodline, the NHS, the Met Office, GOV.UK, Ofcom, Gas Safe, the British
+   * Red Cross's pages (safety advice that only mentions 999 is for anywhere). A
    * plan started for a home elsewhere leaves it out, and lists it as taken out, to be put
    * back if it does apply. Absent: the step is for anywhere.
    */
@@ -261,18 +262,21 @@ export function attributionsFor(origins: Array<string | null>): string[] {
   return [...out];
 }
 
+/** Jersey, Guernsey and the Isle of Man take the UK's steps, as they take its other UK-only sources. */
+const AS_UK: Record<string, string> = { UK: "GB", JE: "GB", GG: "GB", IM: "GB" };
+
 /** Whether a template step applies in a country: one marked for some countries only is for those; null (not known) takes every step. */
 export function stepAppliesIn(step: Pick<TemplateStep, "onlyIn">, country: string | null | undefined): boolean {
   const code = country?.trim().toUpperCase();
   if (!code || !step.onlyIn) return true;
-  return step.onlyIn.includes(code === "UK" ? "GB" : code);
+  return step.onlyIn.includes(AS_UK[code] ?? code);
 }
 
 /**
  * A new plan from a template: its steps, supplies and "where things are" lines, each
- * keeping its origin. With the country the plan is for (Home's, else the device's region),
- * a step that names another country's own services is left out; the plan lists it as
- * taken out, to be put back.
+ * keeping its origin. With the country of the household's home, when it is known, a step
+ * that is about another country's own services is left out; the plan lists it as taken
+ * out, to be put back. With no home country known, every step is kept.
  */
 export function planFromTemplate(
   template: PlanTemplate,

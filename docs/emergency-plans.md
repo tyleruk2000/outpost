@@ -61,12 +61,13 @@ guidance, and says whose words it is:
 
 Steps you take out can be put back.
 
-**Steps for the UK only.** A step of a UK template that names the UK's own services,
-numbers or pages (105 for a power cut, Floodline, 999, the NHS, the Met Office, GOV.UK,
-Ofcom, Gas Safe, the British Red Cross's pages) is left out of a plan started for a home
-outside the UK (Home's country, else where your device is set to). It is listed with the
-steps taken out, "For the UK only", to be put back if it does apply. With no country
-known, every step is kept.
+**Steps for the UK only.** A step of a UK template that is about the UK's own services
+or pages (105 for a power cut, Floodline, NHS 111, the Met Office, GOV.UK, Ofcom, Gas
+Safe, the British Red Cross's pages) is left out of a plan started for a household whose
+home is outside the UK (Jersey, Guernsey and the Isle of Man count as the UK). It is
+listed with the steps taken out, "For the UK only", to be put back if it does apply.
+Safety advice that only mentions 999 ("get out, stay out, call 999") is kept everywhere.
+With no home country known, every step is kept, wherever the device is set to.
 
 Outpost writes no safety advice of its own: where no
 usable official source covers something, the template asks you under **For you to

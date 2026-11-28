@@ -646,7 +646,6 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "power-cut.during.14",
-        onlyIn: ["GB"],
         phase: "during",
         text: "Try calling 999 or 112 from a mobile.",
         source: "gov-be-ready-power-cut",
@@ -931,7 +930,6 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "flooding.during.7",
-        onlyIn: ["GB"],
         phase: "during",
         text: "Call 999 if anyone is in immediate danger.",
         source: "govuk-help-during-flood",
@@ -1288,7 +1286,6 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "comms-failure.during.1",
-        onlyIn: ["GB"],
         phase: "during",
         text: "If 999 or 112 fails, try both a mobile and a landline.",
         source: "gov-be-ready-phone-broadband",
@@ -1296,7 +1293,6 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "comms-failure.during.12",
-        onlyIn: ["GB"],
         phase: "during",
         text: "Even if you have no signal on your usual mobile network, calling 999 will automatically connect through another network if one is available.",
         source: "ofcom-severe-weather",
@@ -1982,7 +1978,6 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "shelter-at-home.before.6",
-        onlyIn: ["GB"],
         phase: "before",
         text: "Teach children when and how to dial 999.",
         source: "gov-be-ready-hazards",
@@ -2360,7 +2355,6 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "evacuate.during.3",
-        onlyIn: ["GB"],
         phase: "during",
         text: "Fire inside the home: get out, stay out, call 999.",
         source: "gov-be-ready-fires",

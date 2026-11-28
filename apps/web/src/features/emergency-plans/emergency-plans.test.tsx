@@ -21,6 +21,7 @@ import { householdOf, householdsAnswer, ONE_HOUSEHOLD } from "@/features/househo
 import { textWidth } from "@/features/maps/print/helvetica";
 import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import type { Sheet } from "@/features/maps/print/sheet";
+import { setDeviceRegion } from "@/lib/region";
 import { fridgeSheets, grabSheets, walletSheets } from "./cards";
 import CardsPage, { cardTitle } from "./cards-page";
 import { RowTools } from "./list-edit";
@@ -877,6 +878,26 @@ describe("plans for a household", () => {
     const texts = sent.body.steps.map((step) => step.text);
     expect(texts).toContain("Keep fridge and freezer doors closed.");
     expect(texts).not.toContain("Call 105 free to report it in England, Wales or Scotland.");
+  });
+
+  it("keeps every step of a new plan when the household's home country is not known, whatever the device's region", async () => {
+    setDeviceRegion("DE");
+    try {
+      const server = serve({
+        "/api/emergency-plans": { plans: [] },
+        "/api/households": ONE_HOUSEHOLD,
+        "POST /api/emergency-plans": { plan: plan(), resolved },
+      });
+      show("/prepare/plans", <PlansPage />, "/prepare/plans");
+      await userEvent.click(await screen.findByRole("button", { name: "New plan" }));
+      await userEvent.click(screen.getByRole("radio", { name: /^Power cut/ }));
+      await userEvent.click(screen.getByRole("button", { name: "Make the plan" }));
+      await waitFor(() => expect(server.posted.some((post) => post.path === "POST /api/emergency-plans")).toBe(true));
+      const sent = server.posted.find((post) => post.path === "POST /api/emergency-plans")!.body as EmergencyPlan;
+      expect(sent.body.steps.map((step) => step.text)).toContain("Call 105 free to report it in England, Wales or Scotland.");
+    } finally {
+      setDeviceRegion("GB");
+    }
   });
 
   it("says a step taken out is for the UK only", async () => {
