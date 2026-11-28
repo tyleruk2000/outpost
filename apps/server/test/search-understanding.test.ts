@@ -85,6 +85,16 @@ describe("other ways of saying a word", () => {
     expect(toFtsQuery(expandQuery(parseQuery("bicarb ")).parsed)).toBe('("bicarb" OR "bicarbonate of soda" OR "baking soda")');
   });
 
+  it("finds the ways of preserving food for 'preserve', beside food, one way only", () => {
+    const also = (q: string) => expandQuery(parseQuery(q)).also;
+    expect(also("how to preserve fish")).toEqual(["canner", "curing", "smoking", "salting", "drying", "pickling"]);
+    expect(also("preserving vegetables ")).toContain("pickling");
+    // Not without food, and not the other way round.
+    expect(also("preserve old brick ")).toEqual([]);
+    expect(also("smoking fish ")).not.toContain("preserve");
+    expect(also("smoking fish ")).not.toContain("canner");
+  });
+
   it("never takes one word for a phrase of the table that has more", () => {
     // "can" and "being" are left out of a search, but a phrase is not one word because of it.
     const also = (q: string) => expandQuery(parseQuery(q)).also;

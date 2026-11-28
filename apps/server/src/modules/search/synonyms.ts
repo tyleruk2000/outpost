@@ -141,8 +141,11 @@ const ONE_WAY: string[][] = [
   ["wildfire", "bushfire", "forest fire"],
 ];
 
-/** Words that stand for each other only when the query also holds one of the words after them. */
-const BESIDE: Array<{ words: string[]; when: string[] }> = [
+/**
+ * Words that stand for each other only when the query also holds one of the words after them. With `oneWay`, the
+ * first only finds the rest, as in `ONE_WAY`.
+ */
+const BESIDE: Array<{ words: string[]; when: string[]; oneWay?: boolean }> = [
   {
     words: ["change", "replace", "fit"],
     when: [
@@ -179,6 +182,13 @@ const BESIDE: Array<{ words: string[]; when: string[] }> = [
   },
   { words: ["purify", "disinfect", "treat"], when: ["water", "drinking"] },
   { words: ["boost", "jump start"], when: ["car", "battery", "van", "vehicle"] },
+  // "How to preserve fish": a guide says how to can, cure, smoke, salt, dry or pickle it, and seldom "preserve".
+  // One way: "smoking fish" is not asking about canning it. "Canner", not "canning", which the index takes as "can".
+  {
+    words: ["preserve", "canner", "curing", "smoking", "salting", "drying", "pickling"],
+    when: ["fish", "meat", "salmon", "trout", "venison", "game", "vegetable", "fruit", "food", "harvest"],
+    oneWay: true,
+  },
 ];
 
 /** British words ending "our" whose American spelling ends "or", with whatever follows (colourful, colorful). */
@@ -414,7 +424,12 @@ const stemsOf = (phrase: string) => wordsThatMatter(phrase).map((word) => stem(w
 const ENTRIES: Entry[] = [
   ...SAME.map((words) => ({ words, stems: words.map(stemsOf), oneWay: false, when: null })),
   ...ONE_WAY.map((words) => ({ words, stems: words.map(stemsOf), oneWay: true, when: null })),
-  ...BESIDE.map(({ words, when }) => ({ words, stems: words.map(stemsOf), oneWay: false, when: when.map((word) => stem(word)) })),
+  ...BESIDE.map(({ words, when, oneWay }) => ({
+    words,
+    stems: words.map(stemsOf),
+    oneWay: oneWay ?? false,
+    when: when.map((word) => stem(word)),
+  })),
 ];
 
 /** How many entries there are, for the documentation and its tests. */

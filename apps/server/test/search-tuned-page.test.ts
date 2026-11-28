@@ -60,6 +60,6 @@ describe("How search was tuned", () => {
       "batteri",
     ]);
     expect([...BY_SPELLING_ONLY].sort()).toEqual(["canned", "cot", "tinned", "tire", "tyre"]);
-    expect(SYNONYM_ENTRIES).toBe(250);
+    expect(SYNONYM_ENTRIES).toBe(251);
   });
 });

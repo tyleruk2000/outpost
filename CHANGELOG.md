@@ -693,6 +693,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 ### Fixed
 
 - Search counts every match, so every page can be reached.
+- "How to preserve fish" finds the canning guide: "preserve" beside a food also finds
+  canning, curing, smoking, salting, drying and pickling it.
 - Which reference collections answered well for which words is remembered across a
   restart, so the likeliest are still asked first; **Erase everything** forgets it.
 - "What to do for a burn" and "treat a burn" put first aid first, not encyclopaedia

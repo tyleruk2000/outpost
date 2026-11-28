@@ -278,11 +278,14 @@ order under a pointer, focus, or a finger for 1.5 s after it lifts and while the
 
 ### Measuring search
 
-`scripts/search-eval/queries.json` holds 99 questions in three sets (`sets`): the 56 household
+`scripts/search-eval/queries.json` holds 104 questions in four sets (`sets`): the 56 household
 questions, 31 everyday searches tried on a Raspberry Pi ("car battery flat", "ration food for
 a family", "storm warning"; five are in both), and 17 asked in the persona tests of 24 November
 2026 ("persona": "can I take paracetamol and ibuprofen together", "bleeding wont stop", four
-keyboard-mashings marked `nonsense`). A query's `titleNeeds` caps a title without it at grade 1;
+keyboard-mashings marked `nonsense`), and 5 on preserving fish ("fish", 28 November 2026:
+"how to preserve fish" and smoking, salting, drying and canning it, graded against the
+catalogue's USDA canning guide for seafood; nothing in the catalogue covers salting or drying
+fish, and the recorded collections were not recorded for these questions). A query's `titleNeeds` caps a title without it at grade 1;
 `not` grades a title in another sense 0. A title-only hit (no snippet, from a title search)
 whose title holds the first pattern and nothing but the question's words ("Burn" for "what to
 do for a burn") is graded 2: it has no text that could hold the other patterns, so it could

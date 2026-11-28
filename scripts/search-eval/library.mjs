@@ -422,6 +422,29 @@ export function library() {
       "Flashlights",
       "Keep a flashlight in every room with spare batteries. Lithium AA batteries last longest and work in the cold.",
     ),
+    // What the catalogue has on preserving fish: the USDA's canning guide for meat and seafood (official-publications.json).
+    doc("usda-canning-5", "USDA Complete Guide to Home Canning: Guide 5: Poultry, Red Meats and Seafood", [
+      {
+        page: 1,
+        heading: "Preparing and canning poultry, red meats and seafood",
+        text: "Choose freshly killed and dressed, healthy animals. Chill meat and poultry and can them within 2 days.",
+      },
+      {
+        page: 12,
+        heading: "Fish in pint jars",
+        text: "Blue, mackerel, salmon, steelhead, trout and other fatty fish except tuna are canned in pint or smaller jars in a pressure canner. Bleed and eviscerate fish immediately after catching, never more than 2 hours after they are caught. Keep cleaned fish on ice until ready to can.",
+      },
+      {
+        page: 13,
+        heading: "Smoked fish",
+        text: "Smoked fish is processed in a pressure canner for 110 minutes. Lightly smoke the fish first; heavily smoked fish becomes strong when canned.",
+      },
+    ]),
+    // A long manual that says "fish" on every page and nothing about keeping it: the passing mention a search must not prefer.
+    doc("fao-aquaponics", "Small-scale aquaponic food production", [
+      { page: 40, heading: "Fish health", text: "Healthy fish need good water quality. Stressed fish stop eating and fall ill." },
+      { page: 41, heading: "Feeding fish", text: "Feed fish once or twice a day, as much as they eat in five minutes." },
+    ]),
     longBook("water-systems", "Water systems for the home", 45, "Header tanks and pipes, section"),
     longBook("water-storage", "Water storage containers", 45, "Containers and their care, section"),
     longBook("rainwater", "Rainwater harvesting", 45, "Gutters, butts and first-flush diverters, section"),
