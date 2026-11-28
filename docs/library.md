@@ -93,7 +93,9 @@ to 2×) and the chapter list. The next chapter follows on.
 
 **Library → Import from Calibre** brings in your Calibre e-books with authors, series,
 tags, description and cover. The Calibre folder is only read, never changed. Search, and
-the search box of the library's list, find a book by its series as well as its title.
+the search box of the library's list, find a book by the name of its series as well as its
+title. Books brought in before this are made findable by their series once, by a task under
+**Tasks** after the update (on a large library, minutes).
 
 1. Make the drive or folder holding the Calibre library a storage location (**Storage →
    Add location**).

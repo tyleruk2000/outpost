@@ -236,6 +236,38 @@ describe("bringing in a Calibre library", () => {
     expect(listed.map((doc) => doc.title).sort()).toEqual(["Fog - Ann Mariner", "The Keeper"]);
   });
 
+  it("is found by the name of its series, not by the bare words 'series' and 'book'", async () => {
+    const dto = await read();
+    await app.api("POST", `/api/calibre/${dto.id}/commit`, { mode: "in-place" });
+    await app.ctx.jobs.whenIdle();
+    const titles = async (q: string) =>
+      ((await app.api("GET", `/api/search?q=${encodeURIComponent(q)}`)).body.results as Array<{ title: string }>).map((r) => r.title);
+    expect(await titles("dune")).toContain("Dune");
+    expect(await titles("series")).toEqual([]);
+    expect(await titles("book")).toEqual([]);
+  });
+
+  it("puts the series of books brought in before it was searchable into search, once, as a job", async () => {
+    const dto = await read();
+    await app.api("POST", `/api/calibre/${dto.id}/commit`, { mode: "in-place" });
+    await app.ctx.jobs.whenIdle();
+    // As a library brought in before series were searchable: the entries say nothing of the series.
+    const { calibre, documents, search } = app.ctx.services;
+    const dune = documents.list({ q: "Dune" }).documents.find((doc) => doc.title === "Dune")!;
+    search.upsert({ kind: "document", entityId: dune.id, title: "Unrelated title", url: `/library/documents/${dune.id}`, sections: [] });
+    app.ctx.sqlite.prepare("DELETE FROM library_meta WHERE key = 'calibre.seriesInSearch'").run();
+    expect((await app.api("GET", "/api/search?q=dune")).body.results).toEqual([]);
+
+    const job = calibre.indexSeriesIfNeeded();
+    expect(job).toMatchObject({ type: "calibre.series" });
+    await app.ctx.jobs.whenIdle();
+    expect(((await app.api("GET", "/api/search?q=dune")).body.results as Array<{ entityId: string }>).map((r) => r.entityId)).toContain(
+      dune.id,
+    );
+    // Done once: not again at the next start.
+    expect(calibre.indexSeriesIfNeeded()).toBeNull();
+  });
+
   it("copies the books into the library, and a second import adds nothing twice", async () => {
     const before = snapshot(library);
     const first = await read();

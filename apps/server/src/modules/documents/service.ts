@@ -325,15 +325,13 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     return found;
   }
 
-  /** "Series: Dune, book 2" for a book that came from Calibre with a series, for search to find it by. */
+  /**
+   * The name of the series a book from Calibre is in, for search to find it by: the name alone,
+   * so that the bare words "series" and "book" do not find every book of every series.
+   */
   function seriesLine(documentId: string): string | null {
-    const row = db
-      .select({ series: bookDetails.series, index: bookDetails.seriesIndex })
-      .from(bookDetails)
-      .where(eq(bookDetails.documentId, documentId))
-      .get();
-    if (!row?.series) return null;
-    return row.index === null ? `Series: ${row.series}` : `Series: ${row.series}, book ${row.index}`;
+    const row = db.select({ series: bookDetails.series }).from(bookDetails).where(eq(bookDetails.documentId, documentId)).get();
+    return row?.series || null;
   }
 
   /** True for every document that is not a chapter of a book. */
