@@ -6,11 +6,11 @@
  * (Lesotho) is in the right country. A point just off a coast takes the nearest outline
  * within 15 km (COAST_KM); further out it is sea, which is how a crossing is seen.
  */
-import { countryFound, outlineOf } from "../layers/borders.ts";
+import { countryFound, countryOfPoint as countryOfPointQuick, outlineOf } from "../layers/borders.ts";
 
 /** ISO alpha-2 of the country whose outline holds the point; else the nearest coast's within 15 km; else null. */
 export function countryOfPoint(lat: number, lon: number): string | null {
-  return countryFound(lat, lon)?.code ?? null;
+  return countryOfPointQuick(lat, lon);
 }
 
 /**

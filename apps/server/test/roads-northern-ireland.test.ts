@@ -55,8 +55,14 @@ describe("a United Kingdom network and Northern Ireland", () => {
     await app.ctx.jobs.whenIdle();
   };
   const coverage = async () =>
-    (await app.api("POST", "/api/roads/coverage", { points: [{ lat: 51.5074, lon: -0.1278 }, { lat: 54.5973, lon: -5.9301 }] }))
-      .body as RoadCoverageResponse;
+    (
+      await app.api("POST", "/api/roads/coverage", {
+        points: [
+          { lat: 51.5074, lon: -0.1278 },
+          { lat: 54.5973, lon: -5.9301 },
+        ],
+      })
+    ).body as RoadCoverageResponse;
 
   it("is the United Kingdom, and covers Belfast, when its roads reach Northern Ireland", async () => {
     await build("uk.osm.pbf", extract(true));

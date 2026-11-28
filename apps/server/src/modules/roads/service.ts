@@ -443,7 +443,9 @@ export function createRoadsService(ctx: AppContext): RoadsService {
   // Soon after start, in the background: a file read per older network, once.
   let recording: NodeJS.Timeout | null = setTimeout(() => {
     recording = null;
-    void recordNorthernIreland().catch((error) => ctx.log.warn({ err: error }, "Road networks could not be looked at for Northern Ireland"));
+    void recordNorthernIreland().catch((error) =>
+      ctx.log.warn({ err: error }, "Road networks could not be looked at for Northern Ireland"),
+    );
   }, 5_000);
   recording.unref();
 
