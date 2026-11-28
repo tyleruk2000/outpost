@@ -627,6 +627,11 @@ export function createBoardService(ctx: AppContext): BoardService {
     },
 
     rollCall(sinceAsked) {
+      // The radio a check-in heard over the mesh came from, as the mesh link keeps it (MeshMeta's node), or null.
+      const radioOf = (row: BoardMessageRow): string | null => {
+        const node = (row.meta as { node?: { id?: unknown } } | null)?.node;
+        return row.source !== "here" && typeof node?.id === "string" ? node.id : null;
+      };
       const asks = db.select().from(rollCalls).orderBy(desc(rollCalls.createdAt)).limit(5).all().map(askDto);
       const since = sinceAsked ?? asks[0]?.at ?? Date.now() - DAY_MS;
       const byName = new Map<string, BoardMessageRow>();
@@ -645,6 +650,7 @@ export function createBoardService(ctx: AppContext): BoardService {
               hasPosition: row.lat !== null && row.lon !== null,
               createdAt: row.createdAt,
               channel: row.channel,
+              radio: radioOf(row),
             }
           : null,
         answered: row !== undefined && row.createdAt >= since,

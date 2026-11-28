@@ -198,6 +198,11 @@ export interface RollCallLine {
     createdAt: number;
     /** "board", or the radio channel it came in on. */
     channel: string;
+    /**
+     * The mesh radio it was heard from ("!a1b2c3d4"), when it came in over the mesh and the radio said who it was;
+     * null otherwise. Its last position, where switched on, is the mesh's own (`/api/mesh/positions`), never here.
+     */
+    radio: string | null;
   } | null;
   /** Checked in at or after `since`. */
   answered: boolean;

@@ -1,5 +1,5 @@
 {
-  "about": "Household questions and what a good answer would be. `grades` grade the fixture library's items (3 the answer, 2 useful, 1 on the subject); `pi` are patterns that must all match a real library's result for it to count (all in the title: 3; all in title and text: 2; any in the title: 1). `sets` names the sets a question is in when not only the first: \"household\" (the first 56) and \"everyday\" (the searches the everyday searches the owner tried on a Raspberry Pi (November 2026), reported apart as well). \"persona\": the questions five people asked in the persona tests of 24 November 2026 (a relative at 200% text, a parent, a stressed walker, a teenager, someone abroad), graded from the Raspberry Pi's collections. `titleNeeds`: a result whose title does not match it is graded at most 1 (a page about another medicine that mentions this one is not the answer); `not`: a result whose title matches it is graded 0 (another meaning). `nonsense`: keyboard-mashing, where nothing should be found by meaning alone.",
+  "about": "Household questions and what a good answer would be. `grades` grade the fixture library's items (3 the answer, 2 useful, 1 on the subject); `pi` are patterns that must all match a real library's result for it to count (all in the title: 3; all in title and text: 2; any in the title: 1). `sets` names the sets a question is in when not only the first: \"household\" (the first 56) and \"everyday\" (the searches the everyday searches the owner tried on a Raspberry Pi (November 2026), reported apart as well). \"persona\": the questions five people asked in the persona tests of 24 November 2026 (a relative at 200% text, a parent, a stressed walker, a teenager, someone abroad), graded from the Raspberry Pi's collections. `titleNeeds`: a result whose title does not match it is graded at most 1 (a page about another medicine that mentions this one is not the answer); `not`: a result whose title matches it is graded 0 (another meaning). `nonsense`: keyboard-mashing, where nothing should be found by meaning alone. \"fish\": how to preserve fish (the owner, 28 November 2026) and four ways of doing it, graded against what the catalogue offers on them (the USDA canning guide for seafood); salting and drying have nothing in the fixture library to find.",
   "queries": [
     {
       "q": "How to change car battery",
@@ -837,6 +837,46 @@
       "pi": [],
       "nonsense": true,
       "sets": ["persona"]
+    },
+    {
+      "q": "how to preserve fish",
+      "grades": {
+        "usda-canning-5": 2,
+        "freezer": 1
+      },
+      "pi": [
+        "fish|salmon|trout|mackerel|herring|cod|seafood",
+        "preserv|cann|canned|smok|\\bsalt(ed|ing)?\\b|\\bdried\\b|drying|\\bdry\\b|\\bcur(e|ed|ing)\\b|pickl|freez"
+      ],
+      "sets": ["fish"]
+    },
+    {
+      "q": "smoking fish",
+      "grades": {
+        "usda-canning-5": 1
+      },
+      "pi": ["fish|salmon|trout|mackerel|herring|cod|seafood", "smok"],
+      "sets": ["fish"]
+    },
+    {
+      "q": "salting fish",
+      "grades": {},
+      "pi": ["fish|salmon|trout|mackerel|herring|cod|seafood", "\\bsalt(ed|ing)?\\b"],
+      "sets": ["fish"]
+    },
+    {
+      "q": "drying fish",
+      "grades": {},
+      "pi": ["fish|salmon|trout|mackerel|herring|cod|seafood", "dried|drying|dry\\b|dehydrat"],
+      "sets": ["fish"]
+    },
+    {
+      "q": "canning fish",
+      "grades": {
+        "usda-canning-5": 3
+      },
+      "pi": ["fish|salmon|trout|mackerel|herring|cod|seafood", "cann|canned|pressure canner"],
+      "sets": ["fish"]
     }
   ]
 }

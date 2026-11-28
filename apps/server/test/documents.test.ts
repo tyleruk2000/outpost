@@ -141,6 +141,46 @@ describe("uploading and reading text", () => {
     expect(found.results[0].subtitle).toBe("A. Ranger");
   });
 
+  it("finds the chapter of a whole book by its bookmarks, and shows it with the result", async () => {
+    const pdf = buildPdf(
+      [
+        ["Contents"],
+        ["Batteries", "A flat battery is charged before it is changed."],
+        ["Terminals are cleaned with a wire brush."],
+        ["Tyres", "Pressure is checked when the tyres are cold."],
+        ["Spare wheels are kept inflated."],
+      ],
+      {
+        title: "Car maintenance manual",
+        outline: [
+          { title: "Contents", page: 1 },
+          {
+            title: "Part one: electrics",
+            page: 2,
+            children: [{ title: "Chapter 1: Batteries", page: 2, named: true }],
+          },
+          { title: "Part two: wheels", page: 4, children: [{ title: "Chapter 2: Tyres", page: 4 }] },
+        ],
+      },
+    );
+    const document = await add({ name: "manual.pdf", content: pdf });
+    const text = (await app.api("GET", `/api/documents/${document.id}/text`)).body;
+    // Each page under the bookmark it falls in, the most particular one: the chapter, not its part.
+    expect(text.sections.map((section: { page: number; heading: string | null }) => [section.page, section.heading])).toEqual([
+      [1, "Contents"],
+      [2, "Chapter 1: Batteries"],
+      [3, "Chapter 1: Batteries"],
+      [4, "Chapter 2: Tyres"],
+      [5, "Chapter 2: Tyres"],
+    ]);
+
+    const found = await search("wire brush");
+    expect(found.results[0].passages[0]).toMatchObject({ page: 3, heading: "Chapter 1: Batteries" });
+    // The chapter's name is searched too, as a heading is: "spare tyres" finds page 5 by its chapter.
+    const spare = await search("spare tyres");
+    expect(spare.results[0].passages[0]).toMatchObject({ page: 5, heading: "Chapter 2: Tyres" });
+  });
+
   it("keeps a title a person chose, and says when a PDF was cut short or is a scan", async () => {
     app.ctx.services.settings.update({ "indexing.maxPdfPages": 1 });
     const long = await add({ name: "long.pdf", content: buildPdf([["first page words"], ["second page words"]], { title: "Untitled" }) });

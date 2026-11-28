@@ -15,9 +15,13 @@
  *    colourful): `OUR`, `ISE`, `TRE` or `ROOTS`.
  * Write words in lower case, in their plain form ("battery", not "batteries"): plurals
  * and other endings are matched by their stem, as the index matches them. A quoted word
- * is never widened.
+ * is never widened. A phrase is known without its connectives ("of", "and": `CONNECTIVES`),
+ * which are dropped from what is typed before the table is read, so "bicarbonate of
+ * soda" typed is "bicarbonate soda" here; asked for as another way of saying a word,
+ * the phrase is searched as written, small words and all.
  */
 import { stem } from "./stem.ts";
+import { STOP_WORDS } from "./stop-words.ts";
 
 /** Words and phrases that stand for each other, any one for the rest. */
 const SAME: string[][] = [
@@ -137,8 +141,11 @@ const ONE_WAY: string[][] = [
   ["wildfire", "bushfire", "forest fire"],
 ];
 
-/** Words that stand for each other only when the query also holds one of the words after them. */
-const BESIDE: Array<{ words: string[]; when: string[] }> = [
+/**
+ * Words that stand for each other only when the query also holds one of the words after them. With `oneWay`, the
+ * first only finds the rest, as in `ONE_WAY`.
+ */
+const BESIDE: Array<{ words: string[]; when: string[]; oneWay?: boolean }> = [
   {
     words: ["change", "replace", "fit"],
     when: [
@@ -175,6 +182,13 @@ const BESIDE: Array<{ words: string[]; when: string[] }> = [
   },
   { words: ["purify", "disinfect", "treat"], when: ["water", "drinking"] },
   { words: ["boost", "jump start"], when: ["car", "battery", "van", "vehicle"] },
+  // "How to preserve fish": a guide says how to can, cure, smoke, salt, dry or pickle it, and seldom "preserve".
+  // One way: "smoking fish" is not asking about canning it. "Canner", not "canning", which the index takes as "can".
+  {
+    words: ["preserve", "canner", "curing", "smoking", "salting", "drying", "pickling"],
+    when: ["fish", "meat", "salmon", "trout", "venison", "game", "vegetable", "fruit", "food", "harvest"],
+    oneWay: true,
+  },
 ];
 
 /** British words ending "our" whose American spelling ends "or", with whatever follows (colourful, colorful). */
@@ -385,12 +399,37 @@ interface Entry {
   when: string[] | null;
 }
 
-const stemsOf = (phrase: string) => phrase.split(" ").map((word) => stem(word));
+/**
+ * Words that only join a phrase's words ("bicarbonate of soda", "accident and
+ * emergency"). They are left out of a search (they are among `STOP_WORDS`), so a phrase
+ * is matched without them. Only these: "can" in "jerry can" or "being" in "being sick"
+ * are part of the name, and without them the phrase would be one word ("gas" taken for
+ * "gas can", "sick" for "being sick").
+ */
+const CONNECTIVES: ReadonlySet<string> = new Set(["of", "and", "the", "a", "in", "for", "to"]);
+for (const word of CONNECTIVES) if (!STOP_WORDS.has(word)) throw new Error(`"${word}" is a connective but not a stop word`);
+
+/**
+ * The words of a phrase as typed words are matched against it: without its connectives.
+ * A phrase of several words is never left as one: then it is matched as written, which
+ * words typed without their small ones never are.
+ */
+const wordsThatMatter = (phrase: string) => {
+  const words = phrase.split(" ");
+  const kept = words.filter((word) => !CONNECTIVES.has(word));
+  return words.length > 1 && kept.length < 2 ? words : kept;
+};
+const stemsOf = (phrase: string) => wordsThatMatter(phrase).map((word) => stem(word));
 
 const ENTRIES: Entry[] = [
   ...SAME.map((words) => ({ words, stems: words.map(stemsOf), oneWay: false, when: null })),
   ...ONE_WAY.map((words) => ({ words, stems: words.map(stemsOf), oneWay: true, when: null })),
-  ...BESIDE.map(({ words, when }) => ({ words, stems: words.map(stemsOf), oneWay: false, when: when.map((word) => stem(word)) })),
+  ...BESIDE.map(({ words, when, oneWay }) => ({
+    words,
+    stems: words.map(stemsOf),
+    oneWay: oneWay ?? false,
+    when: when.map((word) => stem(word)),
+  })),
 ];
 
 /** How many entries there are, for the documentation and its tests. */
@@ -444,7 +483,7 @@ export function findExpansions(words: string[], skip: boolean[] = []): Expansion
         entry.stems.forEach((form, formIndex) => {
           if (form.length !== length) return;
           if (entry.oneWay && formIndex !== 0) return;
-          const written = entry.words[formIndex]!.split(" ");
+          const written = wordsThatMatter(entry.words[formIndex]!);
           if (!span.every((word, at) => wordMatches(word, written[at]!, form[at]!))) return;
           entry.words.forEach((other, otherIndex) => {
             if (otherIndex !== formIndex && !alternatives.includes(other)) alternatives.push(other);

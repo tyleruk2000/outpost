@@ -16,6 +16,7 @@ import {
   type Observation,
   type ObservationEnd,
   type ObservationImport,
+  type ObservationInput,
   type ObservationOutcome,
   parseCoordinates,
 } from "@outpost/shared";
@@ -50,6 +51,7 @@ import {
   useLog,
   useRemoveImport,
   useRemoveObservation,
+  useUpdateObservation,
   utcStamp,
 } from "./data";
 
@@ -127,23 +129,34 @@ function rememberStation(place: PlaceField) {
   if (place.text.trim()) writeStored(STATION_KEY, place);
 }
 
-function EntryDialog({ onClose }: { onClose: () => void }) {
+/** An end's position as it is typed: the locator it was logged as, the coordinates, or nothing. */
+function placeOf(end: ObservationEnd): PlaceField {
+  if (end.lat === null || end.lon === null) return { text: "", name: "" };
+  return { text: end.from.startsWith("locator ") ? end.from.slice(8) : `${end.lat}, ${end.lon}`, name: "" };
+}
+
+/** A new entry, or, given `editing`, one already in the log put right. */
+function EntryDialog({ onClose, editing }: { onClose: () => void; editing?: Observation }) {
   const places = usePlaces();
   const add = useAddObservation();
-  const [at, setAt] = useState(nowUtc);
-  const [outcome, setOutcome] = useState<ObservationOutcome>("contact");
-  const [txCall, setTxCall] = useState("");
-  const [rxCall, setRxCall] = useState("");
+  const update = useUpdateObservation();
+  const saving = editing ? update : add;
+  const [at, setAt] = useState(() => (editing ? new Date(editing.at).toISOString().slice(0, 16) : nowUtc()));
+  const [outcome, setOutcome] = useState<ObservationOutcome>(editing?.outcome ?? "contact");
+  const [txCall, setTxCall] = useState(editing?.tx.call ?? "");
+  const [rxCall, setRxCall] = useState(editing?.rx.call ?? "");
   // Your own station is nearly always in the same place: the one given last time, until another is.
-  const [txPlace, setTxPlace] = useState<PlaceField>(rememberedStation);
-  const [rxPlace, setRxPlace] = useState<PlaceField>({ text: "", name: "" });
-  const [frequency, setFrequency] = useState("");
-  const [mode, setMode] = useState("SSB");
-  const [power, setPower] = useState("");
-  const [antenna, setAntenna] = useState("");
-  const [sent, setSent] = useState("");
-  const [received, setReceived] = useState("");
-  const [notes, setNotes] = useState("");
+  const [txPlace, setTxPlace] = useState<PlaceField>(() => (editing ? placeOf(editing.tx) : rememberedStation()));
+  const [rxPlace, setRxPlace] = useState<PlaceField>(() => (editing ? placeOf(editing.rx) : { text: "", name: "" }));
+  const [frequency, setFrequency] = useState(editing?.frequencyMhz == null ? "" : String(editing.frequencyMhz));
+  // An entry read from a file may have a band and no frequency: it keeps that band until a frequency is given.
+  const keptBand = editing && editing.frequencyMhz === null ? editing.band : "";
+  const [mode, setMode] = useState(editing?.mode ?? "SSB");
+  const [power, setPower] = useState(editing?.powerWatts == null ? "" : String(editing.powerWatts));
+  const [antenna, setAntenna] = useState(editing?.antenna ?? "");
+  const [sent, setSent] = useState(editing?.reportSent ?? "");
+  const [received, setReceived] = useState(editing?.reportReceived ?? "");
+  const [notes, setNotes] = useState(editing?.notes ?? "");
   const [problem, setProblem] = useState<{ field: string; text: string } | null>(null);
   const error = (field: string) => (problem?.field === field ? problem.text : undefined);
   const first = outcome === "heard" ? "The station heard" : "Your station";
@@ -167,39 +180,47 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
     const rx = position(rxPlace, "rx");
     if (!rx) return;
     const mhz = frequency.trim() === "" ? Number.NaN : Number(frequency);
-    if (!(mhz > 0)) return setProblem({ field: "frequency", text: "Give the frequency in megahertz." });
+    const byBand = frequency.trim() === "" && keptBand !== "";
+    if (!(mhz > 0) && !byBand) return setProblem({ field: "frequency", text: "Give the frequency in megahertz." });
     if (!mode.trim()) return setProblem({ field: "mode", text: "Give the mode: SSB, CW, FT8." });
     const watts = power.trim() === "" ? null : Number(power);
     if (watts !== null && !(watts >= 0.1))
       return setProblem({ field: "power", text: "Give the power in watts, at least 0.1, or leave it empty." });
     setProblem(null);
-    add.mutate(
-      {
-        at: `${at.slice(0, 16)}:00Z`,
-        frequencyMhz: mhz,
-        band: "",
-        mode: mode.trim(),
-        outcome,
-        tx: { call: txCall.trim(), ...tx },
-        rx: { call: rxCall.trim(), ...rx },
-        powerWatts: watts,
-        antenna: antenna.trim(),
-        reportSent: sent.trim(),
-        reportReceived: received.trim(),
-        notes,
+    const input: ObservationInput = {
+      at: `${at.slice(0, 16)}:00Z`,
+      frequencyMhz: byBand ? null : mhz,
+      band: byBand ? keptBand : "",
+      mode: mode.trim(),
+      outcome,
+      tx: { call: txCall.trim(), ...tx },
+      rx: { call: rxCall.trim(), ...rx },
+      powerWatts: watts,
+      antenna: antenna.trim(),
+      reportSent: sent.trim(),
+      reportReceived: received.trim(),
+      notes,
+    };
+    if (editing) return update.mutate({ id: editing.id, input }, { onSuccess: onClose });
+    add.mutate(input, {
+      onSuccess: () => {
+        rememberStation(outcome === "heard" ? rxPlace : txPlace);
+        onClose();
       },
-      {
-        onSuccess: () => {
-          rememberStation(outcome === "heard" ? rxPlace : txPlace);
-          onClose();
-        },
-      },
-    );
+    });
   };
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="lg" title="Log an entry" description="A contact, a station heard, or a call that got no answer. Times are UTC.">
+      <DialogContent
+        size="lg"
+        title={editing ? "Edit the entry" : "Log an entry"}
+        description={
+          editing
+            ? `Logged ${utcStamp(editing.at)}${editing.source === "adif" ? ", from an imported file: taking that file back removes this entry too" : ""}. Times are UTC.`
+            : "A contact, a station heard, or a call that got no answer. Times are UTC."
+        }
+      >
         <DialogBody className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Date and time, UTC" error={error("at")}>
@@ -215,7 +236,11 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
                 />
               )}
             </Field>
-            <Field label="Frequency, MHz" error={error("frequency")}>
+            <Field
+              label="Frequency, MHz"
+              error={error("frequency")}
+              hint={keptBand ? `Logged on the ${keptBand} band with no frequency. Leave it empty to keep it so.` : undefined}
+            >
               {(ids) => (
                 <Input
                   {...ids}
@@ -318,16 +343,16 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
           <Field label="Notes" optional>
             {(ids) => <Textarea {...ids} rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={4000} />}
           </Field>
-          {add.isError ? (
-            <Notice tone="danger" title="Not added">
-              {errorMessage(add.error)}
+          {saving.isError ? (
+            <Notice tone="danger" title={editing ? "Not saved" : "Not added"}>
+              {errorMessage(saving.error)}
             </Notice>
           ) : null}
         </DialogBody>
         <DialogFooter>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={add.isPending} onClick={submit}>
-            Add to the log
+          <Button variant="primary" loading={saving.isPending} onClick={submit}>
+            {editing ? "Save the entry" : "Add to the log"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -507,6 +532,7 @@ export default function LogPage() {
   const picker = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<Observation | null>(null);
+  const [editing, setEditing] = useState<Observation | null>(null);
   const [takingBack, setTakingBack] = useState<ObservationImport | null>(null);
   const [myAntenna, setMyAntenna] = useState("preset:low-dipole");
   const [theirAntenna, setTheirAntenna] = useState("preset:dipole-10m");
@@ -689,14 +715,24 @@ export default function LogPage() {
                         .join(" · ")}
                     </span>
                   </span>
-                  <Button
-                    size="sm"
-                    variant="danger-ghost"
-                    aria-label={`Delete the entry of ${utcStamp(item.at)} with ${item.rx.call || item.tx.call || "no callsign"}`}
-                    onClick={() => setDeleting(item)}
-                  >
-                    Delete
-                  </Button>
+                  <span className="flex shrink-0 flex-wrap justify-end gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Edit the entry of ${utcStamp(item.at)} with ${item.rx.call || item.tx.call || "no callsign"}`}
+                      onClick={() => setEditing(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger-ghost"
+                      aria-label={`Delete the entry of ${utcStamp(item.at)} with ${item.rx.call || item.tx.call || "no callsign"}`}
+                      onClick={() => setDeleting(item)}
+                    >
+                      Delete
+                    </Button>
+                  </span>
                 </li>
               ))}
             </Rows>
@@ -833,6 +869,7 @@ export default function LogPage() {
       ) : null}
 
       {adding ? <EntryDialog onClose={() => setAdding(false)} /> : null}
+      {editing ? <EntryDialog key={editing.id} editing={editing} onClose={() => setEditing(null)} /> : null}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}

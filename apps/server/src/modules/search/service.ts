@@ -19,7 +19,7 @@ import { chunks, searchEntities } from "../../db/schema.ts";
 import { type AlsoIn, type CardSource, cardQuery, collapseSameTitles, firstCard, type SearchCard, waterCard } from "./cards.ts";
 import { type ChunkOptions, chunkSections, type Section } from "./chunker.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
-import { adjusted, adjustFor, type Intent, intentOf, plainIntent } from "./intent.ts";
+import { adjusted, adjustFor, type Intent, intentOf, plainIntent, saysWhatItIs } from "./intent.ts";
 import {
   countTerms,
   FEW,
@@ -325,7 +325,7 @@ export const referenceBudgets = {
 };
 
 /**
- * What a reference article whose title is the answer ("Burn" for "treat a burn": every
+ * What a reference article whose title is the answer ("Bowline" for "how to tie a bowline": every
  * word of the title is a word of the question, and it holds every word a title would)
  * gains on top of its score. kiwix-serve's title search finds these; its full text often
  * ranks them below long pages that mention the words many times.
@@ -463,6 +463,8 @@ export interface SearchService {
   stats(): { entities: Record<string, number>; chunks: number };
   /** Called after an entity's passages change, so vectors can follow. */
   onChunksChanged(listener: (entityRowId: number) => void): void;
+  /** Called after passages are given new numbers with their text and vectors unchanged, so copies held in memory can be read again. */
+  onChunksRenumbered(listener: (moves: Array<[from: number, to: number]>) => void): void;
   /**
    * Runs `work` so that whatever it deletes or replaces is erased rather than only
    * unlinked: freed database pages are overwritten with zeros, deleted passages are
@@ -680,6 +682,7 @@ export function createSearchService(ctx: AppContext): SearchService {
   /** What `syncKind` was last given, by kind and item, so that an unchanged item is not written again. */
   const synced = new Map<string, Map<string, string>>();
   const chunkListeners: Array<(entityRowId: number) => void> = [];
+  const renumberListeners: Array<(moves: Array<[from: number, to: number]>) => void> = [];
 
   const chunkOptions = (): ChunkOptions => ({
     size: ctx.services.settings.get("indexing.chunkSize"),
@@ -690,8 +693,22 @@ export function createSearchService(ctx: AppContext): SearchService {
     `INSERT INTO chunks (entity_row_id, ordinal, title, tags, heading, text, page, char_start, char_end, content_hash, index_version)
      VALUES (@entityRowId, @ordinal, @title, @tags, @heading, @text, @page, @charStart, @charEnd, @contentHash, @indexVersion)`,
   );
+  /** A passage again under a new number, with its vectors; then the old one taken out. */
+  const renumberChunk = {
+    copy: sqlite.prepare(
+      `INSERT INTO chunks (entity_row_id, ordinal, title, tags, heading, text, page, char_start, char_end, content_hash, index_version)
+       SELECT entity_row_id, ordinal, @title, @tags, heading, text, page, char_start, char_end, content_hash, index_version FROM chunks WHERE id = @id`,
+    ),
+    vectors: sqlite.prepare(
+      `INSERT INTO embeddings (chunk_id, model_id, vector, content_hash, created_at)
+       SELECT @to, model_id, vector, content_hash, created_at FROM embeddings WHERE chunk_id = @id`,
+    ),
+    remove: sqlite.prepare("DELETE FROM chunks WHERE id = ?"),
+  };
 
   const owners = createOwners(sqlite);
+  /** The passages `upsert` gave new numbers (old → new), for the listeners once it returns. */
+  let renumbered: Array<[from: number, to: number]> = [];
 
   const upsert = sqlite.transaction((entity: IndexEntity) => {
     const now = Date.now();
@@ -731,6 +748,9 @@ export function createSearchService(ctx: AppContext): SearchService {
     const current = existing
       ? db
           .select({
+            id: chunks.id,
+            title: chunks.title,
+            tags: chunks.tags,
             ordinal: chunks.ordinal,
             contentHash: chunks.contentHash,
             indexVersion: chunks.indexVersion,
@@ -755,9 +775,19 @@ export function createSearchService(ctx: AppContext): SearchService {
       });
 
     if (sameContent) {
-      // Text is unchanged: refresh the denormalised columns and keep chunk ids, so any
-      // vectors attached to them stay valid.
-      db.update(chunks).set({ title: entity.title, tags }).where(eq(chunks.entityRowId, rowId)).run();
+      // Text is unchanged, so the vectors made from it still hold. Only a new title or new
+      // tags need the passages indexed again, and then each is put back under a new number
+      // with its vectors, never updated in place: a passage taken out of the full-text index
+      // and put back under the same number cannot later be erased from it safely (in SQLite
+      // 3.54, erasing it with secure-delete on, as an encrypting save does, breaks the index).
+      const stale = current.filter((row) => row.title !== entity.title || row.tags !== tags);
+      for (const row of stale) {
+        const to = Number(renumberChunk.copy.run({ id: row.id, title: entity.title, tags }).lastInsertRowid);
+        renumberChunk.vectors.run({ id: row.id, to });
+        renumberChunk.remove.run(row.id);
+        owners.notePassage(to, rowId);
+        renumbered.push([row.id, to]);
+      }
       return { chunks: passages.length, changed: false, rowId };
     }
 
@@ -781,7 +811,9 @@ export function createSearchService(ctx: AppContext): SearchService {
     return { chunks: passages.length, changed: true, rowId };
   });
 
-  const suggester = createSuggester(sqlite);
+  const suggester = createSuggester(sqlite, (error) =>
+    ctx.log.error({ err: error }, "the word list of the search index could not be read: the index may need building again"),
+  );
 
   /**
    * The question as reference collections are asked it. A word typed that no passage of the
@@ -1012,7 +1044,8 @@ export function createSearchService(ctx: AppContext): SearchService {
         const parts = scoreFields(terms, fields);
         if (parts.found === 0 || parts.coverage < RELAXED_COVERAGE) return [];
         if (parts.found === parts.of) everyWord?.add(resultKey(result));
-        if (nouns && titleIsAnswer(result.title, terms, nouns)) {
+        const answers = nouns && !(intent && saysWhatItIs(intent, { collection: result.collection, article: result.kind === "reference" }));
+        if (answers && titleIsAnswer(result.title, terms, nouns)) {
           // The words it lacks only say what to do ("treat"): scored on the words a title would hold, it holds them all.
           const held = new Set(nouns.map((noun) => noun.toLowerCase()));
           const titled = terms.filter((term) => term.term.split(" ").every((word) => held.has(word.toLowerCase())));
@@ -1184,9 +1217,11 @@ export function createSearchService(ctx: AppContext): SearchService {
     searchPassages,
 
     upsert(entity) {
+      renumbered = [];
       const { rowId, ...outcome } = upsert(entity);
       if (outcome.changed) forgetPassageCount(sqlite);
       if (outcome.changed) for (const listener of chunkListeners) listener(rowId);
+      if (renumbered.length > 0) for (const listener of renumberListeners) listener(renumbered);
       return outcome;
     },
 
@@ -1545,6 +1580,10 @@ export function createSearchService(ctx: AppContext): SearchService {
 
     onChunksChanged(listener) {
       chunkListeners.push(listener);
+    },
+
+    onChunksRenumbered(listener) {
+      renumberListeners.push(listener);
     },
   };
 

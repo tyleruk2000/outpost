@@ -1,9 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { predictPasses } from "./engine";
+import * as geometry from "./ground-track";
 import { GroundTrack } from "./ground-track-map";
 import { ESHAIL, FUNCUBE } from "./test-orbits";
+
+vi.mock("./ground-track", { spy: true });
 
 const LONDON = { lat: 51.5074, lon: -0.1278 };
 const NOW = new Date(Date.parse("2026-11-24T02:50:00Z"));
@@ -48,5 +51,40 @@ describe("the ground track on the screen", () => {
     const map = await screen.findByRole("img", { name: /Geostationary: stays over 25\.\d° E/ });
     expect(map.getAttribute("aria-label")).toMatch(/Seen from Home \d+° above the horizon, bearing \d+° [NESW]+, all day\./);
     expect(screen.queryByText("The track as a table")).toBeNull();
+  });
+
+  it("is drawn again only when the minute turns, not on every tick of the clock above it", async () => {
+    const passes = predictPasses(FUNCUBE, LONDON, NOW, 24, 18);
+    const { rerender } = render(
+      <GroundTrack orbit={FUNCUBE} observer={LONDON} placeName="Home" now={NOW} pass={passes[0]!} passes={passes} />,
+    );
+    await screen.findByRole("img", { name: /^Ground track/ });
+    const words = vi.mocked(geometry.trackWords);
+    const before = words.mock.calls.length;
+    // The page's clock ticks each second and hands down a fresh list of the passes still to come.
+    for (let second = 1; second < 50; second += 1) {
+      rerender(
+        <GroundTrack
+          orbit={FUNCUBE}
+          observer={LONDON}
+          placeName="Home"
+          now={new Date(NOW.getTime() + second * 1000)}
+          pass={passes[0]!}
+          passes={passes.filter(() => true)}
+        />,
+      );
+    }
+    expect(words.mock.calls.length).toBe(before);
+    rerender(
+      <GroundTrack
+        orbit={FUNCUBE}
+        observer={LONDON}
+        placeName="Home"
+        now={new Date(NOW.getTime() + 61_000)}
+        pass={passes[0]!}
+        passes={passes}
+      />,
+    );
+    expect(words.mock.calls.length).toBeGreaterThan(before);
   });
 });

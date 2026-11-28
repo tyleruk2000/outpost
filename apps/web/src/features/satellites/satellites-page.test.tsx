@@ -1,11 +1,12 @@
 import { parseCelestrakCsv, type SatelliteAbout, type SatellitesResponse } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { oneHouseholdOf } from "@/features/households/test-support";
 import SatellitesPage from "./satellites-page";
+import { ISS_LIKE } from "./test-orbits";
 
 const HEADER =
   "OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE,ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID,ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT";
@@ -187,6 +188,32 @@ describe("the Satellites screen", () => {
     await user.click(screen.getByRole("tab", { name: "One satellite" }));
     expect(await screen.findByText("Where to point, minute by minute")).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /Listen on/ })).toBeNull();
+  });
+
+  it("groups a satellite's forty-odd transmitters by what each is for, with the long tail folded", { timeout: 40_000 }, async () => {
+    const user = userEvent.setup();
+    show({
+      satellites: iss,
+      transmitters: ISS_LIKE,
+      about: [],
+      wikipedia: [],
+      wikipediaDiscarded: [],
+      sources: sources(now),
+      fetching: false,
+      now,
+    });
+    await user.click(screen.getByRole("tab", { name: "One satellite" }));
+    expect(await screen.findByText("35 transmitters listed, grouped by what each is for.")).toBeInTheDocument();
+    const work = screen.getByRole("region", { name: "To work through" });
+    expect(within(work).getByRole("heading", { name: "To work through (2)" })).toBeInTheDocument();
+    expect(within(work).getByText("Mode V/U FM - Voice")).toBeVisible();
+    expect(screen.getByRole("region", { name: "To listen to" })).toBeInTheDocument();
+    const tail = screen.getByText("Beacons and telemetry (30)").closest("details")!;
+    expect(tail).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Beacons and telemetry (30)"));
+    expect(tail).toHaveAttribute("open");
+    expect(within(tail).getAllByRole("row").length).toBe(31);
+    expect(screen.getByText("Uplinks alone (1)")).toBeInTheDocument();
   });
 
   it("warns when the elements are old", () => {

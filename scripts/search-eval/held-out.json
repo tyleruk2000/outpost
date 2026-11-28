@@ -1,0 +1,49 @@
+{
+  "about": "Held-out questions: written on 28 November 2026, before any of the search changes made after it, with what should answer each decided from the fixture library's subjects and not from what search returned. Graded as queries.json is (`grades` for the fixture library, `pi` patterns for the reference collections). NOT for tuning: nothing in ranking, the synonym table or the library may be changed to make one of these do better. It is run with the evaluation and reported on its own line, to show whether what was tuned on the main set carries over to questions nobody tuned on; when it falls behind the main set by much, the main set has been overfitted.",
+  "queries": [
+    { "q": "cool a scald", "grades": { "burns": 3, "sunburn": 1 }, "pi": ["scald|burn"] },
+    {
+      "q": "car tyre flat",
+      "grades": { "tyre-change": 3, "tyre-pressure": 2, "tire-care": 1, "bike-repair": 1 },
+      "pi": ["tyre|tire|wheel", "flat|puncture|change|repair"]
+    },
+    { "q": "what do I do if the car overheats", "grades": { "car-overheating": 3, "car-maint": 1 }, "pi": ["overheat|coolant|radiator"] },
+    {
+      "q": "keeping warm in a power outage",
+      "grades": { "power-cut": 2, "power-outage": 2, "shelter": 1, "winter-driving": 1 },
+      "pi": ["power|outage|blackout", "warm|heat|cold"]
+    },
+    {
+      "q": "water for drinking on a hike",
+      "grades": { "water-handbook": 3, "supplies-list": 1 },
+      "pi": ["water", "drink|purif|filter|treat"]
+    },
+    { "q": "how to splint a broken leg", "grades": { "first-aid": 2, "nursing-book": 1 }, "pi": ["splint|fracture|broken"] },
+    { "q": "headache and dizziness at home", "grades": { "co-alarm": 3 }, "pi": ["carbon monoxide|headache|dizz"] },
+    { "q": "how to tie a clove hitch", "grades": { "knots": 3 }, "pi": ["clove hitch"] },
+    { "q": "pickled onions", "grades": { "pickling": 3 }, "pi": ["pickl"] },
+    {
+      "q": "how long does bread keep in the freezer",
+      "grades": { "food-storage": 3, "freezer": 2 },
+      "pi": ["bread|freez", "keep|last|store|freez"]
+    },
+    { "q": "child has diarrhoea", "grades": { "diarrhea": 3, "oral-rehydration": 2 }, "pi": ["diarrh"] },
+    { "q": "find north at night", "grades": { "no-compass": 3, "compass": 1, "map-reading": 1 }, "pi": ["north|star|navigat"] },
+    { "q": "whistle signal for help", "grades": { "signal-rescue": 3 }, "pi": ["whistle|signal|distress"] },
+    {
+      "q": "how much food per person",
+      "grades": { "food-rationing": 3, "supplies-list": 2 },
+      "pi": ["food|ration|calorie", "person|day|people|family"]
+    },
+    { "q": "VHF distress channel", "grades": { "radio-freqs": 3, "pmr446": 1 }, "pi": ["VHF|channel 16|distress|marine"] },
+    {
+      "q": "solar charge a phone",
+      "grades": { "solar-charger": 3, "phone-charging": 2, "solar-sizing": 1 },
+      "pi": ["solar", "phone|charg"]
+    },
+    { "q": "lighting a wood burner", "grades": { "wood-stove": 3, "fire-lighting": 1 }, "pi": ["stove|wood burn|fire"] },
+    { "q": "rescue breathing adult", "grades": { "cpr-adult": 3, "first-aid": 2 }, "pi": ["rescue breath|CPR|resuscitat"] },
+    { "q": "storing diesel at home", "grades": { "fuel-storage": 3, "gasoline-storage": 2 }, "pi": ["diesel|fuel|petrol", "stor"] },
+    { "q": "flood water in the house", "grades": { "flood": 3 }, "pi": ["flood"] }
+  ]
+}

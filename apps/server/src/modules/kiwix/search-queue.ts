@@ -18,11 +18,50 @@
  *    asking again gets it at once;
  *  - two people asking the same thing share one search;
  *  - answers are remembered for a few minutes.
+ *
+ * Two queues can share kiwix-serve's places (`createPlaces`): each keeps its own limit, and
+ * together they never have more than the shared number there. A place given back goes to
+ * the queue that joined the places first, so quick title searches go before full text.
  */
+
+/** Places at kiwix-serve shared by several queues. The queues take and give back; others only read `taken`. */
+export interface Places {
+  readonly total: number;
+  /** Places taken now, by every queue sharing them. */
+  taken(): number;
+  take(): void;
+  giveBack(): void;
+  /** Lets each queue that joined, in the order they joined, start what it has waiting. */
+  offer(): void;
+  join(pump: () => void): void;
+}
+
+export function createPlaces(total: number): Places {
+  let taken = 0;
+  const pumps: Array<() => void> = [];
+  return {
+    total,
+    taken: () => taken,
+    take: () => {
+      taken += 1;
+    },
+    giveBack: () => {
+      taken -= 1;
+    },
+    offer: () => {
+      for (const pump of pumps) pump();
+    },
+    join: (pump) => {
+      pumps.push(pump);
+    },
+  };
+}
 
 export interface SearchQueueOptions {
   /** How many searches may be at kiwix-serve at once. */
   concurrency: number;
+  /** Places shared with other queues: a search also waits for one of them. */
+  places?: Places;
   /** How long a caller waits for one search once it has begun. */
   limitMs: number;
   /** How long a search may go on holding its place before it is given up on. */
@@ -30,6 +69,8 @@ export interface SearchQueueOptions {
   /** How many answers are remembered, and for how long. */
   remember: number;
   rememberMs: number;
+  /** Hears of a caller that could not be told its answer. The others are told all the same. */
+  onError?: (error: unknown) => void;
 }
 
 export type Asked<T> =
@@ -89,7 +130,13 @@ export function createSearchQueue<T>(options: SearchQueueOptions): SearchQueue<T
   }
 
   function settleAll(task: Task<T>, answer: Asked<T>): void {
-    for (const waiter of [...task.waiters]) waiter.settle(answer);
+    for (const waiter of [...task.waiters]) {
+      try {
+        waiter.settle(answer);
+      } catch (error) {
+        options.onError?.(error);
+      }
+    }
   }
 
   /** The limit runs from when the search begins, or from when a caller joins one already begun. */
@@ -98,19 +145,29 @@ export function createSearchQueue<T>(options: SearchQueueOptions): SearchQueue<T
     waiter.timer.unref();
   }
 
+  const { places } = options;
+  const placeFree = () => !places || places.taken() < places.total;
+
   function pump(): void {
-    while (running < options.concurrency && waiting.length > 0) {
+    while (running < options.concurrency && waiting.length > 0 && placeFree()) {
       const task = waiting.shift()!;
       task.running = true;
       running += 1;
+      places?.take();
       for (const waiter of task.waiters) startLimit(waiter);
       const signal = AbortSignal.any([shutdown.signal, AbortSignal.timeout(options.ceilingMs)]);
       // The place is given back before anyone is told, so that whoever hears the answer sees the queue as it now is.
       const finish = (answer: Asked<T>) => {
         tasks.delete(task.key);
         running -= 1;
-        settleAll(task, answer);
-        pump();
+        places?.giveBack();
+        try {
+          settleAll(task, answer);
+        } finally {
+          // A shared place goes to whichever queue joined first and has a search waiting.
+          if (places) places.offer();
+          else pump();
+        }
       };
       // `run` may throw before it returns a promise; that is a failure like any other.
       Promise.resolve()
@@ -124,6 +181,7 @@ export function createSearchQueue<T>(options: SearchQueueOptions): SearchQueue<T
         );
     }
   }
+  places?.join(pump);
 
   return {
     ask(key, run, signal) {

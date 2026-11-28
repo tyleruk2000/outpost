@@ -177,6 +177,40 @@ describe("the database on the Storage screen", () => {
     expect(check.problems.length).toBeLessThanOrEqual(10);
   });
 
+  it("finds a search index out of step with its passages in the full check, and builds it again when asked", async () => {
+    const app = await start();
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n1",
+      title: "Hut",
+      url: "/notes/n1",
+      sections: [{ text: "kettle and torch" }],
+    });
+    const full = async () => {
+      expect((await app.api("POST", "/api/database/check", { kind: "full" })).status).toBe(200);
+      await app.ctx.jobs.whenIdle();
+      return (await status(app)).lastCheck!;
+    };
+    expect(await full()).toMatchObject({ ok: true, searchIndex: "sound" });
+
+    // A passage taken out of the word list with other words than it was put in with.
+    const { id } = app.ctx.sqlite.prepare("SELECT id FROM chunks LIMIT 1").get() as { id: number };
+    app.ctx.sqlite
+      .prepare("INSERT INTO chunks_words(chunks_words, rowid, title, heading, text) VALUES ('delete', ?, 'Hut', '', 'lantern')")
+      .run(id);
+    const broken = await full();
+    expect(broken).toMatchObject({ ok: false, searchIndex: "broken" });
+    expect(broken.problems[0]).toMatch(/search index .* does not match .* built again/i);
+
+    const rebuild = await app.api("POST", "/api/database/rebuild-search-index");
+    expect(rebuild.status).toBe(200);
+    expect(rebuild.body.job.title).toBe("Build the search index again");
+    await app.ctx.jobs.whenIdle();
+    // The check is run again by itself, and finds it sound.
+    expect((await status(app)).lastCheck).toMatchObject({ kind: "full", ok: true, searchIndex: "sound" });
+    expect((await app.api("GET", "/api/search?q=kettle")).body.results).toHaveLength(1);
+  });
+
   it("reclaims unused space as a job, and refuses without the room for it", async () => {
     const app = await start();
     leaveUnusedPages(app);

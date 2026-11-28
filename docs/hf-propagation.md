@@ -181,6 +181,9 @@ entry**, or **Import an ADIF file** from your logging program (ADIF 3.1.8 `.adi`
 - An entry typed in starts from where your station was last time. A position typed as a
   locator is listed as that locator.
 - No contact is added twice. **Take back**, under **Files imported**, removes one file's entries.
+- **Edit** beside an entry puts it right in place, typed or imported. An imported entry still
+  belongs to its file, so taking the file back removes it too; one logged with a band and no
+  frequency keeps that band until a frequency is given.
 - Large files import as a job; nothing appears until all of it is in. Over 64 MB or 200,000
   records is refused: export in parts.
 

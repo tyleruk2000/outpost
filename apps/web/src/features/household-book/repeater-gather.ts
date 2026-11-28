@@ -25,10 +25,10 @@ import {
   type BookRepeaterRange,
   HANDHELD_METERS,
   horizonRange,
-  mappedGroups,
   type RepeaterGroup,
   type RepeaterLocation,
   repeaterMapFrame,
+  repeaterMapGroups,
   repeaterQueries,
 } from "./book-repeaters";
 import type { BookRepeaterMap } from "./repeater-figure";
@@ -92,7 +92,14 @@ export async function gatherRanges(
 /** The offline map under each place's repeaters, at the frame the book draws it in. */
 export async function gatherMaps(
   groups: readonly RepeaterGroup[],
-  input: { sources: MapSources | undefined; regions: InstalledRegion[]; cacheKey: string; origin: string },
+  input: {
+    sources: MapSources | undefined;
+    regions: InstalledRegion[];
+    cacheKey: string;
+    origin: string;
+    /** The household's choice of only the nearest few repeaters on each map: each map is framed round those. */
+    most?: number | null;
+  },
   measure: number,
   /** Draws the offline map; MapLibre on this device unless a test gives its own. */
   draw?: DrawMap,
@@ -105,7 +112,7 @@ export async function gatherMaps(
   const attributions = input.sources?.attributions ?? [];
   const credits = printedCredits(creditsFor(attributions, { hasTiles, terrain: false }), attributions);
   let missing: string | null = null;
-  for (const group of mappedGroups(groups)) {
+  for (const group of repeaterMapGroups(groups, input.most ?? null)) {
     const { bbox, size, frame } = repeaterMapFrame(group, measure);
     if (mapCoverage(bbox, input.regions, frame.zoom).none > 0.995) {
       missing = `No offline map region covers some of these places, so they are drawn on a plain grid. ${GET_A_MAP}`;

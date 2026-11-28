@@ -260,8 +260,63 @@ export function checkFile(file: string, kind: "quick" | "full", now: () => numbe
   } catch (error) {
     lines = [error instanceof Error ? error.message : String(error)];
   }
-  const ok = lines.length === 1 && lines[0] === "ok";
-  return { kind, at: now(), milliseconds: Math.round(performance.now() - started), ok, problems: ok ? [] : lines.slice(0, MAX_PROBLEMS) };
+  let problems = lines.length === 1 && lines[0] === "ok" ? [] : lines.slice(0, MAX_PROBLEMS);
+  if (kind === "quick")
+    return { kind, at: now(), milliseconds: Math.round(performance.now() - started), ok: problems.length === 0, problems };
+  const search = checkSearchIndex(file);
+  problems = [...search, ...problems].slice(0, MAX_PROBLEMS);
+  return {
+    kind,
+    at: now(),
+    milliseconds: Math.round(performance.now() - started),
+    ok: problems.length === 0,
+    problems,
+    searchIndex: search.length > 0 ? "broken" : "sound",
+  };
+}
+
+/** The search index's two parts, by the name a person is told. */
+const SEARCH_INDEXES = [
+  { table: "chunks_fts", name: "its words" },
+  { table: "chunks_words", name: "its words as written, for “Did you mean”" },
+];
+
+/**
+ * Checks each part of the search index against the passages it was built from: what
+ * PRAGMA integrity_check cannot see. FTS5 takes the check as a write, so it is made on a
+ * connection that may write, inside a transaction that is rolled back: nothing is changed.
+ * Returns a line in words for each part that does not match.
+ */
+export function checkSearchIndex(file: string): string[] {
+  const problems: string[] = [];
+  let db: Database.Database;
+  try {
+    db = new Database(file, { fileMustExist: true });
+  } catch {
+    return problems;
+  }
+  try {
+    db.pragma("busy_timeout = 10000");
+    for (const index of SEARCH_INDEXES) {
+      if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?").get(index.table)) continue;
+      try {
+        db.exec("BEGIN");
+        try {
+          db.exec(`INSERT INTO ${index.table}(${index.table}, rank) VALUES ('integrity-check', 1)`);
+        } finally {
+          if (db.inTransaction) db.exec("ROLLBACK");
+        }
+      } catch (error) {
+        const said = error instanceof Error ? error.message : String(error);
+        problems.push(
+          `The search index (${index.name}) does not match the passages it was built from (SQLite: ${said}). Notes and files are not affected: it can be built again from them.`,
+        );
+      }
+    }
+  } finally {
+    db.close();
+  }
+  return problems;
 }
 
 /**

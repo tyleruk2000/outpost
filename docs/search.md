@@ -81,7 +81,12 @@ in quotes is never widened. About 250 entries:
 - British and American words: petrol and gasoline, torch and flashlight, nappy and diaper,
   paracetamol and acetaminophen, mobile phone and cell phone, 999 and 911.
 - Names for the same emergency: power cut, power outage and blackout; burn and scald;
-  CPR and resuscitation; jump start and boost.
+  CPR and resuscitation; jump start and boost; accident and emergency, emergency
+  department and emergency room.
+- Kitchen names: bicarbonate of soda, baking soda and bicarb. "Preserve" beside a food
+  ("how to preserve fish") also finds canning, curing, smoking, salting, drying and
+  pickling it, since a guide names the way and seldom says "preserve"; not the other way. A name with a small word in
+  it ("of", "and") is known when typed with or without it.
 - Some only beside other words: "change" also finds "replace" and "fit" beside a part
   ("change car battery"), and "treat" finds "purify" and "disinfect" beside "water".
 
@@ -112,7 +117,7 @@ results with some."
 
 | Kind | What is indexed |
 | --- | --- |
-| Documents | Title, author or file name, category, tags, and the text, page by page for PDFs; for scans, the OCR text once read. A book chapter is a document. |
+| Documents | Title, author or file name, category, tags, and the text, page by page for PDFs; for scans, the OCR text once read. A book chapter is a document. A PDF's bookmarks name the chapter of each page: it is searched with the page and shown with a result, so a whole book found by its words says which chapter matched. A PDF added before this was read without them; **Read text again** in its details adds them. |
 | Notes | Title, parent pages' titles, tags, and the text under each heading. |
 | Installed collections | Title, publisher, description. |
 | Catalogue entries | What Explore lists, so you can find something to download. |
