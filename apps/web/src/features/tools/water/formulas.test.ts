@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { boilAdvice, filterLife, rainYieldLitres, storageLitres } from "./formulas";
-import { BLEACH_TABLES, METHODS, PLANNING_FIGURES, startingFigure } from "./guidance";
+import { BLEACH_TABLES, METHODS, PLANNING_FIGURES, startingFigure, startingHint } from "./guidance";
 
 describe("water to store", () => {
   it("is people × days × litres a day", () => {
@@ -18,14 +18,21 @@ describe("water to store", () => {
 });
 
 describe("the planning figure to start on", () => {
-  it("is the UK government's in the UK, the CDC's in the United States, and the WHO's everywhere else", () => {
+  it("is FEMA's in the United States, and the UK government's everywhere else, as before, said plainly", () => {
     expect(startingFigure("GB")).toBe("uk");
     expect(startingFigure("JE")).toBe("uk");
-    expect(startingFigure("US")).toBe("cdc");
-    expect(startingFigure("PR")).toBe("cdc");
-    expect(startingFigure("DE")).toBe("who-survival");
-    expect(startingFigure("AU")).toBe("who-survival");
-    expect(startingFigure(null)).toBe("who-survival");
+    expect(startingFigure("US")).toBe("fema");
+    expect(startingFigure("PR")).toBe("fema");
+    expect(startingFigure("DE")).toBe("uk");
+    expect(startingFigure(null)).toBe("uk");
+    expect(startingHint("US", "United States")).toBe("Starts on FEMA's figure (Ready.gov), for the United States.");
+    expect(startingHint("GB", "United Kingdom")).toBe("Starts on the UK government's figure, for the United Kingdom.");
+    expect(startingHint("DE", "Germany")).toBe(
+      "Starts on the UK government's figure: it is UK guidance, and Outpost has none from Germany's government. Choose another if it does not fit.",
+    );
+    expect(startingHint(null, null)).toMatch(
+      /^Starts on the UK government's figure: it is UK guidance, and Outpost has none from your country's government/,
+    );
     for (const region of ["GB", "US", "DE"]) expect(PLANNING_FIGURES.some((figure) => figure.id === startingFigure(region))).toBe(true);
   });
 });

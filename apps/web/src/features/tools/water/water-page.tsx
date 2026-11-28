@@ -33,6 +33,7 @@ import {
   RUNOFF,
   WATER_SOURCES as S,
   startingFigure,
+  startingHint,
   WHAT_NONE_REMOVE,
 } from "./guidance";
 import { PURIFICATION_TITLE, purificationDocument } from "./purification-sheet";
@@ -100,13 +101,9 @@ function StorageCalculator() {
   ];
   // The first choice follows Home's country, else the device's region; a choice made is kept.
   const home = useHomeCountry();
-  const start = startingFigure(home?.code ?? deviceRegion());
-  const [figureId, setFigure] = useChoice("water.storage.figure", options, start);
-  const startWho = PLANNING_FIGURES.find((item) => item.id === start)!.who;
-  const startHint =
-    start === "who-survival"
-      ? `Starts on the WHO's figure: Outpost has no planning figure from ${home ? `${home.name}'s` : "your country's"} government.`
-      : `Starts on the ${startWho} figure, for ${home ? home.name : "this device's region"}.`;
+  const region = home?.code ?? deviceRegion();
+  const [figureId, setFigure] = useChoice("water.storage.figure", options, startingFigure(region));
+  const startHint = startingHint(region, home?.name);
   const people = useNumber(stPeople);
   const days = useNumber(stDays);
   const own = useNumber(stOwn);
