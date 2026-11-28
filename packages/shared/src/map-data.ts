@@ -242,6 +242,12 @@ export interface MapDataWhereResult {
   part: { regionId: string; name: string } | null;
   /** The country's box, for a map of it where no ready-made one is listed. */
   bbox: [number, number, number, number] | null;
+  /**
+   * The part's own box, for a map of the part alone: from a ready-made area of its name, or
+   * the Natural Earth regions layer where it is held; null where neither knows it (a map of
+   * the part then takes the country's box).
+   */
+  partBbox?: [number, number, number, number] | null;
   /** Where a town is. */
   lat: number | null;
   lon: number | null;

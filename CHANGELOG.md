@@ -727,6 +727,11 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - Road routes say **Great Britain** for the United Kingdom's roads when those are Great
   Britain's alone (England, Scotland and Wales), and no longer take a point in Northern
   Ireland as covered by them or join it to a road across the North Channel.
+- Offline maps lists a map under the country most of its land is in, by the country
+  outlines, not by boxes: Bavaria under Germany, a map imported from a file under its
+  country rather than **Other areas**. A map of a part of a country (England, a region the
+  regions layer knows) is of the part, not the whole country, and is named for it; a town
+  finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
 
 ### Security
 

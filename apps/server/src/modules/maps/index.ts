@@ -214,7 +214,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   // Place names for Great Britain (OS Open Names) are registered at the end; the add uses them once they are.
   let osNames: OsNamesService | undefined;
   const mapDataAdd = createMapDataAdd(ctx, () => osNames);
-  const mapDataWhere = createMapDataWhere(ctx, client);
+  const mapDataWhere = createMapDataWhere(ctx, client, () => regions.presets());
   app.get("/api/maps/data", async (): Promise<MapDataResponse> => mapData());
   app.get("/api/maps/data/where", async (request) => mapDataWhere(mapDataWhereSchema.parse(request.query)));
   app.post("/api/maps/data/add", async (request) => mapDataAdd(mapDataAddSchema.parse(request.body)));

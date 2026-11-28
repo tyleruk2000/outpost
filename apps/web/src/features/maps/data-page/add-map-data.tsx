@@ -131,7 +131,8 @@ function chosenOf(result: MapDataWhereResult, part: boolean): Chosen {
     countryName: part && result.part ? result.countryName : null,
     regionId: result.regionId,
     part: part ? result.part : null,
-    bbox: result.bbox,
+    // A part's own box where the server knows it, so that a map of Kent is not a map of the United Kingdom.
+    bbox: part && result.part && result.partBbox ? result.partBbox : result.bbox,
   };
 }
 
@@ -145,13 +146,36 @@ const WORLD: Chosen = {
   bbox: [-180, -85, 180, 85],
 };
 
-/** The ready-made map of a country (`country-fr`), or of anything of the same name. */
+/**
+ * The ready-made map of a country (`country-fr`), or of anything of the same name. For a part
+ * of a country, only a ready-made area of the part's own name (England): never the country's,
+ * whose box is the whole country.
+ */
 export function presetFor(place: Chosen, presets: MapRegionPresetStatus[]): MapRegionPresetStatus | null {
   if (place.type === "world") return presets.find((preset) => preset.id === "world") ?? null;
   if (place.type === "area") return null;
+  if (place.part) {
+    const names = new Set([fold(place.part.name), fold(place.part.name.replace(/\s*\(.*\)$/, ""))]);
+    return presets.find((preset) => names.has(fold(preset.name))) ?? null;
+  }
   const code = place.code?.toLowerCase();
   const name = fold(place.countryName ?? place.name);
   return presets.find((preset) => preset.id === `country-${code}`) ?? presets.find((preset) => fold(preset.name) === name) ?? null;
+}
+
+/**
+ * What a map of a place is called and which ready-made area it is: a country by its name and
+ * `country-xx`; a part by its own name ("Kent"), as the ready-made area of that name where there
+ * is one and as no ready-made area otherwise, so that it is not taken for all of its country.
+ */
+export function mapAreaOf(place: Chosen, preset: MapRegionPresetStatus | null): { name: string; regionId: string | undefined } {
+  if (place.part) return { name: preset?.name ?? place.name, regionId: preset?.id };
+  if (place.type === "country")
+    return {
+      name: place.countryName ?? place.name,
+      regionId: preset?.id ?? (place.code ? `country-${place.code.toLowerCase()}` : undefined),
+    };
+  return { name: preset?.name ?? place.name, regionId: preset?.id };
 }
 
 /** The deepest detail a box can have and stay a sensible download. */
@@ -891,12 +915,12 @@ function Flow({
         const box = boxOf(place);
         if (ticks.has("map") && box) {
           const preset = presetOf(place);
-          const name = place.type === "country" ? (place.countryName ?? place.name) : (preset?.name ?? place.name);
+          const area = mapAreaOf(place, preset);
           requests.push({
             kinds: ["map", ...(hills ? (["terrain"] as const) : []), ...(place.code ? (["names"] as const) : [])],
             map: {
-              name,
-              regionId: preset?.id ?? (place.code ? `country-${place.code.toLowerCase()}` : undefined),
+              name: area.name,
+              ...(area.regionId ? { regionId: area.regionId } : {}),
               bbox: box,
               maxZoom: zoomOf(place),
             },

@@ -11,7 +11,7 @@ import type { AddressInfo } from "node:net";
 import type { DownloadDetail, ManagedItemsResponse, MapDataItem, MapDataResponse, UsageResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { datedFilesIn, dateOfName } from "../src/modules/layers/adapters/geofabrik-file.ts";
-import { countryLikeBox, countryOfBox } from "../src/modules/maps/map-data.ts";
+import { countryOfArea } from "../src/modules/maps/map-data.ts";
 import { buildPbf } from "./fixtures/layers/builders.ts";
 import { createGeofabrikStandIn } from "./fixtures/layers/geofabrik-stand-in.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -45,12 +45,25 @@ describe("which dated file to fetch", () => {
     expect(dateOfName("united-kingdom-latest.osm.pbf")).toBeNull();
   });
 
-  it("finds the country of a ready-made map area", () => {
-    expect(countryOfBox([-8.65, 49.85, 1.77, 60.86])).toBe("GB");
-    expect(countryOfBox([5.7, 49.4, 6.6, 50.2])).toBe("LU");
-    // A map brought in from a file: its country when the boxes are much the same, never for a valley drawn by hand.
-    expect(countryLikeBox([-8.7, 49.8, 1.8, 60.9])).toBe("GB");
-    expect(countryLikeBox([6.75, 45.85, 7.05, 46.0])).toBeNull();
+  it("finds the country of a ready-made map area by the country outlines, not by boxes", () => {
+    expect(countryOfArea([-8.65, 49.85, 1.77, 60.86], "united-kingdom")).toBe("GB");
+    expect(countryOfArea([5.7, 49.4, 6.6, 50.2], "country-lu")).toBe("LU");
+    // Bavaria: Austria's box holds its middle (Munich is in Austria's box), but its land is Germany's.
+    expect(countryOfArea([8.97, 47.27, 13.84, 50.56], "bavaria")).toBe("DE");
+    // The Lake District, and New England (inside Canada's box, and the United States' own).
+    expect(countryOfArea([-3.55, 54.17, -2.6, 54.78], "lake-district")).toBe("GB");
+    expect(countryOfArea([-73.7, 41.0, -69.9, 45.0], "new-england")).toBe("US");
+  });
+
+  it("finds the country of a map brought in from a file, or drawn, by its land, and none for one across several", () => {
+    // A map of Great Britain imported from a file, with no ready-made region; a box of Bavaria; Strasbourg and Kehl, either side of the Rhine.
+    expect(countryOfArea([-8.7, 49.8, 1.8, 60.9], null)).toBe("GB");
+    expect(countryOfArea([10.5, 47.6, 12.5, 48.6], null)).toBe("DE");
+    expect(countryOfArea([7.65, 48.5, 7.95, 48.65], null)).toBeNull();
+    // The Alps, from Grenoble to Innsbruck: four countries, none most of it.
+    expect(countryOfArea([5.7, 45.0, 11.4, 47.3], null)).toBeNull();
+    // Open sea.
+    expect(countryOfArea([-30, 40, -29, 41], null)).toBeNull();
   });
 });
 

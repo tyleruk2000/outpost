@@ -79,14 +79,25 @@ after "busy".
 
 `GET /api/maps/data` answers the Map data screen in one request, from what is held:
 per country six rows in a fixed order (map to look at, hills and heights, place names,
-roads for routes, places to find, country file), then the whole world, other areas (drawn
-and satellite areas, anything not one country's) and the kept country files. Each item has
+roads for routes, places to find, country file), then the whole world, other areas
+(satellite areas, anything not one country's) and the kept country files. Each item has
 its size, storage location (none for a road network, which is in Outpost's own data), the
 day its data is from, a state (`waiting`, `downloading`, `paused`, `processing` with the
 task's own progress and step, `ready`, `failed` with the reason, `location-offline`,
-`missing`, `damaged`, `moving`) and the download or task to open. A ready-made map area is
-put under the country whose outline box is most like its own; a drawn one is under other
-areas. Kept phone areas live in the phone's browser, so `onThisPhone` is always null.
+`missing`, `damaged`, `moving`) and the download or task to open. A map is put under a
+country by the country outlines (`countryOfArea`: its box looked at on a 17 by 17 grid of
+points, the country holding most of the points on land): a ready-made area when that country
+holds half of them (`country-xx` is that country outright), a map imported from a file or
+drawn by hand when it holds 0.6; a map across several countries is under other areas.
+
+`GET /api/maps/data/where` gives a part of a country its own box (`partBbox`) where it is
+known: a ready-made area of its name in the same country (England), else its record in the
+Natural Earth regions layer where held; otherwise null, and a map of the part takes the
+country's box. A town's part comes from the regions layer where held, else from the division
+its place names give: GeoNames' code matched to Geofabrik's ISO 3166-2 codes (`US-OH`) or, for
+Great Britain, by name (`ENG` is England); OS Open Names' words ("Keswick, Cumbria, England"),
+the smallest part named. A map of a part is named for the part and is never the country's
+ready-made map. Kept phone areas live in the phone's browser, so `onThisPhone` is always null.
 
 A country file is a Geofabrik extract (`.osm.pbf`). It is downloaded once (a download of
 kind `extract`) and read for what was asked, the main roads and then the places, each a
