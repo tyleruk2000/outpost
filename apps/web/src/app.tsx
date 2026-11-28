@@ -87,6 +87,7 @@ const EmergencyPlansPage = lazy(() => import("./features/emergency-plans/plans-p
 const EmergencyPlanPage = lazy(() => import("./features/emergency-plans/plan-page"));
 const UseEmergencyPlanPage = lazy(() => import("./features/emergency-plans/use-page"));
 const EmergencyCardsPage = lazy(() => import("./features/emergency-plans/cards-page"));
+const ReadEmergencyPlanPage = lazy(() => import("./features/emergency-plans/read-page"));
 const WaterToolsPage = lazy(() => import("./features/tools/water/water-page"));
 const RationsToolsPage = lazy(() => import("./features/tools/rations/rations-page"));
 const OutdoorsToolsPage = lazy(() => import("./features/tools/outdoors/outdoors-page"));
@@ -231,6 +232,7 @@ export function App() {
           <Route path="prepare/plans/:id" element={<EmergencyPlanPage />} />
           <Route path="prepare/plans/:id/use" element={<UseEmergencyPlanPage />} />
           <Route path="prepare/plans/:id/cards" element={<EmergencyCardsPage />} />
+          <Route path="prepare/plans/:id/read" element={<ReadEmergencyPlanPage />} />
           <Route path="prepare/medical" element={<MedicalPage />} />
           <Route path="prepare/medical/:id" element={<MedicalSheetPage />} />
           <Route path="prepare/keeping-in-touch" element={<CommsPage />} />

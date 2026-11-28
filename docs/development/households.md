@@ -98,7 +98,11 @@ sheets (`theirMedicalSheets`). The 409 says all of this before anything goes.
 `PUT /api/supplies/household` still takes `members`: they are the current household's
 people. One left out leaves that household, and goes from the People list only if it is
 in no other household. Every other supplies route is the current household's; an item or
-shopping line of another household is 404. `GET /api/supplies/outlooks` gives every
+shopping line of another household is 404. The 5,000-item limit is per household. A CSV
+preview answers `household` (`{ id, name }`, the current one it was read against) and
+`POST /api/supplies/import/apply` takes it back as `householdId`: if another household
+has been made current since, the apply is 409 and nothing is brought in (left out, by an
+older page: the current household). `GET /api/supplies/outlooks` gives every
 household's days of food and water, the current one first (Home's lines).
 
 Types: `HouseholdDto` (named so because `Household` is still the supplies settings type,
@@ -214,7 +218,14 @@ Each of these is so by choice:
 - The mesh root topic and the allotment game take `households.first()`.
 - The first household, when it has no home place of its own, takes the saved place with
   the home icon (`homePlaceOf`, in `households/service.ts` only).
-- The phone's kept copy of the medical sheets is stored under the one id `household` on
-  the phone, and holds the current household's sheets with its name.
+- The phone keeps one copy of the medical sheets per household, under the household's id
+  (`householdId` on the record). A copy from before (no `householdId`, filed under
+  `household` whichever household it was) is matched on the next refresh by the name it
+  was kept with (none: the first household) and moved to that household's id; one that
+  matches no household, or several, is left as it was (`unmatched`), and keeping the first
+  household's sheets moves it aside rather than writing over it. `keepMedical(id?)` fetches
+  `GET /api/medical-sheets?household=<id>` (left out: the current household's); a refresh
+  brings each copy up to date from its own household, and leaves a removed household's
+  copy as it was (`householdRemoved`, said on its row under Kept).
 - An insert that leaves `household_id` out takes the column default, the first
   household: every per-household service sets it, so a new one must too.

@@ -116,6 +116,12 @@ export interface KeptMedical extends KeptBase {
   locked: number;
   /** The household they are the sheets of, when there were several; absent or null with one. */
   householdName?: string | null;
+  /** The household's id. Absent on a copy kept before there was one per household (`isEarlierCopy`). */
+  householdId?: string;
+  /** The household was removed at home: the copy stays on the device as it was. */
+  householdRemoved?: boolean;
+  /** An earlier copy whose name matches no household now: left as it was, under the name it was kept with. */
+  unmatched?: boolean;
 }
 
 export type KeptItem = KeptNote | KeptTrack | KeptPlaces | KeptArea | KeptPlan | KeptMedical;

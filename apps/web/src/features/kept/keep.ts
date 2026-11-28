@@ -18,6 +18,7 @@ import type {
   TrackDto,
   TrackWithGeometryDto,
 } from "@outpost/shared";
+import { FIRST_HOUSEHOLD_ID, type HouseholdsResponse } from "@outpost/shared";
 import { toast } from "sonner";
 import { ApiError, api } from "@/lib/api";
 import { DEVICE } from "./device";
@@ -34,6 +35,8 @@ import {
   putKept,
   putKeptBytes,
   putKeptJson,
+  readKeptJson,
+  removeKept,
 } from "./store";
 
 /** A page is kept with the pages inside it. Past this many, keep the parts that matter one by one. */
@@ -249,23 +252,47 @@ export async function keepPlaces(): Promise<KeptPlaces> {
   return item;
 }
 
-export const MEDICAL_ID = "household";
+/** The first household's id, which a copy kept before there were copies per household is filed under, whichever household it was. */
+export const MEDICAL_ID = FIRST_HOUSEHOLD_ID;
 export const MEDICAL_PATH = "/api/medical-sheets";
 
+/** A copy kept before there was one per household: it does not say which household's it is by id. */
+export const isEarlierCopy = (item: KeptMedical) => item.householdId === undefined;
+
+/** Moves an earlier copy out of the way of a household's own, kept as it was under the name it was kept with. */
+async function moveAside(item: KeptMedical): Promise<void> {
+  const to = `earlier-${item.id}`;
+  const copy = await readKeptJson<unknown>("medical", item.id, MEDICAL_PATH);
+  if (copy !== undefined) await putKeptJson(await openKept("medical", to), MEDICAL_PATH, copy);
+  await putKept({ ...item, id: to });
+  await removeKept("medical", item.id);
+}
+
 /**
- * Keeps the current household's medical sheets on this phone as they are on the server: a
- * locked one stays locked. With several households the copy says whose they are.
+ * Keeps a household's medical sheets on this phone as they are on the server: a locked one
+ * stays locked. Each household's copy is its own, kept under the household's id, so that
+ * keeping another household's sheets never replaces one kept before. Left out, `householdId`
+ * is the current household; with several households the copy says whose they are.
  */
-export async function keepMedical(): Promise<KeptMedical> {
-  const before = await getKept("medical", MEDICAL_ID);
-  const answer = await api.get<MedicalSheetsResponse>(MEDICAL_PATH);
-  const cache = await openKept("medical", MEDICAL_ID);
+export async function keepMedical(householdId?: string): Promise<KeptMedical> {
+  const answer = await api.get<MedicalSheetsResponse>(
+    householdId === undefined ? MEDICAL_PATH : `${MEDICAL_PATH}?household=${encodeURIComponent(householdId)}`,
+  );
+  const id = answer.household?.id ?? householdId ?? MEDICAL_ID;
   const householdName = answer.household?.several ? answer.household.name : null;
+  let before = await getKept("medical", id);
+  // An earlier copy under this id that was another household's is kept, moved aside, never written over.
+  if (before && isEarlierCopy(before) && (before.householdName ?? null) !== householdName) {
+    await moveAside(before);
+    before = undefined;
+  }
+  const cache = await openKept("medical", id);
   const bytes = await putKeptJson(cache, MEDICAL_PATH, { sheets: answer.sheets, householdName });
   const now = Date.now();
   const item: KeptMedical = {
     kind: "medical",
-    id: MEDICAL_ID,
+    id,
+    householdId: id,
     title: householdName ? `Medical sheets for ${householdName}` : "Medical sheets",
     householdName,
     count: answer.sheets.length,
@@ -372,7 +399,33 @@ export function refreshKept(): Promise<number> {
       // Small, and with no date of its own to compare: fetched each time.
       await keepPlaces();
     }
-    if (items.some((item) => item.kind === "medical")) await keepMedical();
+    let households: HouseholdsResponse["households"] | undefined;
+    for (const item of items) {
+      if (item.kind !== "medical") continue;
+      let target = item.householdId;
+      if (target === undefined) {
+        // A copy kept before there was one per household: found its household by the name it was kept with (none
+        // was kept with one household, the first). One that matches no household, or several, is left as it was.
+        households ??= (await api.get<HouseholdsResponse>("/api/households")).households;
+        const matches = item.householdName
+          ? households.filter((each) => each.name === item.householdName)
+          : households.filter((each) => each.id === FIRST_HOUSEHOLD_ID);
+        if (matches.length !== 1) {
+          if (!item.unmatched) await putKept({ ...item, unmatched: true });
+          continue;
+        }
+        target = matches[0]!.id;
+      }
+      try {
+        // Each household's copy from its own household, whichever is current now.
+        await keepMedical(target);
+        if (target !== item.id) await removeKept("medical", item.id);
+      } catch (error) {
+        if (!isGone(error)) throw error;
+        // A household removed at home: its copy stays as it was, and says so.
+        if (!item.householdRemoved) await putKept({ ...item, householdRemoved: true });
+      }
+    }
     return replaced;
   })().finally(() => {
     refreshing = undefined;

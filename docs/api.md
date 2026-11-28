@@ -821,7 +821,7 @@ Worked out by VOACAP on the server, offline. Types: `propagation.ts`,
 | `POST /api/radio/propagation/second-model/engine/build` | Builds P.533 here (job on `engine-build`), installed only if the result matches the recorded file. `415` where no compiler exists. |
 | `POST /api/radio/propagation/second-model/maps/download` | The ITU's maps (25 files, 137 MB). |
 | `POST /api/radio/propagation/second-model/compare` | The `predict` body, run by both models with isotropic 0 dBi antennas → `SecondModelComparison`. `415 second-model-unavailable`; `400` for power under 1 W or SSN outside 1 to 311. |
-| `GET`, `POST /api/radio/communication-plans`, `GET`, `PATCH`, `DELETE …/:id` | Communication plans: `name`, `notes`, `stations` (≤8), `date`, `fromUtc`, `toUtc`, `bands`, `mode`, `requiredSnrDb`, `referenceBandwidthHz`, `solar`, `links`. `PATCH` with `baseUpdatedAt` → `409 changed-elsewhere`. |
+| `GET`, `POST /api/radio/communication-plans`, `GET`, `PATCH`, `DELETE …/:id` | Communication plans: `name`, `notes`, `stations` (≤8; each with an optional `callsign`, letters, figures and strokes, kept in capitals), `date`, `fromUtc`, `toUtc`, `bands`, `mode`, `requiredSnrDb`, `referenceBandwidthHz`, `solar`, `links`. `PATCH` with `baseUpdatedAt` → `409 changed-elsewhere`. |
 | `POST /api/radio/communication-plans/import` | `{ text }`: a plan file from an export (`format: outpost-communication-plan`) or a bare plan → a new plan; links to pages and documents not held here are dropped. |
 | `POST …/communication-plans/:id/matrix`, `GET` | Works the plan out (≤56 runs) → `PlanResult`; the last result if the plan is unchanged. |
 | `GET /api/radio/observations` | The contact log: `limit` (≤500), `offset`; `imports`, `importing`, `adif`. |
@@ -1086,7 +1086,7 @@ reaches out. Dates are `YYYY-MM-DD`; routes about today take `?today=`.
 | `GET /api/supplies/shopping`, `POST …/work-out`, `POST`, `PATCH`, `DELETE …/:id` | The shopping list; work it out again (own lines kept); lines. |
 | `POST /api/supplies/shopping/:id/bought` | Adds to stock and takes the line off or lowers it. |
 | `GET /api/supplies/export.csv` | Every row. |
-| `POST /api/supplies/import/preview`, `/apply` | `{ text ≤2 MB }` → `ImportPreview`; `{ rows }` applied all or nothing. |
+| `POST /api/supplies/import/preview`, `/apply` | `{ text ≤2 MB }` → `ImportPreview` (with the `household` it was read against); `{ householdId?, rows }` applied all or nothing, 409 if another household is current since. |
 
 ## Devices on this network
 
@@ -1144,7 +1144,7 @@ are searchable only while `medical.inSearch` is on and readable by tools only wh
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/medical-sheets`, `POST` | `{ sheets, inSearch, inTools }`; make one (≤60). |
+| `GET /api/medical-sheets`, `POST` | `{ sheets, inSearch, inTools, household }`, the current household's or `?household=<id>`'s (404 if unknown); make one (≤60). |
 | `GET`, `PUT`, `DELETE /api/medical-sheets/:id` | `PUT` with `baseUpdatedAt`; a `record` over an encrypted sheet needs `removeEncryption: true`. |
 | `GET /api/keeping-in-touch`, `PUT` | The communication plan and `resolved` links. `PUT` with `baseUpdatedAt`: `409` if older than the stored plan, or `null` once a plan is kept. |
 | `GET /api/household-binder` | `BinderStatus`: last made, changes since, and `fingerprints` (a hash per part of what it is made from; `stale` compares them, so a deletion counts). |

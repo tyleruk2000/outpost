@@ -33,7 +33,7 @@ import {
 } from "@outpost/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { supplyHousehold, supplyItems, supplyMembers, supplyProducts, supplyShopping } from "../../db/schema.ts";
 
@@ -58,7 +58,10 @@ export interface SuppliesService {
   removeShoppingLine(id: string): void;
   bought(id: string, input: BoughtInput): { item: SupplyItem; line: ShoppingLine | null };
   /** Adds and updates rows from an import, all or nothing. */
-  importRows(rows: Array<{ action: "add" | "update"; id?: string; item: SupplyItemInput }>): { added: number; updated: number };
+  importRows(
+    rows: Array<{ action: "add" | "update"; id?: string; item: SupplyItemInput }>,
+    householdId?: string,
+  ): { added: number; updated: number };
   count(): SuppliesKept;
   eraseAll(): SuppliesKept;
 }
@@ -185,6 +188,10 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
     barcodeKey: input.barcode ? barcodeKey(input.barcode) : null,
   });
 
+  /** Rows in one household's inventory: the limit is each household's own. */
+  const itemsHere = (householdId = hid()) =>
+    (sqlite.prepare("SELECT count(*) AS n FROM supply_items WHERE household_id = ?").get(householdId) as { n: number }).n;
+
   const count = (): SuppliesKept => {
     const n = (table: string) => (sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
     return { items: n("supply_items"), members: n("supply_members"), shopping: n("supply_shopping"), barcodes: n("supply_products") };
@@ -197,7 +204,7 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
     item: get,
 
     create(input) {
-      if ((sqlite.prepare("SELECT count(*) AS n FROM supply_items").get() as { n: number }).n >= SUPPLY_LIMITS.items)
+      if (itemsHere() >= SUPPLY_LIMITS.items)
         throw badRequest(`The inventory holds at most ${SUPPLY_LIMITS.items.toLocaleString("en-GB")} rows.`);
       const now = Date.now();
       const id = newId();
@@ -568,10 +575,18 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
       return { item: item!, line: result };
     },
 
-    importRows(rows) {
+    importRows(rows, householdId) {
       let added = 0;
       let updated = 0;
-      if (count().items + rows.filter((row) => row.action === "add").length > SUPPLY_LIMITS.items)
+      // The file was read against one household's stock: it lands there or nowhere, never in one made current since.
+      if (householdId !== undefined && householdId !== hid()) {
+        const now = ctx.services.households.current();
+        throw conflict(
+          `Outpost has been set to ${now.name} since the file was read, so nothing was brought in. Read the file again to bring it into ${now.name}.`,
+          { householdId: now.id },
+        );
+      }
+      if (itemsHere() + rows.filter((row) => row.action === "add").length > SUPPLY_LIMITS.items)
         throw badRequest(`The inventory holds at most ${SUPPLY_LIMITS.items.toLocaleString("en-GB")} rows; this file would take it over.`);
       const now = Date.now();
       sqlite.transaction(() => {

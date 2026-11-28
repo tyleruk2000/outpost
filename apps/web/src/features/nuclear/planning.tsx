@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { conflictOf, inputOf, planKeys, useCreatePlan, usePlans } from "@/features/emergency-plans/data";
 import { DaysHeld } from "@/features/emergency-plans/supplies-section";
-import { guessEmergencyNumber } from "@/features/emergency-plans/words";
+import { guessEmergencyNumber, planCountry } from "@/features/emergency-plans/words";
 import { useHomeCountry } from "@/features/frequencies/home-country";
 import { useHome } from "@/features/households/home";
 import { api, errorMessage } from "@/lib/api";
@@ -95,7 +95,7 @@ export function PlanningPanel({
   const home = useHomeCountry();
 
   const make = () =>
-    create.mutate(planFromTemplate(template, localId, guessEmergencyNumber(undefined, home?.code)), {
+    create.mutate(planFromTemplate(template, localId, guessEmergencyNumber(undefined, home?.code), planCountry(home)), {
       onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}`),
       onError: (error) => notify.error(errorMessage(error)),
     });

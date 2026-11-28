@@ -36,6 +36,7 @@ const station = (id: string, name: string, lat: number, lon: number) => ({
   antenna: dipole,
   antennaName: "Low horizontal dipole, 5 m",
   noise: "residential" as const,
+  callsign: "",
 });
 
 function planOf(patch: Partial<CommunicationPlan> = {}): CommunicationPlan {
@@ -450,6 +451,10 @@ describe("a plan", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Add station" }));
     expect(within(dialog).getByRole("alert").textContent).toContain("Give the station a name");
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Gran's house" } });
+    fireEvent.change(within(dialog).getByLabelText("Call sign"), { target: { value: "not one!" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add station" }));
+    expect(within(dialog).getByRole("alert").textContent).toContain("A call sign is letters, figures and strokes");
+    fireEvent.change(within(dialog).getByLabelText("Call sign"), { target: { value: " g4xyz/p " } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Add station" }));
     expect(within(dialog).getByRole("alert").textContent).toContain("Say where the station is");
     fireEvent.change(within(dialog).getByLabelText("Where it is"), { target: { value: "IO92BL" } });
@@ -459,6 +464,7 @@ describe("a plan", () => {
     expect(server.patched[0]!.stations).toHaveLength(3);
     expect(server.patched[0]!.stations[2]).toMatchObject({
       name: "Gran's house",
+      callsign: "G4XYZ/P",
       powerWatts: 50,
       antennaName: "Low horizontal dipole, 5 m",
       antenna: dipole,

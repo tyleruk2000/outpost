@@ -21,7 +21,7 @@ import { formatDate, localId, plural } from "@/lib/utils";
 import { useCreatePlan, usePlans } from "./data";
 import { TemplateLicences, templateSources } from "./licences";
 import { HomeWarningLine } from "./warning-line";
-import { blankPlan, guessEmergencyNumber, templatesFor, templatesWhereLine } from "./words";
+import { blankPlan, guessEmergencyNumber, planCountry, templatesFor, templatesWhereLine } from "./words";
 
 function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
   const review = reviewDue(plan, Date.now());
@@ -92,7 +92,8 @@ function NewPlanDialog({
   const whereLine = templatesWhereLine(home, undefined, householdName);
   const make = () => {
     if (!chosen) return;
-    const input = chosen === "blank" ? blankPlan(name.trim() || "Our plan", number) : planFromTemplate(chosen, localId, number);
+    const input =
+      chosen === "blank" ? blankPlan(name.trim() || "Our plan", number) : planFromTemplate(chosen, localId, number, planCountry(home));
     if (name.trim()) input.name = name.trim();
     create.mutate(input, { onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}${fromBook ? "?from=book" : ""}`) });
   };

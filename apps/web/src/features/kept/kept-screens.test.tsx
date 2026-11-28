@@ -415,7 +415,7 @@ describe("an emergency plan kept on this device", () => {
 });
 
 describe("the medical sheets kept on this device", () => {
-  async function keptSheets(householdName: string | null = null) {
+  async function keptSheets(householdName: string | null = null, id = "household") {
     const { emptyMedicalRecord } = await import("@outpost/shared");
     const sheets = [
       {
@@ -439,10 +439,10 @@ describe("the medical sheets kept on this device", () => {
         updatedAt: 1,
       },
     ];
-    await putKeptJson(await caches.open("outpost-kept:medical:household"), "/api/medical-sheets", { sheets, householdName });
+    await putKeptJson(await caches.open(`outpost-kept:medical:${id}`), "/api/medical-sheets", { sheets, householdName });
     await putKept({
       kind: "medical",
-      id: "household",
+      id,
       title: householdName ? `Medical sheets for ${householdName}` : "Medical sheets",
       householdName,
       count: 2,
@@ -459,6 +459,16 @@ describe("the medical sheets kept on this device", () => {
     const row = (await screen.findByRole("link", { name: "Medical sheets" })).closest("li")!;
     expect(within(row).getByRole("link", { name: "Medical sheets" })).toHaveAttribute("href", "/prepare/medical");
     expect(row).toHaveTextContent("2 sheets, 1 of them locked: they open here with their passphrase");
+  });
+
+  it("says on its row when the household it is for was removed, and can still be removed from the device", async () => {
+    await keptSheets("Caravan", "caravan");
+    const { getKept } = await import("./store");
+    await putKept({ ...(await getKept("medical", "caravan"))!, householdId: "caravan", householdRemoved: true });
+    showKeptPage();
+    const row = (await screen.findByRole("link", { name: "Medical sheets for Caravan" })).closest("li")!;
+    expect(row).toHaveTextContent("This household was removed; its copy is still on this");
+    expect(within(row).getByRole("button", { name: /Remove/ })).toBeVisible();
   });
 
   it("shows a sheet that is not locked, and keeps a locked one locked", async () => {
@@ -488,5 +498,21 @@ describe("the medical sheets kept on this device", () => {
     );
     expect(await screen.findByRole("heading", { level: 1, name: "Medical sheets" })).toBeInTheDocument();
     expect(screen.getByText("For Family")).toBeInTheDocument();
+  });
+
+  it("shows each household's copy under its name when more than one is kept", async () => {
+    await keptSheets("Home");
+    await keptSheets("Caravan", "caravan");
+    const { default: KeptMedicalScreen } = await import("./kept-medical-screen");
+    render(
+      <MemoryRouter>
+        <KeptMedicalScreen />
+      </MemoryRouter>,
+    );
+    const caravan = await screen.findByRole("region", { name: "For Caravan" });
+    const home = screen.getByRole("region", { name: "For Home" });
+    expect(within(caravan).getByRole("heading", { level: 2, name: "For Caravan" })).toBeInTheDocument();
+    expect(within(home).getByRole("region", { name: "Medical sheet: Ana" })).toHaveTextContent("Blood group: O+");
+    expect(within(caravan).getByRole("region", { name: "Medical sheet: Ana" })).toBeInTheDocument();
   });
 });

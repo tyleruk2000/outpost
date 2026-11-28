@@ -3,7 +3,14 @@
  * list, settings and people; switching the current household switches what Supplies
  * shows; stock in one household is never found, changed or counted in another.
  */
-import { DEFAULT_HOUSEHOLD, type HouseholdDto, type SuppliesResponse, type SupplyOutlooksResponse } from "@outpost/shared";
+import {
+  DEFAULT_HOUSEHOLD,
+  type HouseholdDto,
+  type ImportPreview,
+  SUPPLY_LIMITS,
+  type SuppliesResponse,
+  type SupplyOutlooksResponse,
+} from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -118,6 +125,61 @@ describe("supplies with several households", () => {
     const home = await ok("GET", `/api/supplies/items/${rice.id}`);
     expect(home.item.quantity).toBe(10);
     expect((await supplies()).items).toHaveLength(1);
+  });
+
+  it("brings a CSV file into the household being viewed, matched against that household's stock only", async () => {
+    await item("Rice");
+    const caravan = await create({ name: "Caravan" });
+    await current(caravan.id);
+    const text = ["Name,Quantity,Location", "Rice,3,Rice", "Pasta,2,Box"].join("\n");
+    const preview: ImportPreview = await ok("POST", "/api/supplies/import/preview", { text });
+    expect(preview.household).toEqual({ id: caravan.id, name: "Caravan" });
+    // Home's rice is not the caravan's: nothing here is a duplicate.
+    expect(preview.rows.map((row) => row.duplicateOf)).toEqual([null, null]);
+    const rows = preview.rows.map((row) => ({ action: "add", item: row.item }));
+    expect(await ok("POST", "/api/supplies/import/apply", { householdId: caravan.id, rows })).toEqual({ added: 2, updated: 0, skipped: 0 });
+    expect((await supplies()).items.map((each) => each.name)).toEqual(["Pasta", "Rice"]);
+    expect(
+      app.ctx.sqlite.prepare("SELECT household_id, count(*) AS n FROM supply_items GROUP BY household_id ORDER BY household_id").all(),
+    ).toEqual([
+      { household_id: caravan.id, n: 2 },
+      { household_id: "household", n: 1 },
+    ]);
+  });
+
+  it("refuses a file read for one household once Outpost is set to another, and brings nothing in", async () => {
+    const caravan = await create({ name: "Caravan" });
+    const preview: ImportPreview = await ok("POST", "/api/supplies/import/preview", { text: "Name,Quantity\nRice,3" });
+    expect(preview.household.id).toBe("household");
+    // Someone on another device makes the caravan current before the person presses to bring it in.
+    await current(caravan.id);
+    const refused = await app.api("POST", "/api/supplies/import/apply", {
+      householdId: "household",
+      rows: preview.rows.map((row) => ({ action: "add", item: row.item })),
+    });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.message).toContain("Caravan");
+    expect(app.ctx.sqlite.prepare("SELECT count(*) FROM supply_items").pluck().get()).toBe(0);
+  });
+
+  it("counts the inventory's limit per household", async () => {
+    const caravan = await create({ name: "Caravan" });
+    // Home full to the limit, written straight to the table: five thousand requests would be slow.
+    const insert = app.ctx.sqlite.prepare(
+      "INSERT INTO supply_items (id, household_id, name, category, created_at, updated_at) VALUES (?, 'household', ?, 'food', 0, 0)",
+    );
+    app.ctx.sqlite.transaction(() => {
+      for (let n = 0; n < SUPPLY_LIMITS.items; n += 1) insert.run(`full${n}`, `Tin ${n}`);
+    })();
+    expect((await app.api("POST", "/api/supplies/items", { name: "One more", category: "food", quantity: 1 })).status).toBe(400);
+    await current(caravan.id);
+    await item("Rice");
+    const rows = [{ action: "add", item: { name: "Pasta", category: "food", quantity: 1 } }];
+    expect(await ok("POST", "/api/supplies/import/apply", { householdId: caravan.id, rows })).toMatchObject({ added: 1 });
+    await current("household");
+    const over = await app.api("POST", "/api/supplies/import/apply", { householdId: "household", rows });
+    expect(over.status).toBe(400);
+    expect(over.body.error.message).toContain("this file would take it over");
   });
 
   it("gives every household's outlook, the current one first, each from its own people", async () => {

@@ -235,6 +235,7 @@ export const RADIATION_TEMPLATE: PlanTemplate = {
     },
     {
       id: "radiation.during.15",
+      onlyIn: ["GB"],
       phase: "during",
       text: "Need regular medication? Contact NHS 111 rather than leaving the building.",
       source: WHAT,
@@ -258,6 +259,7 @@ export const RADIATION_TEMPLATE: PlanTemplate = {
     },
     {
       id: "radiation.during.18",
+      onlyIn: ["GB"],
       phase: "during",
       text: "Tune in: follow the news and official advice on GOV.UK.",
       source: WHAT,
@@ -301,6 +303,7 @@ export const RADIATION_TEMPLATE: PlanTemplate = {
     },
     {
       id: "radiation.after.3",
+      onlyIn: ["GB"],
       phase: "after",
       text: "Keep following the news and GOV.UK: the advice will change.",
       source: WHAT,

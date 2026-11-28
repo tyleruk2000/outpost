@@ -134,6 +134,19 @@ describe("the cards with the print kit", () => {
     expect(words).toContain("Open Government Licence v3.0");
   });
 
+  it("names the household on every card when there are several, and none with one", () => {
+    const caravan = readableOf(plan(), resolved, undefined, { id: "caravan", name: "Caravan", several: true });
+    const { doc, cards } = walletDocument(caravan, caravan.people, { made: MADE, paper: "a4" });
+    expect(contentText(doc.content)).toContain("Wallet cards · Power cut · For Caravan");
+    expect(cards[0]!.svg).toContain("for Caravan");
+    expect(contentText(fridgeDocument(caravan, { made: MADE, paper: "a4" }).content)).toContain("For Caravan");
+    expect(contentText(grabDocument(caravan, { made: MADE, paper: "a4" }).content)).toContain("For Caravan");
+    const alone = readableOf(plan(), resolved, undefined, { id: "household", name: "Home", several: false });
+    expect(alone.household).toBeNull();
+    expect(contentText(fridgeDocument(alone, { made: MADE, paper: "a4" }).content)).not.toContain("For Home");
+    expect(walletDocument(alone, alone.people, { made: MADE, paper: "a4" }).cards[0]!.svg).not.toContain("for Home");
+  });
+
   it("makes PDFs whose words a reader finds, the fridge sheet on one page, and the same file each time", async () => {
     const four = readableOf(plan(5), resolved);
     for (const paper of ["a4", "letter"] as const) {

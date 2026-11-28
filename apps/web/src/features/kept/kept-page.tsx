@@ -38,7 +38,13 @@ function detailOf(item: KeptItem): string {
   if (item.kind === "track") return formatDistance(item.distanceMeters);
   if (item.kind === "places") return `${plural(item.count, "place")}, as a set`;
   if (item.kind === "medical")
-    return `${plural(item.count, "sheet")}${item.locked > 0 ? `, ${item.locked} of them locked: they open here with their passphrase` : ""}`;
+    return `${plural(item.count, "sheet")}${item.locked > 0 ? `, ${item.locked} of them locked: they open here with their passphrase` : ""}${
+      item.householdRemoved
+        ? `. This household was removed; its copy is still on this ${DEVICE}`
+        : item.unmatched
+          ? `. Kept before there was one copy for each household, and no household has that name now; it is still on this ${DEVICE}`
+          : ""
+    }`;
   if (item.kind === "plan")
     return `An emergency plan${item.household ? ` for ${item.household}` : ""}, ${plural(item.steps, "step")}, with its people's names and numbers${item.pending > 0 ? `; ${plural(item.pending, "tick")} made here waiting to be sent` : ""}`;
   return `${formatBboxSize(item.bbox)}, zoom 0 to ${item.maxZoom}, ${plural(item.tiles, "tile")}${item.terrainMaxZoom !== null ? ", with terrain" : ""}`;
