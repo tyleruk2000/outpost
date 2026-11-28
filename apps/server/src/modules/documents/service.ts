@@ -27,7 +27,7 @@ import type {
 import { and, asc, desc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, messageOf, notFound } from "../../core/errors.ts";
-import { READ_NO_FOLLOW, resolveInside, safeFileName } from "../../core/fs-safe.ts";
+import { openRegularFile, READ_NO_FOLLOW, resolveInside, safeFileName } from "../../core/fs-safe.ts";
 import { sha256File } from "../../core/hashing.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, PermanentJobError } from "../../core/jobs.ts";
@@ -496,7 +496,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       const whereNow = `"${location.name}" (${relPath})`;
       try {
         if (!staged.keepAt) {
-          // A person's own file is checked after the rename: a link swapped in at the last moment goes back.
+          // A person's own file is checked after the rename: anything else swapped in at the last moment goes
+          // back to its old name if that is free, and is otherwise left where it is, with the person told where.
           if (staged.identity) {
             const { leftAtSource } = await moveOriginal(staged.partPath, finalPath, staged.identity, staged.originalName, whereNow);
             if (leftAtSource) note = ORIGINAL_LEFT;
@@ -526,7 +527,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
         })();
         recorded = true;
         // Recorded where it lies, by name: the name must still be the file read once the record exists,
-        // or a link swapped in after the last look would be what the record points at.
+        // or a link swapped in after the last look would be what the record points at. A swap after this is
+        // possible too: every read of a document's file refuses a link or anything that is not a file.
         if (staged.keepAt && staged.identity && !(await isSameFile(finalPath, staged.identity))) {
           throw changedWhileRead(staged.originalName);
         }
@@ -570,8 +572,9 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     const format = formatForName(originalName);
     const location = uploadLocation(input.locationId);
     const source = path.resolve(input.sourcePath);
-    // Opened once, never through a link, and everything below is read through this handle: a file
-    // swapped for another (or for a link) part of the way through cannot be checked as one and kept as another.
+    // Opened once, never through a link, and everything below is read through this handle, so what is
+    // checked and hashed is one file. What is then kept is chosen by name, so the name is checked again
+    // after the file is moved or recorded (commit); a name swapped in between is not kept.
     // O_NONBLOCK: a pipe put in its place cannot hold up every other file waiting to be added.
     const handle = await fs.promises.open(source, READ_NO_FOLLOW).catch((error: unknown) => {
       const code = (error as NodeJS.ErrnoException).code;
@@ -766,7 +769,14 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
         setExtraction(id, "failed", detail);
         throw new PermanentJobError(detail, "storage_unavailable");
       }
-      if (!(await fs.promises.stat(file).catch(() => undefined))?.isFile()) {
+      // A link or a pipe put at its name is refused here and again by every read below, each opened without following links.
+      const opened = await openRegularFile(file).catch((error: unknown) => error);
+      if (!(opened instanceof Error)) await (opened as { handle: fs.promises.FileHandle }).handle.close();
+      else if (opened instanceof AppError) {
+        const detail = `${opened.message} It is at "${storage.get(row.locationId).name}" (${row.relPath}); put the file itself back there and choose "Read text again".`;
+        setExtraction(id, "failed", detail);
+        throw new PermanentJobError(detail, "conflict");
+      } else {
         const detail = `The file is missing from "${storage.get(row.locationId).name}" (${row.relPath}). If it was moved or deleted outside Outpost, put it back and choose "Read text again".`;
         setExtraction(id, "failed", detail);
         throw new PermanentJobError(detail, "not_found");

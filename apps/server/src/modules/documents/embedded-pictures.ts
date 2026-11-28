@@ -23,6 +23,7 @@
  */
 import fs from "node:fs";
 import { AppError } from "../../core/errors.ts";
+import { openRegularFile } from "../../core/fs-safe.ts";
 import { formatForExt } from "./file-types.ts";
 
 export type PictureMime = "image/png" | "image/jpeg" | "image/gif" | "image/webp";
@@ -163,11 +164,11 @@ async function scan(handle: fs.promises.FileHandle, size: number): Promise<Pictu
 
 /** Where the text of a Markdown file ends and where each of its pictures lies. Remembered until the file changes. */
 export async function pictureIndex(file: string): Promise<PictureIndex> {
-  const stat = await fs.promises.stat(file).catch(() => undefined);
+  const stat = await fs.promises.lstat(file).catch(() => undefined);
   if (!stat?.isFile()) throw new AppError("not_found", "The file is missing from its storage location.");
   const known = indexes.get(file);
   if (known && known.size === stat.size && known.mtimeMs === stat.mtimeMs) return known.index;
-  const handle = await fs.promises.open(file, "r");
+  const handle = (await openRegularFile(file)).handle;
   try {
     const index = await scan(handle, stat.size);
     indexes.delete(file);
@@ -191,7 +192,7 @@ export async function readTextPart(
 ): Promise<{ bytes: Buffer; index: PictureIndex }> {
   const index = await pictureIndex(file);
   if (index.textBytes > maxBytes) throw tooLarge();
-  const handle = await fs.promises.open(file, "r");
+  const handle = (await openRegularFile(file)).handle;
   try {
     return { bytes: await readAt(handle, 0, index.textBytes), index };
   } finally {
@@ -204,7 +205,7 @@ export async function readPicture(file: string, number: number): Promise<{ mime:
   const missing = () => new AppError("not_found", "This document has no such picture.");
   const entry = (await pictureIndex(file)).pictures.get(number);
   if (!entry || entry.length <= 0 || entry.length > MAX_ENCODED_BYTES) throw missing();
-  const handle = await fs.promises.open(file, "r");
+  const handle = (await openRegularFile(file)).handle;
   let encoded: Buffer;
   try {
     encoded = await readAt(handle, entry.start, entry.length);

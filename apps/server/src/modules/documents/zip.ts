@@ -10,6 +10,7 @@ import type { FileHandle } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import yauzl from "yauzl";
+import { openRegularFile } from "../../core/fs-safe.ts";
 import { ExtractionError } from "./extract-types.ts";
 import { isEpubMimetype } from "./file-types.ts";
 
@@ -25,17 +26,6 @@ export interface ZipReader {
   /** Reads one entry. Throws when it is larger than `maxBytes` or the budget is spent. */
   read(name: string, maxBytes: number): Promise<Buffer>;
   close(): void;
-}
-
-function open(file: string): Promise<yauzl.ZipFile> {
-  return new Promise((resolve, reject) => {
-    // decodeStrings is off because yauzl otherwise rejects the whole archive for one
-    // suspicious name; names are decoded and filtered below instead.
-    yauzl.open(file, { lazyEntries: true, autoClose: false, decodeStrings: false, validateEntrySizes: true }, (error, zip) => {
-      if (error || !zip) reject(new ExtractionError("This file is not a readable zip archive; it may be damaged."));
-      else resolve(zip);
-    });
-  });
 }
 
 function openBuffer(bytes: Buffer): Promise<yauzl.ZipFile> {
@@ -77,8 +67,25 @@ function listEntries(zip: yauzl.ZipFile): Promise<Map<string, yauzl.Entry>> {
   });
 }
 
+/**
+ * A zip file on disk, opened by its own name and not through a link, and only if it is a file
+ * (openRegularFile); it is read through that one handle, which closing the reader closes.
+ */
 export async function openZip(file: string, totalBudget = MAX_ZIP_TOTAL_BYTES): Promise<ZipReader> {
-  return readerOf(await open(file), totalBudget);
+  const { handle, stat } = await openRegularFile(file);
+  try {
+    const reader = await readerOf(await openHandle(handle, stat.size), totalBudget);
+    return {
+      ...reader,
+      close: () => {
+        reader.close();
+        void handle.close();
+      },
+    };
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
 }
 
 /** The same, for an archive already in memory (a KMZ upload, which is size-limited before it gets here). */

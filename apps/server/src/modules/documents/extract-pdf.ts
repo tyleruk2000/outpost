@@ -10,8 +10,9 @@
  * Runs only inside the extraction worker: parsing a large PDF is long, synchronous
  * work that would otherwise stall every other request to the server.
  */
-import fs from "node:fs";
+
 import { getDocumentProxy } from "unpdf";
+import { readRegularFile } from "../../core/fs-safe.ts";
 import { type Extracted, type ExtractedSection, ExtractionError, type ExtractProgress, tidyText } from "./extract-types.ts";
 
 /** Titles that authoring tools write on their own and that say nothing about the content. */
@@ -127,7 +128,7 @@ function headingsByPage(
 }
 
 export async function extractPdf(file: string, maxPages: number, onProgress: (progress: ExtractProgress) => void): Promise<Extracted> {
-  const data = new Uint8Array(await fs.promises.readFile(file));
+  const data = new Uint8Array(await readRegularFile(file));
   // verbosity 0: the parser's own warnings about odd files would otherwise fill the log.
   const pdf = await getDocumentProxy(data, { verbosity: 0 }).catch((error: unknown) => {
     throw openError(error);

@@ -7,8 +7,9 @@
  * can stop the work at any moment by ending this thread, which only ever reads the
  * original file.
  */
-import fs from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
+import { AppError } from "../../core/errors.ts";
+import { openRegularFile } from "../../core/fs-safe.ts";
 import { imageSize } from "./image-size.ts";
 import { loadProvider } from "./providers.ts";
 import {
@@ -36,10 +37,15 @@ async function read(engine: OcrEngine, image: OcrImage, index: number, page: num
 async function readImage(engine: OcrEngine, request: OcrRequest): Promise<void> {
   const megabytes = Math.round(MAX_IMAGE_BYTES / (1024 * 1024));
   const megapixels = Math.round(MAX_SOURCE_PIXELS / 1_000_000);
-  if ((await fs.promises.stat(request.filePath)).size > MAX_IMAGE_BYTES) {
-    throw new OcrError(`This image is larger than ${megabytes} MB, which is more than OCR will read.`);
+  // Opened by its own name, not through a link, and read through the handle that was checked.
+  const { handle, stat } = await openRegularFile(request.filePath);
+  let bytes: Uint8Array;
+  try {
+    if (stat.size > MAX_IMAGE_BYTES) throw new OcrError(`This image is larger than ${megabytes} MB, which is more than OCR will read.`);
+    bytes = new Uint8Array(await handle.readFile());
+  } finally {
+    await handle.close();
   }
-  const bytes = new Uint8Array(await fs.promises.readFile(request.filePath));
   const size = imageSize(bytes);
   if (size && size.width * size.height > MAX_SOURCE_PIXELS) {
     throw new OcrError(
@@ -91,6 +97,6 @@ try {
   send({
     kind: "error",
     message: error instanceof Error ? error.message : String(error),
-    friendly: error instanceof OcrError,
+    friendly: error instanceof OcrError || error instanceof AppError,
   });
 }

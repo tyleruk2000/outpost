@@ -14,7 +14,8 @@
  * 128 KB (an ID3v1 tag, the end of an Ogg stream) are read; an MP4 is walked atom by
  * atom (at most 1,000 of them), and only its `moov` atom, up to 16 MB, is read into memory.
  */
-import fs from "node:fs";
+import type fs from "node:fs";
+import { openRegularFile } from "../../core/fs-safe.ts";
 
 export interface AudioFacts {
   title?: string;
@@ -499,7 +500,7 @@ function defined(facts: AudioFacts): AudioFacts {
 
 /** Reads what an audio file says about itself. Never throws for a file it cannot make sense of: it says nothing. */
 export async function readAudioFacts(file: string, ext: string): Promise<AudioFacts> {
-  const handle = await fs.promises.open(file, "r");
+  const handle = (await openRegularFile(file)).handle;
   try {
     const { size } = await handle.stat();
     const kind = ext.toLowerCase();

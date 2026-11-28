@@ -805,10 +805,17 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 
 ### Security
 
-- **A file added to the library from a folder cannot be swapped for a link at the last
-  moment.** A person's own file moved in, or recorded where it is, is checked by its name
-  once it has been moved or recorded; a link put in its place is put back where it was and
-  nothing is kept.
+- **A file added to the library from a folder is not kept if something is swapped in for it
+  at the last moment.** A person's own file moved in, or recorded where it is, is checked by
+  its name once it has been moved or recorded. What was swapped in is put back at its old
+  name only if that name is free (never over a newer file there); otherwise it is left where
+  it was moved to and the message says where. Nothing is added to the library either way.
+- **A file moved in from another drive is removed only while it is still the file copied**,
+  unchanged; one saved again during the copy is left where it is, and the person is told.
+- **A document's file is never read through a link.** Opening it, reading its text, OCR,
+  pictures, audio tags and moving it to another location all open it by its own name and
+  refuse a link or anything that is not a file, with "This file has been replaced by a link,
+  so Outpost will not open it."
 
 - **A symbolic link in a storage root no longer opens the whole disk.** Paths are checked
   as written and again with links followed (on a Mac `/Volumes/Macintosh HD` links to `/`).

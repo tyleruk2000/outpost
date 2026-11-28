@@ -3,6 +3,7 @@
  * replaced or followed through a link: not when a link is swapped in for it, not when it
  * cannot be put back, not when it changes while it is copied between drives.
  */
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -139,5 +140,46 @@ describe("moveOriginal across drives", () => {
     await expect(moveOriginal(from, to, identity, "original.txt", "the test folder")).rejects.toMatchObject({ code: "conflict" });
     expect(fs.existsSync(to)).toBe(false);
     expect(fs.lstatSync(from).isSymbolicLink()).toBe(true);
+  });
+});
+
+describe("a document kept where it is, swapped for a link later", () => {
+  async function keptInPlace(name: string, text: string) {
+    const { documents, storage } = app.ctx.services;
+    const file = path.join(storage.getDefault().path, name);
+    fs.writeFileSync(file, text);
+    const { document } = await documents.ingestFile({ sourcePath: file, originalName: name, inPlace: true });
+    await app.ctx.jobs.whenIdle();
+    const secret = path.join(app.dir, "someone-elses.txt");
+    fs.writeFileSync(secret, "Quartermaster passwords for the boathouse.");
+    fs.rmSync(file);
+    fs.symlinkSync(secret, file);
+    return { document, file };
+  }
+  const serve = (id: string) => app.app.inject({ method: "GET", url: `/api/documents/${id}/file`, headers: { host: "localhost" } });
+
+  it("is not served through the link, nor through a pipe put in its place", async () => {
+    const { document, file } = await keptInPlace("kept.txt", "Kept where it was put.");
+    const served = await serve(document.id);
+    expect(served.statusCode).toBe(409);
+    expect(served.body).toContain("This file has been replaced by a link, so Outpost will not open it.");
+    expect(served.body).not.toContain("Quartermaster");
+
+    // A pipe answers at once, rather than holding the request until something writes to it.
+    fs.rmSync(file);
+    execFileSync("mkfifo", [file]);
+    const piped = await serve(document.id);
+    expect(piped.statusCode).toBe(409);
+    expect(piped.body).toContain("not a file");
+  });
+
+  it("does not have its text read through the link", async () => {
+    const { document } = await keptInPlace("kept-too.txt", "Kept where it was put.");
+    app.ctx.services.documents.reextract(document.id);
+    await app.ctx.jobs.whenIdle();
+    const now = app.ctx.services.documents.get(document.id);
+    expect(now.extraction).toBe("failed");
+    expect(now.extractionDetail).toContain("replaced by a link");
+    expect((await app.api("GET", "/api/search?q=quartermaster")).body.results).toEqual([]);
   });
 });

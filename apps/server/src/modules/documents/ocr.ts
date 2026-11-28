@@ -17,6 +17,7 @@ import type { OcrStatus } from "@outpost/shared";
 import { eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, messageOf } from "../../core/errors.ts";
+import { replacedByLink } from "../../core/fs-safe.ts";
 import { type JobRow, PermanentJobError } from "../../core/jobs.ts";
 import { documents } from "../../db/schema.ts";
 import { OcrFailure, runOcr } from "../ocr/host.ts";
@@ -290,7 +291,9 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
       } catch (error) {
         throw new PermanentJobError(`${messageOf(error)} The scanned pages can be read once it is reconnected.`, "storage_unavailable");
       }
-      const stat = await fs.promises.stat(file).catch(() => undefined);
+      // By its own name: a link put in its place is not a file, and is not read.
+      const stat = await fs.promises.lstat(file).catch(() => undefined);
+      if (stat?.isSymbolicLink()) throw new PermanentJobError(replacedByLink().message, "conflict");
       if (!stat?.isFile()) {
         throw new PermanentJobError(
           `The file is missing from "${storage.get(row.locationId).name}" (${row.relPath}). If it was moved or deleted outside Outpost, put it back and try again.`,

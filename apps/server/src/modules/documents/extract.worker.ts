@@ -10,6 +10,7 @@
  * the PDF library.
  */
 import { parentPort, workerData } from "node:worker_threads";
+import { AppError } from "../../core/errors.ts";
 import { type Extracted, ExtractionError, type ExtractProgress, type ExtractRequest, type WorkerMessage } from "./extract-types.ts";
 
 const send = (message: WorkerMessage) => parentPort?.postMessage(message);
@@ -36,6 +37,7 @@ try {
   send({
     kind: "error",
     message: error instanceof Error ? error.message : String(error),
-    friendly: error instanceof ExtractionError,
+    // An AppError is written for people too: a link or a pipe put where the file was.
+    friendly: error instanceof ExtractionError || error instanceof AppError,
   });
 }

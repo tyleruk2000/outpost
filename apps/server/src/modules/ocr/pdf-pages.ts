@@ -14,8 +14,9 @@
  *
  * Runs only inside the OCR worker thread.
  */
-import fs from "node:fs";
+
 import { getDocumentProxy, getResolvedPDFJS, registerImageDecoders } from "unpdf";
+import { readRegularFile } from "../../core/fs-safe.ts";
 import { MAX_PAGE_DPI, MAX_PAGE_PIXELS, MAX_SOURCE_PIXELS, OcrError } from "./types.ts";
 
 /** A 2D transform as PDF writes it: x' = a·x + c·y + e, y' = b·x + d·y + f. */
@@ -275,7 +276,7 @@ export interface ScannedPdf {
 export async function openScannedPdf(file: string): Promise<ScannedPdf> {
   // The decoders for fax, JBIG2 and JPEG 2000 pictures, which most scanners produce.
   registerImageDecoders();
-  const data = new Uint8Array(await fs.promises.readFile(file));
+  const data = new Uint8Array(await readRegularFile(file));
   const pdf = await getDocumentProxy(data, {
     verbosity: 0,
     // Pictures must arrive as plain pixels, not as browser bitmaps.
