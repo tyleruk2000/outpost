@@ -756,7 +756,23 @@ describe("Add a place", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add a place" });
     await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
     expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).not.toBeChecked();
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).toHaveAccessibleDescription(/A map you hold already covers this view\./);
     expect(within(dialog).getByRole("checkbox", { name: /Satellite pictures/ })).not.toBeChecked();
+  });
+
+  it("ticks Map for an area whose covering map is on a drive not connected now", async () => {
+    serve(mapData(), {
+      "GET /api/maps/overview": {
+        regions: [{ id: "fr", tileType: "vector", bounds: [-5, 41, 10, 51], maxZoom: 15, status: "installed", available: false }],
+        places: [],
+        counts: { markers: 0, tracks: 0, places: 0 },
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&bbox=6.8,45.9,7.0,46.0&name=Chamonix%20valley");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).toBeChecked();
+    expect(within(dialog).queryByText(/A map you hold already covers this view/)).not.toBeInTheDocument();
   });
 
   it("ticks Map for an area no held map covers in detail", async () => {

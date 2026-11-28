@@ -813,8 +813,9 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   from; they are now under Outpost's own data, and the row says how much of its size the
   bars do not show. Its places list no longer squeezes where and how big into a column of a
   word or two on a phone at 200% text.
-- Satellite pictures of the view: Add this view leaves **Map** unticked where a map on this
-  device already covers the view, one press fewer (eight, as before Add a place).
+- Satellite pictures of the view: Add this view leaves **Map** unticked where a map on a
+  connected storage location already covers the view, and says so beside it ("A map you hold
+  already covers this view"): one press fewer (eight, as before Add a place).
 - Offline maps on a phone: a place's note ("Everywhere, at less detail", "Drawn on the map",
   "Home") is a line under its name instead of breaking after a dot; a kind a place cannot
   have takes no room in its row; at large text the size goes under the name, which was

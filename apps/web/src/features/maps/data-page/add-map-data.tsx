@@ -697,6 +697,8 @@ function Flow({
       (region) =>
         region.tileType !== "terrain" &&
         region.status === "installed" &&
+        // On a drive that is unplugged now, it covers nothing.
+        region.available &&
         region.bounds[0] <= bbox[0] &&
         region.bounds[1] <= bbox[1] &&
         region.bounds[2] >= bbox[2] &&
@@ -1081,6 +1083,13 @@ function Flow({
             })),
         };
   const detailOf = (bundle: Choosable): ReactNode => {
+    if (bundle === "map" && first?.type === "area" && first.bbox && mapped(first.bbox))
+      return (
+        <>
+          {BUNDLE_DETAILS.map}
+          <span className="block">A map you hold already covers this view.</span>
+        </>
+      );
     if (bundle === "map" && first?.type === "world") return "Countries, cities and main roads everywhere, and the world's towns by name";
     if (bundle === "map" && first?.countryName) return `${BUNDLE_DETAILS.map}: all of ${first.countryName}`;
     if (bundle === "walk")
