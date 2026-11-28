@@ -45,8 +45,8 @@ POST /api/roads/route ─▶ graph.ts: every installed network joined in memory
   motorway carriageway or a slip road) within 40 km, in a piece of network every point
   can reach; then A* by time, the estimate being straight-line distance at 120 km/h.
 - **directions.ts**: the path as lines (below). **countries.ts**: which country a point is
-  in, from Natural Earth outlines (`country-outlines.json`, written by
-  `scripts/write-country-outlines.mjs`).
+  in, from the server's own country outlines (`layers/borders.ts`, Natural Earth 1:10m),
+  so a town by a border (Freilassing, Vancouver) or Lesotho is in the right country.
 - **speeds.ts**: the speed table (below).
 
 ## Directions

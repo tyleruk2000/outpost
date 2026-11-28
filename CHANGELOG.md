@@ -722,6 +722,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - An HF basis sentence is dated, not "(today)"; a map page made twice a day is one
   document; `formatDuration` never says "60 seconds".
 - Many small layout fixes on phones and narrow windows.
+- Road routes put Freilassing in Germany, Vancouver in Canada and Maseru in Lesotho: they
+  use the same country outlines as the rest of Outpost, not a coarser copy.
 
 ### Security
 
