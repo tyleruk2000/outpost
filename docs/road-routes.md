@@ -70,8 +70,10 @@ join at their borders by themselves.
    1–2% of the file (the United Kingdom's 2.3 GB file makes about 30 MB of routes). The
    choice is remembered, and can be changed under **More choices**.
 5. **Download**. The file is checked against its publisher's checksum and read for its main
-   roads; the row shows the progress, as does **Downloads and tasks**. Building takes
-   minutes for a large country on a Raspberry Pi, in the background.
+   roads; the row shows the progress, as does **Downloads and tasks**. Building runs in
+   the background: on a Raspberry Pi 5, Great Britain's 2.2 GB file took under three
+   minutes (168 s, at most 367 MB of memory); France's, over twice the size, has not been
+   timed on a Pi.
 
 Germany (and some other large countries) comes in parts: all are ticked, and they join.
 

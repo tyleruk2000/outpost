@@ -186,8 +186,14 @@ arrays for Great Britain are 3.5 million node references (28 MB as `Float64Array
 collector takes back; France's are 7.9 million references and 6.9 million unique ids.
 Joining Great Britain and France: 1,201,133 nodes and 1,413,245 edges, 134 MB of
 arrays, joined in 0.5 s, the process at 540 MB afterwards; Leatherhead to Chamonix
-planned in 0.18 s. Not measured: a Raspberry Pi (none in this work; expect three to four
-times these times), and Germany and Austria (Germany is downloaded by Land).
+planned in 0.18 s.
+
+On the owner's Raspberry Pi 5 (8 GB, SD card, 23 Nov 2026), Great Britain built in 168 s
+with 367 MB at most and 47 MB written, and routes planned in 0.08–0.18 s
+([street-routes-measurements.md](street-routes-measurements.md)). Not measured: France and
+other countries on a Pi (France's 852 MB here is close to Compose's 1 GB limit for
+Outpost, which Raspberry Pi OS applies only with the memory cgroup on), and Germany and
+Austria (Germany is downloaded by Land).
 
 ## API
 

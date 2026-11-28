@@ -319,8 +319,9 @@ over every street (**Streets**), by car or bicycle. **On foot it works over the 
 (below), so it needs only terrain on **Offline maps**, not streets. Drives are for
 free-flowing traffic with no stops, rides for a steady pace on the flat; over 2 hours on
 foot (and over an hour by bicycle) no rests are counted, so a real day's walk covers much
-less. A long time takes longer to work out: a 2 hour drive can take tens of seconds on a
-Raspberry Pi, an 8 hour walk about ten, with a bar showing how far it has got. **Print or
+less. A long time takes longer to work out, with a bar showing how far it has got: on a
+Raspberry Pi 5 an hour's drive over Great Britain's streets took about 5 seconds; 2 hours,
+and walks over the terrain, have not been timed on a Pi. **Print or
 save as PDF** in the card opens the map's print with the areas on it. See
 [road-routes.md](road-routes.md#reachable-from-here).
 
@@ -583,7 +584,8 @@ under **Heights and details**. **Why this shape: look along one direction** show
 ground along any bearing. It counts only line of sight: power, aerials, woods and buildings
 are not counted, and radio often reaches less.
 
-A new point takes a second or two on a Raspberry Pi, since the ground is read out to 100 km.
+A new point takes longer than another height at the same one, since the ground is read out to
+100 km (about 0.6 s on a laptop; not yet timed on a Raspberry Pi).
 A bar on the card fills as it goes, and the ground in sight is drawn out to 25 km first, then
 50 km, then all of it. Other heights at the same point come back at once. While they are
 worked out, the last answer stays on the map, faded. Heights are asked for once you stop
@@ -639,7 +641,7 @@ Names, with nothing more to choose: postcodes, roads, settlements, hills, waters
 - Not every name on a Landranger or Explorer map, and no heights.
 - Not covered: Northern Ireland, the Isle of Man and the Channel Islands.
 - 103 MB to download; 519 MB in the database with streets, 366 MB without (untick streets
-  first). Reading takes five to ten minutes on a Raspberry Pi.
+  first). Reading them has not yet been timed on a Raspberry Pi.
 - OS publishes a new edition every three months; **Update** on the row asks for it.
 - The Open Government Licence credit is shown on the map while the names are installed
   ([sources.md](sources.md)).
