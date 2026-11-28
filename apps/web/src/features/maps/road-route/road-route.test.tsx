@@ -207,6 +207,7 @@ const network = {
   extract: { kept: false, locationId: null, relPath: null, bytes: 0 },
   source: "https://download.geofabrik.de/europe/great-britain-latest.osm.pbf",
   bbox: null,
+  northernIreland: false,
   available: true,
 };
 

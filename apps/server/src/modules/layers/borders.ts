@@ -28,6 +28,11 @@ export function countryFound(lat: number, lon: number): CountryFound | null {
   return answer;
 }
 
+/** A country's outline as bundled (every ring, in degrees), or undefined for a code with none. */
+export function outlineOf(code: string): CountryOutline | undefined {
+  return load().find((outline) => outline.code === code);
+}
+
 /** The ISO 3166-1 code of the country a point is in, or null. */
 export function countryOfPoint(lat: number, lon: number): string | null {
   return countryFound(lat, lon)?.code ?? null;

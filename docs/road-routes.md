@@ -168,13 +168,18 @@ Once they are, Outpost works out on this device, from the country outlines it ho
 countries the route touches: each point's own, and those the straight line between points
 crosses for more than a corner. Before you press anything it says what is missing:
 
-- **France has no roads yet**: "This route runs through France. United Kingdom is
+- **France has no roads yet**: "This route runs through France. Great Britain is
   ready." **Add roads for France** opens **Add a place** for France alone, which asks
   the size first; it needs a connection once. Several are named together ("France and
   Switzerland have no roads yet") and added with one press. The route waits until then, saying
   "Add France first".
 - **Only part of France has roads**: roads are kept for a part of the country and a point
   of the route is outside it. **Add roads for all of France**.
+- **Great Britain and Northern Ireland**: the United Kingdom's roads from OpenStreetMap's
+  usual source cover England, Scotland and Wales only, so with those kept the panel says
+  **Great Britain**, not the United Kingdom. A point in Northern Ireland is not taken as
+  covered by them (nor joined to a road across the sea): its roads come with Ireland's, and
+  the message says "Add roads for Ireland".
 - **On their way**: while a country's roads download and are built, the panel shows it in
   the words of Offline maps with a bar: "France: Downloading 1.20 of 4.90 GB, 18 minutes left",
   then "Building". You can leave the screen. When they are ready it says "France is

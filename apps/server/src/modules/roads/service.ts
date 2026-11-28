@@ -32,6 +32,7 @@ import { markers, roadNetworks, roadRoutes } from "../../db/schema.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
 import { createRegionIndex } from "../layers/adapters/geofabrik-regions.ts";
 import { buildNetwork } from "./build.ts";
+import { reachesNorthernIreland } from "./countries.ts";
 import { coverageOf } from "./coverage.ts";
 import { buildGraph, type Graph } from "./graph.ts";
 import { readNetworkFile, writeNetworkFile } from "./network-file.ts";
@@ -116,11 +117,31 @@ export interface RoadsService {
 
 export { ownName };
 
+/**
+ * Whether a network's roads reach Northern Ireland: as found at its build; for one built
+ * before that was asked, by its Geofabrik region (Great Britain's and the United Kingdom's
+ * hold England, Scotland and Wales only), else by whether its box reaches there.
+ */
+export function networkReachesNorthernIreland(row: Pick<NetworkRow, "regionId" | "bbox" | "stats">): boolean {
+  const found = row.stats?.northernIreland;
+  if (typeof found === "boolean") return found;
+  const region = row.regionId ?? "";
+  if (/northern-ireland/.test(region)) return true;
+  if (/(^|\/)(great-britain|united-kingdom)(\/|$)/.test(region)) return false;
+  const box = row.bbox;
+  return Boolean(box && box[0] < -5.43 && box[2] > -8.18 && box[1] < 55.25 && box[3] > 54.03);
+}
+
+/** "Great Britain" for a United Kingdom network whose roads stop short of Northern Ireland; else its own name. */
+export function networkName(row: Pick<NetworkRow, "name" | "country" | "regionId" | "bbox" | "stats">): string {
+  return row.country === "GB" && row.name === "United Kingdom" && !networkReachesNorthernIreland(row) ? "Great Britain" : row.name;
+}
+
 export function toNetworkDto(row: NetworkRow, available: boolean): RoadNetworkDto {
   return {
     id: row.id,
     regionId: row.regionId,
-    name: row.name,
+    name: networkName(row),
     country: row.country,
     dataDate: row.dataDate,
     builtAt: row.builtAt,
@@ -131,6 +152,7 @@ export function toNetworkDto(row: NetworkRow, available: boolean): RoadNetworkDt
     extract: row.extract,
     source: row.source,
     bbox: row.bbox ?? null,
+    northernIreland: networkReachesNorthernIreland(row),
     available,
   };
 }
@@ -184,7 +206,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
           const file = resolveInside(ctx.config.dataDir, row.relPath);
           try {
             sources.push({
-              network: { id: row.id, name: row.name, country: row.country, dataDate: row.dataDate },
+              network: { id: row.id, name: networkName(row), country: row.country, dataDate: row.dataDate },
               data: await readNetworkFile(file),
             });
           } catch (error) {
@@ -259,7 +281,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
         source: input.source,
         bbox: [west, south, east, north].map((v) => Math.round(v * 1e5) / 1e5) as [number, number, number, number],
         extract: input.extract,
-        stats: { ...data.stats },
+        stats: { ...data.stats, northernIreland: reachesNorthernIreland(data.nodeLat, data.nodeLon) },
         builtAt: now,
         createdAt: now,
         updatedAt: now,
@@ -391,7 +413,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     const jobs = ctx.jobs.list({ states: ["queued", "running", "paused"], types: [BUILD_JOB] });
     const downloads = ctx.services.downloads.unfinished().filter(isRoadsDownload);
     const fromCountryFiles = ctx.services.countryFiles.pending().filter((entry) => entry.roads);
-    const credit = roadCredit(rows().map((r) => ({ id: r.id, name: r.name, country: r.country, dataDate: r.dataDate })));
+    const credit = roadCredit(rows().map((r) => ({ id: r.id, name: networkName(r), country: r.country, dataDate: r.dataDate })));
     const progressOf = (id: string) => {
       const row = ctx.services.downloads.get(id);
       if (!row) return { receivedBytes: null, totalBytes: null, etaSeconds: null };

@@ -22,8 +22,9 @@ import {
   wrapRoadText,
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AppError } from "../src/core/errors.ts";
+import { AppError } from "../src/core/errors.ts";
 import { buildNetwork, CLASS, parseDuration, parseMaxspeed, SIGN_SEPARATOR } from "../src/modules/roads/build.ts";
+import { reachesNorthernIreland } from "../src/modules/roads/countries.ts";
 import { coverageOf } from "../src/modules/roads/coverage.ts";
 import { placeQuality, samePlace } from "../src/modules/roads/directions.ts";
 import { buildGraph } from "../src/modules/roads/graph.ts";
@@ -220,6 +221,49 @@ describe("directions as the owner writes them, on British roads", () => {
     expect(ownName(" Oxford ")).toBe("Oxford");
     // A point pressed on the map has only its position for a name: its place says more.
     expect(ownName("Point at 51.7520, -1.2577")).toBeNull();
+  });
+});
+
+describe("Great Britain's roads and Northern Ireland", () => {
+  it("never joins a point in Northern Ireland to a road across the sea in Great Britain, and says Ireland's roads bring it", async () => {
+    // The A77 from Portpatrick: Donaghadee, on the Ards peninsula, is 35 km away over the North Channel.
+    const body = buildPbf({
+      nodes: [
+        { id: 1, lat: 54.842, lon: -5.117 },
+        { id: 2, lat: 54.903, lon: -5.024 },
+        { id: 3, lat: 55.0, lon: -5.0 },
+      ],
+      ways: [{ id: 1, refs: [1, 2, 3], tags: { highway: "trunk", ref: "A77" } }],
+      relations: [],
+      timestamp: Date.parse("2026-11-20T21:00:00Z") / 1000,
+    });
+    const data = await buildNetwork(write("galloway.osm.pbf", body));
+    const file = path.join(dir, "galloway.roads");
+    await writeNetworkFile(file, data, { country: "GB", name: "Galloway" });
+    const graph = buildGraph([
+      { network: { id: "g", name: "Galloway", country: "GB", dataDate: "2026-11-20" }, data: await readNetworkFile(file) },
+    ]);
+    const points = [
+      { lat: 54.643, lon: -5.537, name: "Donaghadee" },
+      { lat: 55.0, lon: -5.0, name: "Ballantrae road" },
+    ];
+    let error: unknown;
+    try {
+      planRoute(graph, points, {
+        crossing: "any",
+        units: "km",
+        request: { points },
+        regionOf: (code) => (code === "IE" ? "ireland-and-northern-ireland" : null),
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(AppError);
+    expect((error as AppError).message).toMatch(/“Donaghadee” is in Northern Ireland.*Add roads for Ireland/);
+    expect((error as AppError).details).toMatchObject({
+      far: [{ index: 0, country: { code: "IE", regionId: "ireland-and-northern-ireland" } }],
+    });
+    expect(reachesNorthernIreland(data.nodeLat, data.nodeLon)).toBe(false);
   });
 });
 
@@ -474,7 +518,7 @@ describe("the road routes API", () => {
     const coverage = body as RoadCoverageResponse;
     expect(coverage.points).toEqual([{ country: "GB" }, { country: "FR" }]);
     expect(coverage.countries.map((c) => [c.code, c.name, c.state, c.parts])).toEqual([
-      ["GB", "United Kingdom", "ready", []],
+      ["GB", "Great Britain", "ready", []],
       ["FR", "France", "part", ["france-north"]],
     ]);
     expect(coverage.seaCrossing).toBe(true);

@@ -724,6 +724,9 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - Many small layout fixes on phones and narrow windows.
 - Road routes put Freilassing in Germany, Vancouver in Canada and Maseru in Lesotho: they
   use the same country outlines as the rest of Outpost, not a coarser copy.
+- Road routes say **Great Britain** for the United Kingdom's roads when those are Great
+  Britain's alone (England, Scotland and Wales), and no longer take a point in Northern
+  Ireland as covered by them or join it to a road across the North Channel.
 
 ### Security
 

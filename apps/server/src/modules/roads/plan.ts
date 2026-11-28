@@ -19,7 +19,7 @@ import { AppError } from "../../core/errors.ts";
 import { COUNTRIES, countryOf } from "../layers/countries.ts";
 import { OSM_CREDIT } from "../maps/route-finder/sources.ts";
 import { simplifyIndices } from "./build.ts";
-import { countryOfPoint } from "./countries.ts";
+import { countryOfPoint, inNorthernIreland } from "./countries.ts";
 import { countriesInOrder, missingCountry, samplesAlong } from "./coverage.ts";
 import { buildDirections, type CountryLookup } from "./directions.ts";
 import { edgeShape, type Graph, type GraphNetwork } from "./graph.ts";
@@ -114,7 +114,13 @@ export function planRoute(
   }
 
   // Join each point.
-  const candidates: SnapCandidate[][] = points.map((point) => snapCandidates(graph, point.lat, point.lon));
+  // A point in Northern Ireland never joins a road in Great Britain: the sea is between (Donaghadee is 35 km from Portpatrick).
+  const onBritain = (node: number) =>
+    countryLookup(graph.lat[node]!, graph.lon[node]!, null) === "GB" && !inNorthernIreland(graph.lat[node]!, graph.lon[node]!);
+  const candidates: SnapCandidate[][] = points.map((point) => {
+    const near = snapCandidates(graph, point.lat, point.lon);
+    return inNorthernIreland(point.lat, point.lon) ? near.filter((c) => !onBritain(c.node)) : near;
+  });
   const lost = points.map((point, index) => ({ point, index })).filter(({ index }) => candidates[index]!.length === 0);
   if (lost.length > 0) {
     const missing = missingAlong();
@@ -124,6 +130,14 @@ export function planRoute(
       const code = countryLookup(point.lat, point.lon, null);
       if (code && !installed.has(code)) continue;
       const where = pointWords(point, index, points.length);
+      if (code === "GB" && inNorthernIreland(point.lat, point.lon)) {
+        // Northern Ireland's roads come with Ireland's (Geofabrik's Ireland and Northern Ireland), not Great Britain's.
+        far.push({ index, name: point.name, country: missingCountry("IE", regionOf), distanceM: SNAP_WITHIN_M });
+        sentences.push(
+          `${where.charAt(0).toUpperCase()}${where.slice(1)} is in Northern Ireland, and no roads kept reach it: Great Britain's do not. Add roads for Ireland, which come with Northern Ireland's.`,
+        );
+        continue;
+      }
       const parts = graph.networks.filter((n) => n.country === code).map((n) => n.name);
       far.push({ index, name: point.name, country: code ? missingCountry(code, regionOf) : null, distanceM: SNAP_WITHIN_M });
       const kept = parts.length > 0 ? `: only ${listWords(parts)} ${parts.length === 1 ? "is" : "are"} kept` : "";
