@@ -747,6 +747,17 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   country rather than **Other areas**. A map of a part of a country (England, a region the
   regions layer knows) is of the part, not the whole country, and is named for it; a town
   finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
+- Add a place: the kinds of nearby places read from the source file say what each takes
+  after **Check size** ("up to 23 MB", from the source file's size), as the kinds from their
+  own source did; a part of a country can be found in **Where?** before Geofabrik's list has
+  been read, with **Read the list of parts** under the search, instead of choosing the
+  country and pressing **Check size** first.
+- Radio buttons and tick boxes grow with the text: at 200% the radio's dot no longer
+  spilled out of its ring, and the source file's choices no longer looked half the size of
+  their words.
+- Nuclear preparedness: with no population grid for the rings, the button is **Add
+  population density for** the rings' country, opening Add a place with it ticked; it no
+  longer said "Get layer data", a dialog that is gone.
 
 ### Security
 

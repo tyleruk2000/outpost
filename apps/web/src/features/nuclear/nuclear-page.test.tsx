@@ -205,6 +205,11 @@ function serve(options: Options = {}) {
           cellKm2: 0.6,
         });
       }
+      if (pathname === "/api/maps/data/where")
+        return json({
+          results: [{ type: "country", country: "GB", countryName: "United Kingdom", name: "United Kingdom" }],
+          regionsListed: false,
+        });
       if (pathname === "/api/reference/packs") return json({ packs: [] });
       if (pathname === "/api/reference/catalogue") return json({ providers: [], linked: [] });
       if (pathname === "/api/reference/historical") return json({ total: 0, records: [] });
@@ -566,9 +571,15 @@ describe("Nuclear preparedness", () => {
     fireEvent.click(await screen.findByRole("button", { name: "press the map" }));
     expect(
       await screen.findByText(
-        /No population grid is installed\. To see how many people live inside each ring, get WorldPop's population grid/,
+        /No population grid is installed\. To see how many people live inside each ring, add WorldPop's population grid .* on Offline maps/,
       ),
     ).toBeInTheDocument();
+    // Straight to Add a place with Population density ticked for the country the rings are in, found on this device.
+    expect(await screen.findByRole("link", { name: "Add population density for United Kingdom" })).toHaveAttribute(
+      "href",
+      "/maps/data?add=1&country=GB&kinds=places&layers=population",
+    );
+    expect(screen.queryByText("Get layer data")).not.toBeInTheDocument();
   });
 
   it("has an empty state and an error state for saved scenarios", async () => {

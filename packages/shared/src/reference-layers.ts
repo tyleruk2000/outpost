@@ -698,3 +698,35 @@ export interface ReferenceRegionsResponse {
   /** Regions to offer first, worked out from what is held (the home place, packs already held); nothing is asked. */
   suggested: Array<{ id: string; why: string }>;
 }
+
+/**
+ * Places in a megabyte of a source file (a Geofabrik extract), at most, for what reading it takes
+ * in the database. Worked out from Monaco's extract of 16 November 2026 (708,123 bytes: 84 places
+ * of food and supplies, 23 of the five point layers between them), a city state: a region with
+ * countryside holds fewer a megabyte.
+ */
+const FOOD_PER_MB = 120;
+/** Between the five point layers. */
+const POINTS_PER_MB = 35;
+const POINT_LAYERS = ["hospitals", "emergency", "shelters", "military", "nuclear"];
+const DATABASE_BYTES_PER_RECORD = 700;
+/**
+ * Routes and rights of way are lines: few records, each holding every point of its line. Not
+ * measured on a real extract: a generous allowance (lines are at most the ways they are made of,
+ * and ways with their points are a minority of an extract's bytes), said as an allowance on screen.
+ */
+const LINE_BYTES_PER_MB = 60_000;
+
+/** The most one layer read from a source file of this many bytes is likely to take in the database. */
+export function layerAllowance(bytes: number, layer: string): number {
+  const mb = bytes / 1048576;
+  if (layer === "food") return Math.round(mb * FOOD_PER_MB * DATABASE_BYTES_PER_RECORD);
+  if (layer === "routes" || layer === "rights-of-way") return Math.round(mb * LINE_BYTES_PER_MB);
+  if (POINT_LAYERS.includes(layer)) return Math.round((mb * POINTS_PER_MB * DATABASE_BYTES_PER_RECORD) / POINT_LAYERS.length);
+  return 0;
+}
+
+/** The most the database is likely to hold for a source file of this many bytes read for these layers: each layer's, added. */
+export function databaseAllowance(bytes: number, layers: readonly string[]): number {
+  return [...new Set(layers)].reduce((sum, layer) => sum + layerAllowance(bytes, layer), 0);
+}

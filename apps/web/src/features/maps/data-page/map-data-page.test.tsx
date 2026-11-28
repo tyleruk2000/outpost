@@ -275,6 +275,43 @@ describe("Add a place", () => {
     expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
   });
 
+  it("finds a part of a country once Geofabrik's list is read from the Where step, on a press", async () => {
+    const user = userEvent.setup();
+    let listed = false;
+    const server = serve(mapData({ regionsListed: false }), {
+      "GET /api/maps/data/where": ({ url }: { url: URL }) =>
+        /^rh/i.test(url.searchParams.get("q") ?? "") && listed
+          ? {
+              results: [
+                {
+                  ...FRANCE,
+                  type: "part",
+                  name: "Rhône-Alpes",
+                  regionId: "france",
+                  part: { regionId: "rhone-alpes", name: "Rhône-Alpes" },
+                },
+              ],
+              regionsListed: true,
+            }
+          : { results: [], regionsListed: listed },
+      "POST /api/reference/regions": () => {
+        listed = true;
+        return { held: true, readAt: 1, source: "https://download.geofabrik.de/index-v1-nogeom.json", regions: [], suggested: [] };
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await user.type(within(dialog).getByRole("searchbox", { name: "Country, region or town" }), "Rhône");
+    expect(await within(dialog).findByText(/Nothing is called that/)).toBeInTheDocument();
+    // Nothing is asked of Geofabrik until the press.
+    expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
+    expect(within(dialog).getByText(/A part of a country .* is found once Geofabrik's list of its files is read/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Read the list of parts" }));
+    expect(await within(dialog).findByRole("button", { name: /Rhône-Alpes/ })).toBeInTheDocument();
+    expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual(["POST /api/reference/regions"]);
+    expect(within(dialog).queryByRole("button", { name: "Read the list of parts" })).not.toBeInTheDocument();
+  });
+
   it("builds routes from the person's own .osm.pbf already in storage, downloading nothing and leaving the file", async () => {
     const user = userEvent.setup();
     const server = serve(mapData(), { "POST /api/roads/networks": { downloadId: null, jobId: "j1" } });
@@ -462,7 +499,12 @@ describe("Add a place", () => {
     // No separate dialog and no other source's question for what the source file holds.
     expect(within(dialog).queryByText(/Nearby places from other sources/)).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Check size" }));
-    await user.click(await within(dialog).findByRole("button", { name: /^Download · / }));
+    const download = await within(dialog).findByRole("button", { name: /^Download · / });
+    // Each kind ticked says what its places take, from the source file's size (5.4 GB here); one left unticked says nothing.
+    expect(within(fromFile).getByRole("checkbox", { name: "Hospitals" })).toHaveAccessibleDescription(/up to 25\.\d MB/);
+    expect(within(fromFile).getByRole("checkbox", { name: "Food and supplies" })).not.toHaveAccessibleDescription(/up to/);
+    expect(within(dialog).getByText(/Nothing more is downloaded for these: each size is the most its places take/)).toBeInTheDocument();
+    await user.click(download);
     await waitFor(() =>
       expect(posted("/api/maps/data/add")).toEqual([
         { regionId: "france", kinds: ["places"], keep: false, layers: ["hospitals", "shelters"] },

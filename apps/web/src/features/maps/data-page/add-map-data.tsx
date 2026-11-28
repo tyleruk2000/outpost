@@ -25,6 +25,7 @@
 import {
   type Bbox,
   formatBytes,
+  layerAllowance,
   type MapDataAddRequest,
   type MapDataBundleKind,
   type MapDataPlace,
@@ -38,7 +39,7 @@ import {
   type ReferenceRegionDto,
   type ReferenceRegionsResponse,
 } from "@outpost/shared";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ChevronRight,
@@ -263,6 +264,15 @@ function Where({
     enabled: view !== null && (view?.zoom ?? 0) >= 3,
     staleTime: Number.POSITIVE_INFINITY,
   });
+  const client = useQueryClient();
+  /** Geofabrik's list of regions, read on the person's press: until it is, parts of countries are found only by their English names. */
+  const readList = useMutation({
+    mutationFn: () => api.post<ReferenceRegionsResponse>("/api/reference/regions", {}),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["layers", "regions"] });
+      return client.invalidateQueries({ queryKey: mapDataKeys.all });
+    },
+  });
   const [picking, setPicking] = useState(false);
   const [pickFailed, setPickFailed] = useState(false);
   const pick = async (point: { lat: number; lon: number }) => {
@@ -309,12 +319,7 @@ function Where({
 
       {typed.length >= 2 ? (
         results.length === 0 && !found.isFetching ? (
-          <p className="text-small text-ink-muted">
-            Nothing is called that. Try a country's name in English, or tap it on the map.
-            {found.data && !found.data.regionsListed
-              ? " For a smaller part, choose its country first: its parts can be picked once you have pressed Check size."
-              : ""}
-          </p>
+          <p className="text-small text-ink-muted">Nothing is called that. Try a country's name in English, or tap it on the map.</p>
         ) : (
           <ul aria-label="Places found" className="-mx-2 grid gap-0.5">
             {results.map((result) =>
@@ -347,6 +352,18 @@ function Where({
             )}
           </ul>
         )
+      ) : null}
+      {typed.length >= 2 && found.data && !found.data.regionsListed ? (
+        <div className="grid justify-items-start gap-2" data-testid="read-regions">
+          <p className="max-w-[60ch] text-small text-ink-muted">
+            A part of a country (a state, a region, England) is found once Geofabrik's list of its files is read: about 500 kB from
+            download.geofabrik.de, read once and kept.
+          </p>
+          <Button size="sm" className={touchSize} onClick={() => readList.mutate()} loading={readList.isPending}>
+            Read the list of parts
+          </Button>
+          {readList.isError ? <p className="text-small text-danger">{errorMessage(readList.error)}</p> : null}
+        </div>
       ) : null}
 
       <div className="grid gap-1.5">
@@ -868,6 +885,10 @@ function Flow({
   };
 
   const fileBytes = found ? Object.values(found.file).reduce<number>((sum, bytes) => sum + (bytes ?? 0), 0) : 0;
+  /** The source files read, downloaded or kept: what the kinds read from them are worked out from. */
+  const sourceBytes = found
+    ? Object.entries(found.file).reduce<number>((sum, [id, bytes]) => sum + (bytes ?? keptFor(id)?.sizeBytes ?? 0), 0)
+    : 0;
   const mapBytes = found ? Object.values(found.map).reduce((sum, estimate) => sum + estimate.totalBytes, 0) : 0;
   const namesBytes = found?.names && !found.names.installed ? found.names.sizeBytes : 0;
   const worldBytes = ticks.has("imagery") && places[0]?.type === "world" && worldOption ? worldOption.transferBytes : 0;
@@ -1168,7 +1189,12 @@ function Flow({
 
   /** The size of one kind from its own source, once asked; held kinds say so. */
   const kindTrailing = (kind: NearbyKind): ReactNode => {
-    if (kind.provider === SOURCE_FILE) return heldKind(kind, nearbyPlace, summary.data) ? "Held" : null;
+    if (kind.provider === SOURCE_FILE) {
+      // Nothing more is downloaded for it: what its places take in the database, worked out from the source file's size.
+      if (found && nearby.has(kind.id) && sourceBytes > 0)
+        return `up to ${formatBytes(kind.layers.reduce((sum, layer) => sum + layerAllowance(sourceBytes, layer), 0))}`;
+      return heldKind(kind, nearbyPlace, summary.data) ? "Held" : null;
+    }
     const bytes = (found?.others ?? [])
       .filter((estimate) => estimate.provider === kind.provider)
       .flatMap((estimate) => estimate.items)
@@ -1193,6 +1219,14 @@ function Flow({
       {sources.map((source) => (
         <div key={source} className="grid">
           <p className="text-micro text-ink-muted">From {source}</p>
+          {found &&
+          sourceBytes > 0 &&
+          kinds.some((kind) => kind.source === source && kind.provider === SOURCE_FILE && nearby.has(kind.id)) ? (
+            <p className="max-w-[70ch] text-micro text-ink-muted">
+              Nothing more is downloaded for these: each size is the most its places take in Outpost's database, worked out from the source
+              file's size.
+            </p>
+          ) : null}
           <ul aria-label={`Kinds from ${source}`} aria-describedby="add-kinds" className="grid">
             {kinds
               .filter((kind) => kind.source === source)

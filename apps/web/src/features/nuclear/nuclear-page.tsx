@@ -617,7 +617,7 @@ export default function NuclearPage() {
               {result && checked.at ? (
                 <>
                   <Results result={result} letter={slot.letter} onFit={() => fitTo(result, checked.at!, 1)} />
-                  <RingPeople at={checked.at} result={result} onGetData={onManage} />
+                  <RingPeople at={checked.at} result={result} />
                   <PlacesAgainst places={places} at={checked.at} result={result} loading={markers.isPending} letter={slot.letter} />
                 </>
               ) : (

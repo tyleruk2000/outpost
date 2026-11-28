@@ -122,7 +122,10 @@ One button, **Add a place**, wherever a map, routes or nearby places are offered
    is looked up elsewhere. Or tap a country on the small map of the world, or choose a
    suggestion: where the map is now, home, the whole world, **Draw an area on the map**, or
    **Import a file**. Nothing is chosen for you. A region Geofabrik names in its own language
-   is found by its English name too: "Bavaria" finds Bayern, "Catalonia" Cataluña. A map of
+   is found by its English name too: "Bavaria" finds Bayern, "Catalonia" Cataluña. Other parts
+   of countries (a US state, England, Rhône-Alpes) are found once Geofabrik's list of its files
+   has been read: until then a search says so under the box, with **Read the list of parts**
+   (about 500 kB from download.geofabrik.de, on that press only, then kept). A map of
    a part is of the part alone where Outpost knows its outline (a ready-made area of its
    name, such as England, or the regions layer of Nearby places); otherwise it covers the
    whole country. Offline maps lists a map under the country most of its land is in, a map
@@ -163,7 +166,9 @@ kinds**, each is ticked on its own, grouped by where it comes from:
   food shops in the UK, flood zones in England (up to about 20 km across), and airports.
 
 What is held already says **Held**. Adding a kind never takes away those held: the kinds held
-are read again with it. After **Check size**, each kind from its own source shows its size.
+are read again with it. After **Check size**, each kind from its own source shows its size,
+and each kind read from the source file the most its places take in Outpost's database, worked
+out from the source file's size ("up to 23 MB"): nothing more is downloaded for those.
 Wikidata and the Overpass servers ask to be told what is asking: tick **Send Outpost's name
 to …** (the name is shown word for word); nothing is asked of them until you do.
 

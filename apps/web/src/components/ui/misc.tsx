@@ -164,7 +164,9 @@ export function Segmented<T extends string>({
 // ── Radio ──────────────────────────────────────────────────────────────────
 
 /**
- * One choice of a radio group with words beside it: a round 18 px mark, with a dot when chosen.
+ * One choice of a radio group with words beside it: a round 18 px mark, with a dot when chosen. Both
+ * are in rem, so they grow with the text beside them (at 200% text an 18 px ring held a dot larger
+ * than itself), as a tick box and a switch do.
  * The same look wherever a radio is drawn (a native `<input type="radio">` with `accent-primary`
  * looks alike). Its reach is 44 px for a finger, from an invisible box round it, so the mark itself
  * never grows into a square. `outpost-radio` lets a screen's own touch rule tell it from a
@@ -174,7 +176,7 @@ export function RadioItem({ className, ...props }: Omit<ComponentProps<typeof Ra
   return (
     <RadioPrimitive.Item
       className={cn(
-        "outpost-radio relative mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:-inset-[13px] data-[state=checked]:border-primary disabled:opacity-50",
+        "outpost-radio relative mt-0.5 grid size-[1.125rem] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:-inset-[13px] data-[state=checked]:border-primary disabled:opacity-50",
         className,
       )}
       {...props}
@@ -284,7 +286,7 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        "relative grid size-[18px] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
+        "relative grid size-[1.125rem] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
         touchArea,
         className,
       )}
