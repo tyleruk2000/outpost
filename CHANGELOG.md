@@ -773,6 +773,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   country rather than **Other areas**. A map of a part of a country (England, a region the
   regions layer knows) is of the part, not the whole country, and is named for it; a town
   finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
+- A walk's or a ride's reachable area, with walking and cycling built but the streets
+  service stopped, says the service is not answering and where to look, rather than
+  asking to add walking and cycling again. Troubleshooting lists the streets service's
+  messages.
 
 ### Security
 

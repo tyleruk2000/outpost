@@ -167,7 +167,7 @@ heights); over an hour by bicycle or 2 hours on foot it adds "no rests counted".
 | --- | --- |
 | `GET /api/streets/status` | `StreetsStatusResponse`: `state` (`not-installed`, `no-streets`, `ready`, `not-answering`, `problem`), `installed`, `message`, the streets in use (`tileset`: name, regions, countries, size, data date, Valhalla's version), a build under way or the last failed one (`build`), the `modes` available now, kept `countryFiles` to build from, `reachMinutes`. |
 | `POST /api/streets/route` | `{ points (2–12: {lat, lon, name?} or {placeId}), mode: drive-door \| walk \| cycle, units?: km \| miles, crossing? }` → `StreetsRouteResult`: `spine`, `road` (Outpost's `RoadRouteResult`), `start`, `end` or `streets` (each `{ lines, distanceM, durationS, geometry }`), `summary`, `geometry`, `warnings`, `credit`. `415` not installed; `400` "Streets are not installed for France", no way, too far; `503` the service not answering; `502` a bad or late reply. |
-| `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: [one to three of the way's times], source?: auto \| main-roads }` → `StreetsReachResult`: `source`, `label` ("Streets" or "Main roads only"), `note`, `areas` (a FeatureCollection, smallest time first, `properties.minutes`), `settings`, `credit`. Walking and cycling without streets: `415`. |
+| `POST /api/streets/reach` | `{ point, mode: drive \| walk \| cycle, minutes: [one to three of the way's times], source?: auto \| main-roads }` → `StreetsReachResult`: `source`, `label` ("Streets" or "Main roads only"), `note`, `areas` (a FeatureCollection, smallest time first, `properties.minutes`), `settings`, `credit`. Walking and cycling without the add-on: `415`; installed with none built: `400`; built but the service not answering: `503` with its sentence (a drive's area then comes from the main roads). |
 | `POST /api/streets/tiles/estimate` | `{ regions: [Geofabrik ids of kept country files] }` → `StreetsEstimate`. |
 | `POST /api/streets/tiles` | `{ regions, workLocationId? }` builds one set from those country files, joined, replacing the set in use; `{ import: { locationId, relPath, name? } }` brings in a `.tar` from `deploy/valhalla/build-tiles.sh`. → `{ jobId, estimate }`. `409` while one is under way. |
 | `DELETE /api/streets/tiles` | Stops serving and deletes the streets in use. `409` while building. |
@@ -184,8 +184,25 @@ from a real Valhalla serving Great Britain (`test/fixtures/streets/`), and plays
 service's side of the folder: not installed, words, door to door joined to the road-route
 fixture, streets outside the area built, reach on streets and on main roads, the build
 followed stage by stage, a failure, a cancel, removal and Map data's row.
+`streets-errors.test.ts` uses the same stand-in for what goes wrong: the service installed
+with streets built but nothing listening (every way of travelling and each reachable area
+says it is not answering, `503`, never "add it"), a health check answering 500, something
+other than Valhalla at the address, an unreadable `status.json`, nothing built yet,
+Valhalla's refusals 442/443, 154/155 and 171 in words, an unknown one kept as Valhalla said
+it (`502`), an answer that is not JSON, and the service stopping between two questions.
+`streets-hills.test.ts` re-times walks and rides over made-up terrain (Tobler's rule, the
+bicycle table, gaps in the terrain, noise not counted as climbing).
 `streets-sidecar.test.ts` runs the sidecar script's `priority` with stand-ins for `nice`
-and `ionice` (there, missing, refused). `streets-valhalla.test.ts` starts the real sidecar image with Docker, builds from the
+and `ionice` (there, missing, refused). Not covered by a stand-in: a reply slower than the
+20 s and 30 s limits (the limits are fixed, so a test would wait that long). `streets-valhalla.test.ts` starts the real sidecar image with Docker, builds from the
 road-route fixture's country file on a work folder, routes, draws an area and removes the
-streets: `OUTPOST_TEST_VALHALLA=1` (and `docker build -t outpost-valhalla:local docker/valhalla`
-first).
+streets. It is off unless asked for, and needs Docker and the image built first (the build
+fetches Valhalla's image, about 700 MB, so it needs the internet once; the test itself
+does not):
+
+```bash
+docker build -t outpost-valhalla:local docker/valhalla
+OUTPOST_TEST_VALHALLA=1 pnpm --filter @outpost/server exec vitest run test/streets-valhalla.test.ts
+```
+
+`OUTPOST_TEST_VALHALLA_IMAGE` names another image (a release's). It takes a minute or two.
