@@ -6,6 +6,13 @@
  * reachable area and removing the streets. Nothing reaches the internet: the image must
  * already be built (`docker build -t outpost-valhalla:local docker/valhalla`).
  *
+ * As in Docker (compose.yaml), the service runs as root and Outpost as another user: OUTPOST_UID,
+ * 1000 by default, which the service is told so that Outpost may leave its requests in their
+ * shared folder. The folder is made by Docker, as root, as a named volume is. Run as root (a CI
+ * box, a cloud machine), this test drops to uid 1000 once the service is started, so that the
+ * Outpost under test is never root and a folder it cannot write in fails here (as on the Pi on 23
+ * November) instead of passing.
+ *
  * Off unless OUTPOST_TEST_VALHALLA=1: it needs Docker, and takes a minute or two.
  *
  *   OUTPOST_TEST_VALHALLA=1 pnpm --filter @outpost/server exec vitest run test/streets-valhalla.test.ts
@@ -23,6 +30,38 @@ import { tempDir } from "./temp.ts";
 
 const enabled = process.env.OUTPOST_TEST_VALHALLA === "1";
 const IMAGE = process.env.OUTPOST_TEST_VALHALLA_IMAGE ?? "outpost-valhalla:local";
+/** The user Outpost runs as in its image (the "node" user), and so here when the test is started as root. */
+const OUTPOST_UID = 1000;
+
+/** Who Outpost runs as here: the user running the test, or uid 1000 in place of root. */
+function outpostUser(): { uid: number; gid: number; drop: boolean } {
+  const uid = process.getuid?.() ?? OUTPOST_UID;
+  if (uid !== 0) return { uid, gid: process.getgid?.() ?? uid, drop: false };
+  return { uid: OUTPOST_UID, gid: OUTPOST_UID, drop: true };
+}
+
+/**
+ * Becomes `user` for the rest of this test file's process (vitest runs each file in a process of its
+ * own: pool "forks"), keeping the Docker socket's group so that the container can still be removed.
+ */
+function becomeOutpost(user: { uid: number; gid: number }, dir: string) {
+  // Its own temporary folder, and everything here but the service's folder, which stays root's as Docker made it.
+  fs.mkdirSync(path.join(dir, "tmp"), { recursive: true });
+  const mine = fs
+    .readdirSync(dir)
+    .filter((name) => name !== "tiles")
+    .map((name) => path.join(dir, name));
+  execFileSync("chown", ["-R", `${user.uid}:${user.gid}`, ...mine]);
+  execFileSync("chown", [`${user.uid}:${user.gid}`, dir]);
+  // The run's temporary folder (made 0700 by root) is passed through, not read.
+  fs.chmodSync(path.dirname(dir), 0o711);
+  process.env.TMPDIR = path.join(dir, "tmp");
+  const socket = ["/var/run/docker.sock", "/run/docker.sock"].find((file) => fs.existsSync(file));
+  const groups = [user.gid, ...(socket ? [fs.statSync(socket).gid] : [])];
+  process.setgroups?.(groups);
+  process.setgid?.(user.gid);
+  process.setuid?.(user.uid);
+}
 
 describe.skipIf(!enabled)("a real streets service", () => {
   let app: TestApp;
@@ -34,18 +73,23 @@ describe.skipIf(!enabled)("a real streets service", () => {
     // One folder holds Outpost's data, its storage and the streets' volume, mounted at the same path in the
     // container, as the Compose file mounts /storage at the same path in both.
     dir = fs.realpathSync(tempDir("outpost-valhalla-real-"));
+    // Not made here: Docker makes it, as root, as it makes the named volume in compose.yaml.
     const tiles = path.join(dir, "tiles");
-    fs.mkdirSync(tiles, { recursive: true });
+    fs.mkdirSync(path.join(dir, "storage"), { recursive: true });
+    const user = outpostUser();
     port = await freePort();
-    container = `outpost-test-valhalla-${port}`;
+    const name = `outpost-test-valhalla-${port}`;
     execFileSync("docker", [
       "run",
       "-d",
       "--rm",
       "--name",
-      container,
-      "--user",
-      `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
+      name,
+      // As root, as in compose.yaml, told who Outpost is (compose.yaml passes OUTPOST_UID and OUTPOST_GID the same way).
+      "-e",
+      `OUTPOST_UID=${user.uid}`,
+      "-e",
+      `OUTPOST_GID=${user.gid}`,
       "-e",
       "VALHALLA_HOME=/tiles",
       "-e",
@@ -59,7 +103,12 @@ describe.skipIf(!enabled)("a real streets service", () => {
       IMAGE,
       "serve",
     ]);
+    container = name;
     await waitFor(() => fs.existsSync(path.join(tiles, "status.json")), "the streets service to start", 30_000);
+    if (user.drop) becomeOutpost(user, dir);
+    expect(process.getuid?.()).not.toBe(0);
+    // Outpost leaves its requests in the folder the service made: it must be able to.
+    fs.accessSync(tiles, fs.constants.W_OK);
     app = await createTestApp(
       { OUTPOST_VALHALLA_URL: `http://127.0.0.1:${port}`, OUTPOST_VALHALLA_DIR: tiles, OUTPOST_STORAGE_ROOTS: path.join(dir, "storage") },
       dir,
@@ -68,7 +117,15 @@ describe.skipIf(!enabled)("a real streets service", () => {
 
   afterAll(async () => {
     await app?.close();
-    if (container) execFileSync("docker", ["rm", "-f", container], { stdio: "ignore" });
+    if (container) {
+      // What the service wrote as root, Outpost's user cannot remove: the service removes it first.
+      try {
+        execFileSync("docker", ["exec", container, "sh", "-c", "rm -rf /tiles/* /tiles/.[!.]*"], { stdio: "ignore" });
+      } catch {
+        // A service that has stopped leaves its files for the run's own clean-up.
+      }
+      execFileSync("docker", ["rm", "-f", container], { stdio: "ignore" });
+    }
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

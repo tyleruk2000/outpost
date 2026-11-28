@@ -781,6 +781,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   Mapterhorn gives no date, and Offline maps and **Check** say so. OS Open Names is dated by
   its edition (it was dated by its download too), so it is over a year old when its edition
   is, and is checked and updated through **Check for updates** like the rest.
+- Walking and cycling under Docker: Compose passes `OUTPOST_UID` and `OUTPOST_GID` (1000 by
+  default) to the streets service, which gives that user their shared folder; the test
+  against the real service runs the service as root and Outpost as uid 1000, as Docker
+  does, so a folder Outpost cannot write in fails the test as it failed on the Pi.
 - Nuclear preparedness: with no population grid for the rings, the button is **Add
   population density for** the rings' country, opening Add a place with it ticked; it no
   longer said "Get layer data", a dialog that is gone.
