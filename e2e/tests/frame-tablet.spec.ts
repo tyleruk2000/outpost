@@ -13,9 +13,7 @@ test.describe("the frame on a tablet held upright", () => {
     await page.goto("/maps");
     const sidebar = page.getByRole("complementary", { name: "Main" });
     const rail = await sidebar.boundingBox();
-    // 6.5rem: wide enough to name each icon under it.
-    expect(rail?.width).toBe(104);
-    await expect(sidebar.getByRole("navigation", { name: "Knowledge" }).getByText("Preparedness", { exact: true })).toBeVisible();
+    expect(rail?.width).toBe(60);
     // The map has the room the full sidebar took: it was 160 px wide here beside it.
     const map = await page.locator(".maplibregl-canvas").first().boundingBox();
     expect(map?.width ?? 0).toBeGreaterThan(300);

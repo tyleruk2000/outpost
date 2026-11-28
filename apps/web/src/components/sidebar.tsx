@@ -199,7 +199,7 @@ function IconRow({
   label: string;
   lit: boolean;
   pathname: string;
-  /** The name under the icon, in words (the rail's way at every text size), and the icon as large as the text. */
+  /** At large text: the name under the icon, in words, and the icon as large as the text. */
   named?: boolean;
 }) {
   const navigate = useNavigate();
@@ -326,14 +326,12 @@ export function Sidebar({
     };
   }, [pathname]);
 
-  // The rail names its icons at every text size: an icon alone was a guess on a tablet, where no tooltip shows under
-  // a finger. Named rows are taller, so the rail, like the whole sidebar at large text, scrolls as one: the upkeep
-  // list kept in view below left a window of a few rows for the screens above it (at 200% on a tablet, 402 px of 1,308).
+  // At large text the rail names its icons, and the whole sidebar scrolls as one: the upkeep list kept in view below
+  // left a window of a few rows for the screens above it (at 200% on a tablet, 402 px of 1,308).
   const large = useLargeText();
-  const named = collapsed;
-  const asOne = large || collapsed;
+  const named = collapsed && large;
   const asideRef = useRef<HTMLElement>(null);
-  const moreBelow = useMoreBelow(asOne ? asideRef : regionRef, collapsed, pathname, notesTree);
+  const moreBelow = useMoreBelow(large ? asideRef : regionRef, collapsed, pathname, notesTree);
 
   // Open over the page: Escape closes it, and the focus goes back to the button that opened it.
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -386,7 +384,10 @@ export function Sidebar({
       {over ? (
         <>
           {/* The rail's room, kept while the whole sidebar lies over the page, so that the page does not move. */}
-          <div aria-hidden className="box-content hidden w-[6.5rem] shrink-0 pl-[env(safe-area-inset-left)] md:block" />
+          <div
+            aria-hidden
+            className={cn("box-content hidden shrink-0 pl-[env(safe-area-inset-left)] md:block", large ? "w-[6.5rem]" : "w-[60px]")}
+          />
           <button
             type="button"
             tabIndex={-1}
@@ -400,11 +401,11 @@ export function Sidebar({
         ref={asideRef}
         aria-label="Main"
         className={cn(
-          asOne && "scroll-quiet overflow-y-auto [scrollbar-color:var(--spine-border)_transparent]",
+          large && "scroll-quiet overflow-y-auto [scrollbar-color:var(--spine-border)_transparent]",
           "sticky top-0 z-(--z-nav) box-content hidden h-dvh shrink-0 flex-col bg-spine pl-[env(safe-area-inset-left)] text-spine-ink transition-[width] duration-(--duration-slow) md:flex",
           // 16rem, but at larger text no more than 22% of the window (still 256 px at least): at Largest on a 1280 px
           // window it took 384 px, and 512 px at 200%, from the screen beside it.
-          collapsed ? "w-[6.5rem]" : "w-[min(16rem,max(256px,22vw))]",
+          collapsed ? (large ? "w-[6.5rem]" : "w-[60px]") : "w-[min(16rem,max(256px,22vw))]",
           // Over the page on a tablet, at its full width whatever the window's, above the dimmed page.
           over && "fixed inset-y-0 left-0 z-(--z-dialog) w-[min(18rem,calc(100vw-4rem))] shadow-dialog",
         )}
@@ -461,12 +462,12 @@ export function Sidebar({
         </div>
 
         {/* The one part that scrolls: the screens, then the tree of pages. What looks after the library stays in view below. */}
-        <div className={cn("relative flex flex-col", asOne ? "flex-none" : "min-h-0 flex-1")}>
+        <div className={cn("relative flex flex-col", large ? "flex-none" : "min-h-0 flex-1")}>
           <div
             ref={regionRef}
             className={cn(
               "flex flex-col px-3 pb-2",
-              asOne ? "flex-none" : "scroll-quiet min-h-0 flex-1 overflow-y-auto [scrollbar-color:var(--spine-border)_transparent]",
+              large ? "flex-none" : "scroll-quiet min-h-0 flex-1 overflow-y-auto [scrollbar-color:var(--spine-border)_transparent]",
               collapsed && "px-2",
             )}
           >
@@ -478,7 +479,7 @@ export function Sidebar({
             </div>
           </div>
           {/* More of the screens or the tree is below: said by a fade into the spine, over the last line shown. */}
-          {asOne ? null : (
+          {large ? null : (
             <div
               aria-hidden
               data-more-below={moreBelow || undefined}
@@ -493,8 +494,8 @@ export function Sidebar({
           </div>
           <Lamp collapsed={collapsed} />
         </div>
-        {/* Scrolling as one (the rail, or at large text): the fade sticks to the foot of the window while there is more below. */}
-        {asOne ? (
+        {/* Scrolling as one at large text: the fade sticks to the foot of the window while there is more below. */}
+        {large ? (
           <div
             aria-hidden
             data-more-below={moreBelow || undefined}
