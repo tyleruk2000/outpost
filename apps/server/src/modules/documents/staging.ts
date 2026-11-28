@@ -9,6 +9,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { AppError } from "../../core/errors.ts";
 import { assertContentMatches, type FileFormat, formatForName, SNIFF_BYTES } from "./file-types.ts";
 
@@ -34,6 +35,11 @@ export interface StagedFile {
    * location: it is recorded there and not moved into a folder of its own.
    */
   keepAt?: string;
+  /**
+   * For a person's own file (not `owned`): which file was read. The name is checked against it
+   * again after the file is moved in or recorded, and nothing else is kept in its place.
+   */
+  identity?: FileIdentity;
 }
 
 export function tooLarge(originalName: string, maxBytes: number): AppError {
@@ -156,4 +162,53 @@ export async function moveFile(from: string, to: string): Promise<void> {
     await fs.promises.copyFile(from, to);
     await fs.promises.rm(from, { force: true });
   }
+}
+
+/** Which file a name was found to be when it was read: what it must still be when it is kept. */
+export interface FileIdentity {
+  ino: number;
+  dev: number;
+}
+
+/** True when `file` is, by its own name and without following a link, the regular file `expected`. */
+export async function isSameFile(file: string, expected: FileIdentity): Promise<boolean> {
+  const now = await fs.promises.lstat(file).catch(() => undefined);
+  return Boolean(now?.isFile() && now.ino === expected.ino && now.dev === expected.dev);
+}
+
+export const changedWhileRead = (name: string) =>
+  new AppError("conflict", `"${name}" changed while it was being read. Try again once it is no longer being written.`);
+
+/**
+ * Moves a person's own file in by name, then makes sure what was moved is the file that was
+ * read. Node has no rename that refuses a link, so a link swapped in for the file in the instant
+ * before the rename would otherwise be moved in and kept: it is checked after the rename and, if
+ * it is not the file, put back exactly where it was. Across drives the copy is read through a
+ * handle opened without following links, and the original's name is removed only while it is
+ * still that file.
+ */
+export async function moveOriginal(from: string, to: string, expected: FileIdentity, name: string): Promise<void> {
+  try {
+    await fs.promises.rename(from, to);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+    const handle = await fs.promises.open(from, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0)).catch(() => {
+      throw changedWhileRead(name);
+    });
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile() || stat.ino !== expected.ino || stat.dev !== expected.dev) throw changedWhileRead(name);
+      await pipeline(handle.createReadStream({ start: 0, autoClose: false }), fs.createWriteStream(to, { flags: "wx" }));
+    } catch (copyError) {
+      await fs.promises.rm(to, { force: true }).catch(() => undefined);
+      throw copyError;
+    } finally {
+      await handle.close();
+    }
+    if (await isSameFile(from, expected)) await fs.promises.rm(from, { force: true });
+    return;
+  }
+  if (await isSameFile(to, expected)) return;
+  await fs.promises.rename(to, from).catch(() => undefined);
+  throw changedWhileRead(name);
 }

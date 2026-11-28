@@ -795,6 +795,11 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 
 ### Security
 
+- **A file added to the library from a folder cannot be swapped for a link at the last
+  moment.** A person's own file moved in, or recorded where it is, is checked by its name
+  once it has been moved or recorded; a link put in its place is put back where it was and
+  nothing is kept.
+
 - **A symbolic link in a storage root no longer opens the whole disk.** Paths are checked
   as written and again with links followed (on a Mac `/Volumes/Macintosh HD` links to `/`).
 - **Erasing everything clears erased words from the search index's storage.**

@@ -48,7 +48,19 @@ import {
   SUPPORTED_TYPES_TEXT,
 } from "./file-types.ts";
 import { createDocumentOcr } from "./ocr.ts";
-import { describeWriteError, discardPart, INCOMING_DIR, moveFile, newPartPath, readHead, type StagedFile, tooLarge } from "./staging.ts";
+import {
+  changedWhileRead,
+  describeWriteError,
+  discardPart,
+  INCOMING_DIR,
+  isSameFile,
+  moveFile,
+  moveOriginal,
+  newPartPath,
+  readHead,
+  type StagedFile,
+  tooLarge,
+} from "./staging.ts";
 import { isEpubArchive } from "./zip.ts";
 
 export type DocumentRow = typeof documents.$inferSelect;
@@ -452,9 +464,12 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       const now = Date.now();
       if (!staged.keepAt) await fs.promises.mkdir(folder, { recursive: true });
       let moved = false;
+      let recorded = false;
       try {
         if (!staged.keepAt) {
-          await moveFile(staged.partPath, finalPath);
+          // A person's own file is checked after the rename: a link swapped in at the last moment goes back.
+          if (staged.identity) await moveOriginal(staged.partPath, finalPath, staged.identity, staged.originalName);
+          else await moveFile(staged.partPath, finalPath);
           moved = true;
         }
         sqlite.transaction(() => {
@@ -478,7 +493,20 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
             .run();
           setTags(id, tagList);
         })();
+        recorded = true;
+        // Recorded where it lies, by name: the name must still be the file read once the record exists,
+        // or a link swapped in after the last look would be what the record points at.
+        if (staged.keepAt && staged.identity && !(await isSameFile(finalPath, staged.identity))) {
+          throw changedWhileRead(staged.originalName);
+        }
       } catch (error) {
+        if (recorded) {
+          const tagIds = tagIdsOf(id);
+          sqlite.transaction(() => {
+            db.delete(documents).where(eq(documents.id, id)).run();
+            for (const tagId of tagIds) pruneTag.run({ id: tagId });
+          })();
+        }
         // Put a moved-in original back before removing the folder made for it.
         if (moved && !staged.owned) await moveFile(finalPath, staged.partPath).catch(() => undefined);
         // A file recorded where it lies has no folder of its own to clear away.
@@ -563,19 +591,19 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       return outcome;
     }
     // Kept where it is, or moved by a rename: by its name, so the name must still be the file read.
-    const now = await fs.promises.lstat(source).catch(() => undefined);
-    if (!now?.isFile() || now.ino !== stat.ino || now.dev !== stat.dev)
-      throw new AppError("conflict", `"${originalName}" changed while it was being read. Try again once it is no longer being written.`);
+    // Checked here and again once moved in or recorded, which is the check that cannot be raced.
+    const identity = { ino: stat.ino, dev: stat.dev };
+    if (!(await isSameFile(source, identity))) throw changedWhileRead(originalName);
     if (input.inPlace) {
       const keepAt = path
         .relative(location.path, resolveInside(location.path, path.relative(location.path, source)))
         .split(path.sep)
         .join("/");
       if (!keepAt) throw badRequest(`"${originalName}" is not a file inside "${location.name}", so it cannot be recorded where it is.`);
-      return oneAtATime(() => commit({ ...facts, partPath: source, owned: false, keepAt }, input));
+      return oneAtATime(() => commit({ ...facts, partPath: source, owned: false, keepAt, identity }, input));
     }
     // A rename is instant and cannot half-finish, so the original goes straight in.
-    return oneAtATime(() => commit({ ...facts, partPath: source, owned: false }, input));
+    return oneAtATime(() => commit({ ...facts, partPath: source, owned: false, identity }, input));
   }
 
   // ── Text extraction ──
