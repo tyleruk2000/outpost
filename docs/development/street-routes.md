@@ -74,9 +74,17 @@ deletes it. That location must be mounted read-write in the `valhalla` service.
 2. Follows `status.json` every 3 s. Progress is stage `at` of `of`: `merge` (several files
    only), `admins`, `tiles`, `extract`, `swap`; or `import`, `swap`. The message adds the
    time left, from the expected time of the whole build and the measured shares of each
-   stage (tiles are 95% of it).
+   stage (tiles are 95% of it). Once a stage has run past where the estimate had it end
+   (a Pi building Great Britain for over an hour), it says "taking longer than usual"
+   instead of counting down.
 3. Ends when `status.json` says `ready` with its id; fails with the service's own
    sentence when it says `failed`. The streets in use stay until a build has finished.
+
+Each step of a build runs as `nice -n 19 ionice -c 3` (lowest processor priority, idle
+disk class) so that Outpost stays quick while it builds; either is left out where it is
+not installed or the container refuses it (`outpost-valhalla.sh priority` prints what is
+used, and the service logs it at start). `ionice` only counts with an I/O scheduler that
+honours classes (BFQ); with `mq-deadline` or `none` it changes nothing.
 
 Cancelling writes `cancel` (or removes a request not yet taken). Outpost stopping or
 restarting leaves the build running: the task is queued again and follows it, by its id.
@@ -98,7 +106,9 @@ warning to choose a smaller one.
 `mode: "drive-door"`: Outpost's road route (`ctx.services.roads.plan`) is the spine, its
 legs unchanged. The streets service routes the door to Outpost's first join point and its
 last join point to the door, when either is more than 100 m off; the last road leg's
-"then local roads to the end" becomes "then the streets to the door". An end outside the
+"then local roads to the end" becomes "then the streets to the door", and the streets
+from the door end "Join Kingston Road (B2430), then the main roads below" rather than
+"Arrive at the end". An end outside the
 streets built keeps Outpost's route to its main road, with a warning. Doors under 15 km
 apart (straight line), or no road network installed, are driven on streets all the way
 (`spine: "streets"`).
@@ -172,7 +182,8 @@ from a real Valhalla serving Great Britain (`test/fixtures/streets/`), and plays
 service's side of the folder: not installed, words, door to door joined to the road-route
 fixture, streets outside the area built, reach on streets and on main roads, the build
 followed stage by stage, a failure, a cancel, removal and Map data's row.
-`streets-valhalla.test.ts` starts the real sidecar image with Docker, builds from the
+`streets-sidecar.test.ts` runs the sidecar script's `priority` with stand-ins for `nice`
+and `ionice` (there, missing, refused). `streets-valhalla.test.ts` starts the real sidecar image with Docker, builds from the
 road-route fixture's country file on a work folder, routes, draws an area and removes the
 streets: `OUTPOST_TEST_VALHALLA=1` (and `docker build -t outpost-valhalla:local docker/valhalla`
 first).
