@@ -160,6 +160,14 @@ if printf '%s' "$out" | grep -q "would set TZ=Europe/London in .env"; then
 else
   fail "install.sh does not set TZ to the Pi's time zone: $(printf '%s' "$out" | grep -i zone | head -2)"
 fi
+(cd "$dir" && cp .env.example .env && printf 'TZ=America/New_York\n' >>.env)
+out="$(cd "$dir" && PATH="$SCRATCH/zone:$SCRATCH/docker:$PATH" bash deploy/pi/install.sh --dry-run 2>&1)"
+if printf '%s' "$out" | grep -q "would set TZ=" || ! printf '%s' "$out" | grep -q "already in .env, America/New_York"; then
+  fail "install.sh replaces a TZ already in .env: $(printf '%s' "$out" | grep -i zone | head -2)"
+else
+  pass "install.sh leaves a TZ already in .env as it is"
+fi
+rm -f "$dir/.env"
 if grep -q 'TZ: ${TZ:-Etc/UTC}' "$REPO/compose.yaml"; then
   pass "compose.yaml passes TZ from .env to Outpost"
 else

@@ -1408,6 +1408,17 @@ describe("instructions for Docker and Linux", () => {
     );
   });
 
+  it("withholds the nas-share.sh line for any value a shell would read as more than a word", () => {
+    const hostile = ["a b", 'a"b', "a'b", "$(id)", "`id`", "a;b", "a\nb", "-x", "--dry-run", "a|b", "a&b", "a>b", "*", "~root", "a\\b"];
+    const plain = { protocol: "smb" as const, host: "192.168.1.20", share: "docs", userName: "walker" };
+    expect(nasShareScriptStep(plain)).toBeDefined();
+    for (const value of hostile) {
+      expect(nasShareScriptStep({ ...plain, host: value }), `server ${JSON.stringify(value)}`).toBeUndefined();
+      expect(nasShareScriptStep({ ...plain, share: value }), `share ${JSON.stringify(value)}`).toBeUndefined();
+      expect(nasShareScriptStep({ ...plain, userName: value }), `user ${JSON.stringify(value)}`).toBeUndefined();
+    }
+  });
+
   it("writes the fstab line and the credentials-file steps", () => {
     const steps = linuxShareInstructions(
       { protocol: "smb", host: "nas.local", port: 4450, share: "Family Photos", userName: "walker" },

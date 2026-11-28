@@ -670,7 +670,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   number. The downloads plan lists the tasks alongside, each with when it should finish.
 - **The container keeps the Pi's time zone.** It had none, so it ran on UTC and the
   nightly backup ran at 4:00 am in a British summer. `compose.yaml` passes `TZ` from
-  `.env` (UTC when it is not set) and `install.sh` sets it to the Pi's own zone.
+  `.env` (UTC when it is not set) and `install.sh` sets it to the Pi's own zone where
+  `.env` has no `TZ`. Backup file names and logs stay in UTC.
 
 ### Changed
 

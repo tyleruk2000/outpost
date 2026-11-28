@@ -88,7 +88,7 @@ export function defaultClockDeps(ctx: AppContext): ClockDeps {
  * Docker: the two ways to set it there without opening it to every device.
  */
 const ON_THE_PI =
-  ' On the Raspberry Pi, open Outpost through ./deploy/pi/on-this-pi.sh (from a laptop, after ssh -L 8090:localhost:8090 to the Pi) and set it at http://localhost:8090, or type sudo date -s "2026-11-24 09:30" there with the time now.';
+  ' On the Raspberry Pi, open Outpost through ./deploy/pi/on-this-pi.sh (from a laptop, after ssh -L 8090:localhost:8090 to the Pi) and set it at http://localhost:8090, or type sudo date -s "YYYY-MM-DD HH:MM" there, with today\'s date and the time now in place of the letters.';
 
 /** How the clock could be set here, and whether this request may. */
 export function clockSetting(request: RequestOrigin, ctx: AppContext, deps: ClockDeps): ClockSetting {

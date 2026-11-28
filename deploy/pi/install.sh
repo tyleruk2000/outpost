@@ -73,8 +73,9 @@
 #                     50 GB written to the disk where it works.
 #   --dry-run         Print the commands instead of running them.
 #
-# It also sets TZ in .env to this Pi's time zone, so that the times Outpost writes are the
-# Pi's and not UTC's.
+# Where .env has no TZ line, it adds one with this Pi's time zone, so that scheduled
+# backups run by the Pi's clock and not UTC's. A TZ line already there, yours or from an
+# earlier run, is left as it is. Backup file names and logs stay in UTC either way.
 #
 # It never deletes anything, and it does not touch an existing .env except the lines
 # named above and COMPOSE_FILE (with --lan, the file as it was is kept beside it).
@@ -256,9 +257,9 @@ add_allowed_host() { # add_allowed_host NAME: adds one name to OUTPOST_ALLOWED_H
 }
 
 # The Pi's time zone, for the container: without it Outpost runs on UTC there, and the
-# times it writes (a backup's name, a log, when the nightly backup runs) are an hour out
-# in a British summer. Compose passes TZ from .env (compose.yaml). Run again after
-# changing the Pi's zone (sudo raspi-config, Localisation Options), and Outpost follows.
+# nightly backup set for 3:00 runs at 4:00 in a British summer. Compose passes TZ from
+# .env (compose.yaml). Only added where .env has none: a TZ someone set is never replaced.
+# After changing the Pi's zone (sudo raspi-config, Localisation Options), change TZ in .env.
 pi_time_zone() {
   local zone=""
   command -v timedatectl >/dev/null 2>&1 && zone="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
@@ -267,7 +268,10 @@ pi_time_zone() {
   [[ "$zone" =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$ ]] && printf '%s' "$zone"
 }
 zone="$(pi_time_zone || true)"
-if [ -n "$zone" ]; then
+kept_zone="$(grep '^TZ=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+if [ -n "$kept_zone" ]; then
+  say "Outpost keeps the time zone already in .env, $kept_zone (TZ there; this Pi's is ${zone:-unknown})."
+elif [ -n "$zone" ]; then
   say "Outpost will keep this Pi's time zone, $zone."
   set_env TZ "$zone"
 else
@@ -448,7 +452,7 @@ ExecStart=/usr/local/lib/outpost/set-clock.sh ${clock_dir}"
     run sudo systemctl enable --now outpost-clock.path
     if ! $CLOCK_FROM_NETWORK && ! grep -q '^OUTPOST_ALLOW_REMOTE_CLOCK=true' .env 2>/dev/null; then
       say "Note: no browser may set the clock yet. In Docker a browser on this Pi does not count as
-the Pi either: here, set it with sudo date -s \"2026-11-24 09:30\" (your time now), or open
+the Pi either: here, set it with sudo date -s \"YYYY-MM-DD HH:MM\" (today's date and the time now in place of the letters), or open
 Outpost through ./deploy/pi/on-this-pi.sh. To let phones and laptops on your network set it,
 run this again with --clock-from-network."
     fi

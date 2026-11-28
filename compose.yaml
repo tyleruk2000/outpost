@@ -20,9 +20,10 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      # The time zone the times Outpost writes are in (a backup's name, its logs, when the
-      # nightly backup runs). A container has none of its own: set TZ in .env to the
-      # computer's zone, as deploy/pi/install.sh does on a Pi. UTC when it is not set.
+      # The server's time zone: when scheduled backups run, and the local times and dates the
+      # server itself writes (see TZ in .env.example). Backup file names and logs stay UTC.
+      # A container has none of its own: set TZ in .env to the computer's zone, as
+      # deploy/pi/install.sh does on a Pi. UTC when it is not set.
       TZ: ${TZ:-Etc/UTC}
       # Reachable only from this machine unless you opt in. See .env.example.
       OUTPOST_LAN_ACCESS: ${OUTPOST_LAN_ACCESS:-false}

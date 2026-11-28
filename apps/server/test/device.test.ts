@@ -186,7 +186,10 @@ describe("the server's clock", () => {
       expect(body.setting.reason).toMatch(/OUTPOST_ALLOW_REMOTE_CLOCK=true/);
       // The helper is there only on a Pi set up by install.sh: the way to do it there without opening it to everyone.
       expect(body.setting.reason).toMatch(/\.\/deploy\/pi\/on-this-pi\.sh/);
-      expect(body.setting.reason).toMatch(/sudo date -s/);
+      // A placeholder, said to be filled in: an example date typed as it stands would set the Pi to the past.
+      expect(body.setting.reason).toContain('sudo date -s "YYYY-MM-DD HH:MM"');
+      expect(body.setting.reason).toMatch(/today's date and the time now/);
+      expect(body.setting.reason).not.toMatch(/\d{4}-\d\d-\d\d \d\d:\d\d/);
       expect((await app.api("POST", "/api/device/clock", { deviceNow: Date.now() }, other)).status).toBe(403);
       expect(helper.seen).toHaveLength(0);
     } finally {
