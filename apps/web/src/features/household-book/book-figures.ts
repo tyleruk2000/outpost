@@ -317,3 +317,117 @@ export function powerCutTimeline(
     svgText(x(words.freezerHours) + (freezerAt === "end" ? -4 : 4), axis - 23, words.freezer, { size: 7, anchor: freezerAt });
   return drawing(width, axis + 28, body);
 }
+
+// ── How a repeater works ────────────────────────────────────────────────────
+
+/** A repeater from the book's own table, to put its figures on the drawing. */
+export interface RepeaterExample {
+  callsign: string;
+  /** "145.6000 MHz". */
+  output: string;
+  input: string;
+  /** "the tone 77 Hz", "DCS 023", or null when none is listed. */
+  tone: string | null;
+}
+
+/**
+ * The words of the repeater table's key, drawn: your radio sends on the input (with the
+ * tone, where one is listed), the repeater hears it and sends it out again on the output,
+ * and every radio in range, yours too, listens on the output. Two radios that cannot reach
+ * each other direct both reach the repeater on its high ground. Given an example, its own
+ * frequencies and tone are written on, as the table above gives them.
+ */
+export function repeaterHowDrawing(width: number, example: RepeaterExample | null) {
+  const ground = 150;
+  const peak = 78;
+  const height = ground + 18;
+  const mid = width / 2;
+  const hillFrom = width * 0.27;
+  const hillTo = width * 0.73;
+  const you = 70;
+  const other = width - 70;
+  const mastTop = 40;
+  const send = C.act;
+  const hear = C.know;
+  let body = "";
+  // The ground, and the hill the repeater stands on (a curve whose top is at `peak`).
+  body += `<path d="M${round(hillFrom)},${ground} Q${round(mid)},${round(2 * peak - ground)} ${round(hillTo)},${ground} Z" fill="${C.shade}" stroke="${C.muted}" stroke-width="0.8"/>`;
+  body += `<path d="M0,${ground} L${width},${ground}" stroke="${C.muted}" stroke-width="1.2"/>`;
+  // The mast: a lattice tower, the aerial at its top, the repeater's box at its foot.
+  body += `<path d="M${round(mid - 7)},${peak + 1} L${round(mid)},${mastTop} L${round(mid + 7)},${peak + 1}" fill="none" stroke="${C.ink}" stroke-width="1.3" stroke-linejoin="round"/>`;
+  for (const at of [0.25, 0.5, 0.75]) {
+    const y = mastTop + (peak - mastTop) * at;
+    const half = 7 * at;
+    body += `<path d="M${round(mid - half)},${round(y)} L${round(mid + half)},${round(y)}" stroke="${C.ink}" stroke-width="0.7"/>`;
+  }
+  body += `<path d="M${round(mid)},${mastTop} L${round(mid)},${mastTop - 9}" stroke="${C.ink}" stroke-width="1.4" stroke-linecap="round"/>`;
+  body += `<circle cx="${round(mid)}" cy="${mastTop - 9}" r="2" fill="${C.ink}"/>`;
+  // The repeater itself, in its box at the mast's foot, wired up the mast to the aerial.
+  body += `<path d="M${round(mid)},${peak - 7} L${round(mid + 12)},${peak - 7}" stroke="${C.ink}" stroke-width="0.8"/>`;
+  body += `<rect x="${round(mid + 12)}" y="${peak - 13}" width="16" height="11" rx="1.5" fill="${C.paper}" stroke="${C.ink}" stroke-width="1"/>`;
+  body += `<circle cx="${round(mid + 16)}" cy="${peak - 7.5}" r="1.2" fill="${C.ink}"/><path d="M${round(mid + 19.5)},${peak - 9.5} L${round(mid + 25)},${peak - 9.5} M${round(mid + 19.5)},${peak - 5.5} L${round(mid + 25)},${peak - 5.5}" stroke="${C.ink}" stroke-width="0.6"/>`;
+  body += svgText(mid, 12, example ? `Repeater ${example.callsign}` : "Repeater", { anchor: "middle", bold: true, size: 8 });
+  body += svgText(mid, 21, "on high ground", { anchor: "middle", size: 7, fill: C.muted });
+  // A handheld at each side.
+  const handheld = (x: number) =>
+    `<rect x="${round(x - 6)}" y="${ground - 27}" width="12" height="25" rx="2.5" fill="${C.paper}" stroke="${C.ink}" stroke-width="1.2"/>` +
+    `<rect x="${round(x - 3.5)}" y="${ground - 23}" width="7" height="6" fill="${C.shade}" stroke="${C.ink}" stroke-width="0.5"/>` +
+    `<path d="M${round(x - 3)},${ground - 27} L${round(x - 3)},${ground - 44}" stroke="${C.ink}" stroke-width="1.6" stroke-linecap="round"/>`;
+  body += handheld(you) + handheld(other);
+  body += svgText(you, ground + 12, "Your radio", { anchor: "middle", bold: true, size: 7.5 });
+  body += svgText(other, ground + 12, "Another radio", { anchor: "middle", bold: true, size: 7.5 });
+  // Straight across, the hill is in the way: a dotted line to the hill's side on each side.
+  const lineY = ground - 14;
+  // Where the hill's curve (x linear in t, y = ground − 4·(ground − peak)·t(1 − t)) reaches lineY.
+  const t = (1 - Math.sqrt(1 - (4 * (ground - lineY)) / (4 * (ground - peak)))) / 2;
+  const leftEdge = hillFrom + (hillTo - hillFrom) * t;
+  const rightEdge = hillTo - (hillTo - hillFrom) * t;
+  const cross = (x: number) =>
+    `<path d="M${round(x - 3.5)},${lineY - 3.5} L${round(x + 3.5)},${lineY + 3.5} M${round(x - 3.5)},${lineY + 3.5} L${round(x + 3.5)},${lineY - 3.5}" stroke="${C.muted}" stroke-width="1.1"/>`;
+  body += `<path d="M${you + 9},${lineY} L${round(leftEdge - 5)},${lineY} M${round(rightEdge + 5)},${lineY} L${other - 9},${lineY}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="1.5 2"/>`;
+  body += cross(leftEdge - 1) + cross(rightEdge + 1);
+  body += svgText(mid, ground - 8, "out of reach of each other direct", { anchor: "middle", size: 6.5, fill: C.muted });
+  // 1: up from your radio on the input, a solid line.
+  const tip = ground - 46;
+  const into: [number, number] = [mid - 9, mastTop - 4];
+  body += `<path d="M${you + 1},${tip} L${round(into[0])},${into[1]}" stroke="${send}" stroke-width="1.8"/>`;
+  body += svgArrowHead(into[0], into[1], (Math.atan2(into[1] - tip, into[0] - you - 1) * 180) / Math.PI, send, 6);
+  // 2: out again on the output, dashed, to the other radio and back down to yours.
+  const outOf = (x: number, y: number, toX: number, toY: number) =>
+    `<path d="M${round(x)},${round(y)} L${round(toX)},${round(toY)}" stroke="${hear}" stroke-width="1.8" stroke-dasharray="6 3"/>` +
+    svgArrowHead(toX, toY, (Math.atan2(toY - y, toX - x) * 180) / Math.PI, hear, 6);
+  body += outOf(mid + 9, mastTop + 2, other - 1, tip);
+  body += outOf(mid - 9, mastTop + 8, you + 4, tip + 9);
+  // The words, numbered in the order it happens.
+  const step = (x: number, y: number, anchor: "start" | "end", number: string, colour: string, title: string, line: string) => {
+    // The disc on the outer side, the words inside it, so both blocks read from the page's edge in.
+    const discX = anchor === "start" ? x + 5.5 : x - 5.5;
+    const textX = anchor === "start" ? x + 14 : x - 14;
+    return (
+      `<circle cx="${round(discX)}" cy="${y - 2.7}" r="5.5" fill="${colour}"/>` +
+      svgText(discX, y, number, { anchor: "middle", bold: true, size: 7, fill: C.paper }) +
+      svgText(textX, y, title, { anchor, bold: true, size: 7.5, fill: colour }) +
+      svgText(textX, y + 10, line, { anchor, size: 7 })
+    );
+  };
+  const toneWords = example?.tone ? `, with ${example.tone}` : "";
+  body += step(
+    4,
+    40,
+    "start",
+    "1",
+    send,
+    "You send on the input",
+    example ? `${example.input}${toneWords}` : "with its tone, if it has one",
+  );
+  body += step(
+    width - 4,
+    40,
+    "end",
+    "2",
+    hear,
+    "It sends it out again on the output",
+    example ? `${example.output}: every radio in range listens there` : "every radio in range listens there",
+  );
+  return drawing(width, height, body);
+}

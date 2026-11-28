@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
 import { type BookInputs, bookRepeaterGroups, makeBook } from "./book";
+import { repeaterHowDrawing } from "./book-figures";
 import {
   chooseRepeaters,
   horizonRange,
@@ -276,6 +277,24 @@ describe("the repeaters in the book", () => {
     );
     expect(words.split("Output: the frequency you listen on")).toHaveLength(2);
     expect(words.indexOf("Output: the frequency")).toBeGreaterThan(words.indexOf("GB3NEAR"));
+  });
+
+  it("draws how a repeater works once, by the key, with the first repeater's own figures", () => {
+    expect(words.split("How a repeater works")).toHaveLength(2);
+    expect(words.indexOf("How a repeater works")).toBeGreaterThan(words.indexOf("Output: the frequency"));
+    expect(words.indexOf("How a repeater works")).toBeLessThan(words.indexOf("Meet near home: Village hall"));
+    expect(words).toContain("Repeater GB3NEAR");
+    expect(words).toContain("You send on the input");
+    expect(words).toContain("145.0000 MHz, with the tone 77 Hz");
+    expect(words).toContain("145.6000 MHz: every radio in range listens there");
+    expect(words).toContain("out of reach of each other direct");
+  });
+
+  it("draws how a repeater works in words alone where the first has no input listed", () => {
+    const { svg } = repeaterHowDrawing(499, null);
+    expect(svg).toContain(">You send on the input<");
+    expect(svg).toContain(">with its tone, if it has one<");
+    expect(svg).not.toContain("MHz");
   });
 
   it("draws each repeater's circle with its own dash where no terrain is installed, with the callsigns and the key", () => {

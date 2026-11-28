@@ -106,7 +106,12 @@ and how far along, for a journey), and its likely range. A short key under the f
 table says what the columns mean: the output is the frequency you listen on (the repeater
 transmits), the input the one you transmit on (the repeater listens), the shift is the
 input minus the output, and the tone (CTCSS, or a DCS code) is what your radio must send
-to open the repeater. Under the tables the book names each list the repeaters came from
+to open the repeater. Beside the key, **How a repeater works** draws the same: your radio
+sends on the input (with the tone), the repeater on high ground sends it out again on the
+output, and every radio in range, yours too, listens there; two radios out of reach of each
+other both reach it. The first repeater in the table with an input of its own gives the
+drawing its callsign, frequencies and tone; it prints as solid and dashed lines, so it reads
+on a black-and-white copy. Under the tables the book names each list the repeaters came from
 and the date of its data.
 
 A map follows for each place with repeaters of its own and for each journey, the full
