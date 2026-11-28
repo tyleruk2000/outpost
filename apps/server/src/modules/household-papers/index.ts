@@ -62,9 +62,11 @@ export async function registerHouseholdPapers(app: FastifyInstance, ctx: AppCont
 
   const id = (request: { params: unknown }) => idParams.parse(request.params).id;
 
-  // The current household's sheets: its people's, and its own for nobody in particular.
-  app.get("/api/medical-sheets", async () => {
-    const household = ctx.services.households.current();
+  // The current household's sheets: its people's, and its own for nobody in particular. A
+  // phone bringing its kept copy of one household's sheets up to date names that household.
+  app.get("/api/medical-sheets", async (request) => {
+    const { household: asked } = z.object({ household: z.string().max(64).optional() }).parse(request.query);
+    const household = asked === undefined ? ctx.services.households.current() : ctx.services.households.get(asked);
     return {
       sheets: medical.list(household.id),
       inSearch: ctx.services.settings.get("medical.inSearch"),

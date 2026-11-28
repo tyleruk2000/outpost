@@ -218,7 +218,10 @@ Each of these is so by choice:
 - The mesh root topic and the allotment game take `households.first()`.
 - The first household, when it has no home place of its own, takes the saved place with
   the home icon (`homePlaceOf`, in `households/service.ts` only).
-- The phone's kept copy of the medical sheets is stored under the one id `household` on
-  the phone, and holds the current household's sheets with its name.
+- The phone keeps one copy of the medical sheets per household, under the household's id
+  (a copy from before is under `household`, the first's). `keepMedical(id?)` fetches
+  `GET /api/medical-sheets?household=<id>` (left out: the current household's); a refresh
+  brings each copy up to date from its own household, and leaves a removed household's
+  copy as it was.
 - An insert that leaves `household_id` out takes the column default, the first
   household: every per-household service sets it, so a new one must too.

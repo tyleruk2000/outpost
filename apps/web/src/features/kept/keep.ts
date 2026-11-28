@@ -18,6 +18,7 @@ import type {
   TrackDto,
   TrackWithGeometryDto,
 } from "@outpost/shared";
+import { FIRST_HOUSEHOLD_ID } from "@outpost/shared";
 import { toast } from "sonner";
 import { ApiError, api } from "@/lib/api";
 import { DEVICE } from "./device";
@@ -249,23 +250,29 @@ export async function keepPlaces(): Promise<KeptPlaces> {
   return item;
 }
 
-export const MEDICAL_ID = "household";
+/** The first household's id: a copy kept before there were copies per household is under it. */
+export const MEDICAL_ID = FIRST_HOUSEHOLD_ID;
 export const MEDICAL_PATH = "/api/medical-sheets";
 
 /**
- * Keeps the current household's medical sheets on this phone as they are on the server: a
- * locked one stays locked. With several households the copy says whose they are.
+ * Keeps a household's medical sheets on this phone as they are on the server: a locked one
+ * stays locked. Each household's copy is its own, kept under the household's id, so that
+ * keeping another household's sheets never replaces one kept before. Left out, `householdId`
+ * is the current household; with several households the copy says whose they are.
  */
-export async function keepMedical(): Promise<KeptMedical> {
-  const before = await getKept("medical", MEDICAL_ID);
-  const answer = await api.get<MedicalSheetsResponse>(MEDICAL_PATH);
-  const cache = await openKept("medical", MEDICAL_ID);
+export async function keepMedical(householdId?: string): Promise<KeptMedical> {
+  const answer = await api.get<MedicalSheetsResponse>(
+    householdId === undefined ? MEDICAL_PATH : `${MEDICAL_PATH}?household=${encodeURIComponent(householdId)}`,
+  );
+  const id = answer.household?.id ?? householdId ?? MEDICAL_ID;
+  const before = await getKept("medical", id);
+  const cache = await openKept("medical", id);
   const householdName = answer.household?.several ? answer.household.name : null;
   const bytes = await putKeptJson(cache, MEDICAL_PATH, { sheets: answer.sheets, householdName });
   const now = Date.now();
   const item: KeptMedical = {
     kind: "medical",
-    id: MEDICAL_ID,
+    id,
     title: householdName ? `Medical sheets for ${householdName}` : "Medical sheets",
     householdName,
     count: answer.sheets.length,
@@ -372,7 +379,16 @@ export function refreshKept(): Promise<number> {
       // Small, and with no date of its own to compare: fetched each time.
       await keepPlaces();
     }
-    if (items.some((item) => item.kind === "medical")) await keepMedical();
+    for (const item of items) {
+      if (item.kind !== "medical") continue;
+      try {
+        // Each household's copy from its own household, whichever is current now.
+        await keepMedical(item.id);
+      } catch (error) {
+        // A household removed at home: its copy stays as it was.
+        if (!isGone(error)) throw error;
+      }
+    }
     return replaced;
   })().finally(() => {
     refreshing = undefined;

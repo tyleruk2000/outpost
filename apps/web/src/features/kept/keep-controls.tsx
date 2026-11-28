@@ -36,7 +36,7 @@ import {
 } from "./area";
 import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE } from "./device";
 import { keepMedical, keepNote, keepPlaces, keepTrack, MEDICAL_ID, PLACES_ID } from "./keep";
-import { keepingSupported, outOfRoomMessage, removeKept, useKept } from "./store";
+import { type KeptMedical, keepingSupported, outOfRoomMessage, removeKept, useKept } from "./store";
 
 const KEPT_PATH = "/kept";
 const HTTPS_SETTINGS = "/settings#https";
@@ -182,13 +182,17 @@ export function KeepPlacesRow({ count }: { count: number }) {
 /**
  * Under the list of medical sheets: kept as a set, only when asked, and after saying what
  * that means. A locked sheet travels locked and opens on the phone with its passphrase;
- * one that is not locked is readable by anyone who can open this browser.
+ * one that is not locked is readable by anyone who can open this browser. Each household's
+ * sheets are a copy of their own: the row is about the household shown (`householdId`).
  */
-export function KeepMedicalRow({ count, open }: { count: number; open: number }) {
+export function KeepMedicalRow({ householdId = MEDICAL_ID, count, open }: { householdId?: string; count: number; open: number }) {
   const kept = useKept();
   const [asking, setAsking] = useState(false);
-  const keep = useKeeping(keepMedical, (done) => toast.success(`${plural(done.count, "medical sheet")} kept on this ${DEVICE}.`));
-  const item = kept?.find((entry) => entry.kind === "medical");
+  const keep = useKeeping(
+    () => keepMedical(householdId),
+    (done) => toast.success(`${plural(done.count, "medical sheet")} kept on this ${DEVICE}.`),
+  );
+  const item = kept?.find((entry): entry is KeptMedical => entry.kind === "medical" && entry.id === householdId);
   if ((count === 0 && !item) || !keepingSupported()) return null;
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border pt-3">
@@ -202,7 +206,7 @@ export function KeepMedicalRow({ count, open }: { count: number; open: number })
           size="sm"
           variant="ghost"
           onClick={() =>
-            void removeKept("medical", MEDICAL_ID).then(() => toast(`The medical sheets are no longer kept on this ${DEVICE}.`), failed)
+            void removeKept("medical", householdId).then(() => toast(`The medical sheets are no longer kept on this ${DEVICE}.`), failed)
           }
         >
           Remove from this {DEVICE}

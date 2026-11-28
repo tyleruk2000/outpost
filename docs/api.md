@@ -1144,7 +1144,7 @@ are searchable only while `medical.inSearch` is on and readable by tools only wh
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/medical-sheets`, `POST` | `{ sheets, inSearch, inTools }`; make one (≤60). |
+| `GET /api/medical-sheets`, `POST` | `{ sheets, inSearch, inTools, household }`, the current household's or `?household=<id>`'s (404 if unknown); make one (≤60). |
 | `GET`, `PUT`, `DELETE /api/medical-sheets/:id` | `PUT` with `baseUpdatedAt`; a `record` over an encrypted sheet needs `removeEncryption: true`. |
 | `GET /api/keeping-in-touch`, `PUT` | The communication plan and `resolved` links. `PUT` with `baseUpdatedAt`: `409` if older than the stored plan, or `null` once a plan is kept. |
 | `GET /api/household-binder` | `BinderStatus`: last made, changes since, and `fingerprints` (a hash per part of what it is made from; `stale` compares them, so a deletion counts). |

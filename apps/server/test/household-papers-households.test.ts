@@ -97,6 +97,11 @@ describe("several households", () => {
     // The model's tools read the current household's, as the screen does; search holds every plain sheet.
     expect(app.ctx.services.householdPapers.medical.list().map((each) => each.name)).toEqual(["Ana", "Ben", "Lodger"]);
     expect(app.ctx.services.householdPapers.medical.listAll()).toHaveLength(5);
+    // A phone bringing its copy of the family's sheets up to date asks for that household by name, whichever is current.
+    const theirs = await ok<MedicalSheetsResponse>("GET", `/api/medical-sheets?household=${family.id}`);
+    expect(theirs.sheets.map((each) => each.name).sort()).toEqual(["Ana", "Cat", "Neighbour"]);
+    expect(theirs.household).toEqual({ id: family.id, name: "Family", several: true });
+    expect((await app.api("GET", "/api/medical-sheets?household=gone")).status).toBe(404);
   });
 
   it("keeps a sheet whose person left every household where it was kept, and the sheets of someone removed with their household", async () => {
