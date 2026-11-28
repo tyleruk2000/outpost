@@ -21,7 +21,10 @@ Check-ins and the roll call are the whole board's, for everyone.
   or a time you give. The line above says who has not checked in since.
 - **Ask everyone to check in** posts "Roll call: please check in" on the board, and the
   roll call counts from then. Where a mesh radio link is set up, tick its channels to ask
-  by radio too; check-ins by radio count under the name the radio sends.
+  by radio too; check-ins by radio count under the name the radio sends. Where a check-in
+  came over the mesh from a radio that is switched on for the map (**Layers → Heard on the
+  radio → Mesh radios**), its line also says where that radio last reported itself and how
+  long ago, as a link to the place on the map. A radio left off shows nothing.
 
 ## Log of events
 

@@ -24,18 +24,21 @@ registerShaper(HebrewShaper);
 
 const fromBase64 = (data: string): Uint8Array => Uint8Array.from(atob(data), (character) => character.charCodeAt(0));
 
-type FaceName = FallbackFont | "regular" | "bold";
+/** The book's own regular or bold, or a fallback in its regular or (where it has one) its bold. */
+type FaceName = "regular" | "bold" | FallbackFont | `${FallbackFont} bold`;
 const faces = new Map<FaceName, Font>();
 
 async function face(name: FaceName): Promise<Font> {
   let font = faces.get(name);
   if (!font) {
-    const data =
-      name === "regular"
-        ? FONT_FILES["Atkinson-Regular.ttf"]!
-        : name === "bold"
-          ? FONT_FILES["Atkinson-Bold.ttf"]!
-          : (await FALLBACK_LOADERS[name]()).regular;
+    let data: string;
+    if (name === "regular") data = FONT_FILES["Atkinson-Regular.ttf"]!;
+    else if (name === "bold") data = FONT_FILES["Atkinson-Bold.ttf"]!;
+    else {
+      const [fallback, weight] = name.split(" ") as [FallbackFont, string | undefined];
+      const files = await FALLBACK_LOADERS[fallback]();
+      data = weight === "bold" ? files.bold : files.regular;
+    }
     font = create(fromBase64(data));
     faces.set(name, font);
   }
@@ -59,7 +62,7 @@ const number = (value: number) => String(Math.round(value * 100) / 100);
  */
 export async function loadRightToLeft(fallbacks: ReadonlySet<FallbackFont>): Promise<RightToLeft> {
   const bidi = bidiFactory();
-  const names: FaceName[] = ["regular", "bold", ...fallbacks];
+  const names: FaceName[] = ["regular", "bold", ...fallbacks, ...[...fallbacks].map((font) => `${font} bold` as const)];
   await Promise.all(names.map(face));
   const drawText = (open: string, words: string) => {
     const attributes = attributesOf(open);
@@ -74,7 +77,7 @@ export async function loadRightToLeft(fallbacks: ReadonlySet<FallbackFont>): Pro
     const pieces = orderedRuns(words.replace(/\s+/g, " ").trim(), { bidi });
     if (pieces.some((run) => run.font && !faces.has(run.font))) return null;
     const runs = pieces.map((run) => {
-      const font = faces.get(run.font ?? (bold ? "bold" : "regular"))!;
+      const font = faces.get(run.font ? (bold ? `${run.font} bold` : run.font) : bold ? "bold" : "regular")!;
       const scale = size / font.unitsPerEm;
       const laid = font.layout(run.text);
       const width = laid.positions.reduce((sum, position) => sum + position.xAdvance * scale, 0);
@@ -115,7 +118,7 @@ export async function loadRightToLeft(fallbacks: ReadonlySet<FallbackFont>): Pro
     const hidden = runs
       .map(
         (run, index) =>
-          `<text x="${number(starts[index]!)}" y="${number(y)}" font-family="${run.font ?? PRINT_FONT}" font-size="${number(size)}"${bold && !run.font ? ' font-weight="bold"' : ""} fill="#000" fill-opacity="0.001">${encode(run.text)}</text>`,
+          `<text x="${number(starts[index]!)}" y="${number(y)}" font-family="${run.font ?? PRINT_FONT}" font-size="${number(size)}"${bold ? ' font-weight="bold"' : ""} fill="#000" fill-opacity="0.001">${encode(run.text)}</text>`,
       )
       .join("");
     return { svg: `<g${kept}><path d="${d}" fill="${fill}"/>${hidden}</g>`, fonts };

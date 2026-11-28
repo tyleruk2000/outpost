@@ -12,6 +12,19 @@
  * A passage is ordered as one line. A long right-to-left passage that wraps keeps its words
  * in order within each line but reads its lines in the wrong order, so the kit is for names
  * and short phrases in these scripts, not paragraphs.
+ *
+ * Why not line by line: the algorithm's levels and mirroring belong to the paragraph, but its
+ * reordering (rules L1 and L2) belongs to each line, so it must run after pdfmake has broken
+ * the lines and before it draws them. pdfmake 0.3.15's browser build gives no hook there: its
+ * Line, LayoutBuilder and ElementWriter are inside the bundle, and nothing it calls back
+ * (pageBreakBefore, header, footer, background) is handed the lines. Ordering before layout
+ * cannot know where the lines will break, since the width of a table cell or column is only
+ * worked out inside pdfmake. The ways open: a patch to pdfmake's build (pnpm patch) calling a
+ * hook from ElementWriter.alignLine to reorder `line.inlines` by a level carried on each run
+ * (pdfmake copies a run's own properties onto its pieces) and set their x again; building
+ * pdfmake from its sources with that change, which means bundling pdfkit's Node parts;
+ * breaking right-to-left passages here where the width is known (a paragraph across the
+ * measure), leaving cells as they are; or waiting for pdfmake to support right to left.
  */
 import type { Bidi } from "bidi-js";
 
@@ -22,6 +35,19 @@ const joins = (unit: string) => /\p{Mn}/u.test(unit) || unit === "\u200c" || uni
 
 /** Whether some text has a letter written right to left. */
 export const hasRightToLeft = (text: string): boolean => RTL_SCRIPT.test(text);
+
+/**
+ * Whether a passage reads right to left: its first letter with a direction of its own is Arabic or Hebrew (the
+ * Unicode Bidirectional Algorithm's rule P2, with letters as the strong characters). Figures and punctuation have
+ * none, so "123 שלום" reads right to left and "Tel Aviv שלום" left to right.
+ */
+export function startsRightToLeft(text: string): boolean {
+  for (const character of text) {
+    if (!/\p{L}/u.test(character)) continue;
+    return RTL_SCRIPT.test(character);
+  }
+  return false;
+}
 
 export interface OrderedPiece {
   text: string;

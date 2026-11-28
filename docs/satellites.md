@@ -46,7 +46,9 @@ and on the PDF alike, and under 2° is left out. A geostationary satellite above
 not a pass but **always up**: the row says where to point (how high, and which way). The list
 shows 40 at a time, with **Show 40 more** under it. **Find a satellite** matches the start of a
 word of the name or the NORAD number (`ISS` finds ISS (ZARYA), not SWISSCUBE), and the line above
-the list then counts what matches. Press a pass to open it under **One satellite**, at the
+the list then counts what matches. **Only those up now** narrows the list to the satellites above
+your horizon this minute; with **Only passes 10° high or more** as well, it is what is worth
+working now. Press a pass to open it under **One satellite**, at the
 satellite's name, with that pass chosen, however many days ahead it is.
 
 When the elements are recent and nothing has gone wrong, what was fetched and when folds into
@@ -70,7 +72,10 @@ its name or its NORAD number in the list and press Enter for the first match.
   **ground track** (below).
 - **Frequencies and modes**: transmitters SatNOGS DB lists as in use. While it is above your
   horizon each downlink is also given corrected for Doppler; with a licence set under **Settings
-  → Radio licence**, the uplink too.
+  → Radio licence**, the uplink too. A satellite with more than ten (the ISS has some forty) has
+  them grouped: **To work through** (an uplink and a downlink) and **To listen to** open,
+  **Beacons and telemetry** and **Uplinks alone** folded; a record SatNOGS lists twice over is
+  listed once.
 
 ### Ground track
 

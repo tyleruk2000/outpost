@@ -32,6 +32,11 @@ export interface RenderedPdf {
   bytes: Uint8Array;
   /** How many pages it came to. */
   pages: number;
+  /**
+   * What `textForMarks` found in pdfkit's fonts: how many had a map back to text, and how many glyphs of no letter
+   * of their own it gave the zero width joiner. It reads pdfkit's insides, so a test checks it still finds them.
+   */
+  textMaps: { fonts: number; marks: number };
 }
 
 const loadedFallbacks = new Set<FallbackFont>();
@@ -59,11 +64,19 @@ type PdfKitFonts = { _fontFamilies?: Record<string, { unicode?: number[][] }> };
  * (so a search for the word fails). Such glyphs are given the zero width joiner, which
  * readers leave out. Done after the pages are laid out and before the fonts are written.
  */
-function textForMarks(pdfKit: PdfKitFonts) {
-  for (const font of Object.values(pdfKit._fontFamilies ?? {}))
+function textForMarks(pdfKit: PdfKitFonts): { fonts: number; marks: number } {
+  let fonts = 0;
+  let marks = 0;
+  for (const font of Object.values(pdfKit._fontFamilies ?? {})) {
+    if (Array.isArray(font.unicode)) fonts += 1;
     font.unicode?.forEach((codePoints, glyph) => {
-      if (codePoints?.length === 0) font.unicode![glyph] = [0x200d];
+      if (codePoints?.length === 0) {
+        font.unicode![glyph] = [0x200d];
+        marks += 1;
+      }
     });
+  }
+  return { fonts, marks };
 }
 
 export async function renderPdf(definition: TDocumentDefinitions): Promise<RenderedPdf> {
@@ -75,7 +88,7 @@ export async function renderPdf(definition: TDocumentDefinitions): Promise<Rende
   await loadFallbacks(pdfMake, fallen.fonts);
   const { doc, pages } = countingPages(fallen.doc);
   const output = pdfMake.createPdf(doc);
-  textForMarks((await output.getStream()) as unknown as PdfKitFonts);
+  const textMaps = textForMarks((await output.getStream()) as unknown as PdfKitFonts);
   const buffer = await output.getBuffer();
-  return { bytes: new Uint8Array(buffer), pages: Math.max(1, pages()) };
+  return { bytes: new Uint8Array(buffer), pages: Math.max(1, pages()), textMaps };
 }

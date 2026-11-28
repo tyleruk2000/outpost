@@ -7,7 +7,7 @@
  * Check-ins are the board's (Messages), so this screen reads and refreshes under the
  * board's keys and posts through the board's routes; nothing is kept twice.
  */
-import type { RollCallLine } from "@outpost/shared";
+import type { MeshPosition, RollCallLine } from "@outpost/shared";
 import { CircleAlert, Megaphone, ShieldCheck, UserRound } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -21,10 +21,11 @@ import { CheckInControls } from "@/features/board/check-ins";
 import { ChooseName } from "@/features/board/compose";
 import { useBoardSummary, useDeviceName } from "@/features/board/data";
 import { useMesh } from "@/features/mesh/data";
+import { radioName, useMeshPositions } from "@/features/mesh/map";
 import { errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
 import { notify } from "@/lib/notify";
-import { cn } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 import { useAskRollCall, useRollCall } from "./data";
 import { fromLocalInput, localInput, rollCallWords, sinceWords } from "./words";
 
@@ -41,7 +42,25 @@ function sinceTime(choice: Since, chosen: string): number | null {
   return null;
 }
 
-function RollCallRow({ line, now }: { line: RollCallLine; now: number }) {
+const degrees = (value: number, positive: string, negative: string) => `${Math.abs(value).toFixed(2)}° ${value >= 0 ? positive : negative}`;
+
+/**
+ * Where the radio a check-in came from last reported itself, as a link to that place on the map: only for a radio
+ * switched on for the map (Layers › Heard on the radio › Mesh radios), since it shows where someone is.
+ */
+function RadioPlace({ radio }: { radio: MeshPosition & { position: NonNullable<MeshPosition["position"]> } }) {
+  const { lat, lon } = radio.position;
+  return (
+    <Link
+      to={`/maps?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&z=15`}
+      className="block text-small text-primary underline underline-offset-2"
+    >
+      {radioName(radio)} was last at {degrees(lat, "N", "S")}, {degrees(lon, "E", "W")}, {timeAgo(radio.at)}
+    </Link>
+  );
+}
+
+function RollCallRow({ line, now, radio }: { line: RollCallLine; now: number; radio?: MeshPosition }) {
   const help = line.latest?.status === "help" && line.answered;
   return (
     <li className="flex items-start gap-3 py-3">
@@ -58,6 +77,7 @@ function RollCallRow({ line, now }: { line: RollCallLine; now: number }) {
           {line.answered ? null : <span className="text-ink-muted"> · no check-in since then</span>}
         </p>
         <p className={cn("break-words text-small", line.latest ? "text-ink-muted" : "text-ink-faint")}>{rollCallWords(line, now)}</p>
+        {radio?.onMap && radio.position ? <RadioPlace radio={{ ...radio, position: radio.position }} /> : null}
       </div>
     </li>
   );
@@ -153,6 +173,10 @@ export default function CheckInPage() {
   const now = Date.now();
   const lastAsk = roll.data?.asks[0];
   const missing = roll.data?.lines.filter((line) => !line.answered) ?? [];
+  // Where a check-in came over the mesh, the radio's own last report, asked for only when one did.
+  const heardByRadio = roll.data?.lines.some((line) => line.latest?.radio) ?? false;
+  const positions = useMeshPositions(heardByRadio);
+  const radios = new Map((positions.data?.radios ?? []).map((radio) => [radio.id, radio]));
 
   return (
     <Page width="reading">
@@ -250,7 +274,7 @@ export default function CheckInPage() {
             ) : null}
             <Rows aria-label="Roll call" className="mt-4">
               {roll.data.lines.map((line) => (
-                <RollCallRow key={line.name} line={line} now={now} />
+                <RollCallRow key={line.name} line={line} now={now} radio={line.latest?.radio ? radios.get(line.latest.radio) : undefined} />
               ))}
             </Rows>
           </>

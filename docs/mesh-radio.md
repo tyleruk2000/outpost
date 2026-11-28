@@ -118,7 +118,10 @@ A Meshtastic radio with a fix sends its position from time to time (every 15 min
 default). Outpost shows the last one under **Layers → Heard on the radio → Mesh radios**,
 with the radio's name and the age of the report. **Mesh radios** draws them on this device;
 each radio also has its own switch, the same on every device, and until it is on that
-radio's place is sent to no browser. MeshCore positions are not shown yet.
+radio's place is sent to no browser. The roll call (**Preparedness → Check-in**) shows a switched-on
+radio's last place beside a check-in it sent. MeshCore positions are not shown yet: a MeshCore
+radio's contacts carry an advertised position, but the layout of that answer is not written
+down in what Outpost was built from, so it is not read.
 
 ## What is kept
 

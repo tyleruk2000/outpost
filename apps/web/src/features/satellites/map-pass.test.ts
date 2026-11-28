@@ -1,8 +1,8 @@
 import type { SatelliteElements } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
-import { predictPasses } from "./engine";
+import { passSchedule, predictPasses } from "./engine";
 import { chosenBounds, passFromParams, satelliteFeatures, satelliteMapLink } from "./map";
-import { passSpanHours, spanWords } from "./satellites-page";
+import { passesShown, passSpanHours, spanWords } from "./satellites-page";
 import { ESHAIL, FUNCUBE, ISS_ORBIT } from "./test-orbits";
 import { satelliteMatches } from "./words";
 
@@ -23,6 +23,31 @@ describe("finding a satellite by name", () => {
     expect(satelliteMatches("AO-07", 7530, "ao 7")).toBe(true);
     expect(satelliteMatches("ISS (ZARYA)", 25544, "255")).toBe(true);
     expect(satelliteMatches("ISS (ZARYA)", 25544, "")).toBe(true);
+  });
+});
+
+describe("what can be worked now", () => {
+  it("narrows the passes to those under way, and to the high ones when asked", () => {
+    const entries = passSchedule([QO100, AO73, ISS_KEPT], KESWICK, new Date(AT.getTime() - 3_600_000), { hours: 24 });
+    // A moment inside a low-orbit pass, so that both kinds of satellite are up.
+    const during = entries.find((entry) => !entry.pass.alwaysUp && entry.pass.aos > AT)!;
+    const at = new Date((during.pass.aos.getTime() + during.pass.los.getTime()) / 2);
+    const now = passesShown(entries, at, { upNow: true, workableOnly: false, needle: "" });
+    expect(now.length).toBeGreaterThanOrEqual(2);
+    for (const entry of now) {
+      expect(entry.pass.aos.getTime()).toBeLessThanOrEqual(at.getTime());
+      expect(entry.pass.los.getTime()).toBeGreaterThan(at.getTime());
+    }
+    expect(now.some((entry) => entry.satellite === QO100)).toBe(true);
+    expect(now.some((entry) => entry === during)).toBe(true);
+    const later = passesShown(entries, at, { upNow: false, workableOnly: false, needle: "" });
+    expect(later.length).toBeGreaterThan(now.length);
+    // Workable now: up now and high enough to be worth setting up for.
+    const workable = passesShown(entries, at, { upNow: true, workableOnly: true, needle: "" });
+    expect(workable.every((entry) => entry.workable)).toBe(true);
+    expect(
+      passesShown(entries, at, { upNow: true, workableOnly: false, needle: "funcube" }).every((entry) => entry.satellite === AO73),
+    ).toBe(true);
   });
 });
 

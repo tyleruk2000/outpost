@@ -357,7 +357,8 @@ function groundSvg(d: string, style: RepeaterStyle, pattern: string): string {
 // ── The figure ─────────────────────────────────────────────────────────────
 
 export interface RepeaterFigureInput {
-  group: RepeaterGroup;
+  /** With `hidden`, how many further repeaters were left off this map. */
+  group: RepeaterGroup & { hidden?: number };
   /** Every place in the book: those inside this map's frame are marked too. */
   locations: readonly RepeaterLocation[];
   ranges: Readonly<Record<string, BookRepeaterRange>>;
@@ -578,6 +579,11 @@ function captionOf(
   if (flat.length > 0)
     lines.push(
       `${flat.map((each) => each.repeater.callsign).join(", ")}: no terrain installed there, so a circle at the radio horizon over flat ground, with ${aerials(flat)}.`,
+    );
+  const hidden = input.group.hidden ?? 0;
+  if (hidden > 0)
+    lines.push(
+      `Only the nearest ${shown.length === 1 ? "repeater is" : `${shown.length} are`} drawn, as chosen for the book; ${hidden === 1 ? "the one further away is" : `the ${hidden} further away are`} in the tables.`,
     );
   lines.push("**A rough guide:** buildings and trees block more, and a signal often reaches a little past a ridge.");
   if (input.map?.credits) lines.push(`Map: ${input.map.credits}.`);

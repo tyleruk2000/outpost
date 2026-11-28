@@ -6,8 +6,10 @@
  * Set OUTPOST_PRINT_SAMPLES to a folder to have the sample written there, to look at.
  */
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import bidiFactory from "bidi-js";
+import { create as createFont } from "fontkit/core";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { Content } from "pdfmake/interfaces";
 import { describe, expect, it } from "vitest";
@@ -43,7 +45,8 @@ import {
   twoColumns,
   withFallbacks,
 } from ".";
-import { visualPieces } from "./order";
+import { BOOK_LINE, withBookLine } from "./fallback";
+import { startsRightToLeft, visualPieces } from "./order";
 import { loadRightToLeft } from "./rtl";
 import { writeSample } from "./samples";
 
@@ -290,15 +293,28 @@ describe("names in other scripts", () => {
   }, 60_000);
 });
 
+/** What the tests read of a font, as fontkit gives it. */
+interface FontkitFont {
+  unitsPerEm: number;
+  ascent: number;
+  descent: number;
+  lineGap: number;
+  hhea: { ascent: number };
+  "OS/2": { typoAscender: number; typoDescender: number };
+  layout(text: string): { advanceWidth: number; glyphs: Array<{ bbox: { minY: number } }>; positions: Array<{ yOffset: number }> };
+}
+
 describe("right-to-left names", () => {
   const bidi = bidiFactory();
 
   /** The words on a page with where each starts, left to right. */
-  async function placedWords(bytes: Uint8Array): Promise<Array<{ text: string; x: number; y: number }>> {
+  async function placedWords(bytes: Uint8Array): Promise<Array<{ text: string; x: number; y: number; width: number }>> {
     const pdf = await getDocument({ data: bytes.slice() }).promise;
     const text = await (await pdf.getPage(1)).getTextContent();
     return text.items.flatMap((item) =>
-      "str" in item && item.str.trim() ? [{ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number }] : [],
+      "str" in item && item.str.trim()
+        ? [{ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number, width: item.width }]
+        : [],
     );
   }
   const xOf = (words: Array<{ text: string; x: number }>, word: string) => {
@@ -376,6 +392,10 @@ describe("right-to-left names", () => {
     const all = words.map((item) => item.text).join(" ");
     // No stray control characters where a letter's dots are a glyph of their own.
     expect([...all].filter((character) => character.charCodeAt(0) < 32)).toEqual([]);
+    // That rests on pdfkit's insides (render.ts, textForMarks): its fonts' maps back to text were found, and the dots given
+    // the zero width joiner. After a pdfmake or pdfkit upgrade, this is what says whether they are still where it looks.
+    expect(made.textMaps.fonts).toBeGreaterThanOrEqual(3);
+    expect(made.textMaps.marks).toBeGreaterThan(0);
     for (const word of ["محمد", "علي", "السيد", "فاطمة", "يوسف", "דוד", "כהן", "بيت", "שלום", "עליכם", "Tel Aviv"])
       expect(all).toContain(word);
     // Right to left: the first word written is the furthest right.
@@ -383,8 +403,190 @@ describe("right-to-left names", () => {
     expect(xOf(words, "علي")).toBeGreaterThan(xOf(words, "السيد"));
     expect(xOf(words, "phone")).toBeGreaterThan(xOf(words, "محمد"));
     expect(xOf(words, "فاطمة")).toBeGreaterThan(xOf(words, "يوسف"));
+    // A column of names that read right to left is set against its right edge, its heading with it; one in Latin
+    // against the left, as its heading.
+    const rightOf = (word: string) => {
+      const found = words.find((item) => item.text === word || item.text.split(/\s+/).includes(word))!;
+      return found.x + found.width;
+    };
+    const nameEdge = rightOf("Name");
+    expect(rightOf("فاطمة")).toBeCloseTo(nameEdge, 0);
+    expect(rightOf("דוד")).toBeCloseTo(nameEdge, 0);
+    expect(xOf(words, "+20")).toBeCloseTo(xOf(words, "Phone"), 0);
+    // Set on the same line as the Latin beside it: the fallback fonts take the book's line height, so a name in
+    // Arabic or Hebrew does not sit lower in its row than the number next to it, nor make the row taller.
+    const yOf = (word: string) => words.find((item) => item.text === word || item.text.split(/\s+/).includes(word))!.y;
+    expect(yOf("فاطمة")).toBeCloseTo(yOf("+20"), 1);
+    expect(yOf("דוד")).toBeCloseTo(yOf("+972"), 1);
+    expect(yOf("Name") - yOf("+20")).toBeCloseTo(yOf("+20") - yOf("+972"), 0);
+    expect(yOf("محمد")).toBeCloseTo(yOf("phone"), 1);
     expect(xOf(words, "דוד")).toBeGreaterThan(xOf(words, "כהן"));
     expect(xOf(words, "بيت")).toBeGreaterThan(xOf(words, "Meet"));
     expect(xOf(words, "שלום")).toBeGreaterThan(xOf(words, "Tel"));
+  }, 60_000);
+
+  it("was checked against this pdfmake and pdfkit: an upgrade asks for the checks again", () => {
+    // render.ts's textForMarks reads pdfkit's `_fontFamilies[…].unicode`, and order.ts relies on pdfmake laying a line
+    // out word by word without moving words past each other. Both were read in these versions' sources. After an upgrade:
+    // run this file (the test above checks the zero width joiner mapping on a real PDF), read textForMarks against the new
+    // pdfkit, look at the right-to-left sample (OUTPOST_PRINT_SAMPLES), then set the versions here.
+    const require = createRequire(import.meta.url);
+    const pdfmakeFile = require.resolve("pdfmake/package.json");
+    const version = (file: string) => (JSON.parse(fs.readFileSync(file, "utf8")) as { version: string }).version;
+    expect(version(pdfmakeFile)).toBe("0.3.15");
+    // pdfmake's browser build carries its own pdfkit: the one it depends on.
+    expect(version(path.join(path.dirname(pdfmakeFile), "..", "pdfkit", "package.json"))).toBe("0.21.0");
+  });
+
+  it("gives every fallback font the book's own line, from the typeface's file", () => {
+    const fonts = path.resolve(import.meta.dirname, "fonts");
+    const open = (file: string) => createFont(new Uint8Array(fs.readFileSync(path.join(fonts, file)))) as unknown as FontkitFont;
+    const book = open("AtkinsonHyperlegibleNext-Regular.ttf");
+    expect(BOOK_LINE.ascender * book.unitsPerEm).toBe(book.ascent);
+    expect(BOOK_LINE.descender * book.unitsPerEm).toBe(book.descent);
+    for (const file of ["NotoSansArabic-Regular.ttf", "NotoSansArabic-Bold.ttf", "NotoSansHebrew-Regular.ttf", "NotoSansSC-Regular.ttf"]) {
+      const raw = fs.readFileSync(path.join(fonts, "noto", file));
+      const given = createFont(
+        Uint8Array.from(atob(withBookLine(raw.toString("base64"))), (c) => c.charCodeAt(0)),
+      ) as unknown as FontkitFont;
+      // As the font engine reads it, whether from hhea or (where the font asks) from OS/2's typographic metrics.
+      expect([given.ascent, given.descent, given.lineGap], file).toEqual([984, -316, 0]);
+      expect([given["OS/2"].typoAscender, given["OS/2"].typoDescender, given.hhea.ascent], file).toEqual([984, -316, 984]);
+      // The letters are as they were.
+      expect(given.layout("محمد שלום 中").advanceWidth, file).toBe(open(`noto/${file}`).layout("محمد שלום 中").advanceWidth);
+    }
+  });
+
+  it("leaves room under Arabic marks that reach low, clear of the rule under the row", async () => {
+    // Kasra and kasratan under the letters, in the regular and the bold: the lowest Arabic marks there are.
+    const low = "كِتَابٍ ـِـٍ";
+    const doc = printDocument({
+      paper: "a4",
+      title: "Marks",
+      made: new Date(Date.UTC(2026, 10, 22)),
+      footerName: "Marks",
+      footerRight: "",
+      parts: [
+        {
+          kind: "plain",
+          content: [
+            dataTable(
+              ["Name", "Note"],
+              [
+                [low, "kasra below"],
+                [`**${low}**`, "bold"],
+                ["Ann Lee", "Latin"],
+              ],
+            ),
+          ],
+        },
+      ],
+    });
+    const made = await renderPdf(doc);
+    writeSample("arabic-marks", made.bytes);
+    // How far the lowest mark reaches below the baseline, in the fonts as printed, against the room the row leaves.
+    const fonts = path.resolve(import.meta.dirname, "fonts", "noto");
+    const lowest = (file: string) => {
+      const font = createFont(
+        Uint8Array.from(atob(withBookLine(fs.readFileSync(path.join(fonts, file)).toString("base64"))), (c) => c.charCodeAt(0)),
+      ) as unknown as FontkitFont;
+      const laid = font.layout(low);
+      return Math.min(...laid.glyphs.map((glyph, index) => glyph.bbox.minY + laid.positions[index]!.yOffset)) / font.unitsPerEm;
+    };
+    const pdf = await getDocument({ data: made.bytes.slice() }).promise;
+    const items = (await (await pdf.getPage(1)).getTextContent()).items.flatMap((item) =>
+      "str" in item && item.str.trim() ? [{ text: item.str, y: item.transform[5] as number, width: item.width }] : [],
+    );
+    const yOf = (word: string) => items.find((item) => item.text.includes(word))!.y;
+    // The **bold** cell is set in the bold, not in boxes for letters the book's own bold lacks.
+    const words = items.filter((item) => item.text.includes("\u0643"));
+    expect(words).toHaveLength(2);
+    expect(words[1]!.width / words[0]!.width).toBeGreaterThan(1.03);
+    // Rows in order down the page: the gap from one baseline to the next is the row's room below its baseline and
+    // above the next one's. The row of marks must leave its own marks at least a point above the rule.
+    const { PRINT_TYPE } = await import("./tokens");
+    for (const [file, from, to] of [
+      ["NotoSansArabic-Regular.ttf", "kasra", "bold"],
+      ["NotoSansArabic-Bold.ttf", "bold", "Latin"],
+    ] as const) {
+      const room = yOf(from) - yOf(to) - PRINT_TYPE.table * BOOK_LINE.ascender - 2; // less the next row's ascent and top padding
+      const below = -lowest(file) * PRINT_TYPE.table;
+      expect(room - below, file).toBeGreaterThanOrEqual(1);
+    }
+  }, 60_000);
+
+  it("knows a passage that reads right to left by its first letter that has a direction", () => {
+    expect(startsRightToLeft("فاطمة بنت يوسف")).toBe(true);
+    expect(startsRightToLeft("**דוד** כהן")).toBe(true);
+    expect(startsRightToLeft("123 שלום")).toBe(true);
+    expect(startsRightToLeft("Tel Aviv שלום")).toBe(false);
+    expect(startsRightToLeft("+20 2 0000")).toBe(false);
+    const table = dataTable(["Name", "Phone"], [["فاطمة بنت يوسف", "Ann"]], { right: [1] }) as {
+      table: { body: Array<Array<{ alignment: string }>> };
+    };
+    // A column of right-to-left names is set right, its heading with it, so the column keeps one edge.
+    expect(table.table.body[1]!.map((cell) => cell.alignment)).toEqual(["right", "right"]);
+    expect(table.table.body[0]!.map((cell) => cell.alignment)).toEqual(["right", "right"]);
+    const columnOf = (head: string, names: string[]) =>
+      (
+        dataTable(
+          [head],
+          names.map((name) => [name]),
+        ) as {
+          table: { body: Array<Array<{ alignment: string }>> };
+        }
+      ).table.body.map((row) => row[0]!.alignment);
+    // Mixed, a column goes by its heading's direction: left under "Name", right under an Arabic heading.
+    expect(columnOf("Name", ["فاطمة بنت يوسف", "Ann Lee", "דוד כהן"])).toEqual(["left", "left", "left", "left"]);
+    expect(columnOf("الاسم", ["فاطمة بنت يوسف", "Ann Lee"])).toEqual(["right", "right", "right"]);
+    expect(columnOf("Name", ["Ann Lee", "", "Bo"])).toEqual(["left", "left", "left", "left"]);
+  });
+
+  it("prints bold Arabic and Hebrew in their bold, in text and in a drawing", async () => {
+    const svgWord = (word: string, bold: boolean, y: number) =>
+      `<text x="10" y="${y}" font-family="Atkinson" font-size="20"${bold ? ' font-weight="bold"' : ""}>${word}</text>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="120" viewBox="0 0 300 120">${svgWord("محمد", false, 25)}${svgWord("محمد", true, 55)}${svgWord("שלום", false, 85)}${svgWord("שלום", true, 115)}</svg>`;
+    const doc = printDocument({
+      paper: "a4",
+      title: "Bold",
+      made: new Date(Date.UTC(2026, 10, 22)),
+      footerName: "Bold",
+      footerRight: "",
+      parts: [
+        {
+          kind: "plain",
+          content: [
+            { text: "محمد", fontSize: 20 },
+            { text: "محمد", fontSize: 20, bold: true },
+            { text: "שלום", fontSize: 20 },
+            { text: "שלום", fontSize: 20, bold: true },
+          ],
+        },
+      ],
+    });
+    const pdf = await getDocument({ data: (await renderPdf(doc)).bytes.slice() }).promise;
+    const items = (await (await pdf.getPage(1)).getTextContent()).items.flatMap((item) =>
+      "str" in item && item.str.trim() ? [{ text: item.str, width: item.width }] : [],
+    );
+    const widths = (word: string) => items.filter((item) => item.text === word).map((item) => item.width);
+    for (const word of ["محمد", "שלום"]) {
+      const [regular, bold] = widths(word);
+      expect(regular, word).toBeGreaterThan(0);
+      // The same letters at the same size: the bold's strokes take more room.
+      expect(bold! / regular!, word).toBeGreaterThan(1.03);
+    }
+    // In a drawing the words are drawn as shapes, the bold from the bold font, wider for the same letters.
+    const ordered = withFallbacks(
+      { content: [figure(svg, { width: 300 })] },
+      await loadRightToLeft(new Set(["NotoSansArabic", "NotoSansHebrew"])),
+    );
+    const paths = [...JSON.stringify(ordered.doc.content).matchAll(/<path d=\\"([^"\\]+)\\"/g)].map((match) => match[1]!);
+    expect(paths).toHaveLength(4);
+    const extent = (d: string) => {
+      const xs = [...d.matchAll(/([\d.]+),[\d.]+/g)].map((match) => Number(match[1]));
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    expect(extent(paths[1]!) / extent(paths[0]!)).toBeGreaterThan(1.03);
+    expect(extent(paths[3]!) / extent(paths[2]!)).toBeGreaterThan(1.03);
   }, 60_000);
 });

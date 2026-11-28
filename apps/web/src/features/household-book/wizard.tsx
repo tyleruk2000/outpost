@@ -21,6 +21,7 @@ import {
   NO_HOME_PLACE,
   placeName,
   RECEIVER_PROFILES,
+  REPEATER_MAP_CHOICES,
   sourceById,
 } from "@outpost/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1001,6 +1002,27 @@ function BookStep({ answers, set, country }: StepProps & { country: string | nul
           cut along.
         </p>
       </div>
+      {answers.sections.includes("frequencies") ? (
+        <div className="grid gap-2">
+          <Segmented<string>
+            label="Repeaters on each map"
+            value={
+              answers.repeaterMapMost !== null && REPEATER_MAP_CHOICES.includes(answers.repeaterMapMost)
+                ? String(answers.repeaterMapMost)
+                : "all"
+            }
+            onChange={(most) => set({ repeaterMapMost: REPEATER_MAP_CHOICES.find((choice) => String(choice) === most) ?? null })}
+            options={[
+              { value: "all", label: "All listed" },
+              ...REPEATER_MAP_CHOICES.map((choice) => ({ value: String(choice), label: `Nearest ${choice}` })),
+            ]}
+          />
+          <p className="text-small text-ink-muted">
+            Where a map of repeaters is busy, draw only the nearest to each place. The map closes in round them; the others stay in the
+            tables.
+          </p>
+        </div>
+      ) : null}
       <Section level={3} title="What goes in it">
         <Rows>
           {BOOK_SECTIONS.map((section) => (
