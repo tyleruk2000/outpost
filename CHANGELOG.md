@@ -311,6 +311,14 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   press, with postcode search however typed.
 - The height of the ground under the pointer or at the centre (`GET /api/maps/height`),
   and **Settings → Appearance → Heights** for metres or feet.
+- **Repair the damaged part** of a kept source file that no longer matches its checksum:
+  only the damaged stretch is fetched again from Geofabrik with a bounded Range request,
+  then the whole file is checked against Geofabrik's checksum; if that fails, or Geofabrik
+  sends the whole file instead, the file is left exactly as it was.
+- **Routes from your own file**, in **Add a place**: routes built from an OpenStreetMap
+  source file (`.osm.pbf`) already in a storage location, by its path. Nothing is
+  downloaded and the file is left where it is; a link to a file outside every storage
+  location is not followed.
 
 #### Reference layers for the map
 
@@ -730,6 +738,16 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - On a phone, the Directions sheet shows a walk's or a ride's climb and its steepest
   stretch under the totals, as the panel does.
 - Many small layout fixes on phones and narrow windows.
+- Road routes put Freilassing in Germany, Vancouver in Canada and Maseru in Lesotho: they
+  use the same country outlines as the rest of Outpost, not a coarser copy.
+- Road routes say **Great Britain** for the United Kingdom's roads when those are Great
+  Britain's alone (England, Scotland and Wales), and no longer take a point in Northern
+  Ireland as covered by them or join it to a road across the North Channel.
+- Offline maps lists a map under the country most of its land is in, by the country
+  outlines, not by boxes: Bavaria under Germany, a map imported from a file under its
+  country rather than **Other areas**. A map of a part of a country (England, a region the
+  regions layer knows) is of the part, not the whole country, and is named for it; a town
+  finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
 
 ### Security
 

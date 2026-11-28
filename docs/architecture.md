@@ -373,7 +373,7 @@ package with its licence text, written by `scripts/build-app.mjs`.
 | `@jsquash/webp` 1.5.0 (libwebp 1.0.2 in WebAssembly) | Apache-2.0 (libwebp BSD-3-Clause) | Bundled in the server, pinned; encodes imagery tiles. Copied to `server/imagery/` with its licence. Chosen over `sharp` (LGPL-3.0 libvips) and JPEG (edges must be transparent). GeoTIFF reading, reprojection and the PMTiles writer are Outpost's own (not `geotiff.js`, whose `xml-utils` is CC0). |
 | Map data | ODbL (OpenStreetMap) | Downloaded by the user; credited on the map. |
 | GeoNames | CC BY 4.0 | Downloaded by the user; credited. |
-| Natural Earth | Public domain | Bundled world outline, country outlines for which country a home is in (`modules/layers/borders.json`, 1:10m simplified) and for road routes (`modules/roads/country-outlines.json`, coarser); other layers downloaded as reference layers. |
+| Natural Earth | Public domain | Bundled world outline, country outlines for which country a home or a road route's point is in (`modules/layers/borders.json`, 1:10m simplified); other layers downloaded as reference layers. |
 | Catalogue content | Per collection | Never bundled; each entry states its licence, or that it is unverified. |
 | Reference sheets (`catalog/bundled/radio/`) | MIT | Bundled; compilations of facts from official sources, each listing them. |
 | Satellite tracking, ported from LogBook73 (`features/satellites/`) | MIT, © 2026 Tyler Allen | LogBook73's tracker rewritten into Outpost; its licence read 21 Nov 2026. |

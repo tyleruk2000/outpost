@@ -121,7 +121,8 @@ export async function startFileServer(host = "127.0.0.1"): Promise<FileServer> {
       return;
     }
     const total = route.body.length;
-    const range = /^bytes=(\d+)-$/.exec(req.headers.range ?? "");
+    // "bytes=100-" to the end, or "bytes=100-199", a bounded stretch (clipped to the file, as HTTP says).
+    const range = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range ?? "");
     // If-Range: a validator that no longer matches means "send the whole current file".
     const ifRange = req.headers["if-range"];
     const unchanged =
@@ -132,13 +133,14 @@ export async function startFileServer(host = "127.0.0.1"): Promise<FileServer> {
         res.writeHead(416, { "content-range": `bytes */${total}` }).end();
         return;
       }
+      const end = range[2] ? Math.min(Number(range[2]), total - 1) : total - 1;
       res.writeHead(206, {
         ...route.headers,
-        "content-length": String(total - start),
-        "content-range": `bytes ${start}-${total - 1}/${total}`,
+        "content-length": String(end + 1 - start),
+        "content-range": `bytes ${start}-${end}/${total}`,
       });
       if (req.method === "HEAD") return void res.end();
-      void send(res, route, route.body.subarray(start));
+      void send(res, route, route.body.subarray(start, end + 1));
       return;
     }
     res.writeHead(200, { ...route.headers, "content-length": String(total) });

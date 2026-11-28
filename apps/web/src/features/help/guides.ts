@@ -549,6 +549,12 @@ export const GUIDES: Guide[] = [
     about: "What a study of the Maps screen on an iPhone found, and what was done about it.",
   },
   {
+    slug: "maps-redesign",
+    file: "development/maps-redesign.md",
+    group: "developers",
+    about: "The design of Maps as a bar, the map and a sheet, part by part.",
+  },
+  {
     slug: "offline-audit",
     file: "development/offline-audit.md",
     group: "developers",
