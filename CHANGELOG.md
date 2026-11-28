@@ -646,6 +646,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - `apps/server/test/eval/tools-eval.ts` and `scripts/write-which-model.mjs` for model
   trials.
 - README screenshots made from demonstration data, and `scripts/check-readme-links.mjs`.
+- `docs/development/pi-only-review.md`: what works on a Raspberry Pi alone, what is
+  unmeasured or risky there, and a checklist of what to measure on the Pi.
 
 ### Raspberry Pi, first run on real hardware (17 November 2026)
 
