@@ -71,6 +71,8 @@ describe("search quality on the household evaluation set", () => {
   // biome-ignore lint/suspicious/noExplicitAny: rows of a plain JavaScript module
   const referenceRows: any[] = [];
   let evaluate: (into: Row[]) => Promise<void>;
+  /** Set once the first hook has finished: the passes with search by meaning build on what it set up. */
+  let keywordDone = false;
 
   // Each pass over the questions is a hundred searches, each asking 37 reference collections: some 15 s on a
   // quiet machine, and several times that on one running every other test file too. The keyword passes are
@@ -132,6 +134,7 @@ describe("search quality on the household evaluation set", () => {
       if (query.pi.length === 0) continue;
       referenceRows.push(measureReference(query, await readReference(base, query.q)));
     }
+    keywordDone = true;
   }, 180_000);
   afterAll(async () => {
     // A file, not the console: the test runner keeps a passing test's output to itself.
@@ -201,6 +204,7 @@ describe("search quality on the household evaluation set", () => {
   describe.skipIf(!modelPresent)("with search by meaning on", () => {
     // biome-ignore lint/suspicious/noDuplicateTestHooks: a hook of its own on purpose, with its own time (see the first)
     beforeAll(async () => {
+      if (!keywordDone) throw new Error("Not tried: the keyword passes before these did not finish (see the first hook's error).");
       // The keyword searches again first: a second pass differs a little from the first (reference collections
       // answer from what they have read since), and that, not the first, is what meaning is compared with.
       await evaluate(keywordAgain);
@@ -211,7 +215,8 @@ describe("search quality on the household evaluation set", () => {
       // measures below would fail for a reason that is not search's.
       await app.ctx.jobs.whenIdle(150_000);
       const built = app.ctx.jobs.list({ types: ["semantic.index"] });
-      expect(built.map((job) => job.state)).toEqual(["succeeded"]);
+      expect(built.length).toBeGreaterThan(0);
+      expect(built.filter((job) => job.state !== "succeeded").map((job) => `${job.state}: ${job.error ?? ""}`)).toEqual([]);
       await evaluate(meaningRows);
     }, 300_000);
 

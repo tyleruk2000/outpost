@@ -230,4 +230,44 @@ describe("the job runner", () => {
     expect(messages).not.toContainEqual(expect.stringMatching(/Attempt [4-9] of 3/));
     await last.close();
   });
+
+  it("counts a run cut short without an orderly stop (a crash) as an attempt, and fails the job at its maximum", async () => {
+    const shared = openDatabase(":memory:");
+    open.push(shared.sqlite);
+    let id = "";
+    const settled: string[] = [];
+    // A job that takes the server down each time it runs: the process dies, close() is never called.
+    for (let crash = 0; crash < 2; crash++) {
+      const runner = new JobQueue(shared.db, new EventBus(), log);
+      let started!: () => void;
+      const begun = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      runner.register("fatal", {
+        queue: "work",
+        run: () =>
+          new Promise(() => {
+            started();
+          }),
+        onSettled: (job) => void settled.push(job.state),
+      });
+      if (crash === 0) id = runner.enqueue("fatal", {}, { title: "Fatal", maxAttempts: 2 }).id;
+      runner.start();
+      await begun;
+      expect(runner.get(id)).toMatchObject({ state: "running", attempts: crash + 1 });
+    }
+
+    const after = new JobQueue(shared.db, new EventBus(), log);
+    const ran = vi.fn(async () => ({}));
+    after.register("fatal", { queue: "work", run: ran, onSettled: (job) => void settled.push(job.state) });
+    after.start();
+    await after.whenIdle(2000);
+    expect(ran).not.toHaveBeenCalled();
+    const job = after.get(id)!;
+    expect(job).toMatchObject({ state: "failed", attempts: 2, errorKind: "interrupted" });
+    expect(job.error).toMatch(/Outpost stopped while this was running, 2 times/);
+    expect(job.finishedAt).not.toBeNull();
+    expect(settled).toEqual(["failed"]);
+    await after.close();
+  });
 });

@@ -188,20 +188,33 @@ export class JobQueue {
   start(): void {
     if (this.started) return;
     this.started = true;
-    const left = this.db.select({ id: jobs.id }).from(jobs).where(eq(jobs.state, "running")).all();
-    // Starting a run counts an attempt; one cut short by the process stopping did not fail,
-    // so it is given back. Otherwise a job resumed a few times shows "attempt 6 of 3".
-    this.db
-      .update(jobs)
-      .set({
-        state: "queued",
-        attempts: sql`max(${jobs.attempts} - 1, 0)`,
-        updatedAt: Date.now(),
-        progressMessage: "Resuming after restart",
-      })
-      .where(eq(jobs.state, "running"))
-      .run();
-    for (const { id } of left) this.note(id, "restarted", "queued", null);
+    // A row still running was cut short. After an orderly stop its attempt was already given back
+    // (see execute); one still counted means the process died while it ran (killed, out of memory,
+    // the power cut). That counts: a job that takes the server down every time must end, not loop.
+    const left = this.db.select().from(jobs).where(eq(jobs.state, "running")).all();
+    const now = Date.now();
+    for (const row of left) {
+      if (row.attempts >= row.maxAttempts) {
+        const error =
+          row.attempts === 1
+            ? "Outpost stopped while this was running, so it was not started again. Resume it to try again."
+            : `Outpost stopped while this was running, ${row.attempts} times, so it was not started again. Resume it to try again.`;
+        this.db
+          .update(jobs)
+          .set({ state: "failed", error, errorKind: "interrupted", finishedAt: now, updatedAt: now })
+          .where(eq(jobs.id, row.id))
+          .run();
+        this.note(row.id, "state", "failed", error);
+        void this.settle(this.require(row.id));
+      } else {
+        this.db
+          .update(jobs)
+          .set({ state: "queued", updatedAt: now, progressMessage: "Resuming after restart" })
+          .where(eq(jobs.id, row.id))
+          .run();
+        this.note(row.id, "restarted", "queued", null);
+      }
+    }
     this.prune();
     this.pump();
   }
@@ -649,7 +662,14 @@ export class JobQueue {
           ...(error instanceof StoppedWithResult ? { result: error.result } : {}),
         });
       } else if (reason === "shutdown") {
-        // Leave the row as running; start() on the next boot queues it again.
+        // Leave the row as running; start() on the next boot queues it again. Stopped in good
+        // order, the run did not fail: its attempt is given back, so a job resumed after a few
+        // restarts does not show "attempt 6 of 3" or run out of retries.
+        this.db
+          .update(jobs)
+          .set({ attempts: Math.max(0, attempt - 1) })
+          .where(eq(jobs.id, job.id))
+          .run();
       } else {
         const network = classifyNetworkError(error);
         const permanent = error instanceof PermanentJobError || error instanceof AppError;

@@ -81,7 +81,16 @@ test.describe("Household people and the book, by keyboard", () => {
     await page.mouse.wheel(0, 4000);
     // The wheel only starts the scroll: it often lands after mouse.wheel has returned. Landing after the step below
     // had put its heading in view, it scrolled the heading out again (flaky on a loaded machine).
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    // Landed: moved, and the same two frames running.
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const first = window.scrollY;
+          await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+          return first > 0 && first === window.scrollY;
+        }),
+      )
+      .toBe(true);
     await page.getByRole("button", { name: /^Save and go on/ }).focus();
     await page.keyboard.press("Enter");
     const heading = page.getByRole("heading", { name: /^Step 2 of \d+: / });
