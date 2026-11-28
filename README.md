@@ -41,7 +41,7 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 | Home | What is in the library, free space, the emergency plan, how long food and water last, and anything new on the board. |
 | [One search](docs/search.md) | One ranked list from documents, notes, reference archives, places, contacts, plans and supplies, each with the reason it was found; other spellings are searched too, and a typo gets "did you mean". |
 | [Quick search](docs/search.md) | Ctrl or Cmd + K finds screens, settings and guide sections by name or everyday words. |
-| [Search by meaning and OCR](docs/search.md) | One switch, and the model that comes with Outpost finds passages saying the same thing in other words. Scanned pages are read in English. **How search by meaning works** and **How search was tuned** explain each step with diagrams. |
+| [Search by meaning and OCR](docs/search-by-meaning.md) | One switch, and the model that comes with Outpost finds passages saying the same thing in other words. Scanned pages are read in English. **How search by meaning works** and **How search was tuned** explain each step with diagrams. |
 
 ![Search results, each with the reason it was found](docs/screenshots/search-reasons.webp)
 
@@ -65,18 +65,18 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 
 | Feature | What it does |
 | --- | --- |
-| [Offline maps](docs/maps.md) | **Add a place** (a country, part of one or an area you draw), tick Map, Routes, Nearby places or Walking and cycling, and see the size before anything downloads. One row a place, updated from there. |
-| [Terrain and contours](docs/maps.md) | Every map comes with its hills: hill shading, contour lines and the height of the ground, in metres or feet. |
-| [Places and routes](docs/maps.md) | Saved places; routes drawn with distance, ascent and profile; GPX, KML, KMZ and GeoJSON in, GPX out. |
+| [Offline maps](docs/map-data.md) | **Add a place** (a country, part of one or an area you draw), tick Map, Routes, Nearby places or Walking and cycling, and see the size before anything downloads. One row a place, updated from there. |
+| [Terrain and contours](docs/map-styles.md) | Every map comes with its hills: hill shading, contour lines and the height of the ground, in metres or feet. |
+| [Places and routes](docs/map-routes.md) | Saved places; routes drawn with distance, ascent and profile; GPX, KML, KMZ and GeoJSON in, GPX out. |
 | [Directions](docs/road-routes.md) | Drive, Door to door, Walk or Cycle, worked out on this device and written as you would write it down: the road, the place on the signs, the junctions, the ferry or tunnel. Says which country still needs its roads. A printable route card and a plain-text copy. |
 | [Reachable from here](docs/road-routes.md) | How far you get in 15, 30 or 60 minutes from any point, over main roads or, with Walking and cycling, every street. |
 | [Find and record routes](docs/map-routes.md) | Look a named route up in OpenStreetMap, or record where you walk while the screen is on, over `https`. |
-| [Coordinates and place search](docs/maps.md) | Grid references, UTM, MGRS and Maidenhead; offline place names, and every British postcode. |
-| [Sun, grey line, line of sight](docs/maps.md) | Sunrise and twilight anywhere, day and night over the map, and whether two points can see each other. |
-| [Satellite imagery](docs/maps.md) | NASA's Blue Marble for the world, 10 m Sentinel-2 for an area, and aerial photographs for New Zealand and the US. |
+| [Coordinates and place search](docs/map-places.md) | Grid references, UTM, MGRS and Maidenhead; offline place names, and every British postcode. |
+| [Sun, grey line, line of sight](docs/map-sun-and-radio.md) | Sunrise and twilight anywhere, day and night over the map, and whether two points can see each other. |
+| [Satellite imagery](docs/map-imagery.md) | NASA's Blue Marble for the world, 10 m Sentinel-2 for an area, and aerial photographs for New Zealand and the US. |
 | [Layers on the map](docs/reference-layers.md) | Published data for the map (boundaries, airports, shelters, population, flood zones), each with its source and licence. |
 | [Food and supplies](docs/reference-layers.md) | Shops, food banks, water, fuel and pharmacies from OpenStreetMap (and in the UK the Food Standards Agency), with the nearest of each to home worked out offline. |
-| [Printing](docs/maps.md) | A one-page PDF map at a stated scale. |
+| [Printing](docs/map-printing.md) | A one-page PDF map at a stated scale. |
 
 ![The map with places and a route](docs/screenshots/maps.webp)
 
@@ -300,14 +300,14 @@ size first:
 
 | What | Size, and why it is not bundled |
 | --- | --- |
-| [Offline maps: map and hills](docs/maps.md) | Shown at Check size (an area of up to 60 GB); OpenStreetMap data for the place you choose |
+| [Offline maps: map and hills](docs/map-data.md) | Shown at Check size (an area of up to 60 GB); OpenStreetMap data for the place you choose |
 | [Offline maps: routes and nearby places](docs/road-routes.md) | Read from the country's source file (Great Britain's 2.2 GB makes 30 MB of routes), kept or deleted after, as you choose |
 | [Walking and cycling](docs/deployment.md#street-routes) | An optional add-on (`./deploy/pi/install.sh --street-routes`); on a Pi 5, Great Britain takes 2.7 GB and 56 minutes to build, the United Kingdom 2.9 GB and 91 minutes |
-| [Place names](docs/maps.md) | A GeoNames dataset; for Great Britain OS Open Names, 103 MB |
+| [Place names](docs/map-places.md) | A GeoNames dataset; for Great Britain OS Open Names, 103 MB |
 | [Reference collections](docs/sources.md) | A few megabytes to many gigabytes, each under its publisher's licence |
 | [VOACAP's data](docs/hf-propagation.md) | 559 kB; the ITU has not given permission to pass it on |
 | [The second HF model](docs/hf-propagation.md) | Built on your computer with Docker, plus 137 MB of maps; under no open licence |
-| [Satellite imagery and aerial photographs](docs/maps.md) | The world at 2 km: 256 MB fetched, 15.5 MB kept; Sentinel-2 about 16 MB per 100 km² |
+| [Satellite imagery and aerial photographs](docs/map-imagery.md) | The world at 2 km: 256 MB fetched, 15.5 MB kept; Sentinel-2 about 16 MB per 100 km² |
 | [Layers on the map, food and supplies](docs/reference-layers.md) | Stated per item; a source file runs from 1.95 MB (Rutland) to 1.72 GB (England) |
 | [Audiobooks](docs/library.md) | Downloaded by your browser from LibriVox's links |
 | [A model server](docs/setup-guide.md) | Several gigabytes a model; your choice, Outpost includes none |

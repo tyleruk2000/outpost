@@ -273,7 +273,7 @@ On a slow drive the first search of an archive can take seconds. A collection th
 too long is named in a note; search again and it is quick. Each search asks the
 collections likeliest to hold the answer first: **Search all reference collections**
 under the results asks every one
-([search.md](search.md#reference-collections-in-results)).
+([search-reference-collections.md](search-reference-collections.md)).
 
 ## Maps
 
@@ -296,7 +296,7 @@ download and add the place again.
 
 The servers are volunteers'. Wait a minute, or **Ask another server**. An administrator
 can declare another in `<data directory>/catalog/routes/route-sources.json`
-([maps.md](map-routes.md#what-is-sent-and-to-whom)).
+([map-routes.md](map-routes.md#what-is-sent-and-to-whom)).
 
 ### "Find a route" finds nothing for a path I know exists
 
@@ -325,7 +325,7 @@ is disconnected.
 ### A PDF has no searchable text
 
 Its pages are scans. Choose **Read text from the scanned pages**
-([search.md](search.md#scanned-pages-and-images-ocr)). Text is not read from PDFs over
+([ocr.md](ocr.md)). Text is not read from PDFs over
 512 MB.
 
 ### An EPUB book will not open, or looks different from the printed book
@@ -351,7 +351,7 @@ are accepted; a file must be what its extension says; text must be UTF-8.
 ### Semantic search: "The embedding server at … is not reachable."
 
 Check it is running and the address is right from where Outpost runs. In Docker,
-`127.0.0.1` is the container ([search.md](search.md#a-local-embedding-server-local-server)).
+`127.0.0.1` is the container ([search-by-meaning.md](search-by-meaning.md#a-local-embedding-server-local-server)).
 
 ### Semantic search: "The built-in model has not been fetched yet" or "…is not part of this installation"
 

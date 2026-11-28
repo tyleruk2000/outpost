@@ -147,7 +147,7 @@ itself: see [step 10](#10-things-kept-to-the-pi-itself).
 
 **Home → Download a map → Add a place**, choose the country, tick **Map**, **Routes** and
 **Nearby places**, and choose whether to keep the country's source file (the United
-Kingdom's is 2.3 GB, and walking and cycling is built from it) ([maps.md](maps.md)).
+Kingdom's is 2.3 GB, and walking and cycling is built from it) ([map-data.md](map-data.md#the-source-file)).
 
 Walking, cycling and door-to-door routes come from an optional add-on
 ([Street routes](#street-routes)). Add it on the Pi:
@@ -503,7 +503,7 @@ NTFS need the mount options `uid=1000,gid=1000`. Mount drives at a fixed place
   server on the board too, or to index very large PDFs.
 - Leave **Documents processed at once** at 1 and downloads at 1 or 2 at a time.
 - Search by meaning reads about a thousand passages every four minutes on a Pi 5. For a
-  large library, let a laptop [do the reading](search.md#reading-the-library-on-a-faster-computer).
+  large library, let a laptop [do the reading](search-by-meaning.md#reading-the-library-on-a-faster-computer).
 
 #### Street routes
 
@@ -520,7 +520,7 @@ downloads Valhalla's image, about 700 MB, once). Elsewhere, put `COMPOSE_PROFILE
 in `.env` and run `docker compose up -d --build`.
 
 Then add **Walking and cycling** for a place under **Maps → Offline maps**, in **Add a
-place** ([maps.md](maps.md#walking-and-cycling)). On a Pi 5 with 8 GB, Great Britain took
+place** ([map-getting-around.md](map-getting-around.md#walking-and-cycling)). On a Pi 5 with 8 GB, Great Britain took
 56 minutes and the United Kingdom 91; each needed about 8 GB free while building, takes
 2.7 to 2.9 GB after, and wrote about 53 GB to the disk it worked on. Choose a NAS or USB
 disk as the place it works to spare the SD card. That location must be mounted read-write

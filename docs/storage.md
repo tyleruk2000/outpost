@@ -171,7 +171,7 @@ drawn on the map, World basics) with the same marks as on Offline maps, where it
 size. Each place leads to **Offline maps**, the one place map data is added, updated, moved and
 removed. Routes are kept with Outpost's own data, not on a storage location,
 and do not move. When a place is over a year old, the section says so. See
-[updating](maps.md#updating).
+[updating](map-data.md#updating).
 
 ## Checking files
 

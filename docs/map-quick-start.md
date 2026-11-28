@@ -19,7 +19,7 @@ This needs the internet once.
 ## Find a place
 
 1. Type in the **search box** at the top of the map: a place name (once place names are
-   downloaded, see [Offline place search](maps.md#offline-place-search)), a postcode or grid
+   downloaded, see [Offline place search](map-places.md#offline-place-search)), a postcode or grid
    reference such as `NY 215 072` in Great Britain, or coordinates such as
    `54.4609, -3.0886`.
 2. Choose a result. The map moves to it.

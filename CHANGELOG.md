@@ -615,6 +615,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   quick search.
 - **Which model**: seven models compared on a Mac for answers and looking things up.
 - Map and radio quick starts for whoever did not set Outpost up.
+- The map and search guides in smaller parts: the Maps screen, map data, styles and
+  layers, places and coordinates, reach, walking and cycling, and sun and radio; search,
+  ranking, reference collections, OCR and search by meaning, each a guide of its own.
+  **How search by meaning works** is listed under Help too.
 
 #### Chat: tools a model can use, and MCP
 

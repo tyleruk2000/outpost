@@ -269,7 +269,7 @@ small words left out; `alsoSearched` the other spellings and names searched as w
 `didYouMean` (`{ query, words }` or null) a near word for one in no passage, offered
 only while fewer than five results are found; `facets` are per kind; `warnings` name sources that could not
 answer. Each result's `score` is 0 to 1 on one scale for every source, and `why` says in
-a few words why it is there ([search.md](search.md#ranking)). With `reference=include`
+a few words why it is there ([search-ranking.md](search-ranking.md)). With `reference=include`
 the search waits up to 10 seconds for archives and counts their articles in `total`; with
 `later` it leaves them to `/reference`, and `referenceToCome` says whether there are any.
 Repeaters (kind `repeater`) and places in reference layers (`map-feature`) are answered by
@@ -290,7 +290,7 @@ like one of their names), or in `results` when their kind is asked for.
 | `POST /api/semantic/import` | The exported file, `application/gzip`. `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`; `400` for vectors of another size. |
 
 Pause or cancel a build through `/api/jobs`. File format:
-[search.md](search.md#moving-vectors-between-installations).
+[search-by-meaning.md](search-by-meaning.md#moving-vectors-between-installations).
 
 ## Answers
 

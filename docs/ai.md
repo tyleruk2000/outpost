@@ -141,7 +141,7 @@ library of scanned manuals will do worse. Untried set-ups are in
   passages go there, over plain HTTP unless the address is `https`.
 - **Search by meaning is separate**: its index embeds every passage, contacts included.
   The built-in model sends nothing anywhere
-  ([search.md](search.md#a-local-embedding-server-local-server)).
+  ([search-by-meaning.md](search-by-meaning.md#a-local-embedding-server-local-server)).
 
 ### Which addresses are contacted
 
@@ -322,6 +322,6 @@ model's. Fields: [development/answers-and-search.md](development/answers-and-sea
 ## Planning for a change of embedding model
 
 Vectors are kept per model, so switching model deletes nothing and switching back reuses
-the old ones (see [search.md](search.md#changing-the-model)). Allow time and room for two
+the old ones (see [search-by-meaning.md](search-by-meaning.md#changing-the-model)). Allow time and room for two
 sets during a change, or build on a faster machine and
-[move them](search.md#moving-vectors-between-installations).
+[move them](search-by-meaning.md#moving-vectors-between-installations).

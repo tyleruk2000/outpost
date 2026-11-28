@@ -3,7 +3,7 @@
  * network share.
  *
  * It copies the two things about the real program that decide how a search feels,
- * both measured against kiwix-serve 3.8.2 (see docs/search.md):
+ * both measured against kiwix-serve 3.8.2 (see docs/search-reference-collections.md):
  *
  *  - it works on a fixed number of requests at once (four, as kiwix-serve does unless
  *    told otherwise) and makes the rest wait their turn;

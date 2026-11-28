@@ -6,7 +6,7 @@
  * a person who opens one finds only another list. They are left out of search results;
  * the reader still opens them.
  *
- * The rules (docs/search.md, "Reference collections in results"):
+ * The rules (docs/search-reference-collections.md):
  *
  *  - a list of questions or tags: an address under questions/tagged/, tags/, users/ or
  *    badges/, or the bare lists questions, tags, users, unanswered;

@@ -3,7 +3,7 @@
  *
  * kiwix-serve works on four requests at once and makes the rest wait inside it, and a
  * search it has begun runs to its end even when whoever asked has gone away (both
- * measured against kiwix-serve 3.8.2; see docs/search.md). Sent all at once, the
+ * measured against kiwix-serve 3.8.2; see docs/search-reference-collections.md). Sent all at once, the
  * searches of two dozen archives sit where they cannot be taken back: a person who
  * types three letters has three sets of them queued, and anyone reading an article
  * waits behind them all.

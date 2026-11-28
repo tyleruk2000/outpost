@@ -115,7 +115,7 @@ as not added, with the reason.
 | Screen | The PDF |
 | --- | --- |
 | Maps → **Print or save as PDF** | One page of map at a stated scale ([map-printing.md](map-printing.md)) |
-| Maps → Sun tab, or a place's Sun section | Sun times for two weeks, a month or a year ([maps.md](maps.md#sun-times-on-paper)) |
+| Maps → Sun tab, or a place's Sun section | Sun times for two weeks, a month or a year ([map-sun-and-radio.md](map-sun-and-radio.md#sun-times-on-paper)) |
 | Maps → Routes → Road route | A route card: overview map and directions ([road-routes.md](road-routes.md)) |
 | Radio → HF propagation | A prediction, or a comparison ([hf-propagation.md](hf-propagation.md#a-prediction-on-paper)) |
 | Radio → HF coverage | The coverage map, with its grid in figures ([hf-propagation.md](hf-propagation.md#a-coverage-map-on-paper)) |
