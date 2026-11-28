@@ -200,6 +200,16 @@ export interface StreetsTiles {
   countryFiles(): StreetsCountryFile[];
   estimate(regionIds: string[], coming?: StreetsEstimateRequest["coming"]): StreetsEstimate;
   build(input: { regions: string[]; workLocationId?: string }): { jobId: string; estimate: StreetsEstimate };
+  /**
+   * A build asked for as a consequence of something else (Add a place, once the source file is kept):
+   * started now with the streets in use kept, or, while another build runs, kept waiting and started
+   * once that one has finished. Offline maps says it is waiting.
+   */
+  buildOrWait(input: { regions: string[]; workLocationId?: string }): { jobId: string | null; waiting: boolean };
+  /** Starts the build waiting, if there is one and nothing else is building. */
+  startWaiting(): void;
+  /** The build waiting for the one under way, or the reason it could not start once it was its turn. */
+  waiting(): StreetsWaiting | null;
   /** The regions a build adding these keeps: those in the streets in use (with a kept file still) and these. */
   adding(regionIds: string[]): string[];
   importFile(input: { locationId: string; relPath: string; name?: string }): { jobId: string };
@@ -215,9 +225,51 @@ export interface StreetsTiles {
   }): Promise<Record<string, unknown>>;
 }
 
+/** A build waiting for the one under way, as kept in Outpost's data folder so that a restart does not lose it. */
+interface WaitingFile {
+  /** The places asked for: the streets in use are added to them when it starts. */
+  regions: string[];
+  workLocationId: string | null;
+  askedAt: number;
+  /** Why it could not start when its turn came; it then waits for nothing and is said as failed. */
+  problem?: string;
+}
+
+export interface StreetsWaiting {
+  regions: Array<{ regionId: string; name: string; country: string | null }>;
+  /** The build it waits for, by name; null once that has gone. */
+  behind: string | null;
+  problem: string | null;
+}
+
 export function createStreetsTiles(ctx: AppContext, connection: StreetsConnection): StreetsTiles {
   const dir = connection.dir;
   const file = (name: string) => resolveInside(dir, name);
+  const waitingPath = path.join(ctx.config.dataDir, "streets-waiting.json");
+
+  function readWaiting(): WaitingFile | null {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(waitingPath, "utf8")) as WaitingFile;
+      return Array.isArray(parsed.regions) && parsed.regions.length > 0 ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeWaiting(next: WaitingFile | null) {
+    if (next === null) fs.rmSync(waitingPath, { force: true });
+    else {
+      fs.writeFileSync(`${waitingPath}.part`, JSON.stringify(next));
+      fs.renameSync(`${waitingPath}.part`, waitingPath);
+    }
+    ctx.events.publish({ type: "streets.changed" });
+    ctx.events.publish({ type: "maps.changed" });
+  }
+
+  /** Another build is under way, by Outpost's task or by the service's own word. */
+  function busy() {
+    return activeJobs().length > 0 || connection.status()?.state === "building";
+  }
 
   function countryFiles(): StreetsCountryFile[] {
     const { storage } = ctx.services;
@@ -285,6 +337,8 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
 
   function build(input: { regions: string[]; workLocationId?: string }) {
     assertCanStart();
+    // A build the person starts takes the place of one that could not start when its turn came.
+    if (readWaiting()?.problem) writeWaiting(null);
     const files = chosen(input.regions);
     if (input.workLocationId) {
       const location = ctx.services.storage.list().find((l) => l.id === input.workLocationId);
@@ -312,6 +366,57 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
     ctx.events.publish({ type: "streets.changed" });
     ctx.events.publish({ type: "maps.changed" });
     return { jobId: job.id, estimate: est };
+  }
+
+  function buildOrWait(input: { regions: string[]; workLocationId?: string }) {
+    if (connection.installed() && busy()) {
+      const had = readWaiting();
+      writeWaiting({
+        regions: [...new Set([...(had && !had.problem ? had.regions : []), ...input.regions])],
+        workLocationId: input.workLocationId ?? (had && !had.problem ? had.workLocationId : null),
+        askedAt: Date.now(),
+      });
+      return { jobId: null, waiting: true };
+    }
+    const built = build({ ...input, regions: adding(input.regions) });
+    return { jobId: built.jobId, waiting: false };
+  }
+
+  function startWaiting() {
+    const next = readWaiting();
+    if (!next || next.problem || busy()) return;
+    try {
+      build({ regions: adding(next.regions), ...(next.workLocationId ? { workLocationId: next.workLocationId } : {}) });
+      writeWaiting(null);
+    } catch (error) {
+      ctx.log.warn({ err: error }, "the walking and cycling build that was waiting could not start");
+      writeWaiting({ ...next, problem: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  function waiting(): StreetsWaiting | null {
+    const next = readWaiting();
+    if (!next) return null;
+    const files = countryFiles();
+    const behind = activeJobs()[0];
+    return {
+      regions: next.regions.map((regionId) => {
+        const found = files.find((f) => f.regionId === regionId);
+        return { regionId, name: found?.name ?? regionId, country: found?.country ?? null };
+      }),
+      behind: behind ? ((behind.payload as StreetsBuildPayload).name ?? behind.title) : null,
+      problem: next.problem ?? null,
+    };
+  }
+
+  /** The places a build adding these keeps: those in the streets in use (with a kept file still) and these. */
+  function adding(regionIds: string[]) {
+    // One set of streets is in use at a time: the places it has already, with a kept file still, and these.
+    const kept = new Set(countryFiles().map((f) => f.regionId));
+    const had = (tilesetOf(connection.status()?.current)?.regions ?? [])
+      .map((r) => r.regionId)
+      .filter((id): id is string => id !== null && kept.has(id));
+    return [...new Set([...had, ...regionIds])];
   }
 
   function importFile(input: { locationId: string; relPath: string; name?: string }) {
@@ -444,14 +549,10 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
     countryFiles,
     estimate,
     build,
-    adding(regionIds) {
-      // One set of streets is in use at a time: the places it has already, with a kept file still, and these.
-      const kept = new Set(countryFiles().map((f) => f.regionId));
-      const had = (tilesetOf(connection.status()?.current)?.regions ?? [])
-        .map((r) => r.regionId)
-        .filter((id): id is string => id !== null && kept.has(id));
-      return [...new Set([...had, ...regionIds])];
-    },
+    buildOrWait,
+    startWaiting,
+    waiting,
+    adding,
     importFile,
     async remove() {
       if (!connection.installed()) throw badRequest("Streets for routes are not installed.");
@@ -480,6 +581,7 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
         const stage = ours ? (said.stage ?? null) : null;
         return {
           jobId: job.id,
+          name: payload.name ?? null,
           state: ours ? "building" : "waiting",
           stage,
           stageLabel: stage ? (STAGES[stage] ?? stage) : null,

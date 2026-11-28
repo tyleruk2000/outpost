@@ -229,7 +229,8 @@ connected is left there until it is back.
 
 **Offline** on the Maps screen shows what covers the view, with **Add this view** and **Draw
 an area** (drag a box on the map; Escape stops). Both open Add a place with that area, where
-you name it. A box cannot cross the 180° meridian (make two), and a map of over about 20
+you name it. Where a map on this device already covers the area at that detail, **Map** starts
+unticked, so satellite pictures of the view are one tick. A box cannot cross the 180° meridian (make two), and a map of over about 20
 million tiles is refused: choose less detail under **More choices**. The detail levels:
 
 | Detail | Roughly what you see |
@@ -367,6 +368,13 @@ country's source file; nothing more is downloaded once that file is kept.
    set, which replaces the one in use.
 3. Press the button that starts it. The row shows each stage with its progress (step 3 of 5)
    and the time left; routes keep working on what is in use meanwhile.
+
+One build runs at a time. Asked for while another is under way (a second country added
+while the first builds, or a source file that finishes downloading during a build), it
+waits: **What for France?** says so before you press, the row says **Waiting** ("Starts
+once the walking and cycling build under way (Kent) has finished"), and it starts by
+itself when that one ends, with the places already built kept in the new set. If it then
+cannot start (its source file was removed meanwhile), the row says why.
 
 **Remove…** in the place's **⋯** menu lets you tick **Walking and cycling**; the source file
 stays unless you tick it too. Where the add-on is not installed, Offline maps says so in one

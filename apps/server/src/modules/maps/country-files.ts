@@ -407,14 +407,15 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
   });
 
   /**
-   * Walking and cycling asked for in Add a place, built from the file now kept. A build that cannot
-   * start (another under way) is said in the log; its row on Offline maps still offers it.
+   * Walking and cycling asked for in Add a place, built from the file now kept. While another build is
+   * under way it waits for it, and Offline maps says so; one that cannot start at all is said in the log,
+   * and its row on Offline maps still offers it.
    */
   function startStreets(work: CountryFileWork) {
     if (!work.streets) return;
     try {
-      ctx.services.streets?.tiles.build({
-        regions: ctx.services.streets.tiles.adding([work.regionId]),
+      ctx.services.streets?.tiles.buildOrWait({
+        regions: [work.regionId],
         ...(work.streets.workLocationId ? { workLocationId: work.streets.workLocationId } : {}),
       });
     } catch (error) {
@@ -532,9 +533,10 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
     if (here) {
       if (!readsSomething) {
         // Kept already, and only walking and cycling asked for: built from it now.
+        // While another build is under way it waits for it, and says so (Offline maps, and the answer here).
         const built = streets
-          ? ctx.services.streets?.tiles.build({
-              regions: ctx.services.streets.tiles.adding([region.id]),
+          ? ctx.services.streets?.tiles.buildOrWait({
+              regions: [region.id],
               ...(streets.workLocationId ? { workLocationId: streets.workLocationId } : {}),
             })
           : undefined;

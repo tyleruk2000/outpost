@@ -9,7 +9,7 @@
  */
 import { formatBytes, type StreetsEstimate, type StreetsEstimateRequest } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Hourglass } from "lucide-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/misc";
 import { ChoiceList } from "@/features/downloads/choice-list";
 import { api, errorMessage } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
-import { streetsKeys } from "../road-route/streets-data";
+import { streetsKeys, useStreetsStatus } from "../road-route/streets-data";
 
 /** "about an hour", "about 3 hours", "about 2 minutes". */
 export function buildTimeText(minutes: number): string {
@@ -62,6 +62,9 @@ export function WalkDetails({
   onWhere: (where: string) => void;
 }) {
   const storage = useStorage();
+  const status = useStreetsStatus();
+  /** Another build under way: this one cannot start until it has finished, and waits for it. */
+  const under = status.data?.build && status.data.build.state !== "failed" ? status.data.build : null;
   const key = request ? JSON.stringify(request) : "";
   const estimate = useQuery({
     queryKey: streetsKeys.estimate(key),
@@ -75,50 +78,59 @@ export function WalkDetails({
     [storage.data],
   );
   return (
-    <div className="grid gap-3 pb-3 pl-8">
-      {request === null ? (
-        <p className="text-small text-ink-muted">What building it takes is said once Check size has found the source file's size.</p>
-      ) : estimate.isError ? (
-        <Notice tone="danger" icon={<CircleAlert />}>
-          {errorMessage(estimate.error)}
-        </Notice>
-      ) : !estimate.data ? (
-        <Skeleton className="h-20" aria-busy />
-      ) : (
-        <section aria-label="What building it takes" className="grid gap-1.5" data-testid="streets-estimate">
-          {estimate.data.measured ? null : (
-            <Notice tone="warning" icon={<CircleAlert />} title="The figures are guesses">
-              Nothing this size has been built on a Raspberry Pi yet.
-            </Notice>
-          )}
-          <ul className="grid list-disc gap-1 pl-5 text-small text-ink">
-            {(estimate.data.warnings.length > 0 ? estimate.data.warnings : estimateLines(estimate.data)).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {places.length > 0 ? (
-        <section className="grid gap-1.5">
-          <h4 className="text-small font-semibold text-ink">Where it works</h4>
-          <p className="text-small text-ink-muted">
-            An SD card wears with every write. Working on the NAS or a USB disk spares it; walking and cycling are copied back when done.
-          </p>
-          <ChoiceList
-            label="Where it works"
-            value={where}
-            onChange={onWhere}
-            choices={[
-              { value: OWN, title: "This device's own disk", detail: "Where walking and cycling are kept" },
-              ...places.map((place) => ({
-                value: place.id,
-                title: place.name,
-                detail: place.freeBytes !== null ? `${formatBytes(place.freeBytes)} free` : undefined,
-              })),
-            ]}
-          />
-        </section>
-      ) : null}
+    // Indented under its tick, except where the column is narrow for the text (a phone at large text): rem here follows the text.
+    <div className="@container">
+      <div className="grid gap-3 pb-3 pl-8 @max-[18rem]:pl-0">
+        {under ? (
+          <Notice tone="info" icon={<Hourglass />} title="Another build is under way">
+            Walking and cycling {under.name ? `for ${under.name} ` : ""}are being built now, and only one build runs at a time. This one
+            waits and starts by itself once that has finished; Offline maps says it is waiting.
+          </Notice>
+        ) : null}
+        {request === null ? (
+          <p className="text-small text-ink-muted">What building it takes is said once Check size has found the source file's size.</p>
+        ) : estimate.isError ? (
+          <Notice tone="danger" icon={<CircleAlert />}>
+            {errorMessage(estimate.error)}
+          </Notice>
+        ) : !estimate.data ? (
+          <Skeleton className="h-20" aria-busy />
+        ) : (
+          <section aria-label="What building it takes" className="grid gap-1.5" data-testid="streets-estimate">
+            {estimate.data.measured ? null : (
+              <Notice tone="warning" icon={<CircleAlert />} title="The figures are guesses">
+                Nothing this size has been built on a Raspberry Pi yet.
+              </Notice>
+            )}
+            <ul className="grid list-disc gap-1 pl-5 text-small text-ink">
+              {(estimate.data.warnings.length > 0 ? estimate.data.warnings : estimateLines(estimate.data)).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {places.length > 0 ? (
+          <section className="grid gap-1.5">
+            <h4 className="text-small font-semibold text-ink">Where it works</h4>
+            <p className="text-small text-ink-muted">
+              An SD card wears with every write. Working on the NAS or a USB disk spares it; walking and cycling are copied back when done.
+            </p>
+            <ChoiceList
+              label="Where it works"
+              value={where}
+              onChange={onWhere}
+              choices={[
+                { value: OWN, title: "This device's own disk", detail: "Where walking and cycling are kept" },
+                ...places.map((place) => ({
+                  value: place.id,
+                  title: place.name,
+                  detail: place.freeBytes !== null ? `${formatBytes(place.freeBytes)} free` : undefined,
+                })),
+              ]}
+            />
+          </section>
+        ) : null}
+      </div>
     </div>
   );
 }

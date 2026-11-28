@@ -755,6 +755,17 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - Radio buttons and tick boxes grow with the text: at 200% the radio's dot no longer
   spilled out of its ring, and the source file's choices no longer looked half the size of
   their words.
+- Walking and cycling asked for while another build runs (a source file finishing its
+  download mid-build, or a second country) waits and starts by itself once that build ends;
+  Offline maps says it is waiting, and Add a place says so before the press. It was only
+  written to the server's log, and never built.
+- Storage: Offline maps' figure and the locations' bars agree. Nearby places' records,
+  which are in Outpost's database, were counted on the location of the file they were read
+  from; they are now under Outpost's own data, and the row says how much of its size the
+  bars do not show. Its places list no longer squeezes where and how big into a column of a
+  word or two on a phone at 200% text.
+- Satellite pictures of the view: Add this view leaves **Map** unticked where a map on this
+  device already covers the view, one press fewer (eight, as before Add a place).
 - Nuclear preparedness: with no population grid for the rings, the button is **Add
   population density for** the rings' country, opening Add a place with it ticked; it no
   longer said "Get layer data", a dialog that is gone.

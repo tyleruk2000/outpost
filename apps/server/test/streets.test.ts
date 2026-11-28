@@ -917,6 +917,40 @@ describe("building streets", () => {
     fs.rmSync(path.join(dir, "cancel"), { force: true });
   });
 
+  it("waits, and says so, when walking and cycling are asked for while another build runs, then starts once it has finished", async () => {
+    writeSidecarStatus(dir, sidecarStatus({ state: "ready", current: { ...GB_TILESET, name: "Kent and East Sussex" } }));
+    const { body } = await app.api("POST", "/api/streets/tiles", { regions: ["europe/great-britain/england/kent"] });
+    const first = body.jobId as string;
+    await waitFor(() => fs.existsSync(path.join(dir, "request.json")), "the streets service's side", 5_000);
+    fs.rmSync(path.join(dir, "request.json"));
+    writeSidecarStatus(dir, sidecarStatus({ state: "building", id: first, stage: "tiles", startedAt: Date.now(), current: null }));
+    await waitFor(() => app.ctx.jobs.get(first)?.state === "running", "the streets service's side", 5_000);
+
+    // As Add a place asks once a source file is kept: it cannot start now, so it waits, and Offline maps says so.
+    const asked = app.ctx.services.streets.tiles.buildOrWait({ regions: ["europe/great-britain/england/east-sussex"] });
+    expect(asked).toEqual({ jobId: null, waiting: true });
+    const data = (await app.api("GET", "/api/maps/data")).body as MapDataResponse;
+    const items = data.countries.find((c) => c.country === "GB")!.rows.find((r) => r.kind === "streets")!.items;
+    expect(items.find((item) => item.key === "streets:waiting")).toMatchObject({
+      state: "waiting",
+      title: "Streets for routes: East Sussex",
+      progress: { message: "Starts once the walking and cycling build under way (Kent) has finished." },
+    });
+
+    // The first finishes: the one waiting starts by itself, with what the streets in use hold.
+    writeSidecarStatus(dir, sidecarStatus({ state: "ready", id: first, finishedAt: Date.now(), current: GB_TILESET }));
+    await waitFor(() => fs.existsSync(path.join(dir, "request.json")), "the waiting build's request", 10_000);
+    const request = JSON.parse(fs.readFileSync(path.join(dir, "request.json"), "utf8"));
+    expect(request.id).not.toBe(first);
+    expect(request.name).toMatch(/East Sussex/);
+    const after = (await app.api("GET", "/api/maps/data")).body as MapDataResponse;
+    expect(JSON.stringify(after)).not.toContain("streets:waiting");
+    fs.rmSync(path.join(dir, "request.json"));
+    writeSidecarStatus(dir, sidecarStatus({ state: "ready", id: request.id, finishedAt: Date.now(), current: GB_TILESET }));
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(request.id)!.state).toBe("succeeded");
+  });
+
   it("removes the streets in use on request", async () => {
     const pending = app.api("DELETE", "/api/streets/tiles");
     await waitFor(() => fs.existsSync(path.join(dir, "request.json")), "the streets service's side", 5_000);

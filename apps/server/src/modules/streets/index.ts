@@ -497,7 +497,40 @@ export function createStreetsService(ctx: AppContext): StreetsService {
           },
         });
       }
-    } else if (build?.state === "failed") {
+    }
+    // A build asked for while another ran: waiting for it, or, when its turn came, unable to start.
+    const next = tiles.waiting();
+    if (next) {
+      const name = listNames(next.regions.map((r) => r.name));
+      const countries = [...new Set(next.regions.map((r) => r.country))];
+      for (const country of countries.length > 0 ? countries : [null]) {
+        out.push({
+          country,
+          item: next.problem
+            ? {
+                ...base("streets:waiting", `Streets for routes: ${name}`),
+                state: "failed",
+                reason: `Walking and cycling for ${name} could not start after the build before it: ${next.problem}`,
+                regionId: next.regions.find((r) => r.country === country)?.regionId ?? null,
+              }
+            : {
+                ...base("streets:waiting", `Streets for routes: ${name}`),
+                state: "waiting",
+                progress: {
+                  current: 0,
+                  total: null,
+                  unit: null,
+                  message: next.behind
+                    ? `Starts once the walking and cycling build under way (${next.behind}) has finished.`
+                    : "Starts once the walking and cycling build under way has finished.",
+                  step: null,
+                },
+                regionId: next.regions.find((r) => r.country === country)?.regionId ?? null,
+              },
+        });
+      }
+    }
+    if (build?.state === "failed") {
       const said = connection.status();
       out.push({
         country: null,
@@ -515,6 +548,8 @@ export function createStreetsService(ctx: AppContext): StreetsService {
   return { connection, tiles, status, route, reach, mapDataItems };
 }
 
+const listNames = (words: string[]) => (words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
+
 /** Fires when the browser that asked has gone away, so the question to the streets service is dropped too. */
 function goneSignal(reply: FastifyReply): AbortSignal {
   const controller = new AbortController();
@@ -531,7 +566,11 @@ export async function registerStreets(app: FastifyInstance, ctx: AppContext): Pr
     // A queue of its own: a build holds it for up to an hour, and nothing else waits behind it.
     queue: "streets",
     run: ({ job, payload, signal, progress }) => service.tiles.runJob({ jobId: job.id, payload, signal, progress }),
+    // Whatever way it ended, a build waiting for it may start now.
+    onSettled: () => service.tiles.startWaiting(),
   });
+  // One left waiting when Outpost stopped, whose build finished meanwhile.
+  setTimeout(() => service.tiles.startWaiting(), 0).unref();
 
   app.get("/api/streets/status", async () => service.status());
   app.post("/api/streets/route", async (request, reply) => service.route(streetsRouteSchema.parse(request.body), goneSignal(reply)));

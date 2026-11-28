@@ -386,9 +386,16 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
     }
 
     // ── Places to find ──
+    /**
+     * What each set of nearby places takes in Outpost's database, apart from its file: its records are
+     * in the database on Outpost's own disk, not on the storage location its file is on, which Storage's
+     * bar for that location counts. Said under Outpost's own data, so the two agree.
+     */
+    const inDatabase = new Map<string, number>();
     for (const pack of ctx.services.layers?.packs() ?? []) {
       const row = collections.get(pack.id);
       if (!row) continue;
+      inDatabase.set(`collection:${row.id}`, Math.max(0, pack.sizeBytes - (row.sizeBytes ?? 0)));
       const item = {
         ...fromCollection(row, "places"),
         count: pack.records,
@@ -523,7 +530,11 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       (item, index) => !item.downloadId && item.sizeBytes && everything.findIndex((other) => other.key === item.key) === index,
     );
     const byLocation = new Map<string | null, number>();
-    for (const item of mapItemOnDisk) byLocation.set(item.locationId, (byLocation.get(item.locationId) ?? 0) + (item.sizeBytes ?? 0));
+    for (const item of mapItemOnDisk) {
+      const database = Math.min(item.sizeBytes ?? 0, inDatabase.get(item.key) ?? 0);
+      byLocation.set(item.locationId, (byLocation.get(item.locationId) ?? 0) + (item.sizeBytes ?? 0) - database);
+      if (database > 0) byLocation.set(null, (byLocation.get(null) ?? 0) + database);
+    }
     const choice = settings.get("maps.countryFileKeep");
     const lastKept = countryFiles.at(0);
     return {
@@ -536,6 +547,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
             bytes,
             available: locationId === null || locations.get(locationId)?.status === "available",
           }))
+          .filter((entry) => entry.bytes > 0)
           .sort((a, b) => b.bytes - a.bytes),
         active: new Set(
           everything

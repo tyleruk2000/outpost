@@ -14,6 +14,12 @@ describe("the words of Map data", () => {
 
   it("says where something under way stands, in the person's words", () => {
     expect(stateLine(item({ state: "waiting", ahead: 2 }))).toBe("Waiting behind 2 downloads");
+    const behind = "Starts once the walking and cycling build under way (Kent) has finished.";
+    expect(
+      stateLine(
+        item({ kind: "streets", state: "waiting", progress: { current: 0, total: null, unit: null, message: behind, step: null } }),
+      ),
+    ).toBe(behind);
     expect(
       stateLine(
         item({

@@ -65,7 +65,7 @@ import { useHomeCountry } from "@/features/frequencies/home-country";
 import { useCatalogue, useLayersSummary, useStartDownloads } from "@/features/layers/data";
 import { api, errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { estimateRegion, type RegionEstimate, useMapRegions, useStartPlaces } from "../data";
+import { estimateRegion, type RegionEstimate, useMapOverview, useMapRegions, useStartPlaces } from "../data";
 import { useImagery, useStartWorld } from "../imagery/data";
 import { SATELLITE_AREA_COST, SatellitePicture, WorldPictureChoice, worldLine } from "../imagery/panel";
 import { detailChoices, detailLabel } from "../lib/detail";
@@ -676,7 +676,8 @@ function Flow({
         : next[0]?.type === "world" && held("map")
           ? ["nearby"]
           : ["map"];
-    setTicks(new Set(wanted.length > 0 ? wanted : next[0]?.type === "country" ? ["routes"] : ["map"]));
+    // Asked for nothing (an area a map covers already): nothing ticked, rather than a map it has.
+    setTicks(new Set(asked?.length === 0 ? [] : wanted.length > 0 ? wanted : next[0]?.type === "country" ? ["routes"] : ["map"]));
     setZoom(null);
     setLeftOut(new Set());
     setSizes(null);
@@ -686,16 +687,34 @@ function Flow({
 
   // Arriving with a place: straight to what to add for it.
   const [applied, setApplied] = useState(false);
+  const overview = useMapOverview();
+  /**
+   * An area a map on this device already covers at the detail it would be added at: its Map is not ticked, so
+   * that adding satellite pictures of the view on screen is one tick, not a map to untick first.
+   */
+  const mapped = (bbox: Bbox) =>
+    (overview.data?.regions ?? []).some(
+      (region) =>
+        region.tileType !== "terrain" &&
+        region.status === "installed" &&
+        region.bounds[0] <= bbox[0] &&
+        region.bounds[1] <= bbox[1] &&
+        region.bounds[2] >= bbox[2] &&
+        region.bounds[3] >= bbox[3] &&
+        region.maxZoom >= defaultZoom(bbox, null),
+    );
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the place is known
   useEffect(() => {
     if (applied || !start) return;
+    // An area waits for what maps are held, to know whether to tick Map.
+    if (start.area && overview.isPending) return;
     const codes = start.countries?.length ? start.countries : start.country ? [start.country] : [];
     setApplied(true);
     if (start.world) return choose([WORLD], start.bundles, start.layers);
     if (start.area)
       return choose(
         [{ type: "area", code: null, name: start.area.name, countryName: null, regionId: null, part: null, bbox: start.area.bbox }],
-        start.bundles ?? ["map"],
+        start.bundles ?? (mapped(start.area.bbox) ? [] : ["map"]),
         start.layers,
       );
     if (codes.length === 0) return;
@@ -708,7 +727,7 @@ function Flow({
         start.layers,
       );
     });
-  }, [start]);
+  }, [start, overview.isPending]);
 
   // Each step's heading has the keyboard, so the step is read from its start (WCAG 2.4.3).
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each step

@@ -434,6 +434,35 @@ describe("Add a place", () => {
     );
   });
 
+  it("says before the press when walking and cycling must wait for a build under way", async () => {
+    serve(mapData({ streetsInstalled: true, countryFileChoice: { keep: true, locationId: null } }), {
+      "GET /api/streets/status": {
+        state: "building",
+        installed: true,
+        message: null,
+        tileset: null,
+        build: {
+          jobId: "j1",
+          name: "Kent",
+          state: "building",
+          stage: "tiles",
+          stageLabel: null,
+          step: null,
+          message: null,
+          startedAt: 1,
+          expectedMs: null,
+        },
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&country=FR&kinds=streets");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for France?" });
+    expect(await within(dialog).findByText("Another build is under way")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/Walking and cycling for Kent are being built now.*starts by itself once that has finished/),
+    ).toBeInTheDocument();
+  });
+
   it("says the remembered source-file choice in one line on the main view, with Change, and in the total", async () => {
     const user = userEvent.setup();
     serve(mapData({ countryFileChoice: { keep: true, locationId: "nas" } }), {
@@ -612,6 +641,46 @@ describe("Add a place", () => {
     expect(await within(dialog).findByRole("radio", { name: /12 July 2026/ })).toBeInTheDocument();
     expect(within(dialog).getByText(/cloud over the scene 0\.4%/)).toBeInTheDocument();
     expect(posted("/api/maps/imagery/scenes")).toEqual([{ bbox: [6.8, 45.9, 7, 46] }]);
+  });
+
+  it("leaves Map unticked for an area a held map already covers, so its satellite pictures are one tick away", async () => {
+    const region = (over: Record<string, unknown>) => ({
+      id: "fr",
+      regionId: null,
+      name: "France",
+      tileType: "vector",
+      bounds: [-5, 41, 10, 51],
+      minZoom: 0,
+      maxZoom: 15,
+      sizeBytes: 1,
+      sourceBuild: null,
+      installedAt: 1,
+      locationId: "loc1",
+      locationName: "Internal storage",
+      available: true,
+      status: "installed",
+      ...over,
+    });
+    serve(mapData(), { "GET /api/maps/overview": { regions: [region({})], places: [], counts: { markers: 0, tracks: 0, places: 0 } } });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&bbox=6.8,45.9,7.0,46.0&name=Chamonix%20valley");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).not.toBeChecked();
+    expect(within(dialog).getByRole("checkbox", { name: /Satellite pictures/ })).not.toBeChecked();
+  });
+
+  it("ticks Map for an area no held map covers in detail", async () => {
+    serve(mapData(), {
+      "GET /api/maps/overview": {
+        regions: [{ id: "w", tileType: "vector", bounds: [-180, -85, 180, 85], maxZoom: 6, status: "installed", available: true }],
+        places: [],
+        counts: { markers: 0, tracks: 0, places: 0 },
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&bbox=6.8,45.9,7.0,46.0&name=Chamonix%20valley");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).toBeChecked();
   });
 
   it("offers a country in parts, all ticked, and reads only the parts left ticked", async () => {
@@ -849,6 +918,37 @@ describe("Storage", () => {
     expect(uk).toHaveTextContent("Routes");
     expect(uk).toHaveTextContent("43%");
     expect(screen.getByText(/1 place is over a year old\./)).toBeInTheDocument();
+    // Nothing in Outpost's own data here: the location's bar and this figure are the same, and nothing more is said.
+    expect(screen.queryByTestId("maps-own-data")).not.toBeInTheDocument();
+  });
+
+  it("says what of its figure is in Outpost's own data, which the locations' bars do not show", async () => {
+    serve(
+      mapData({
+        summary: {
+          totalBytes: 3_500_000_000,
+          locations: [
+            { locationId: "loc1", name: "Internal storage", bytes: 3_000_000_000, available: true },
+            { locationId: null, name: "Outpost's own data", bytes: 500_000_000, available: true },
+          ],
+          active: 0,
+        },
+        countries: [country("GB", "United Kingdom", { map: [item()] })],
+      }),
+    );
+    renderScreen(
+      <table>
+        <tbody>
+          <OfflineMapsRows color="green" bytes={1} />
+        </tbody>
+      </table>,
+      "/storage",
+    );
+    const row = await screen.findByRole("row", { name: /Offline maps/ });
+    await waitFor(() => expect(row).toHaveTextContent("3.50 GB"));
+    expect(screen.getByTestId("maps-own-data")).toHaveTextContent(
+      "3.00 GB on Internal storage, as in its bar above; 500 MB of routes and nearby places in Outpost's own data, which the bars above do not show.",
+    );
   });
 });
 
