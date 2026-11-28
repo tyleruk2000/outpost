@@ -75,6 +75,12 @@ export interface DatabaseCheck {
   ok: boolean;
   /** SQLite's own first lines about what is wrong, when something is. At most ten. */
   problems: string[];
+  /**
+   * The full check only: whether the search index matches the passages it was built from.
+   * Broken, it is built again from them (`POST /api/database/rebuild-search-index`); no
+   * person's notes or files are touched.
+   */
+  searchIndex?: "sound" | "broken";
 }
 
 /** The result of the last reclaiming of unused space. */

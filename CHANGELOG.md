@@ -699,6 +699,9 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - "Bicarbonate of soda" also finds "baking soda" and "bicarb", and "accident and
   emergency" the other names for it: a name in the table of other ways of saying things
   with a small word in it never matched, as the small words are left out of a search first.
+- **Run the full check** under Storage, Database also checks the search index against
+  the passages it was built from, says in words when they differ, and offers **Build the
+  search index again** instead of a restore.
 - Encrypting a page no longer breaks the search index ("database disk image is
   malformed" from "Did you mean"). A passage retitled or retagged had been changed in
   place, which SQLite 3.54's erasing delete cannot then take out cleanly; passages are now

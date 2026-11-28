@@ -132,16 +132,26 @@ function CheckRow({ status }: { status: DatabaseStatus }) {
     onSuccess: () => client.invalidateQueries({ queryKey: ["database"] }),
     onError: (error) => notify.error(errorMessage(error)),
   });
+  const rebuild = useMutation({
+    mutationFn: () => api.post<DatabaseJobResponse>("/api/database/rebuild-search-index"),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["database"] }),
+    onError: (error) => notify.error(errorMessage(error)),
+  });
   const last = status.lastCheck;
   const running = status.active?.type === "database.check" ? status.active : null;
-  const busy = status.active !== null || check.isPending;
+  const rebuilding = status.active?.type === "database.rebuild-search" ? status.active : null;
+  /** Only the search index is out of step: it is made from the notes and files, and building it again loses nothing. */
+  const onlySearch = last?.searchIndex === "broken" && last.problems.every((line) => line.startsWith("The search index"));
+  const busy = status.active !== null || check.isPending || rebuild.isPending;
   return (
     <div className="space-y-3">
       <p className="max-w-[70ch]">
         Outpost reads every part of the file and confirms each is sound. It only reads, so everything carries on as usual. The full check
         also confirms that the lists Outpost uses to find things quickly match what they list, and takes a little longer.
       </p>
-      {running ? (
+      {rebuilding ? (
+        <Live>Building the search index again from your notes and files.</Live>
+      ) : running ? (
         <Live>{running.title === "Check the database fully" ? "Checking every part and every list now." : "Checking every part now."}</Live>
       ) : last ? (
         last.ok ? (
@@ -160,13 +170,25 @@ function CheckRow({ status }: { status: DatabaseStatus }) {
                 <li key={line}>{line}</li>
               ))}
             </ul>
-            <p className="mt-2">
-              Make no large changes until this is resolved. Restoring the most recent backup that passed its check (under{" "}
-              <Link to="/settings#backup" className="font-medium underline underline-offset-2">
-                Settings, Backup
-              </Link>
-              ) puts back a sound copy; what changed since that backup would be lost.
-            </p>
+            {onlySearch ? (
+              <p className="mt-2">
+                Only the search index is affected, so searches may miss things or fail. It is made from your notes and files, and building
+                it again loses nothing.
+              </p>
+            ) : (
+              <p className="mt-2">
+                Make no large changes until this is resolved. Restoring the most recent backup that passed its check (under{" "}
+                <Link to="/settings#backup" className="font-medium underline underline-offset-2">
+                  Settings, Backup
+                </Link>
+                ) puts back a sound copy; what changed since that backup would be lost.
+              </p>
+            )}
+            {last.searchIndex === "broken" ? (
+              <Button size="sm" className="mt-3" onClick={() => rebuild.mutate()} disabled={busy} loading={rebuild.isPending}>
+                Build the search index again
+              </Button>
+            ) : null}
           </Notice>
         )
       ) : (
