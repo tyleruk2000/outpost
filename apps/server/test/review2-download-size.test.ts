@@ -2,13 +2,13 @@
  * A file larger than stated. A download says how big its file is (the catalogue's size, or
  * what the server's Content-Length says); a server that sends no length and goes on
  * sending must be stopped near that size, not left to fill the disk until the checksum
- * fails at the end.
+ * fails at the end. On every attempt: the first one's answer (no length) must not wipe
+ * out what the download stated, or the retry takes whatever the server sends.
  */
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
-import type { DownloadRow } from "../src/modules/downloads/types.ts";
 import { waitFor } from "./fixtures/downloads/file-server.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -22,10 +22,14 @@ afterEach(async () => {
 });
 
 describe("a server that sends more than the download said, with no length", () => {
-  it("is stopped near the stated size, and nothing is installed", async () => {
-    let sent = 0;
+  it("is stopped near the stated size on every attempt, and nothing is installed", async () => {
+    let requests = 0;
     server = http.createServer((_request, response) => {
-      // Chunked, no Content-Length: 64 KB at a time, up to 8 MB.
+      requests += 1;
+      // Chunked, no Content-Length, and the Range asked for ignored: 64 KB at a time, up to 8 MB, every time.
+      // (The count is each answer's own. Shared, the second answer was only what the first had not
+      // got into the socket's buffers, a few MB, and whether that passed the limit was down to timing.)
+      let sent = 0;
       response.writeHead(200, { "content-type": "application/octet-stream" });
       const chunk = Buffer.alloc(64 * 1024, 7);
       const more = () => {
@@ -40,6 +44,8 @@ describe("a server that sends more than the download said, with no length", () =
     await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
     const port = (server.address() as AddressInfo).port;
     app = await createTestApp();
+    // Two attempts, so that the test waits for the end of both rather than for a moment in between.
+    app.ctx.services.settings.update({ "downloads.maxAttempts": 2 });
     const downloads = app.ctx.services.downloads;
     const started = await downloads.start({
       kind: "file",
@@ -52,21 +58,15 @@ describe("a server that sends more than the download said, with no length", () =
     const row = await waitFor(
       () => {
         const found = downloads.get(started.id);
-        return found && (["completed", "failed", "cancelled"].includes(found.state) || found.attempts > 1) ? found : undefined;
+        return found && ["completed", "failed", "cancelled"].includes(found.state) ? found : undefined;
       },
-      "the download to stop",
-      20_000,
+      "the download to end",
+      15_000,
     );
-    if (row.state !== "completed" && row.state !== "failed") {
-      try {
-        await downloads.cancel(started.id);
-      } catch {
-        // Already over.
-      }
-    }
+    expect(row).toMatchObject({ state: "failed", attempts: 2 });
+    expect(requests).toBe(2);
     const target = app.ctx.services.storage.resolve(row.locationId, row.relPath);
     expect(fs.existsSync(target)).toBe(false);
-    expect((row as DownloadRow).state).not.toBe("completed");
     const part = `${target}.part`;
     expect(fs.existsSync(part) ? fs.statSync(part).size : 0).toBeLessThan(2 * 1024 * 1024);
   });

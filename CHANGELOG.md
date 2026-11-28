@@ -17,7 +17,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - One Node 24 server (TypeScript, Fastify) serving the web app and an HTTP API from one
   SQLite database and a set of folders; migrations applied at start.
 - A background job queue in the database: named queues with limits, pause, resume,
-  cancel, retries with growing pauses, and jobs that survive a restart.
+  cancel, retries with growing pauses, and jobs that survive a restart. Neither an
+  orderly stop nor a power cut uses up one of a job's attempts; a job that was running
+  when the server died three times in a row is not started again, with a note to resume
+  it, so that one which takes the server down cannot do so on every start.
 - Live updates to the browser over one server-sent-events stream.
 - An orderly stop on SIGTERM or SIGINT: stop accepting, end live streams, give requests
   three seconds, stop jobs so they resume, close the database; exit anyway after eight
@@ -692,6 +695,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - CSV numbers read by the file's own decimal mark, with ambiguous cells refused.
 - Answers decline only when the model says the passages do not hold the answer.
 - Stream errors on a full or unplugged drive fail the download, not the process.
+- A download whose server sends no length and more than the stated size is held to
+  that size on every attempt; the retry no longer takes and installs whatever it is sent.
 - "Reclaim unused space" waits for writes under way, and blocks all writes, `/dav/` too.
 - A refused reference import leaves nothing behind.
 - Wrong-size search-by-meaning vectors are refused.
@@ -721,6 +726,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - A failed decryption no longer leaves the Encryption screen busy.
 - An HF basis sentence is dated, not "(today)"; a map page made twice a day is one
   document; `formatDuration` never says "60 seconds".
+- On a phone, the Directions sheet shows a walk's or a ride's climb and its steepest
+  stretch under the totals, as the panel does.
 - Many small layout fixes on phones and narrow windows.
 
 ### Security
