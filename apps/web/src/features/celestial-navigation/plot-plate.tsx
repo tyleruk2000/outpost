@@ -3,7 +3,7 @@
  * the fix and the ellipse it is likely to lie in, on a flat chart a few tens of miles
  * across, north up. It needs no map, so it is there with no map installed.
  */
-import { type Box, niceStep, type Obstacle, type Point, placeLabel, pointBox } from "@/features/diagrams/geometry";
+import { type Box, labelBox, niceStep, type Obstacle, type Point, placeLabel, pointBox } from "@/features/diagrams/geometry";
 import { Arrow, Label, Line, Mark, Path, Plate, type PlateBox, ScaleBar } from "@/features/diagrams/plate";
 import type { CelnavPlot } from "./sights";
 
@@ -28,18 +28,40 @@ export function PlotPlate({ plot }: { plot: CelnavPlot }) {
   );
 }
 
-function Sheet({ box, plot }: { box: PlateBox; plot: CelnavPlot }) {
-  const f = box.font;
-  const height = Math.min(box.width, box.rem * 30);
+/** Nautical miles east and north of the sheet's centre: the fix, or with none the position worked from. */
+function milesFrom(plot: CelnavPlot) {
   const centre = plot.fix ?? plot.dr;
   const cosLat = Math.cos((centre.lat * Math.PI) / 180);
-  // Nautical miles east and north of the centre.
-  const nm = (p: { lat: number; lon: number }): [number, number] => [
+  return (p: { lat: number; lon: number }): [number, number] => [
     (((p.lon - centre.lon + 540) % 360) - 180) * NM_PER_DEG * cosLat,
     (p.lat - centre.lat) * NM_PER_DEG,
   ];
+}
+
+/**
+ * How many miles the sheet reaches from its centre to its edge: room for the position worked
+ * from, the fix's ellipse and every line of position. A line passes the position worked from
+ * at its intercept, which can be tens of miles; a sheet that stopped short drew no line at all.
+ */
+export function plotReach(plot: CelnavPlot): number {
+  const nm = milesFrom(plot);
+  const dr = nm(plot.dr);
+  const passes = plot.lines.map((line) => {
+    const a = nm(line.ends[0]);
+    const b = nm(line.ends[1]);
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    // The line's distance from the centre: the cross product of its ends over its length.
+    return length > 0 ? Math.abs(a[0] * b[1] - a[1] * b[0]) / length : Math.hypot(a[0], a[1]);
+  });
+  return Math.max(8, Math.abs(dr[0]) * 1.4, Math.abs(dr[1]) * 1.4, (plot.fix?.major ?? 0) * 1.6, ...passes.map((d) => d * 1.4));
+}
+
+function Sheet({ box, plot }: { box: PlateBox; plot: CelnavPlot }) {
+  const f = box.font;
+  const height = Math.min(box.width, box.rem * 30);
+  const nm = milesFrom(plot);
   const drNm = nm(plot.dr);
-  const reach = Math.max(8, Math.abs(drNm[0]) * 1.4, Math.abs(drNm[1]) * 1.4, (plot.fix?.major ?? 0) * 1.6);
+  const reach = plotReach(plot);
   const pad = f * 1.5;
   const k = (Math.min(box.width, height) / 2 - pad) / reach;
   const cx = box.width / 2;
@@ -96,6 +118,11 @@ function Sheet({ box, plot }: { box: PlateBox; plot: CelnavPlot }) {
     ellipse = `${pts.join(" ")} Z`;
   }
   const scale = niceStep(reach, 2);
+  const scaleText = `${scale} nautical miles`;
+  // The scale bar and its words, and the north arrow, are drawn first: no name may be put over them.
+  taken.push({ x: pad, y: height - pad - 6, width: scale * k, height: 8 });
+  taken.push(labelBox(pad + scale * k + f * 0.4, height - pad - 2, scaleText, f));
+  taken.push({ x: box.width - pad - f - 4, y: pad + f * 0.6, width: 8, height: f * 2.4 });
   const label = (point: Point, text: string, tone: "name" | "figure" | "accent" = "name") => {
     const placed = placeLabel(point, text, f, taken, bounds, 6, avoid);
     return placed ? (
@@ -113,9 +140,10 @@ function Sheet({ box, plot }: { box: PlateBox; plot: CelnavPlot }) {
       ))}
       <circle cx={at(drNm)[0]} cy={at(drNm)[1]} r={5} className="fill-page stroke-ink" strokeWidth={1.5} />
       {plot.fix ? <Mark at={at([0, 0])} accent r={5} /> : null}
-      <Arrow from={[box.width - pad, pad + f * 3]} to={[box.width - pad, pad + f * 0.6]} stroke="guide" />
-      {label([box.width - pad, pad + f * 3.4], "N", "figure")}
-      <ScaleBar at={[pad, height - pad]} length={scale * k} label={`${scale} nautical miles`} font={f} />
+      {/* A letter's width in from the edge, so that the N beside the arrow is not cut by the sheet's edge. */}
+      <Arrow from={[box.width - pad - f, pad + f * 3]} to={[box.width - pad - f, pad + f * 0.6]} stroke="guide" />
+      {label([box.width - pad - f, pad + f * 3.4], "N", "figure")}
+      <ScaleBar at={[pad, height - pad]} length={scale * k} label={scaleText} font={f} />
       {plot.fix ? label(at([0, 0]), "Fix", "accent") : null}
       {label(at(drNm), "Worked from")}
       {lines.map((line) => {

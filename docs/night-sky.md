@@ -17,7 +17,9 @@ hills and buildings make the Moon appear later and vanish sooner.
 The centre is overhead and the rim the horizon. North is at the top and **east on the
 left**: hold it over your head with the top towards north. Stars down to magnitude 4.5 are
 shown, which a dark country sky shows easily and a town sky does not; 27 constellations are
-joined up. Planets are filled dots, the Moon an open circle.
+joined up. Planets are filled dots, the Moon an open circle. The Moon, the planets and the
+brightest named stars are labelled where a name fits; a name may cover a faint star, never a
+bright one.
 
 **What is up** lists the Moon, planets and ten brightest stars above the horizon, with where
 to look ("In the SW, 32° up"). A fist at arm's length is about 10°. While the Sun is up or
