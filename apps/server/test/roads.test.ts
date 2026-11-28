@@ -225,8 +225,8 @@ describe("directions as the owner writes them, on British roads", () => {
 });
 
 describe("Great Britain's roads and Northern Ireland", () => {
-  it("never joins a point in Northern Ireland to a road across the sea in Great Britain, and says Ireland's roads bring it", async () => {
-    // The A77 from Portpatrick: Donaghadee, on the Ards peninsula, is 35 km away over the North Channel.
+  it("never joins a point in Northern Ireland to a road across the sea in Great Britain, and says its roads are not held", async () => {
+    // The A77 from Portpatrick: Donaghadee, on the Ards peninsula, is 35 km away over the North Channel; Larne harbour 44 km.
     const body = buildPbf({
       nodes: [
         { id: 1, lat: 54.842, lon: -5.117 },
@@ -243,26 +243,30 @@ describe("Great Britain's roads and Northern Ireland", () => {
     const graph = buildGraph([
       { network: { id: "g", name: "Galloway", country: "GB", dataDate: "2026-11-20" }, data: await readNetworkFile(file) },
     ]);
-    const points = [
+    for (const start of [
       { lat: 54.643, lon: -5.537, name: "Donaghadee" },
-      { lat: 55.0, lon: -5.0, name: "Ballantrae road" },
-    ];
-    let error: unknown;
-    try {
-      planRoute(graph, points, {
-        crossing: "any",
-        units: "km",
-        request: { points },
-        regionOf: (code) => (code === "IE" ? "ireland-and-northern-ireland" : null),
+      { lat: 54.851, lon: -5.803, name: "Larne harbour" },
+    ]) {
+      const points = [start, { lat: 55.0, lon: -5.0, name: "Ballantrae road" }];
+      let error: unknown;
+      try {
+        planRoute(graph, points, {
+          crossing: "any",
+          units: "km",
+          request: { points },
+          regionOf: (code) => (code === "GB" ? "united-kingdom" : null),
+        });
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(AppError);
+      expect((error as AppError).message).toContain(
+        `“${start.name}” is in Northern Ireland, and Northern Ireland's roads are not held: those kept are Great Britain's. Add roads for all of the United Kingdom`,
+      );
+      expect((error as AppError).details).toMatchObject({
+        far: [{ index: 0, country: { code: "GB", regionId: "united-kingdom" } }],
       });
-    } catch (caught) {
-      error = caught;
     }
-    expect(error).toBeInstanceOf(AppError);
-    expect((error as AppError).message).toMatch(/“Donaghadee” is in Northern Ireland.*Add roads for Ireland/);
-    expect((error as AppError).details).toMatchObject({
-      far: [{ index: 0, country: { code: "IE", regionId: "ireland-and-northern-ireland" } }],
-    });
     expect(reachesNorthernIreland(data.nodeLat, data.nodeLon)).toBe(false);
   });
 });

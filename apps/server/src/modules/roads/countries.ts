@@ -48,11 +48,41 @@ function inRing(ring: Float64Array, lon: number, lat: number): boolean {
   return odd;
 }
 
-/** True for a point in Northern Ireland, by its outline (a road on a coast the simplifying cut may be missed). */
+/** Squared distance, in degrees of latitude, from a point to a ring's edges (longitude scaled by `k`). */
+function ringDistance(ring: Float64Array, lon: number, lat: number, k: number): number {
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+    const ax = (ring[j]! - lon) * k;
+    const ay = ring[j + 1]! - lat;
+    const dx = (ring[i]! - lon) * k - ax;
+    const dy = ring[i + 1]! - lat - ay;
+    const length = dx * dx + dy * dy;
+    const t = length === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / length));
+    const px = ax + t * dx;
+    const py = ay + t * dy;
+    if (px * px + py * py < best) best = px * px + py * py;
+  }
+  return best;
+}
+
+/**
+ * True for a point in Northern Ireland: inside its outline, or, where the simplified coast
+ * leaves a harbour or a lough offshore (Portrush, Larne, Belfast Lough), a point the
+ * outlines give the United Kingdom whose nearest United Kingdom coast is Northern Ireland's.
+ */
 export function inNorthernIreland(lat: number, lon: number): boolean {
   if (lon < NI_BOX[0] || lon > NI_BOX[2] || lat < NI_BOX[1] || lat > NI_BOX[3]) return false;
   const ring = northernIrelandRing();
-  return ring ? inRing(ring, lon, lat) : false;
+  if (!ring) return false;
+  if (inRing(ring, lon, lat)) return true;
+  const found = countryFound(lat, lon);
+  if (found?.code !== "GB" || !found.offshore) return false;
+  const k = Math.cos((lat * Math.PI) / 180);
+  const toUlster = ringDistance(ring, lon, lat, k);
+  for (const other of outlineOf("GB")?.rings ?? []) {
+    if (other !== ring && ringDistance(other, lon, lat, k) < toUlster) return false;
+  }
+  return true;
 }
 
 /**

@@ -131,10 +131,10 @@ export function planRoute(
       if (code && !installed.has(code)) continue;
       const where = pointWords(point, index, points.length);
       if (code === "GB" && inNorthernIreland(point.lat, point.lon)) {
-        // Northern Ireland's roads come with Ireland's (Geofabrik's Ireland and Northern Ireland), not Great Britain's.
-        far.push({ index, name: point.name, country: missingCountry("IE", regionOf), distanceM: SNAP_WITHIN_M });
+        // Northern Ireland's roads come with the whole United Kingdom's (Geofabrik's), not Great Britain's.
+        far.push({ index, name: point.name, country: missingCountry("GB", regionOf), distanceM: SNAP_WITHIN_M });
         sentences.push(
-          `${where.charAt(0).toUpperCase()}${where.slice(1)} is in Northern Ireland, and no roads kept reach it: Great Britain's do not. Add roads for Ireland, which come with Northern Ireland's.`,
+          `${where.charAt(0).toUpperCase()}${where.slice(1)} is in Northern Ireland, and Northern Ireland's roads are not held: those kept are Great Britain's. Add roads for all of the United Kingdom, which hold Northern Ireland's.`,
         );
         continue;
       }

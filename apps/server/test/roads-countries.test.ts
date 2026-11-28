@@ -82,6 +82,17 @@ describe("the United Kingdom's roads, when they are Great Britain's", () => {
     expect(reachesNorthernIreland(ulster.lat, ulster.lon)).toBe(true);
   });
 
+  it("knows towns on Northern Ireland's coast that the simplified outline leaves offshore", () => {
+    expect(inNorthernIreland(55.207, -6.656)).toBe(true); // Portrush
+    expect(inNorthernIreland(54.851, -5.803)).toBe(true); // Larne harbour
+    expect(inNorthernIreland(54.68, -5.78)).toBe(true); // Belfast Lough
+    expect(inNorthernIreland(54.905, -5.025)).toBe(false); // Stranraer harbour, on the Scottish side
+    expect(inNorthernIreland(55.31, -5.64)).toBe(false); // Southend, Kintyre
+    const portrush = coverageOf([LONDON, { lat: 55.207, lon: -6.656 }], [greatBritain], [], () => "united-kingdom");
+    // (The straight line passes over the Isle of Man too.)
+    expect(portrush.countries.find((c) => c.code === "GB")).toMatchObject({ name: "United Kingdom", state: "part" });
+  });
+
   it("names Great Britain's roads Great Britain, and does not take Belfast as covered by them", () => {
     const london = coverageOf([LONDON], [greatBritain], [], () => "united-kingdom");
     expect(london.countries.map((c) => [c.code, c.name, c.state])).toEqual([["GB", "Great Britain", "ready"]]);
