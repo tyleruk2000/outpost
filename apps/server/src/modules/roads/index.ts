@@ -137,7 +137,12 @@ export async function registerRoads(app: FastifyInstance, ctx: AppContext): Prom
     if ("regionId" in body) return service.installRegion(body);
     return {
       downloadId: null,
-      ...service.installFile({ locationId: body.locationId, relPath: body.relPath, name: body.name, country: body.country ?? null }),
+      ...(await service.installFile({
+        locationId: body.locationId,
+        relPath: body.relPath,
+        name: body.name,
+        country: body.country ?? null,
+      })),
     };
   });
   app.post("/api/roads/networks/:id/update", async (request) => service.update(idParams.parse(request.params).id));

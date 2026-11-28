@@ -39,7 +39,18 @@ import {
   type ReferenceRegionsResponse,
 } from "@outpost/shared";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, CircleAlert, FileUp, Globe, House, LocateFixed, Search, SquareDashedMousePointer } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  CircleAlert,
+  FileUp,
+  Globe,
+  House,
+  LocateFixed,
+  Route,
+  Search,
+  SquareDashedMousePointer,
+} from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -63,6 +74,7 @@ import { isCameraView, readStored, STORAGE_KEYS } from "../lib/view";
 import { DestinationPicker, useDestination } from "../panels/destination";
 import { suggestedFileLocation } from "./country-file-choice";
 import { heldKind, type NearbyKind, type NearbyPlace, nearbyKindsFor, otherRequests, SOURCE_FILE } from "./nearby-kinds";
+import { OwnRoadsFile } from "./own-roads-file";
 import { touchSize } from "./pattern";
 import { OWN, WalkDetails, walkCostLine } from "./streets-build";
 import { mapDataKeys, useAddMapData } from "./use-map-data";
@@ -223,12 +235,14 @@ function Where({
   onChoose,
   onDraw,
   onImport,
+  onOwnRoads,
   heading,
 }: {
   data: MapDataResponse;
   onChoose: (places: Chosen[]) => void;
   onDraw: () => void;
   onImport: () => void;
+  onOwnRoads: () => void;
   heading: React.RefObject<HTMLHeadingElement | null>;
 }) {
   const home = useHomeCountry();
@@ -378,6 +392,12 @@ function Where({
           onChoose={onDraw}
         />
         <SuggestionButton icon={<FileUp />} title="Import a file" note="GeoJSON, KML, GPX or a CSV of places" onChoose={onImport} />
+        <SuggestionButton
+          icon={<Route />}
+          title="Routes from your own file"
+          note="An OpenStreetMap source file (.osm.pbf) already in storage"
+          onChoose={onOwnRoads}
+        />
       </ul>
     </div>
   );
@@ -569,7 +589,7 @@ function Flow({
   const add = useAddMapData();
   const startPlaces = useStartPlaces();
   const heading = useRef<HTMLHeadingElement>(null);
-  const [step, setStep] = useState<"where" | "what" | "picture">("where");
+  const [step, setStep] = useState<"where" | "what" | "picture" | "own-roads">("where");
   const [places, setPlaces] = useState<Chosen[]>([]);
   const [ticks, setTicks] = useState<Set<Choosable>>(new Set());
   const [hills, setHills] = useState(true);
@@ -976,8 +996,23 @@ function Flow({
             navigate("/maps?offline=draw");
           }}
           onImport={onImport}
+          onOwnRoads={() => setStep("own-roads")}
         />
       </DialogBody>
+    );
+  }
+
+  if (step === "own-roads") {
+    return (
+      <OwnRoadsFile
+        heading={
+          <h3 ref={heading} tabIndex={-1} className="font-title text-lead text-ink focus:outline-none">
+            Routes from your own file
+          </h3>
+        }
+        onBack={() => setStep("where")}
+        onDone={onClose}
+      />
     );
   }
 

@@ -281,7 +281,11 @@ Map data (`data-page/`; `/maps?offline=roads` leads to `/maps/data?add=1&kinds=r
 A region's roads come from its country file, one download read for roads and places
 together and then kept or deleted as the person chose (`POST /api/maps/data/add`, see
 [map data](maps.md#map-data-and-country-files)); a kept file is read again with no
-download. Building from a file of the person's own in storage is offered through the API.
+download. A file of the person's own in storage is built from in **Add a place → Routes from
+your own file** (`data-page/own-roads-file.tsx`: location, path, name, country), as
+`POST /api/roads/networks` with `locationId` and `relPath`; the path is resolved inside the
+location and checked with links followed (`resolveFollowingLinks`), and a folder is refused.
+The file is never moved or deleted.
 Tests: `road-route.test.tsx`, `e2e/tests/road-routes*.spec.ts` (networks built from the
 server fixtures in storage).
 

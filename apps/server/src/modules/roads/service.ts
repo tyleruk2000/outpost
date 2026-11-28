@@ -92,7 +92,7 @@ export interface RoadsService {
   }): Promise<{ downloadId: string | null; jobId: string | null }>;
   /** Builds (or rebuilds) a region's network from its country file, replacing the region's network once built. */
   buildFromCountryFile(input: CountryFileBuild): Promise<{ id: string; dataDate: string | null }>;
-  installFile(input: BuildFromFileInput): { jobId: string };
+  installFile(input: BuildFromFileInput): Promise<{ jobId: string }>;
   update(id: string): Promise<{ downloadId: string | null; jobId: string | null }>;
   remove(id: string): Promise<void>;
   crossings(): Promise<RoadCrossingDto[]>;
@@ -368,10 +368,18 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     return { id: row.id, dataDate: row.dataDate };
   }
 
-  function installFile(input: BuildFromFileInput) {
+  /** A person's own file in a storage location: inside it, and through a link only to another location or the storage roots. */
+  async function ownFile(input: Pick<BuildFromFileInput, "locationId" | "relPath">): Promise<string> {
+    const file = await ctx.services.storage.resolveFollowingLinks(input.locationId, input.relPath);
+    const stat = await fs.promises.stat(file).catch(() => null);
+    if (!stat) throw notFound("That file");
+    if (!stat.isFile()) throw badRequest("That is a folder: give the path of the .osm.pbf file in it.");
+    return file;
+  }
+
+  async function installFile(input: BuildFromFileInput) {
     // Resolving now says at once if the path is wrong; the job resolves it again.
-    const file = ctx.services.storage.resolve(input.locationId, input.relPath);
-    if (!fs.existsSync(file)) throw notFound("That file");
+    await ownFile(input);
     const job = ctx.jobs.enqueue(BUILD_JOB, input as unknown as Record<string, unknown>, {
       title: `${input.name}: routes`,
       maxAttempts: 1,
@@ -384,7 +392,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     signal: AbortSignal,
     progress: (current: number, total: number | null, message: string, unit?: string | null) => void,
   ) {
-    const filePath = ctx.services.storage.resolve(input.locationId, input.relPath);
+    const filePath = await ownFile(input);
     const bytes = (await fs.promises.stat(filePath)).size;
     const row = await build({
       filePath,
@@ -519,13 +527,13 @@ export function createRoadsService(ctx: AppContext): RoadsService {
         throw badRequest("Outpost no longer knows which file this network was built from: install it again.");
       return {
         downloadId: null,
-        ...installFile({
+        ...(await installFile({
           locationId: row.extract.locationId,
           relPath: row.extract.relPath,
           name: row.name,
           country: row.country,
           replaces: row.id,
-        }),
+        })),
       };
     },
     async remove(id) {

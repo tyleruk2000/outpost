@@ -308,6 +308,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   press, with postcode search however typed.
 - The height of the ground under the pointer or at the centre (`GET /api/maps/height`),
   and **Settings → Appearance → Heights** for metres or feet.
+- **Routes from your own file**, in **Add a place**: routes built from an OpenStreetMap
+  source file (`.osm.pbf`) already in a storage location, by its path. Nothing is
+  downloaded and the file is left where it is; a link to a file outside every storage
+  location is not followed.
 
 #### Reference layers for the map
 

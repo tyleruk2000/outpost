@@ -78,8 +78,10 @@ Germany (and some other large countries) comes in parts: all are ticked, and the
 Each place's **⋯** menu has **Update**, which reads its source file again (downloading it
 when none is kept) and replaces the routes, and **Remove…**, which lets you tick what to
 remove (saved routes keep their directions). Routes can also be built from an `.osm.pbf`
-file already in your storage, through the API only (see
-[the developer page](development/road-routes.md)); that file is yours and is never deleted.
+file already in your storage: in **Add a place**, choose **Routes from your own file**, the
+storage location and the file's path in it (`maps/kent-latest.osm.pbf`), a name and, if you
+like, its country, then **Build routes**. Nothing is downloaded; that file is yours and is
+never moved or deleted.
 
 ## Planning a route
 

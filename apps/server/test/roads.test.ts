@@ -600,6 +600,13 @@ describe("the road routes API", () => {
     expect(
       (await app.api("POST", "/api/roads/networks", { locationId: location().id, relPath: "../../etc/passwd", name: "x" })).status,
     ).toBe(400);
+    // A link in the location to a file outside every storage location is not followed; a folder is not a file.
+    const outside = write("outside.osm.pbf", greatBritain());
+    fs.mkdirSync(path.join(location().path, "maps"), { recursive: true });
+    fs.symlinkSync(outside, path.join(location().path, "maps", "linked.osm.pbf"));
+    const linked = await app.api("POST", "/api/roads/networks", { locationId: location().id, relPath: "maps/linked.osm.pbf", name: "x" });
+    expect(linked.status).toBe(403);
+    expect((await app.api("POST", "/api/roads/networks", { locationId: location().id, relPath: "maps", name: "x" })).status).toBe(400);
     expect((await app.api("POST", "/api/roads/route", { points: [LEATHERHEAD, CHAMONIX] })).body.error.message).toMatch(
       /^United Kingdom and France have no roads yet/,
     );

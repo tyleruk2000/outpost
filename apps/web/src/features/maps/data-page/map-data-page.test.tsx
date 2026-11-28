@@ -275,6 +275,34 @@ describe("Add a place", () => {
     expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
   });
 
+  it("builds routes from the person's own .osm.pbf already in storage, downloading nothing and leaving the file", async () => {
+    const user = userEvent.setup();
+    const server = serve(mapData(), { "POST /api/roads/networks": { downloadId: null, jobId: "j1" } });
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click((await screen.findAllByRole("button", { name: /Add a place/ }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await user.click(within(dialog).getByRole("button", { name: /Routes from your own file/ }));
+    expect(await within(dialog).findByRole("heading", { name: "Routes from your own file" })).toBeInTheDocument();
+    expect(within(dialog).getByText(/Nothing is downloaded\. Your file stays where it is, untouched/)).toBeInTheDocument();
+    // Not a source file: said, and nothing sent.
+    await user.type(within(dialog).getByLabelText(/Path in that location/), "maps/notes.txt");
+    await user.click(within(dialog).getByRole("button", { name: "Build routes" }));
+    expect(within(dialog).getByText("Give an OpenStreetMap source file, ending .osm.pbf.")).toBeInTheDocument();
+    expect(posted("/api/roads/networks")).toEqual([]);
+    await user.clear(within(dialog).getByLabelText(/Path in that location/));
+    await user.type(within(dialog).getByLabelText(/Path in that location/), "maps/kent-latest.osm.pbf");
+    expect(within(dialog).getByLabelText(/^Name/)).toHaveAttribute("placeholder", "Kent");
+    await user.type(within(dialog).getByLabelText(/^Country/), "gb");
+    await user.click(within(dialog).getByRole("button", { name: "Build routes" }));
+    await waitFor(() =>
+      expect(posted("/api/roads/networks")).toEqual([
+        { locationId: "loc1", relPath: "maps/kent-latest.osm.pbf", name: "Kent", country: "GB" },
+      ]),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add a place" })).toBeNull());
+    expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual(["POST /api/roads/networks"]);
+  });
+
   it("arrives with several countries from a route, Routes ticked, reads the list of regions on Check size, and adds each", async () => {
     const user = userEvent.setup();
     const server = serve(mapData());
