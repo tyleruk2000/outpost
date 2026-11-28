@@ -92,6 +92,9 @@ How the path becomes lines:
    times that, fold into the line before (or the one after, at a start or after a
    crossing); an A–B–A dog-leg folds into A. More than 28 road lines left: the shortest
    fold until 28.
+5. The same road on, signed for a place its earlier signs already named, or after a
+   stretch whose signs named no place at all, is one line for the later place; a place
+   not signed before is a line of its own (A26 for Reims, then for Troyes).
 
 On the real Great Britain and France networks, the owner's own trip (Leatherhead to
 Chamonix, 1,075 km) comes out at 15 lines, against the owner's 10:

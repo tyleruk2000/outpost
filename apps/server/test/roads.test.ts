@@ -153,30 +153,47 @@ describe("directions as the owner writes them, on British roads", () => {
     { id: 7, refs: [8, 9], tags: { highway: "trunk", ref: "A6" } },
   ];
   const at = (id: number, name: string | null) => ({ lat: N[id]![0], lon: N[id]![1], name });
-  let graph: ReturnType<typeof buildGraph>;
-  beforeAll(async () => {
+  const graphOf = async (name: string, list: PbfWay[]) => {
     const body = buildPbf({
       nodes: Object.entries(N).map(([id, [lat, lon]]) => ({ id: Number(id), lat, lon })),
-      ways,
+      ways: list,
       relations: [],
       timestamp: Date.parse("2026-11-20T21:00:00Z") / 1000,
     });
-    const data = await buildNetwork(write("north-west.osm.pbf", body));
-    const file = path.join(dir, "north-west.roads");
-    await writeNetworkFile(file, data, { country: "GB", name: "north-west" });
-    graph = buildGraph([
-      { network: { id: "nw", name: "north-west", country: "GB", dataDate: "2026-11-20" }, data: await readNetworkFile(file) },
-    ]);
+    const data = await buildNetwork(write(`${name}.osm.pbf`, body));
+    const file = path.join(dir, `${name}.roads`);
+    await writeNetworkFile(file, data, { country: "GB", name });
+    return buildGraph([{ network: { id: name, name, country: "GB", dataDate: "2026-11-20" }, data: await readNetworkFile(file) }]);
+  };
+  let graph: ReturnType<typeof buildGraph>;
+  beforeAll(async () => {
+    graph = await graphOf("north-west", ways);
   });
-  const lines = (points: Array<{ lat: number; lon: number; name: string | null }>) =>
-    planRoute(graph, points, { crossing: "any", units: "km", request: { points: [] }, now: Date.parse("2026-11-22") }).legs.map(
+  const linesOn = (on: ReturnType<typeof buildGraph>, points: Array<{ lat: number; lon: number; name: string | null }>) =>
+    planRoute(on, points, { crossing: "any", units: "km", request: { points: [] }, now: Date.parse("2026-11-22") }).legs.map(
       (leg) => leg.title,
     );
+  const lines = (points: Array<{ lat: number; lon: number; name: string | null }>) => linesOn(graph, points);
 
   it("keeps one line for one motorway signed again for a place its signs gave before, its European routes together", () => {
     // "Birmingham (C & N);Preston", then "Birmingham (C & N)", then "Preston": one line, not three.
     // The A501 has no sign of its own: it takes the place the next road is signed for. The A6 has none to take.
     expect(lines([at(1, "Start"), at(9, "End")])).toEqual(["A501 - Preston", "M6 (E05 - E22 - E18) - Preston", "A6"]);
+  });
+
+  it("keeps one line for one motorway whose first signs give only its own number, as its European route changes", async () => {
+    // "M6(N)" for the first 44 km is no place to follow: the M6 is one line for Preston, not "M6 (E05)" then "M6 (E05 - E22) - Preston".
+    const unsigned = await graphOf(
+      "north-west-unsigned",
+      ways.map((way) =>
+        way.id === 3
+          ? { ...way, tags: { ...way.tags, destination: "M6(N)" } }
+          : way.id === 4
+            ? { ...way, tags: { ...way.tags, destination: "Preston" } }
+            : way,
+      ),
+    );
+    expect(linesOn(unsigned, [at(1, "Start"), at(9, "End")])).toEqual(["A501 - Preston", "M6 (E05 - E22 - E18) - Preston", "A6"]);
   });
 
   it("names a via point with no name of its own by the place its road was signed for", () => {
@@ -189,6 +206,8 @@ describe("directions as the owner writes them, on British roads", () => {
     expect(ownName("via")).toBeNull();
     expect(ownName("Via 2")).toBeNull();
     expect(ownName(" Oxford ")).toBe("Oxford");
+    // A point pressed on the map has only its position for a name: its place says more.
+    expect(ownName("Point at 51.7520, -1.2577")).toBeNull();
   });
 });
 

@@ -23,10 +23,11 @@ signed to follow, spelt as the sign spells it. Under it, smaller: which way, the
 to join and to leave at ("leave at J10 (Ardley) for Bicester", "exit 21" outside Britain
 and Ireland), the distance and the time. A long trip comes out at fifteen to thirty lines.
 A new line starts where the road or the place to follow changes; a road signed again for a
-place its signs gave before stays one line, with its European routes together ("M6 (E05 -
-E22 - E18) - Preston"). An A road with no sign of its own takes the place the next road is
-signed for ("A501 - Preston"); with none, it is its number alone. A via point reads by its
-name ("Via Oxford").
+place its signs gave before, or first signed only with its own number ("M6(N)"), stays one
+line, with its European routes together ("M6 (E05 - E22 - E18) - Preston"). An A road with
+no sign of its own takes the place the next road is signed for ("A501 - Preston"); with
+none, it is its number alone. A via point reads by its name ("Via Oxford"); one with no
+name, or only its position, reads by the place the road to it was signed for.
 
 Everything is worked out on this device from the routes you have added under Offline maps. Once the
 countries you need are added, nothing goes on the internet.
