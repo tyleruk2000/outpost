@@ -212,7 +212,7 @@ form plans a drive, as above; one line under it says the other ways exist.
 | Way | What you get |
 | --- | --- |
 | **Drive** | The main-road lines above, unchanged. |
-| **Door to door** | The same main-road lines, with the streets from your door to the first main road and from the last one to your door. Each end is one line, "From your door to the A24 (8 turns, 2.1 km)", which opens to its turns. Under 15 km between the doors, or with no routes added, the whole drive is turn by turn instead. |
+| **Door to door** | The same main-road lines, with the streets from your door to the first main road and from the last one to your door. Each end is one line, "From your door to the A24 (8 turns, 2.1 km)", which opens to its turns; the turns from your door end where they join the main road ("Join Leatherhead Road (A24), then the main roads below"). Under 15 km between the doors, or with no routes added, the whole drive is turn by turn instead. |
 | **Walk** | Turn by turn on streets and paths: "Turn left onto Church Street (B2450)", each with the distance to the next. Timed over the hills (below). |
 | **Cycle** | The same by bicycle, on streets, lanes and cycle paths. Timed over the hills too. |
 

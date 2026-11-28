@@ -168,6 +168,37 @@ describe("words for streets", () => {
     expect(lines[2]!.distanceM).toBe(2000);
   });
 
+  it("ends the streets from a door where they join the main road, not at 'the end'", () => {
+    const m = (type: number, extra: Record<string, unknown> = {}) => ({
+      type,
+      instruction: "",
+      length: 0.5,
+      time: 30,
+      begin_shape_index: 0,
+      end_shape_index: 0,
+      ...extra,
+    });
+    const reply = (maneuvers: unknown[]) =>
+      ({
+        trip: { summary: { length: 1, time: 60 }, legs: [{ summary: { length: 1, time: 60 }, shape: "", maneuvers }] },
+      }) as unknown as RouteReply;
+    const toMainRoad = streetDirections(
+      reply([m(1, { street_names: ["Bell Lane"], bearing_after: 42 }), m(15, { street_names: ["Kingston Road", "B2430"] }), m(4)]),
+      { units: "km", costing: "auto", endsOnMainRoad: "B2430" },
+    );
+    expect(toMainRoad.lines.map((l) => l.text)).toEqual([
+      "Drive north-east on Bell Lane",
+      "Turn left onto Kingston Road (B2430)",
+      "Join Kingston Road (B2430), then the main roads below",
+    ]);
+    expect(toMainRoad.lines.at(-1)!.kind).toBe("arrive");
+    // A last street with no name: the main road's number.
+    const unnamed = streetDirections(reply([m(1, { bearing_after: 42 }), m(4)]), { units: "km", costing: "auto", endsOnMainRoad: "B2430" });
+    expect(unnamed.lines.at(-1)!.text).toBe("Join the B2430, then the main roads below");
+    const nothing = streetDirections(reply([m(1, { bearing_after: 42 }), m(4)]), { units: "km", costing: "auto", endsOnMainRoad: null });
+    expect(nothing.lines.at(-1)!.text).toBe("Then the main roads below");
+  });
+
   it("traces areas from cells, keeping cells that touch at a corner apart", () => {
     const size = 4;
     const mask = new Uint8Array(size * size);
@@ -562,6 +593,8 @@ describe("with the streets service", () => {
     expect(trip.road!.legs.at(-1)!.detail).toMatch(/then the streets to the door$/);
     expect(trip.start!.lines[0]!.text).toBe("Drive north-east on Bell Lane");
     expect(trip.start!.lines.at(-1)!.kind).toBe("arrive");
+    expect(trip.start!.lines.at(-1)!.text).toMatch(/^Join .+, then the main roads below$/);
+    expect(trip.end!.lines.at(-1)!.text).toMatch(/^Arrive at the end/);
     expect(trip.end!.lines.map((l) => l.text)).toContain("At the roundabout, take the 3rd exit onto York Street (A256)");
     expect(trip.summary.distanceM).toBe(trip.road!.summary.distanceM + trip.start!.distanceM + trip.end!.distanceM);
     expect(trip.geometry.coordinates.length).toBe(2 + trip.road!.geometry.coordinates.length);
