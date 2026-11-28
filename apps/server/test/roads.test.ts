@@ -196,6 +196,18 @@ describe("directions as the owner writes them, on British roads", () => {
     expect(linesOn(unsigned, [at(1, "Start"), at(9, "End")])).toEqual(["A501 - Preston", "M6 (E05 - E22 - E18) - Preston", "A6"]);
   });
 
+  it("gives an A road with no sign of its own the place the motorway after it is signed for", async () => {
+    // Shaped like the A5103 out of Manchester onto the M56: Princess Road carries no destination.
+    const a5103 = await graphOf("manchester", [
+      { id: 11, refs: [1, 2, 3], tags: { highway: "primary", ref: "A5103", name: "Princess Road" } },
+      { id: 12, refs: [3, 4], tags: { highway: "motorway_link" } },
+      { id: 13, refs: [4, 5, 6], tags: { highway: "motorway", ref: "M56", destination: "Manchester Airport;Chester" } },
+      { id: 14, refs: [6, 7], tags: { highway: "motorway_link" } },
+      { id: 15, refs: [7, 8, 9], tags: { highway: "trunk", ref: "A556" } },
+    ]);
+    expect(linesOn(a5103, [at(1, "Start"), at(9, "End")])).toEqual(["A5103 - Manchester Airport", "M56 - Manchester Airport", "A556"]);
+  });
+
   it("names a via point with no name of its own by the place its road was signed for", () => {
     expect(lines([at(1, "Start"), at(7, null), at(9, "End")])).toEqual([
       "A501 - Preston",

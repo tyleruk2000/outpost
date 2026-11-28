@@ -108,7 +108,9 @@ legs unchanged. The streets service routes the door to Outpost's first join poin
 last join point to the door, when either is more than 100 m off; the last road leg's
 "then local roads to the end" becomes "then the streets to the door", and the streets
 from the door end "Join Kingston Road (B2430), then the main roads below" rather than
-"Arrive at the end". An end outside the
+"Arrive at the end" (the main road's number alone, "Join the A24", when the last turn is
+not onto it). A via point of a walk or ride is named as the main-road planner names it: a
+name for its role only ("via") or its position is none, and the street it is on is said. An end outside the
 streets built keeps Outpost's route to its main road, with a warning. Doors under 15 km
 apart (straight line), or no road network installed, are driven on streets all the way
 (`spine: "streets"`).

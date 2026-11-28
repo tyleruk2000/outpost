@@ -357,15 +357,22 @@ health() {
   fi
 }
 
-low_priority
+# Sourced (by the tests), only the functions are defined.
+[ "${BASH_SOURCE[0]}" = "$0" ] || return 0
+
 case "${1:-serve}" in
   serve)
+    low_priority
     log "builds run at: ${PRIORITY[*]:-normal priority (neither nice nor ionice can be used here)}"
     serve
     ;;
-  priority) printf '%s\n' "${PRIORITY[*]:-}" ;;
+  priority)
+    low_priority
+    printf '%s\n' "${PRIORITY[*]:-}"
+    ;;
   build)
     shift
+    low_priority
     [ "$#" -ge 3 ] || { echo "usage: outpost-valhalla.sh build OUT NAME PBF..." >&2; exit 2; }
     out="$1" name="$2"
     shift 2

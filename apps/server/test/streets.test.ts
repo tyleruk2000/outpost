@@ -195,6 +195,32 @@ describe("words for streets", () => {
     // A last street with no name: the main road's number.
     const unnamed = streetDirections(reply([m(1, { bearing_after: 42 }), m(4)]), { units: "km", costing: "auto", endsOnMainRoad: "B2430" });
     expect(unnamed.lines.at(-1)!.text).toBe("Join the B2430, then the main roads below");
+    // The last turn on a side street just short of the main road: the main road is named, not the side street.
+    const sideStreet = streetDirections(
+      reply([m(1, { street_names: ["Bell Lane"], bearing_after: 42 }), m(15, { street_names: ["Cobham Road"] }), m(4)]),
+      { units: "km", costing: "auto", endsOnMainRoad: "A24" },
+    );
+    expect(sideStreet.lines.at(-1)!.text).toBe("Join the A24, then the main roads below");
+    const onIt = streetDirections(reply([m(1, { bearing_after: 42 }), m(10, { street_names: ["A24", "Leatherhead Road"] }), m(4)]), {
+      units: "km",
+      costing: "auto",
+      endsOnMainRoad: "A24",
+    });
+    expect(onIt.lines.at(-1)!.text).toBe("Join Leatherhead Road (A24), then the main roads below");
+    // A via point with no name of its own: the street it is on, else its number.
+    const viaReply = {
+      trip: {
+        summary: { length: 2, time: 120 },
+        legs: [
+          { summary: { length: 1, time: 60 }, shape: "", maneuvers: [m(1, { street_names: ["Bell Lane"] }), m(4)] },
+          { summary: { length: 1, time: 60 }, shape: "", maneuvers: [m(1, { street_names: ["Bell Lane"] }), m(4)] },
+        ],
+      },
+    } as unknown as RouteReply;
+    expect(streetDirections(viaReply, { units: "km", costing: "pedestrian", viaNames: ["via"] }).lines[1]!.text).toBe("Via Bell Lane");
+    expect(streetDirections(viaReply, { units: "km", costing: "pedestrian", viaNames: ["Mickleham"] }).lines[1]!.text).toBe(
+      "Via Mickleham",
+    );
     const nothing = streetDirections(reply([m(1, { bearing_after: 42 }), m(4)]), { units: "km", costing: "auto", endsOnMainRoad: null });
     expect(nothing.lines.at(-1)!.text).toBe("Then the main roads below");
   });
@@ -598,6 +624,22 @@ describe("with the streets service", () => {
     expect((await app.api("GET", `/api/roads/routes/${savedDoor.id}`)).body.route).toEqual(door);
     for (const id of [(savedRide.body as SavedRoadRouteDto).id, savedDoor.id])
       expect((await app.api("DELETE", `/api/roads/routes/${id}`)).status).toBe(200);
+    // A via point named only for its role, or pressed on the map, is named by where it is: never "Via via".
+    // The recorded walk is one leg; through a via point Valhalla answers with two.
+    const recordedWalk = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures/streets/walk.json"), "utf8"));
+    const twoLegs = { ...recordedWalk, trip: { ...recordedWalk.trip, legs: [recordedWalk.trip.legs[0], recordedWalk.trip.legs[0]] } };
+    standIn.override = (p) => (p === "/route" ? { status: 200, body: JSON.stringify(twoLegs) } : null);
+    try {
+      for (const name of ["via", "Point at 51.2700, -0.3200"]) {
+        const viaWalk = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, { ...via, name }, BOX_HILL], mode: "walk" }))
+          .body as StreetsRouteResult;
+        const viaLine = viaWalk.streets!.lines.find((l) => l.kind === "via")!;
+        expect(viaLine.text).toMatch(/^Via /);
+        expect(viaLine.text).not.toMatch(/^Via (via|Point at)/i);
+      }
+    } finally {
+      standIn.override = null;
+    }
     // Something not a route at all is refused.
     const odd = await app.api("POST", "/api/roads/routes", { name: "x", route: { mode: "walk" } });
     expect(odd.status).toBe(400);

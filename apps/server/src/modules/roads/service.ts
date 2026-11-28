@@ -35,7 +35,7 @@ import { buildNetwork } from "./build.ts";
 import { coverageOf } from "./coverage.ts";
 import { buildGraph, type Graph } from "./graph.ts";
 import { readNetworkFile, writeNetworkFile } from "./network-file.ts";
-import { type PlanPoint, planRoute, roadCredit } from "./plan.ts";
+import { ownName, type PlanPoint, planRoute, roadCredit } from "./plan.ts";
 import { releaseWorkspace } from "./route.ts";
 
 export const BUILD_JOB = "roads.build";
@@ -114,16 +114,7 @@ export interface RoadsService {
   close(): void;
 }
 
-/**
- * A point's name as given, unless it is only a word for its role ("via", "Via 1", "start") or
- * its position ("Point at 51.7520, -1.2577", as a point pressed on the map is called): then
- * none, so its place is named instead.
- */
-export function ownName(name: string | null | undefined): string | null {
-  const text = name?.trim() ?? "";
-  if (!text || /^(via|via point|point|start|end|from|to|stop)( ?\d+)?$/i.test(text)) return null;
-  return /^point at -?\d/i.test(text) ? null : text;
-}
+export { ownName };
 
 export function toNetworkDto(row: NetworkRow, available: boolean): RoadNetworkDto {
   return {

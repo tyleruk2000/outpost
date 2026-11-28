@@ -37,6 +37,17 @@ export interface PlanPoint {
   name: string | null;
 }
 
+/**
+ * A point's name as given, unless it is only a word for its role ("via", "Via 1", "start") or
+ * its position ("Point at 51.7520, -1.2577", as a point pressed on the map is called): then
+ * none, so its place is named instead. Used for main-road and street routes alike.
+ */
+export function ownName(name: string | null | undefined): string | null {
+  const text = name?.trim() ?? "";
+  if (!text || /^(via|via point|point|start|end|from|to|stop)( ?\d+)?$/i.test(text)) return null;
+  return /^point at -?\d/i.test(text) ? null : text;
+}
+
 /** Which country a point is in: by Natural Earth's outlines, else the network's own country, else the smallest box that holds it. */
 export const countryLookup: CountryLookup = (lat, lon, hint) => countryOfPoint(lat, lon) ?? hint ?? smallestBoxAt({ lat, lon }, COUNTRIES);
 
