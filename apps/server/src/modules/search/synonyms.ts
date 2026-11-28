@@ -15,9 +15,13 @@
  *    colourful): `OUR`, `ISE`, `TRE` or `ROOTS`.
  * Write words in lower case, in their plain form ("battery", not "batteries"): plurals
  * and other endings are matched by their stem, as the index matches them. A quoted word
- * is never widened.
+ * is never widened. A phrase is known by its words that matter: the small words of
+ * `STOP_WORDS` are dropped from what is typed before the table is read, so "bicarbonate
+ * of soda" typed is "bicarbonate soda" here; asked for as another way of saying a word,
+ * the phrase is searched as written, small words and all.
  */
 import { stem } from "./stem.ts";
+import { STOP_WORDS } from "./stop-words.ts";
 
 /** Words and phrases that stand for each other, any one for the rest. */
 const SAME: string[][] = [
@@ -385,7 +389,13 @@ interface Entry {
   when: string[] | null;
 }
 
-const stemsOf = (phrase: string) => phrase.split(" ").map((word) => stem(word));
+/** The words of a phrase as typed words are matched against it: without the small words, which are never typed words here. */
+const wordsThatMatter = (phrase: string) => {
+  const words = phrase.split(" ");
+  const kept = words.filter((word) => !STOP_WORDS.has(word));
+  return kept.length > 0 ? kept : words;
+};
+const stemsOf = (phrase: string) => wordsThatMatter(phrase).map((word) => stem(word));
 
 const ENTRIES: Entry[] = [
   ...SAME.map((words) => ({ words, stems: words.map(stemsOf), oneWay: false, when: null })),
@@ -444,7 +454,7 @@ export function findExpansions(words: string[], skip: boolean[] = []): Expansion
         entry.stems.forEach((form, formIndex) => {
           if (form.length !== length) return;
           if (entry.oneWay && formIndex !== 0) return;
-          const written = entry.words[formIndex]!.split(" ");
+          const written = wordsThatMatter(entry.words[formIndex]!);
           if (!span.every((word, at) => wordMatches(word, written[at]!, form[at]!))) return;
           entry.words.forEach((other, otherIndex) => {
             if (otherIndex !== formIndex && !alternatives.includes(other)) alternatives.push(other);
