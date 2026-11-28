@@ -207,6 +207,11 @@ Nothing is checked or downloaded until you press:
   from a newer one (**Download a newer file**).
 - **Update all** does every place listed. A map imported from a file of your own cannot be
   fetched again: import a newer file.
+- A kept source file that no longer matches its checksum (Storage's check says so) offers
+  **Repair the damaged part** in its place's details: only the damaged stretch is fetched
+  again from download.geofabrik.de, not the whole file, and the file is then checked against
+  Geofabrik's checksum. If that fails, or the damage is too large, the file is left as it was
+  and you are told to download it again.
 
 ### Removing
 

@@ -272,6 +272,36 @@ describe("one country file for roads and places", () => {
     expect(moved.body.refused[0].reason).toMatch(/kept with Outpost's own data/);
   });
 
+  it("repairs a damaged kept file by fetching only the damaged stretch, on a press", async () => {
+    const [kept] = app.ctx.services.collections.list({ kind: "extract" });
+    const file = app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath);
+    // Only a damaged file is repaired.
+    expect((await app.api("POST", "/api/maps/data/repair", { collectionId: kept!.id })).status).toBe(400);
+    const bytes = fs.readFileSync(file);
+    const at = Math.floor(bytes.length * 0.6);
+    bytes[at] = bytes[at]! ^ 0xff;
+    fs.writeFileSync(file, bytes);
+    app.ctx.services.collections.verify(kept!.id);
+    await app.ctx.jobs.whenIdle();
+    expect(rowOf(await data(), "extract")).toMatchObject([{ state: "damaged" }]);
+
+    standIn.ranges.length = 0;
+    standIn.requests.length = 0;
+    const started = await app.api("POST", "/api/maps/data/repair", { collectionId: kept!.id });
+    expect(started.status, JSON.stringify(started.body)).toBe(200);
+    expect(started.body.taskId).toEqual(expect.any(String));
+    await app.ctx.jobs.whenIdle();
+    const task = app.ctx.jobs.get(started.body.taskId);
+    expect(task?.state, task?.error ?? "").toBe("succeeded");
+    // One bounded stretch, not the whole file.
+    expect(standIn.ranges).toHaveLength(1);
+    const [, start, end] = /^bytes=(\d+)-(\d+)$/.exec(standIn.ranges[0]!)!.map(Number);
+    expect(start).toBeLessThanOrEqual(at);
+    expect(end).toBeGreaterThanOrEqual(at);
+    expect(fs.readFileSync(file).equals(body)).toBe(true);
+    expect(rowOf(await data(), "extract")).toMatchObject([{ state: "ready" }]);
+  });
+
   it("says when a kept file has gone missing, and removes it only when asked", async () => {
     const [kept] = app.ctx.services.collections.list({ kind: "extract" });
     const file = app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath);

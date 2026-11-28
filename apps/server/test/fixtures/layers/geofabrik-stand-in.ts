@@ -139,6 +139,8 @@ export interface GeofabrikStandIn {
   index(base: string): string;
   /** Requests seen, as "METHOD path". */
   requests: string[];
+  /** The Range header of each file request that had one ("bytes=10-19"). */
+  ranges: string[];
   /** Bytes a file is sent in, with a pause between, so that a download can be stopped half-way. */
   slow: { chunkBytes: number; delayMs: number } | null;
   handle(request: http.IncomingMessage, response: http.ServerResponse, prefix?: string): void;
@@ -183,9 +185,11 @@ export function createGeofabrikStandIn(): GeofabrikStandIn {
   put("europe/germany/bayern", bayern());
   put("europe/germany", bayern(), { mirror: true });
   const requests: string[] = [];
+  const ranges: string[] = [];
   const standIn: GeofabrikStandIn = {
     files,
     requests,
+    ranges,
     slow: null,
     index(base) {
       return JSON.stringify({
@@ -245,9 +249,12 @@ export function createGeofabrikStandIn(): GeofabrikStandIn {
         "last-modified": "Mon, 16 Nov 2026 21:00:00 GMT",
         etag: `"${file.md5}"`,
       };
-      const range = /^bytes=(\d+)-$/.exec(request.headers.range ?? "");
+      // "bytes=100-" to the end, or a bounded "bytes=100-199" (clipped to the file).
+      const range = /^bytes=(\d+)-(\d*)$/.exec(request.headers.range ?? "");
+      if (request.headers.range) ranges.push(request.headers.range);
       const from = range ? Number(range[1]) : 0;
-      const body = file.body.subarray(from);
+      const to = range?.[2] ? Math.min(Number(range[2]), file.body.length - 1) : file.body.length - 1;
+      const body = file.body.subarray(from, to + 1);
       if (request.method === "HEAD") {
         response.writeHead(200, { ...headers, "content-length": String(file.claimedBytes ?? file.body.length) }).end();
         return;
@@ -255,7 +262,7 @@ export function createGeofabrikStandIn(): GeofabrikStandIn {
       response.writeHead(range ? 206 : 200, {
         ...headers,
         "content-length": String(body.length),
-        ...(range ? { "content-range": `bytes ${from}-${file.body.length - 1}/${file.body.length}` } : {}),
+        ...(range ? { "content-range": `bytes ${from}-${to}/${file.body.length}` } : {}),
       });
       const slow = standIn.slow;
       if (!slow) {

@@ -308,6 +308,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   press, with postcode search however typed.
 - The height of the ground under the pointer or at the centre (`GET /api/maps/height`),
   and **Settings → Appearance → Heights** for metres or feet.
+- **Repair the damaged part** of a kept source file that no longer matches its checksum:
+  only the damaged stretch is fetched again from Geofabrik with a bounded Range request,
+  then the whole file is checked against Geofabrik's checksum; if that fails, or Geofabrik
+  sends the whole file instead, the file is left exactly as it was.
 - **Routes from your own file**, in **Add a place**: routes built from an OpenStreetMap
   source file (`.osm.pbf`) already in a storage location, by its path. Nothing is
   downloaded and the file is left where it is; a link to a file outside every storage

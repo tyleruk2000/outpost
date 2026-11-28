@@ -688,6 +688,39 @@ describe("removing and updating by place", () => {
     );
   });
 
+  it("offers to repair a damaged source file by fetching only the damaged part, saying from where", async () => {
+    const user = userEvent.setup();
+    serve(
+      mapData({
+        countries: [
+          country("MC", "Monaco", {
+            extract: [
+              item({
+                key: "x",
+                kind: "extract",
+                title: "Monaco: source file",
+                collectionId: "x",
+                state: "damaged",
+                reason: "Its file no longer matches its checksum. Download it again.",
+                update: { how: "download", hosts: ["download.geofabrik.de"], note: null },
+              }),
+            ],
+          }),
+        ],
+      }),
+      { "POST /api/maps/data/repair": { taskId: "t1" } },
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click(await screen.findByRole("button", { name: /^Monaco/ }));
+    expect(
+      await screen.findByText("Fetches only the damaged part again, from download.geofabrik.de, not the whole file."),
+    ).toBeInTheDocument();
+    expect(posted("/api/maps/data/repair")).toEqual([]);
+    await user.click(screen.getByRole("button", { name: "Repair the damaged part" }));
+    await waitFor(() => expect(posted("/api/maps/data/repair")).toEqual([{ collectionId: "x" }]));
+    expect(await screen.findByText("Repairing: follow it in Downloads and tasks.")).toBeInTheDocument();
+  });
+
   it("lists updates by place, each said with what is old, and never a set made once", async () => {
     const user = userEvent.setup();
     serve(ukAndMore());

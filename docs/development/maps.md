@@ -114,6 +114,18 @@ newest kept file is used, by its data date; `newerThan` (a day) asks for a downl
 when the kept one is older. A kept file whose location is not connected, or which is missing
 or damaged, is not used.
 
+A damaged kept file is repaired on a press (`POST /api/maps/data/repair`, a task of type
+`maps.country-file.repair`, `country-file-repair.ts`) instead of downloaded again: the file
+is read block by block until a block will not decompress (or a header cannot be read, or
+the file ends early), and only that stretch is asked of the same dated file with a bounded
+Range request (`bytes=start-end`, the answer's `Content-Range` checked and no more bytes
+read than asked). The bytes are written over the stretch and the scan goes on from there,
+at most 8 stretches and 64 MiB in all; then the whole file is checked against Geofabrik's
+MD5. A server that answers 200 with the whole file is not read on, and nothing changes; a
+repair that does not bring back the MD5 puts every byte back. Once repaired, Storage's own
+check runs and marks the file intact. Tests: `country-file-repair.test.ts` (a local server
+with and without Range), `map-data.test.ts`.
+
 `POST /api/maps/data/add` adds a country's roads, places and country file in one press, with
 the map and terrain (through `regions.start`) and GeoNames names beside them. The keep
 choice is required: nothing is kept or deleted by default. The last choice is the setting
