@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referenceTimings, resultsFromEach } from "../src/modules/kiwix/index.ts";
-import { createSearchQueue } from "../src/modules/kiwix/search-queue.ts";
+import { createPlaces, createSearchQueue } from "../src/modules/kiwix/search-queue.ts";
 import { inTurn, missingMessage, referenceBudgets } from "../src/modules/search/service.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { type SlowBook, type SlowKiwix, startSlowKiwix, uuidFor, writeArchives } from "./slow-kiwix.ts";
@@ -115,6 +115,25 @@ describe("the queue in front of kiwix-serve", () => {
     expect(log.slice(0, 2)).toEqual(["begin a", "begin b"]);
     expect(log.indexOf("begin c")).toBeGreaterThan(log.indexOf("end a"));
     expect(queue.load()).toEqual({ running: 0, waiting: 0 });
+  });
+
+  it("still gives a shared place on when telling a caller fails", async () => {
+    const places = createPlaces(1);
+    const titles = createSearchQueue<string>({ ...options, places });
+    const text = createSearchQueue<string>({ ...options, places });
+    const log: string[] = [];
+    // A caller whose signal cannot be let go of: telling it the answer throws.
+    const awkward = {
+      aborted: false,
+      addEventListener() {},
+      removeEventListener() {
+        throw new Error("cannot");
+      },
+    } as unknown as AbortSignal;
+    void titles.ask("a", slow(log, "a", 10), awkward);
+    const next = text.ask("b", slow(log, "b", 10));
+    expect(await Promise.race([next, sleep(500).then(() => "stalled")])).toEqual({ status: "found", value: "b" });
+    expect(places.taken()).toBe(0);
   });
 
   it("drops a search nobody is waiting for before it begins, and lets one that has begun finish and keeps its answer", async () => {

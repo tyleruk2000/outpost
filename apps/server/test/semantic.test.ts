@@ -124,6 +124,22 @@ describe("semantic and hybrid search", () => {
     expect(index.loads()).toBe(loads);
   });
 
+  it("leaves out vectors made for passages that went while they were being made", async () => {
+    await buildIndex();
+    const { index } = app.ctx.services.semantic;
+    const before = index.count("test:concepts");
+    const live = (app.ctx.sqlite.prepare("SELECT max(id) AS id FROM chunks").get() as { id: number }).id;
+    const vector = new Float32Array([1, 0, 0, 0]);
+    // A passage retitled mid-build has a new number; the vector made for its old one has nowhere to go.
+    expect(() =>
+      index.upsert("test:concepts", [
+        { chunkId: live + 1000, contentHash: "gone", vector },
+        { chunkId: live, contentHash: "h", vector },
+      ]),
+    ).not.toThrow();
+    expect(index.count("test:concepts")).toBe(before);
+  });
+
   it("stays a keyword search, and says so, until vectors exist", async () => {
     const { body } = await app.api("GET", "/api/search?q=purification&mode=semantic");
     expect(body.mode).toBe("keyword");

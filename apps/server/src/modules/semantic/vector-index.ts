@@ -77,9 +77,20 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
   );
   const counted = sqlite.prepare("SELECT count(*) AS n FROM embeddings WHERE model_id = ?");
   const anyFor = sqlite.prepare("SELECT 1 FROM embeddings WHERE model_id = ? LIMIT 1").pluck();
+  const passageExists = sqlite.prepare("SELECT 1 FROM chunks WHERE id = ?").pluck();
+  /**
+   * Writes the vectors whose passages are still there, and returns those. A passage can go
+   * while its vector is being made (its item retitled, given new numbers, or removed).
+   */
   const upsertMany = sqlite.transaction((modelId: string, items: Array<{ chunkId: number; contentHash: string; vector: Float32Array }>) => {
     const now = Date.now();
-    for (const item of items) insert.run(item.chunkId, modelId, vectorToBlob(item.vector), item.contentHash, now);
+    const written: typeof items = [];
+    for (const item of items) {
+      if (passageExists.get(item.chunkId) === undefined) continue;
+      insert.run(item.chunkId, modelId, vectorToBlob(item.vector), item.contentHash, now);
+      written.push(item);
+    }
+    return written;
   });
 
   let held: Held | null = null;
@@ -142,10 +153,10 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
 
   return {
     upsert(modelId, items) {
-      upsertMany(modelId, items);
+      const written = upsertMany(modelId, items);
       const matrix = held?.modelId === modelId ? held.matrix : null;
       if (!matrix) return;
-      for (const item of items) {
+      for (const item of written) {
         if (item.vector.length !== matrix.dimensions) {
           letGo();
           return;

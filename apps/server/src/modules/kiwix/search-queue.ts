@@ -69,6 +69,8 @@ export interface SearchQueueOptions {
   /** How many answers are remembered, and for how long. */
   remember: number;
   rememberMs: number;
+  /** Hears of a caller that could not be told its answer. The others are told all the same. */
+  onError?: (error: unknown) => void;
 }
 
 export type Asked<T> =
@@ -128,7 +130,13 @@ export function createSearchQueue<T>(options: SearchQueueOptions): SearchQueue<T
   }
 
   function settleAll(task: Task<T>, answer: Asked<T>): void {
-    for (const waiter of [...task.waiters]) waiter.settle(answer);
+    for (const waiter of [...task.waiters]) {
+      try {
+        waiter.settle(answer);
+      } catch (error) {
+        options.onError?.(error);
+      }
+    }
   }
 
   /** The limit runs from when the search begins, or from when a caller joins one already begun. */
@@ -153,10 +161,13 @@ export function createSearchQueue<T>(options: SearchQueueOptions): SearchQueue<T
         tasks.delete(task.key);
         running -= 1;
         places?.giveBack();
-        settleAll(task, answer);
-        // A shared place goes to whichever queue joined first and has a search waiting.
-        if (places) places.offer();
-        else pump();
+        try {
+          settleAll(task, answer);
+        } finally {
+          // A shared place goes to whichever queue joined first and has a search waiting.
+          if (places) places.offer();
+          else pump();
+        }
       };
       // `run` may throw before it returns a promise; that is a failure like any other.
       Promise.resolve()

@@ -620,6 +620,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   const titleQueue = createSearchQueue<Hit[]>({
     concurrency: referenceTimings.placesAtOnce,
     places,
+    onError: (error) => log.warn({ err: error }, "a title search could not tell whoever asked"),
     limitMs: referenceTimings.titleLimitMs,
     ceilingMs: referenceTimings.archiveCeilingMs,
     remember: 600,
@@ -629,6 +630,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   const queue = createSearchQueue<BookAnswer>({
     concurrency: referenceTimings.atOnce,
     places,
+    onError: (error) => log.warn({ err: error }, "a search of an archive could not tell whoever asked"),
     limitMs: referenceTimings.archiveLimitMs,
     ceilingMs: referenceTimings.archiveCeilingMs,
     remember: 600,

@@ -49,8 +49,13 @@ function openError(error: unknown): ExtractionError {
   );
 }
 
-/** Bookmarks read at most: a table of contents, not every paragraph of a generated file. */
-const MAX_BOOKMARKS = 5_000;
+/** How a PDF's bookmarks are read. Tests lower them; nothing else changes them. */
+export const outlineLimits = {
+  /** Bookmarks read at most, in the outline's order: a table of contents, not every paragraph of a generated file. */
+  most: 5_000,
+  /** Destinations looked up at once: each may read an object of the file. */
+  batch: 50,
+};
 
 interface OutlineItem {
   title?: unknown;
@@ -68,7 +73,6 @@ type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
 async function bookmarks(pdf: PdfDocument): Promise<Array<{ page: number; depth: number; order: number; title: string }>> {
   const outline = (await pdf.getOutline().catch(() => null)) as OutlineItem[] | null;
   if (!outline?.length) return [];
-  const found: Array<{ page: number; depth: number; order: number; title: string }> = [];
   const pageOf = async (dest: unknown): Promise<number | null> => {
     const explicit = typeof dest === "string" ? await pdf.getDestination(dest) : dest;
     if (!Array.isArray(explicit) || explicit.length === 0) return null;
@@ -78,16 +82,27 @@ async function bookmarks(pdf: PdfDocument): Promise<Array<{ page: number; depth:
     if (target && typeof target === "object") return (await pdf.getPageIndex(target as Parameters<PdfDocument["getPageIndex"]>[0])) + 1;
     return null;
   };
-  const walk = async (items: OutlineItem[], depth: number) => {
+  // The bookmarks in the outline's order, cut to the most read before any destination is looked up.
+  const listed: Array<{ title: string; dest: unknown; depth: number }> = [];
+  const walk = (items: OutlineItem[], depth: number) => {
     for (const item of items) {
-      if (found.length >= MAX_BOOKMARKS) return;
+      if (listed.length >= outlineLimits.most) return;
       const title = clean(item.title);
-      const page = await pageOf(item.dest).catch(() => null);
-      if (title && page !== null && page >= 1 && page <= pdf.numPages) found.push({ page, depth, order: found.length, title });
-      if (item.items?.length) await walk(item.items, depth + 1);
+      if (title) listed.push({ title, dest: item.dest, depth });
+      if (item.items?.length) walk(item.items, depth + 1);
     }
   };
-  await walk(outline, 0);
+  walk(outline, 0);
+  const found: Array<{ page: number; depth: number; order: number; title: string }> = [];
+  for (let start = 0; start < listed.length; start += outlineLimits.batch) {
+    const batch = listed.slice(start, start + outlineLimits.batch);
+    const pages = await Promise.all(batch.map((mark) => pageOf(mark.dest).catch(() => null)));
+    batch.forEach((mark, index) => {
+      const page = pages[index];
+      if (page != null && page >= 1 && page <= pdf.numPages)
+        found.push({ page, depth: mark.depth, order: start + index, title: mark.title });
+    });
+  }
   return found;
 }
 

@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { expandSelfClosing } from "../src/modules/documents/extract-epub.ts";
 import { runExtraction } from "../src/modules/documents/extract-host.ts";
+import { extractPdf, outlineLimits } from "../src/modules/documents/extract-pdf.ts";
 import { htmlSections, markdownSections, parseHtml } from "../src/modules/documents/extract-text.ts";
 import { tidyText } from "../src/modules/documents/extract-types.ts";
 import {
@@ -213,6 +214,32 @@ describe("text from markup", () => {
 
   it("tidies whitespace without losing lines", () => {
     expect(tidyText("  a \t b\r\n\r\n\r\n\r\nc \u0000d\n ")).toBe("a b\n\nc d");
+  });
+});
+
+describe("a PDF's bookmarks", () => {
+  it("reads at most so many, in the outline's order, looking their pages up a few at a time", async () => {
+    const dir = tempDir("outpost-outline-");
+    const file = path.join(dir, "book.pdf");
+    const pages = Array.from({ length: 6 }, (_, index) => [`Words of page ${index + 1}`]);
+    const outline = pages.map((_, index) => ({ title: `Chapter ${index + 1}`, page: index + 1, named: index % 2 === 1 }));
+    fs.writeFileSync(file, buildPdf(pages, { outline }));
+    const kept = { ...outlineLimits };
+    try {
+      Object.assign(outlineLimits, { most: 3, batch: 2 });
+      const read = await extractPdf(file, 0, () => {});
+      // The first three bookmarks only: the pages after the third stay under it.
+      expect(read.sections.map((section) => section.heading)).toEqual([
+        "Chapter 1",
+        "Chapter 2",
+        "Chapter 3",
+        "Chapter 3",
+        "Chapter 3",
+        "Chapter 3",
+      ]);
+    } finally {
+      Object.assign(outlineLimits, kept);
+    }
   });
 });
 
