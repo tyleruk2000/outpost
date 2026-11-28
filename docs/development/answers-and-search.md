@@ -146,6 +146,21 @@ passages (Settings quotes 45); a Raspberry Pi 5 about four minutes. About 3 ms t
 question with 57,800 passages and 10 ms to embed it; on a 57,600-passage library, own
 results p95 about 35 ms on the laptop.
 
+### Passages are never changed in place
+
+`chunks_fts` and `chunks_words` are external-content FTS5 tables kept in step by insert
+and delete triggers. A passage is never `UPDATE`d (migration 0048 refuses it): a new title
+or new tags put each passage back under a new number, its vectors copied across, and the
+vector matrix in memory is let go (`onChunksRenumbered`). The reason: an encrypting save
+turns on FTS5 `secure-delete` for that save (`scrubbing`), and in SQLite 3.54 erasing a
+passage that had earlier been deleted and put back under the same number in the ordinary
+way breaks the index (`fts5: checksum mismatch`, then "database disk image is malformed"
+from the `fts5vocab` word list). Numbers used once, new ones for anything re-indexed, and
+the index stayed sound in every sequence tried (`test/search-index-sound.test.ts`
+reproduces the break through the API: rename and tag a page, then encrypt it).
+Check an index against its passages with `INSERT INTO chunks_fts(chunks_fts, rank)
+VALUES ('integrity-check', 1)`: without the `1` an index out of step with them passes.
+
 ### Keyword pass
 
 Keyword ranking (`modules/search/keyword.ts`, `score.ts`):

@@ -689,6 +689,11 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 ### Fixed
 
 - Search counts every match, so every page can be reached.
+- Encrypting a page no longer breaks the search index ("database disk image is
+  malformed" from "Did you mean"). A passage retitled or retagged had been changed in
+  place, which SQLite 3.54's erasing delete cannot then take out cleanly; passages are now
+  put back under new numbers with their vectors, and both indexes are built again once at
+  the update (a few seconds on a Pi), which also repairs one already broken.
 - CSV numbers read by the file's own decimal mark, with ambiguous cells refused.
 - Answers decline only when the model says the passages do not hold the answer.
 - Stream errors on a full or unplugged drive fail the download, not the process.

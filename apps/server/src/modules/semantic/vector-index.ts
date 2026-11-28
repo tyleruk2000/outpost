@@ -34,6 +34,8 @@ export interface VectorIndex {
   /** Whether any vector is stored for the model. Asked on every search, so it does not count them. */
   has(modelId: string): boolean;
   removeModel(modelId: string): number;
+  /** Lets go of what is held in memory, to be read again at the next search: the passages' numbers changed. */
+  forget(): void;
 }
 
 export function vectorToBlob(vector: Float32Array): Buffer {
@@ -193,5 +195,7 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
       sqlite.prepare("DELETE FROM embedding_models WHERE id = ?").run(modelId);
       return removed;
     },
+
+    forget: letGo,
   };
 }

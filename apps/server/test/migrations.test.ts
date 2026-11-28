@@ -55,8 +55,10 @@ describe("database migrations", () => {
       ]) {
         expect(names, table).toContain(table);
       }
-      for (const trigger of ["chunks_fts_ai", "chunks_fts_ad", "chunks_fts_au", "places_fts_ai", "places_fts_ad"])
+      for (const trigger of ["chunks_fts_ai", "chunks_fts_ad", "chunks_not_updated", "places_fts_ai", "places_fts_ad"])
         expect(names, trigger).toContain(trigger);
+      // Passages are put back under new numbers, never changed in place (0048).
+      for (const trigger of ["chunks_fts_au", "chunks_words_au"]) expect(names, trigger).not.toContain(trigger);
       const applied = sqlite.prepare("SELECT count(*) AS n FROM __drizzle_migrations").get() as { n: number };
       expect(applied.n).toBe(migrationFiles().length);
       expect(sqlite.pragma("journal_mode", { simple: true })).toBe("wal");

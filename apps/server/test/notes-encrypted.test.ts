@@ -165,7 +165,9 @@ describe("encrypted pages", () => {
     expect(sqlite.pragma("secure_delete", { simple: true })).toBe(0);
     expect(indexErases()).toBe(false);
     expect(sqlite.pragma("integrity_check", { simple: true })).toBe("ok");
-    sqlite.prepare("INSERT INTO chunks_fts(chunks_fts) VALUES('integrity-check')").run();
+    // Checked against the passages too (rank 1): without it, an index out of step with them passes.
+    for (const index of ["chunks_fts", "chunks_words"])
+      sqlite.prepare(`INSERT INTO ${index}(${index}, rank) VALUES('integrity-check', 1)`).run();
     expect((await searchIds("ordinary sentence")).length).toBeGreaterThan(10);
     expect(await searchIds("combination")).toEqual([note.id]);
   });
