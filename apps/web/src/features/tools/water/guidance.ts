@@ -4,6 +4,7 @@
  * where bodies differ, each is quoted and the screen says whose figure it uses. US pages
  * keep their US spelling inside quotation marks.
  */
+import { isUkRegion } from "@/lib/region";
 import type { Source } from "../kit";
 
 const READ = "2026-11-16";
@@ -145,6 +146,23 @@ export const PLANNING_FIGURES: readonly PlanningFigure[] = [
     source: WATER_SOURCES.whoTn9,
   },
 ];
+
+/** The United States and its territories, where the CDC's and FEMA's guidance is the government's own. */
+const US_REGIONS = new Set(["US", "PR", "GU", "VI", "AS", "MP"]);
+
+/**
+ * The planning figure the calculator starts on, by Home's country (else the device's
+ * region): the UK government's in the UK and the Crown Dependencies, the CDC's in the
+ * United States, and elsewhere, where Outpost has read no government's own figure, the
+ * WHO's figure for survival, the one for many countries. Only a first choice: the person
+ * can choose any, and what they choose is kept.
+ */
+export function startingFigure(region: string | null | undefined): PlanningFigure["id"] {
+  const code = region?.toUpperCase() ?? null;
+  if (isUkRegion(code)) return "uk";
+  if (code && US_REGIONS.has(code)) return "cdc";
+  return "who-survival";
+}
 
 // ── Rain run-off ────────────────────────────────────────────────────────────
 

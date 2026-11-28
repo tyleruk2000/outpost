@@ -24,6 +24,7 @@ import {
   sourceById,
   stepStanding,
   stepsTakenOut,
+  templateCountry,
   termsOf,
   thingOf,
 } from "@outpost/shared";
@@ -161,6 +162,50 @@ const supply = (over: Partial<PlanSupply>): PlanSupply => ({
   ...over,
 });
 const row = (over: Partial<HeldRow>): HeldRow => ({ name: "x", category: "other", quantity: 1, unit: "", ...over });
+
+describe("steps for the UK only", () => {
+  /** Words that name a service, number, body or page of the UK's own. */
+  const UK_ONLY =
+    /\b105\b|03457|Floodline|\b999\b|\bNHS\b|Ofcom|Gas Safe|Met Office|GOV\.UK|National Severe Weather|Priority Services? Register|load block|redcross\.org\.uk|England|Scotland|Wales|Northern Ireland/;
+  const ukSteps = PLAN_TEMPLATES.filter((template) => templateCountry(template) === "GB").flatMap((template) => template.steps);
+
+  it("are marked so wherever a UK template's step or its source's words name the UK's own services", () => {
+    const named = ukSteps.filter((step) => UK_ONLY.test(step.text) || UK_ONLY.test(step.quote));
+    expect(named.length).toBeGreaterThan(10);
+    for (const step of named) expect(step.onlyIn, `${step.id}: ${step.text}`).toEqual(["GB"]);
+    // And nothing else: a step marked for the UK says why in its own words or its source's, or is listed here with why.
+    const alsoUk: Record<string, string> = { "comms-failure.before.14": "a duty Ofcom puts on landline providers in the UK" };
+    for (const step of ukSteps.filter((each) => each.onlyIn && !(each.id in alsoUk))) expect(named, step.id).toContain(step);
+    for (const id of Object.keys(alsoUk)) expect(ukSteps.find((step) => step.id === id)?.onlyIn, id).toEqual(["GB"]);
+  });
+
+  it("are marked only on the UK's own templates, with country codes", () => {
+    for (const template of PLAN_TEMPLATES)
+      for (const step of template.steps.filter((each) => each.onlyIn)) {
+        expect(templateCountry(template), step.id).toBe("GB");
+        for (const code of step.onlyIn!) expect(code).toMatch(/^[A-Z]{2}$/);
+      }
+  });
+
+  it("are left out of a plan started for a home outside the UK, and listed as taken out", () => {
+    const template = PLAN_TEMPLATES.find((each) => each.id === "power-cut")!;
+    let n = 0;
+    const id = () => `s${++n}`;
+    const origins = (country: string | null) => planFromTemplate(template, id, "", country).body.steps.map((step) => step.origin);
+    const all = template.steps.map((step) => step.id);
+    expect(origins("GB")).toEqual(all);
+    expect(origins(null)).toEqual(all);
+    const abroad = planFromTemplate(template, id, "112", "DE");
+    expect(abroad.body.steps.map((step) => step.origin)).toEqual(template.steps.filter((step) => !step.onlyIn).map((step) => step.id));
+    expect(abroad.body.steps.map((step) => step.text)).not.toContain("Call 105 free to report it in England, Wales or Scotland.");
+    expect(stepsTakenOut(template.id, abroad.body.steps).map((step) => step.id)).toEqual(
+      template.steps.filter((step) => step.onlyIn).map((step) => step.id),
+    );
+    // A template from another government is the household's to choose, and is never cut.
+    const queensland = PLAN_TEMPLATES.find((each) => each.country === "AU")!;
+    expect(planFromTemplate(queensland, id, "000", "GB").body.steps).toHaveLength(queensland.steps.length);
+  });
+});
 
 describe("a plan's supplies against the inventory, worked by hand", () => {
   it("works out what is needed for the household and the days", () => {

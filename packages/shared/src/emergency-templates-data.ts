@@ -530,6 +530,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "power-cut.before.4",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Note the power cut number: 105 in GB, 03457 643643 in Northern Ireland.",
         source: "gov-be-ready-for-emergencies",
@@ -551,6 +552,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "power-cut.before.7",
+        onlyIn: ["GB"],
         phase: "before",
         text: "If eligible, join your energy supplier's Priority Services Register.",
         source: "gov-be-ready-power-cut",
@@ -558,6 +560,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "power-cut.before.8",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Find out your load block letter.",
         source: "gov-be-ready-power-cut",
@@ -572,6 +575,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "power-cut.during.3",
+        onlyIn: ["GB"],
         phase: "during",
         text: "Call 105 free to report it in England, Wales or Scotland.",
         source: "gov-be-ready-power-cut",
@@ -642,6 +646,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "power-cut.during.14",
+        onlyIn: ["GB"],
         phase: "during",
         text: "Try calling 999 or 112 from a mobile.",
         source: "gov-be-ready-power-cut",
@@ -656,6 +661,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "power-cut.after.5",
+        onlyIn: ["GB"],
         phase: "after",
         text: "The British Red Cross has advice on a power cut, including food in the fridge and freezer afterwards: see its page “How to prepare for a power cut”, https://www.redcross.org.uk/get-help/prepare-for-emergencies/power-cut",
         source: "redcross-power-cut",
@@ -867,6 +873,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "flooding.before.10",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Note the Floodline number: 0345 988 1188.",
         source: "ea-personal-flood-plan",
@@ -874,6 +881,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "flooding.before.11",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Ask Floodline to send warnings to a friend or relative for you.",
         source: "govuk-prepare-for-flooding",
@@ -923,6 +931,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "flooding.during.7",
+        onlyIn: ["GB"],
         phase: "during",
         text: "Call 999 if anyone is in immediate danger.",
         source: "govuk-help-during-flood",
@@ -1240,6 +1249,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "comms-failure.before.14",
+        onlyIn: ["GB"],
         phase: "before",
         text: "If you don’t have a working mobile phone or a reliable mobile signal, your landline provider must offer you a free solution such as a battery back-up unit.",
         source: "ofcom-severe-weather",
@@ -1255,6 +1265,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "comms-failure.before.15",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Charge your devices before the beginning of any extreme weather event that the Met Office warns us about.",
         source: "ofcom-severe-weather",
@@ -1277,6 +1288,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "comms-failure.during.1",
+        onlyIn: ["GB"],
         phase: "during",
         text: "If 999 or 112 fails, try both a mobile and a landline.",
         source: "gov-be-ready-phone-broadband",
@@ -1284,6 +1296,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "comms-failure.during.12",
+        onlyIn: ["GB"],
         phase: "during",
         text: "Even if you have no signal on your usual mobile network, calling 999 will automatically connect through another network if one is available.",
         source: "ofcom-severe-weather",
@@ -1364,6 +1377,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "comms-failure.after.4",
+        onlyIn: ["GB"],
         phase: "after",
         text: "If your provider has signed up to Ofcom’s automatic compensation scheme, and your broadband or landline isn’t fixed within two working days, you might be entitled to compensation.",
         source: "ofcom-severe-weather",
@@ -1456,6 +1470,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
     steps: [
       {
         id: "storm.before.1",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Watch for National Severe Weather Warnings covering your area.",
         source: "gov-be-ready-storms",
@@ -1568,6 +1583,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "storm.after.6",
+        onlyIn: ["GB"],
         phase: "after",
         text: "The British Red Cross has advice on storms, including what to do about a fallen tree: see its page “Prepare for a storm or thunderstorm”, https://www.redcross.org.uk/get-help/prepare-for-emergencies/support-during-a-storm",
         source: "redcross-storm",
@@ -1624,6 +1640,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
     steps: [
       {
         id: "cold.before.1",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Have heating and cooking appliances checked by a Gas Safe engineer.",
         source: "gov-be-ready-cold",
@@ -1656,6 +1673,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "cold.before.5",
+        onlyIn: ["GB"],
         phase: "before",
         source: "redcross-emergency-kit",
         quote: "",
@@ -1812,6 +1830,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "heat.before.3",
+        onlyIn: ["GB"],
         phase: "before",
         source: "redcross-emergency-kit",
         quote: "",
@@ -1846,6 +1865,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "heat.during.12",
+        onlyIn: ["GB"],
         phase: "during",
         text: "Read the NHS's advice on how to cope in a heatwave.",
         source: "gov-be-ready-heat",
@@ -1962,6 +1982,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "shelter-at-home.before.6",
+        onlyIn: ["GB"],
         phase: "before",
         text: "Teach children when and how to dial 999.",
         source: "gov-be-ready-hazards",
@@ -1983,6 +2004,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "shelter-at-home.before.11",
+        onlyIn: ["GB"],
         phase: "before",
         source: "redcross-72-hours",
         quote: "",
@@ -2062,6 +2084,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "shelter-at-home.after.1",
+        onlyIn: ["GB"],
         phase: "after",
         text: "Follow official advice on GOV.UK about what to do next.",
         source: "gov-be-ready-hazardous",
@@ -2305,6 +2328,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "evacuate.before.13",
+        onlyIn: ["GB"],
         phase: "before",
         source: "redcross-five-tips",
         quote: "",
@@ -2313,6 +2337,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "evacuate.before.14",
+        onlyIn: ["GB"],
         phase: "before",
         source: "redcross-emergency-kit",
         quote: "",
@@ -2335,6 +2360,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
       },
       {
         id: "evacuate.during.3",
+        onlyIn: ["GB"],
         phase: "during",
         text: "Fire inside the home: get out, stay out, call 999.",
         source: "gov-be-ready-fires",

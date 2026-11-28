@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { boilAdvice, filterLife, rainYieldLitres, storageLitres } from "./formulas";
-import { BLEACH_TABLES, METHODS, PLANNING_FIGURES } from "./guidance";
+import { BLEACH_TABLES, METHODS, PLANNING_FIGURES, startingFigure } from "./guidance";
 
 describe("water to store", () => {
   it("is people × days × litres a day", () => {
@@ -14,6 +14,19 @@ describe("water to store", () => {
     expect(figure("fema")[0]).toBeCloseTo(3.785, 3);
     expect(figure("who-survival")).toEqual([2.5, 3]);
     expect(figure("who-basic")).toEqual([7.5, 15]);
+  });
+});
+
+describe("the planning figure to start on", () => {
+  it("is the UK government's in the UK, the CDC's in the United States, and the WHO's everywhere else", () => {
+    expect(startingFigure("GB")).toBe("uk");
+    expect(startingFigure("JE")).toBe("uk");
+    expect(startingFigure("US")).toBe("cdc");
+    expect(startingFigure("PR")).toBe("cdc");
+    expect(startingFigure("DE")).toBe("who-survival");
+    expect(startingFigure("AU")).toBe("who-survival");
+    expect(startingFigure(null)).toBe("who-survival");
+    for (const region of ["GB", "US", "DE"]) expect(PLANNING_FIGURES.some((figure) => figure.id === startingFigure(region))).toBe(true);
   });
 });
 

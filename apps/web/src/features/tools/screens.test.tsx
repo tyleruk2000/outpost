@@ -11,6 +11,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { matchesWords } from "@/components/command-palette";
 import { prepareScreens } from "@/features/prepare/screens";
+import { setDeviceRegion } from "@/lib/region";
 import BuildingPage from "./building/building-page";
 import CookingPage from "./cooking/cooking-page";
 import OutdoorsPage from "./outdoors/outdoors-page";
@@ -79,6 +80,21 @@ describe("the water screen", () => {
     // Two people, three days, three litres each a day.
     expect(within(storage).getAllByText("18 litres")[0]).toHaveClass("text-heading");
     expect(within(storage).getByText("WHO, basic needs")).toBeInTheDocument();
+  });
+
+  it("starts on the WHO's figure outside the UK and the United States, and says why", () => {
+    setDeviceRegion("DE");
+    try {
+      show(<WaterPage />);
+      const storage = section("Water to store");
+      // Two people, three days, 2.5 to 3 litres each a day.
+      expect(within(storage).getAllByText("15 to 18 litres")[0]).toHaveClass("text-heading");
+      expect(
+        within(storage).getByText(/Starts on the WHO's figure: Outpost has no planning figure from your country's government/),
+      ).toBeInTheDocument();
+    } finally {
+      setDeviceRegion("GB");
+    }
   });
 
   it("says what is wrong with a figure, and gives no answer until it is put right", async () => {

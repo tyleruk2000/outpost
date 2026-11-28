@@ -1,5 +1,7 @@
 import { Notice } from "@/components/page";
 import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
+import { useHomeCountry } from "@/features/frequencies/home-country";
+import { deviceRegion } from "@/lib/region";
 import { formatDate, plural } from "@/lib/utils";
 import {
   allValues,
@@ -30,6 +32,7 @@ import {
   PLANNING_FIGURES,
   RUNOFF,
   WATER_SOURCES as S,
+  startingFigure,
   WHAT_NONE_REMOVE,
 } from "./guidance";
 import { PURIFICATION_TITLE, purificationDocument } from "./purification-sheet";
@@ -95,7 +98,15 @@ function StorageCalculator() {
     })),
     { value: "own", label: "My own figure" },
   ];
-  const [figureId, setFigure] = useChoice("water.storage.figure", options, "uk");
+  // The first choice follows Home's country, else the device's region; a choice made is kept.
+  const home = useHomeCountry();
+  const start = startingFigure(home?.code ?? deviceRegion());
+  const [figureId, setFigure] = useChoice("water.storage.figure", options, start);
+  const startWho = PLANNING_FIGURES.find((item) => item.id === start)!.who;
+  const startHint =
+    start === "who-survival"
+      ? `Starts on the WHO's figure: Outpost has no planning figure from ${home ? `${home.name}'s` : "your country's"} government.`
+      : `Starts on the ${startWho} figure, for ${home ? home.name : "this device's region"}.`;
   const people = useNumber(stPeople);
   const days = useNumber(stDays);
   const own = useNumber(stOwn);
@@ -113,7 +124,14 @@ function StorageCalculator() {
       <Inputs>
         <NumberField input={people} />
         <NumberField input={days} />
-        <ChoiceField label="Whose planning figure" value={figureId} onChange={setFigure} options={options} className="sm:col-span-2" />
+        <ChoiceField
+          label="Whose planning figure"
+          hint={startHint}
+          value={figureId}
+          onChange={setFigure}
+          options={options}
+          className="sm:col-span-2"
+        />
         {figure ? null : <NumberField input={own} />}
       </Inputs>
       <Result

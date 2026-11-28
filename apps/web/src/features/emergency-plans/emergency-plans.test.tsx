@@ -28,6 +28,7 @@ import { householdPeopleToOffer } from "./people-section";
 import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 import { readableOf } from "./printable";
+import ReadPlanPage from "./read-page";
 import UsePlanPage from "./use-page";
 import { warningLineOf } from "./warning-line";
 import { guessEmergencyNumber, templatesWhereLine } from "./words";
@@ -553,6 +554,26 @@ describe("the cards to print", () => {
   }, 30_000);
 });
 
+describe("a plan to read", () => {
+  it("shows the whole plan in order with nothing that changes it, and leads to changing it", async () => {
+    serve({ "/api/emergency-plans/p1": answer(), "POST /api/emergency-plans/p1/opened": answer() });
+    show("/prepare/plans/p1/read", <ReadPlanPage />, "/prepare/plans/:id/read");
+    expect(await screen.findByRole("heading", { level: 1, name: "Power cut" })).toBeInTheDocument();
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(headings.slice(0, 4)).toEqual(["In an emergency, call", "Before", "During", "After"]);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getByRole("link", { name: /Change the plan/ })).toHaveAttribute("href", "/prepare/plans/p1");
+    expect(screen.getByRole("link", { name: /Use now/ })).toHaveAttribute("href", "/prepare/plans/p1/use");
+  });
+
+  it("says what failed, with a way to try again", async () => {
+    serve({});
+    show("/prepare/plans/p1/read", <ReadPlanPage />, "/prepare/plans/:id/read");
+    expect(await screen.findByRole("button", { name: /Try again/ })).toBeInTheDocument();
+  });
+});
+
 describe("a plan in use", () => {
   it("leads with what to do now, holds what the plan says for the moment, and a tick is sent with the step", async () => {
     const withMore = answer();
@@ -837,6 +858,42 @@ describe("plans for a household", () => {
     await userEvent.click(await screen.findByRole("button", { name: "New plan" }));
     expect((await screen.findByTestId("templates-where")).textContent).toMatch(/^Caravan is in Germany: the/);
     expect(templatesWhereLine({ code: "DE", name: "Germany" }, null)).toMatch(/^Home is in Germany: the/);
+  });
+
+  it("starts a plan for a home outside the UK without the steps that name the UK's own services", async () => {
+    const server = serve({
+      "/api/emergency-plans": { plans: [] },
+      "/api/households": caravan([]),
+      "/api/reference/catalogue": catalogue,
+      "POST /api/emergency-plans": { plan: plan(), resolved },
+    });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    await userEvent.click(await screen.findByRole("button", { name: "New plan" }));
+    await screen.findByTestId("templates-where");
+    await userEvent.click(screen.getByRole("radio", { name: /^Power cut/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Make the plan" }));
+    await waitFor(() => expect(server.posted.some((post) => post.path === "POST /api/emergency-plans")).toBe(true));
+    const sent = server.posted.find((post) => post.path === "POST /api/emergency-plans")!.body as EmergencyPlan;
+    const texts = sent.body.steps.map((step) => step.text);
+    expect(texts).toContain("Keep fridge and freezer doors closed.");
+    expect(texts).not.toContain("Call 105 free to report it in England, Wales or Scotland.");
+  });
+
+  it("says a step taken out is for the UK only", async () => {
+    const template = PLAN_TEMPLATES.find((each) => each.id === "power-cut")!;
+    let n = 0;
+    const abroad = planFromTemplate(template, () => `s${++n}`, "112", "DE");
+    serve({
+      "/api/emergency-plans/p1": answer({ templateId: "power-cut", body: abroad.body }),
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "/api/households": caravan([]),
+      "/api/people": { people: [] },
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    const out = await screen.findByText(/steps of the template were taken out of this plan/);
+    const call = within(out.closest("details")!).getByText("Call 105 free to report it in England, Wales or Scotland.").closest("li")!;
+    expect(call).toHaveTextContent("For the UK only: it names the UK's own services");
   });
 
   it("says which household a plan is for, and adds its people with one press", async () => {
