@@ -269,7 +269,7 @@ small words left out; `alsoSearched` the other spellings and names searched as w
 `didYouMean` (`{ query, words }` or null) a near word for one in no passage, offered
 only while fewer than five results are found; `facets` are per kind; `warnings` name sources that could not
 answer. Each result's `score` is 0 to 1 on one scale for every source, and `why` says in
-a few words why it is there ([search.md](search.md#ranking)). With `reference=include`
+a few words why it is there ([search-ranking.md](search-ranking.md)). With `reference=include`
 the search waits up to 10 seconds for archives and counts their articles in `total`; with
 `later` it leaves them to `/reference`, and `referenceToCome` says whether there are any.
 Repeaters (kind `repeater`) and places in reference layers (`map-feature`) are answered by
@@ -290,7 +290,7 @@ like one of their names), or in `results` when their kind is asked for.
 | `POST /api/semantic/import` | The exported file, `application/gzip`. `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`; `400` for vectors of another size. |
 
 Pause or cancel a build through `/api/jobs`. File format:
-[search.md](search.md#moving-vectors-between-installations).
+[search-by-meaning.md](search-by-meaning.md#moving-vectors-between-installations).
 
 ## Answers
 
@@ -825,7 +825,7 @@ Worked out by VOACAP on the server, offline. Types: `propagation.ts`,
 | `POST /api/radio/communication-plans/import` | `{ text }`: a plan file from an export (`format: outpost-communication-plan`) or a bare plan → a new plan; links to pages and documents not held here are dropped. |
 | `POST …/communication-plans/:id/matrix`, `GET` | Works the plan out (≤56 runs) → `PlanResult`; the last result if the plan is unchanged. |
 | `GET /api/radio/observations` | The contact log: `limit` (≤500), `offset`; `imports`, `importing`, `adif`. |
-| `POST /api/radio/observations`, `DELETE …/:id` | One entry: `at`, `frequencyMhz`, `band`, `mode`, `outcome` (`contact`, `heard`, `failed`), `tx`, `rx`, power, antenna, reports, notes. `409` duplicate. |
+| `POST /api/radio/observations`, `PUT …/:id`, `DELETE …/:id` | One entry (`PUT` replaces its fields and keeps its source and import): `at`, `frequencyMhz`, `band`, `mode`, `outcome` (`contact`, `heard`, `failed`), `tx`, `rx`, power, antenna, reports, notes. `409` duplicate. |
 | `POST /api/radio/observations/import` | ADIF, ≤64 MB. ≤128 kB at once (`{ import }`), larger as a `propagation.adif-import` job. All or nothing. `400 not-adif` or `nothing-to-read`; `409 import-busy`. |
 | `DELETE /api/radio/observations/imports/:id` | Takes an import back. |
 | `POST /api/radio/observations/compare` | The log against the engine (≤500 paths). |

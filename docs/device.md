@@ -36,7 +36,8 @@ with `OUTPOST_ALLOW_REMOTE_CLOCK=true` (in `.env` for Docker, then `docker compo
 -d`). Otherwise the line says why. In Docker no browser counts as the server's computer,
 not even one on it: on a Pi, open Outpost through `deploy/pi/on-this-pi.sh`
 ([deployment.md](deployment.md#10-things-kept-to-the-pi-itself)), or set the clock there
-with `sudo date -s "2026-11-24 09:30"`.
+with `sudo date -s "YYYY-MM-DD HH:MM"`, today's date and the time now in place of the
+letters.
 
 - **Docker on a Raspberry Pi**: `deploy/pi/install.sh` adds a small service
   (`outpost-clock.path`) that sets the clock when Outpost asks. `--clock-from-network`

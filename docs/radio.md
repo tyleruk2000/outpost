@@ -25,9 +25,9 @@ France (without its licence-free services), Belgium, Switzerland, Spain and Ital
 
 ## Radio tools on the map
 
-On **Maps**: [Maidenhead locators](maps.md#maidenhead-locators),
-[line of sight](maps.md#line-of-sight) between two points or from a repeater, and
-[the grey line](maps.md#the-grey-line-day-and-night), which an HF coverage map can also
+On **Maps**: [Maidenhead locators](map-places.md#maidenhead-locators),
+[line of sight](map-sun-and-radio.md#line-of-sight) between two points or from a repeater, and
+[the grey line](map-sun-and-radio.md#the-grey-line-day-and-night), which an HF coverage map can also
 draw under **Grey line (day and night)** for about the 15th of the month shown.
 
 Line of sight is geometry over installed terrain, not propagation: it knows nothing of
@@ -148,7 +148,7 @@ imported lists and the sources.
 One repeater's screen gives what to listen and transmit on, access, status with its date,
 the distance and bearing from the same **Measure from** with a small map (tap it to
 measure from a point), a link to **Tools › Compass** for magnetic and grid north there,
-and **Show on the map** ([maps.md](maps.md#repeaters-on-the-map)), **Check line of
+and **Show on the map** ([map-sun-and-radio.md](map-sun-and-radio.md#repeaters-on-the-map)), **Check line of
 sight** and **Estimated range**. **Remove** is in its **More** menu.
 
 ### The estimated range

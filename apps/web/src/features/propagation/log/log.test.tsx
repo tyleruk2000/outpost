@@ -124,6 +124,7 @@ const importJob = (patch: Partial<JobDto> = {}): JobDto => ({
 
 interface Server {
   posted: Array<{ path: string; body: unknown }>;
+  put: Array<{ path: string; body: unknown }>;
   deleted: string[];
   /** What the job is answered as from now on: a test moves it on by setting this. */
   job: JobDto;
@@ -156,7 +157,7 @@ function show(
     engineReady?: boolean;
   } = {},
 ): Server {
-  const server: Server = { posted: [], deleted: [], job: options.importing ?? importJob(), listed: 0 };
+  const server: Server = { posted: [], put: [], deleted: [], job: options.importing ?? importJob(), listed: 0 };
   const observations = options.observations ?? [];
   vi.stubGlobal(
     "fetch",
@@ -197,6 +198,11 @@ function show(
             409,
           );
         return json({ observation: entry({ id: "new" }) });
+      }
+      if (init?.method === "PUT") {
+        const body = JSON.parse(String(init.body)) as ObservationInput;
+        server.put.push({ path: pathname, body });
+        return json({ observation: entry({ id: "o1", notes: body.notes }) });
       }
       if (init?.method === "DELETE") {
         server.deleted.push(pathname);
@@ -426,6 +432,49 @@ describe("the contact log", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Add to the log" }));
     expect(await within(dialog).findByText("Not added")).toBeInTheDocument();
     expect(within(dialog).getByText(/already in the log/)).toBeInTheDocument();
+  });
+
+  it("puts an entry right in place, starting from what it holds", async () => {
+    const server = show({ observations: [entry()] });
+    fireEvent.click(await screen.findByRole("button", { name: /Edit the entry of 16 Nov 2026, 12:04 UTC with G4BBB/ }));
+    const dialog = screen.getByRole("dialog", { name: "Edit the entry" });
+    expect(within(dialog).getByLabelText("Date and time, UTC")).toHaveValue("2026-11-16T12:04");
+    expect(within(dialog).getByLabelText("Frequency, MHz")).toHaveValue("7.1");
+    expect(within(dialog).getByLabelText("Mode")).toHaveValue("SSB/LSB");
+    // The locator it was logged with is given back as that locator; an end with no position is left empty.
+    expect(within(dialog).getByLabelText("Your station: where")).toHaveValue("IO91WM");
+    expect(within(dialog).getByLabelText("The other station: where")).toHaveValue("");
+    expect(within(dialog).getByLabelText("Your station: callsign (optional)")).toHaveValue("G4AAA");
+    expect(within(dialog).getByLabelText("Report sent (optional)")).toHaveValue("57");
+    fireEvent.change(within(dialog).getByLabelText("Notes (optional)"), { target: { value: "Sked with Brum, on the second try" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save the entry" }));
+    await waitFor(() => expect(server.put).toHaveLength(1));
+    expect(server.put[0]!.path).toBe("/api/radio/observations/o1");
+    expect(server.put[0]!.body).toMatchObject({
+      at: "2026-11-16T12:04:00Z",
+      frequencyMhz: 7.1,
+      mode: "SSB/LSB",
+      outcome: "contact",
+      tx: { call: "G4AAA", locator: "IO91WM" },
+      rx: { call: "G4BBB", lat: null, lon: null },
+      powerWatts: 5,
+      antenna: "Low dipole",
+      reportSent: "57",
+      reportReceived: "55",
+      notes: "Sked with Brum, on the second try",
+    });
+    expect(server.posted).toHaveLength(0);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("keeps the band of an entry logged with no frequency, unless one is given", async () => {
+    const server = show({ observations: [entry({ frequencyMhz: null, band: "20m" })] });
+    fireEvent.click(await screen.findByRole("button", { name: /Edit the entry of/ }));
+    const dialog = screen.getByRole("dialog", { name: "Edit the entry" });
+    expect(within(dialog).getByText(/Logged on the 20m band with no frequency/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save the entry" }));
+    await waitFor(() => expect(server.put).toHaveLength(1));
+    expect(server.put[0]!.body).toMatchObject({ frequencyMhz: null, band: "20m" });
   });
 
   it("deletes an entry, and takes back a file with what it brought in, only when confirmed", async () => {

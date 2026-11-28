@@ -277,6 +277,38 @@ const LEAST_SPAN_METERS = 10_000;
 export const mappedGroups = (groups: readonly RepeaterGroup[]) =>
   groups.filter((group) => group.chosen.length > 0 || (group.location.to && group.also.length > 0)).slice(0, REPEATER_MAPS_MOST);
 
+/** A place's map: its repeaters, perhaps only the nearest few, and how many further ones were left off it. */
+export interface MappedGroup extends RepeaterGroup {
+  /** Listed round the place, further than the nearest `most`, and left off the map: still in the tables. */
+  hidden: number;
+}
+
+/**
+ * The places that get a map, each with only the first `most` of its repeaters (chosen or also near) in the tables'
+ * order of preference: FM first, then the nearest to the place or the journey's line when the household asked for fewer on a busy map; the map's frame then
+ * closes in round those. Null keeps every one.
+ */
+export function repeaterMapGroups(groups: readonly RepeaterGroup[], most: number | null): MappedGroup[] {
+  return mappedGroups(groups).map((group) => {
+    const all = [...group.chosen, ...group.also];
+    if (most === null || all.length <= most) return { ...group, hidden: 0 };
+    const kept = new Set(
+      [...all]
+        // The tables' own order of preference, FM first, then the nearest within it: a nearer digital-only one does not
+        // push off an FM one the tables put before it.
+        .sort((a, b) => Number(isFm(b.repeater)) - Number(isFm(a.repeater)) || a.distanceMeters - b.distanceMeters)
+        .slice(0, most)
+        .map((each) => each.repeater.id),
+    );
+    return {
+      ...group,
+      chosen: group.chosen.filter((each) => kept.has(each.repeater.id)),
+      also: group.also.filter((each) => kept.has(each.repeater.id)),
+      hidden: all.length - kept.size,
+    };
+  });
+}
+
 /**
  * The ground a place's map shows: the place (or the line), and every repeater chosen round it, with a margin, widened
  * (or deepened) about its middle to the shape of the picture, `aspect` being its width over its height.

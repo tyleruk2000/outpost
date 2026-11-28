@@ -34,6 +34,12 @@ function useChange<T, R>(run: (input: T) => Promise<R>, quiet = false) {
 
 export const useAddObservation = () =>
   useChange((input: ObservationInput) => api.post<{ observation: Observation }>("/api/radio/observations", input), true);
+export const useUpdateObservation = () =>
+  useChange(
+    ({ id, input }: { id: string; input: ObservationInput }) =>
+      api.put<{ observation: Observation }>(`/api/radio/observations/${id}`, input),
+    true,
+  );
 export const useRemoveObservation = () => useChange((id: string) => api.delete(`/api/radio/observations/${id}`));
 export const useRemoveImport = () => useChange((id: string) => api.delete<{ removed: number }>(`/api/radio/observations/imports/${id}`));
 /** A small file is answered with the import; a large one with the job bringing it in. */

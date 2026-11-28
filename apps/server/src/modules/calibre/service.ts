@@ -160,7 +160,8 @@ export function createCalibreService(ctx: AppContext): CalibreService {
         maxBooks: CALIBRE_MAX_BOOKS,
         maxFileBytes: ctx.config.maxUploadBytes,
         signal: run.signal,
-        onProgress: (found) => run.progress({ current: found, total: null, message: `Found ${found.toLocaleString("en")} books` }),
+        onProgress: (found) =>
+          run.progress({ current: found, total: null, message: `Found ${found.toLocaleString("en")} books`, unit: "books" }),
       });
       if (scanned.books.length === 0) {
         throw new AppError(
@@ -254,7 +255,7 @@ export function createCalibreService(ctx: AppContext): CalibreService {
         report.stopped = true;
         break;
       }
-      run.progress({ current: index, total, message: `Adding ${book.title}` });
+      run.progress({ current: index, total, message: `Adding ${book.title}`, unit: "books" });
       try {
         const file = await ordinaryFile(root, path.join(book.folder, book.file.name));
         const outcome = await documents.ingestFile({
@@ -287,7 +288,7 @@ export function createCalibreService(ctx: AppContext): CalibreService {
         report.failed.push({ title: describe(book), reason: messageOf(error) });
       }
     }
-    run.progress({ current: total, total, message: null });
+    run.progress({ current: total, total, message: null, unit: "books" });
 
     const stored = report as unknown as Record<string, unknown>;
     if (report.stopped) {

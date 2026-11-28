@@ -4,26 +4,22 @@
  *   node scripts/build-app.mjs
  *   cd e2e && pnpm exec playwright test -c readme-screenshots.config.ts
  *
- * Photographed: Home; a search with an answer; a catalogue sheet in the reader; a route on the
- * map; an HF prediction (light and dark); a power plan; the devices on a network; supplies; an
- * emergency plan (to edit, and in use on a phone); the nuclear workspace; contacts; Explore; a
- * page of notes (dark); a receive drill in the Morse trainer; the solar clock's clock recovery;
- * food and supplies on the map; river and sea levels; a chat reply that looked things up;
- * Which model; Households, with a portable household; search results with their reasons and
- * "Also searched"; How search by meaning works (switched on, the library read by the built-in
+ * Photographed: Home; a catalogue sheet in the reader; a route on the map; an HF prediction;
+ * the Radio hub; Settings; Preparedness's Getting ready; an emergency plan; a chat reply that
+ * looked things up; Households, with a portable household; search results with their reasons
+ * and "Also searched"; How search by meaning works (switched on, the library read by the built-in
  * model); a power plan's battery bank; the household book's page of repeaters (a page of its
  * PDF, drawn by pdf.js); Plan a route saying a country has no roads yet, then a drive with its
  * directions, its route card (also a PDF page) and the page of the task that read a country's
- * roads; Preparedness's Getting ready; Settings; the Radio hub; the allotment; Offline maps with
- * its places and the Add a place sheet; Reachable from here, 30 minutes' drive. On a phone: the
- * water calculator, the map, frequencies to listen to, the compass, Messages and Help.
+ * roads; Offline maps with its places and the Add a place sheet; Reachable from here, 30
+ * minutes' drive; a page of notes (dark). On a phone: Messages. Only what the README shows is
+ * photographed: a picture nothing names is not made (docs/screenshots holds exactly these).
  *
  * Everything shown is demonstration data written here for the purpose: made-up notes,
  * places on the test suite's made-up map (tests/map-fixture.ts, a hill and a lake with
  * invented names, drawn where Snowdonia is), contacts with invented names and the
  * telephone numbers Ofcom keeps for drama (07700 900xxx, 01632 960xxx), a household of three
- * with invented names and its supplies, a power plan, a plan from a template, a scenario in
- * the nuclear workspace, an allotment with four beds sown, the Morse trainer set to lesson 4,
+ * with invented names and its supplies, a power plan, a plan from a template,
  * check-ins and messages on the board from invented people, and a handful of made-up shops and
  * water taps around the test map's villages for the food and supplies layer, which the spec
  * serves itself as a stand-in Overpass server. The households are Tŷ Prawf, at home on the test
@@ -33,14 +29,10 @@
  * London to the Alps, and the README says they are not OpenStreetMap's. Reachable from here is
  * the streets stand-in's recorded answer from a real Valhalla (see readme-screenshots.config.ts),
  * drawn on a real map of the United Kingdom when OUTPOST_README_MAPS names one. The HF prediction is VOACAP's real answer on the
- * suite's copy of its data. The network list is the made-up network the suite stands in with.
- * River and sea levels are the suite's recorded answers from the Environment Agency (the
- * stations near a place in Norfolk), served by its stand-in file server. Answers and chat are
+ * suite's copy of its data. Answers and chat are
  * written by the stand-in model server (apps/server/test/model-server.ts), which repeats
  * the first sentence of each source it is given, or calls the tool its message names: it is
- * not a language model, and the README says so under those pictures. The allotment is drawn
- * with the browser's clock set to late morning, so that it is drawn by day whatever the hour
- * of the run; the plot itself runs on the server's clock.
+ * not a language model, and the README says so under those pictures.
  *
  * Each picture is cropped to what matters and written as WebP by the browser's own
  * encoder, so that nothing beyond the suite's Playwright is needed.
@@ -165,9 +157,6 @@ async function shotBetween(page: Page, name: string, top: Locator, bottom: Locat
     clip: { x: main.x, y, width: main.width, height: b.y + b.height - a.y + 2 * pad },
   });
 }
-
-/** The "back" link at the top of a screen, in the main column (the sidebar has a link of the same name). */
-const backLink = (page: Page, name: string) => page.locator("main").getByRole("link", { name, exact: true }).first();
 
 /** Waits until no background work is running (text extraction, indexing), as the sidebar says. */
 async function idle(page: Page) {
@@ -450,29 +439,6 @@ async function writePowerPlan(page: Page): Promise<string> {
   return (await api(page, "POST", "/api/power/plans", plan)).plan.id;
 }
 
-/** The Morse trainer at Koch lesson 4, as if three lessons had been passed already. */
-async function writeMorse(page: Page) {
-  await api(page, "DELETE", "/api/morse");
-  await api(page, "PUT", "/api/morse/progress", { kochLesson: 4 });
-}
-
-/**
- * A plot in use: onions sown and watered in two beds, salad and radishes in the others (in the
- * months they are not sown they wait in the ground, which the plot shows too). Onion sets are
- * free and go in in any month, so this works on any day of the year.
- */
-async function writeAllotment(page: Page) {
-  await api(page, "DELETE", "/api/games/allotment");
-  const act = (action: Record<string, unknown>) => api(page, "POST", "/api/games/allotment/actions", action);
-  await act({ type: "sow", bed: 0, crop: "onions" });
-  await act({ type: "water", bed: 0 });
-  await act({ type: "sow", bed: 1, crop: "onions" });
-  await act({ type: "water", bed: 1 });
-  await act({ type: "sow", bed: 2, crop: "salad" });
-  await act({ type: "water", bed: 2 });
-  await act({ type: "sow", bed: 3, crop: "radishes" });
-}
-
 /** A household's check-ins and messages on the board, from made-up people. */
 async function writeBoard(page: Page) {
   await api(page, "POST", "/api/board/messages", {
@@ -728,27 +694,11 @@ test("the README's pictures", async ({ browser }) => {
   await writeCaravan(page, homeHouseholdId);
   await writeRepeaters(page);
   const powerId = await writePowerPlan(page);
-  await api(page, "POST", "/api/nuclear/scenarios", {
-    name: "Educational example: 10 kilotons",
-    notes: "An idealised case on the test map, for the picture.",
-    lat: CENTRE.lat + 0.006,
-    lon: CENTRE.lon + 0.02,
-    effects: { yieldKt: 10, burst: { kind: "surface" }, wind: { fromDegrees: 250, kmh: 24 } },
-  });
-  await api(page, "POST", "/api/nuclear/scenarios", {
-    name: "Educational example: 2 kilotons, in the air",
-    notes: "A second idealised case, to show two on the map.",
-    lat: CENTRE.lat,
-    lon: CENTRE.lon,
-    effects: { yieldKt: 2, burst: { kind: "optimum", psi: 5 }, wind: null },
-  });
   await api(page, "PATCH", "/api/settings", {
     "answers.enabled": true,
     "answers.endpoint": `${MODEL_URL}/v1`,
     "answers.model": "stand-in:latest",
   });
-  await writeAllotment(page);
-  await writeMorse(page);
   await writeBoard(page);
   // Food and supplies for the test map, from the spec's own Overpass stand-in.
   const overpass = await startOverpassStandIn(OVERPASS_URL);
@@ -765,9 +715,6 @@ test("the README's pictures", async ({ browser }) => {
     })
     .toBe(FOOD_PLACES.length);
   overpass.close();
-  // A place in England for river and sea levels: the weather stand-in's recorded answers are for the stations near it.
-  await api(page, "PUT", "/api/weather/options", { updateOnOpen: false, riversKm: 15 });
-  await api(page, "POST", "/api/weather/places", { name: "Fenland example", lat: 52.75, lon: 0.4 });
   // Text extraction and indexing are jobs: wait for the library to be searchable.
   await expect
     .poll(async () => (await api(page, "GET", "/api/search?q=frequency")).results?.length ?? 0, { timeout: 60_000 })
@@ -778,14 +725,6 @@ test("the README's pictures", async ({ browser }) => {
   await idle(page);
   await settle(page);
   await shot(page, "home");
-
-  // ── Search, with an answer written by the stand-in ──
-  await page.goto("/search");
-  await page.getByRole("searchbox", { name: "Search your library" }).fill("how long should water be boiled?");
-  await page.getByRole("button", { name: "Answer from my library" }).click();
-  await expect(page.getByRole("region", { name: "Generated answer" }).getByRole("button", { name: "Ask again" })).toBeVisible();
-  await settle(page);
-  await shot(page, "answer-stand-in");
 
   // ── A sheet from the catalogue, in the reader ──
   await page.goto("/library");
@@ -832,21 +771,6 @@ test("the README's pictures", async ({ browser }) => {
   await settle(page);
   await shot(page, "settings", { clip: { x: 256, y: 0, width: DESKTOP.width - 256, height: DESKTOP.height } });
 
-  // ── Tools ──
-  await page.goto(`/tools/power/plans/${powerId}`);
-  await settle(page, 1000);
-  await shotBetween(page, "power-plan", page.getByRole("heading", { level: 1 }), page.getByText("Every assumption behind these answers"));
-
-  await page.goto("/tools/network");
-  await page
-    .getByRole("button", { name: /Look for devices|Look again/ })
-    .first()
-    .click();
-  await expect(page.getByTestId("network-device").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/Last looked .*probes sent in/)).toBeVisible({ timeout: 30_000 });
-  await settle(page);
-  await shot(page, "network-stand-in");
-
   // ── Preparedness: Getting ready, three of five done (people, home, supplies), the plan next ──
   await page.goto("/prepare");
   await expect(page.getByText("3 of 5 done")).toBeVisible();
@@ -858,104 +782,18 @@ test("the README's pictures", async ({ browser }) => {
     page.getByRole("link", { name: /The household book/ }).first(),
   );
 
-  await page.goto("/prepare/supplies?view=days");
-  await settle(page);
-  await shot(page, "supplies");
-
   await page.goto("/prepare/plans");
   await page.getByRole("button", { name: "New plan" }).first().click();
   const choose = page.getByRole("dialog", { name: "New emergency plan" });
   await choose.getByRole("radio", { name: /^Power cut/ }).click();
   await choose.getByRole("button", { name: "Make the plan" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Power cut" })).toBeVisible();
-  const planUrl = page.url();
   await settle(page);
   await page
     .getByRole("heading", { name: "Steps", exact: true })
     .evaluate((element) => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 24));
   await page.waitForTimeout(300);
   await shot(page, "emergency-plan");
-
-  await page.goto("/prepare/nuclear");
-  await page.getByRole("tab", { name: /Saved/ }).click();
-  // Both saved scenarios on the map. The air burst is selected, so that the map is fitted to its rings and they can
-  // be read; the surface burst beside it is drawn fainter, with its fallout pattern running off downwind.
-  for (const name of ["10 kilotons", "2 kilotons, in the air"]) {
-    await page.getByRole("listitem").filter({ hasText: name }).getByRole("button", { name: "Put it on the map" }).click();
-    await page.getByRole("tab", { name: /Saved/ }).click();
-  }
-  await page.getByRole("tab", { name: "Scenario" }).click();
-  await page.getByRole("button", { name: "Fit the map to it" }).click();
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await settle(page, 2500);
-  await shot(page, "nuclear");
-
-  await page.goto("/contacts");
-  await page.getByText("Morwenna Example", { exact: true }).click();
-  await settle(page);
-  await shot(page, "contacts");
-
-  await page.goto("/explore");
-  await settle(page);
-  await shot(page, "explore");
-
-  // ── Radio: the Morse trainer, a receive drill of lesson 4 played (unheard) and copied, and graded ──
-  await page.goto("/radio/morse?tab=receive");
-  const groups = page.getByRole("group", { name: "Groups" });
-  for (let i = 0; i < 7; i++) await groups.getByRole("button", { name: "Decrease groups" }).click();
-  await page.getByRole("button", { name: "Play", exact: true }).click();
-  await expect(page.getByText("Listen…")).toBeVisible();
-  const copy = page.getByLabel("What did you hear?");
-  await copy.fill("KMURE MKEUR RKUME");
-  await copy.press("Enter");
-  await expect(page.getByText(/copied/).first()).toBeVisible({ timeout: 60_000 });
-  await settle(page);
-  // The main column down to the end of "This session", above the settings that run on below.
-  const column = (await page.locator("main").first().boundingBox())!;
-  await shot(page, "morse-trainer", { clip: { x: column.x, y: 0, width: column.width, height: 848 } });
-
-  // ── Tools: the solar clock's clock recovery, worked for a place on the test map today ──
-  await page.evaluate(() => {
-    localStorage.setItem("outpost.tools.solar-clock.place", "typed");
-    localStorage.setItem("outpost.tools.text.solar-clock.typed", "53.091, -4.112");
-  });
-  await page.goto("/tools/solar-clock?tab=recover");
-  const noon = page.getByRole("region", { name: "Noon from a shadow" });
-  await expect(noon.getByText(/the clock should have read \d\d:\d\d, give or take/)).toBeVisible();
-  await expect(page.locator("figure[data-diagram]").first()).toBeVisible();
-  await settle(page);
-  await shotBetween(
-    page,
-    "solar-clock-recovery",
-    page.locator("figure[data-diagram]").first(),
-    page.locator("figure[data-diagram]").nth(1),
-  );
-
-  // ── Maps: food and supplies on the test map, with the nearest of each kind ──
-  // A taller window for this one, so that the panel's list of the nearest and the note under it end inside it.
-  await page.setViewportSize({ width: DESKTOP.width, height: 1292 });
-  await page.goto("/maps?lat=53.0893&lon=-4.1125&z=14.6");
-  await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
-  await page.getByRole("tab", { name: "Layers" }).click();
-  await page.getByRole("switch", { name: "Food and supplies" }).click();
-  await expect(page.getByRole("list", { name: "Kinds of place" })).toBeVisible();
-  await expect(
-    page
-      .getByRole("list", { name: /^Nearest to / })
-      .getByRole("button")
-      .first(),
-  ).toBeVisible();
-  await settle(page, 2500);
-  await shot(page, "maps-food");
-  await page.setViewportSize(DESKTOP);
-
-  // ── Weather and hazards: river and sea levels near a place in England, from the recorded answers ──
-  await page.goto("/prepare/weather?view=rivers");
-  await page.getByRole("button", { name: "Fetch river and sea levels" }).click();
-  await expect(page.getByRole("heading", { name: /stations within 15 km, nearest first/ })).toBeVisible();
-  await expect(page.getByText("Fetched just now.")).toBeVisible();
-  await settle(page);
-  await shotBetween(page, "river-levels", backLink(page, "Preparedness"), page.locator("[data-station]").nth(3));
 
   // ── Chat: the stand-in asks Outpost for the nearest drinking water, and the reply says what was looked at ──
   await api(page, "PATCH", "/api/settings", { "answers.model": "stand-in-tools:latest", "tools.enabled": true });
@@ -973,12 +811,6 @@ test("the README's pictures", async ({ browser }) => {
   await settle(page);
   await shot(page, "chat-looked-at");
   await api(page, "PATCH", "/api/settings", { "answers.model": "stand-in:latest", "tools.enabled": false });
-
-  // ── Which model: what each model did when it was tried with Outpost ──
-  await page.goto("/help/which-model");
-  await expect(page.getByRole("heading", { level: 1, name: "Which model" })).toBeVisible();
-  await settle(page);
-  await shot(page, "which-model");
 
   // ── Households: Tŷ Prawf at home, and the caravan, which moves ──
   await page.goto("/prepare/households");
@@ -1110,65 +942,9 @@ test("the README's pictures", async ({ browser }) => {
 
   await context.close();
 
-  // ── Games: the allotment by day, the browser's clock set to late morning so that the plot is drawn in daylight ──
-  {
-    const { context: day, page: a } = await open(browser);
-    const morning = new Date();
-    morning.setHours(11, 0, 0, 0);
-    await a.clock.setFixedTime(morning);
-    await a.goto("/games/allotment");
-    await expect(a.getByRole("button", { name: /^Bed 1, onions, / })).toBeVisible();
-    // The browser's clock was moved on purpose, so the warning that it differs from the server's is put away.
-    await a.waitForTimeout(2000);
-    const notNow = a.getByRole("button", { name: "Not now" });
-    if (await notNow.isVisible()) await notNow.click();
-    await settle(a);
-    await shot(a, "allotment");
-    await day.close();
-  }
-
   // ── Phone ──
   {
     const { context: phone, page: p } = await open(browser, { phone: true });
-    await p.goto(`${planUrl}/use`);
-    await settle(p);
-    await shot(p, "phone-plan-in-use");
-    await p.goto("/tools/water");
-    await settle(p);
-    await p
-      .getByText("Whose planning figure")
-      .first()
-      .evaluate((element) => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 140));
-    await p.waitForTimeout(300);
-    await shot(p, "phone-water");
-    await p.goto(`/maps?lat=${CENTRE.lat + 0.03}&lon=${CENTRE.lon + 0.05}&zoom=12`);
-    await settle(p, 2500);
-    await shot(p, "phone-maps");
-
-    // Frequencies to listen to: time signals, one opened to its source.
-    await p.goto("/radio/frequencies?kind=time-signals&place=any");
-    const row = p.getByTestId("frequency-row").first();
-    await row.getByRole("button").first().tap();
-    await expect(row.getByTestId("frequency-detail")).toBeVisible();
-    await settle(p);
-    await p
-      .getByText(/^\d+ entries of \d+$/)
-      .evaluate((element) => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 80));
-    await p.waitForTimeout(300);
-    await shot(p, "phone-frequencies");
-
-    // The compass, worked out for the middle of the test map: the three norths and the rule for a map.
-    await p.goto(`/tools/compass?lat=${CENTRE.lat}&lon=${CENTRE.lon}`);
-    const norths = p.getByRole("region", { name: "North here" });
-    await expect(norths.getByText(/^Grid north is [\d.]+° (west|east) of true north here\.$/)).toBeVisible();
-    await settle(p);
-    await shotBetween(
-      p,
-      "phone-compass",
-      norths.getByRole("heading", { name: "North here" }),
-      norths.locator("figure[data-diagram]").first(),
-    );
-
     // Messages, as Alex reads them: the household's check-ins and what was said.
     await p.evaluate(() => localStorage.setItem("outpost.board.name", "Alex"));
     await p.goto("/messages");
@@ -1182,11 +958,6 @@ test("the README's pictures", async ({ browser }) => {
       p.getByRole("list", { name: "Messages, oldest first" }),
     );
 
-    // Help: the guides, read with no connection.
-    await p.goto("/help");
-    await expect(p.getByRole("heading", { level: 2, name: "Getting it running" })).toBeVisible();
-    await settle(p);
-    await shot(p, "phone-help");
     await phone.close();
   }
 
@@ -1236,16 +1007,6 @@ test("the README's pictures", async ({ browser }) => {
     await d.goto(`/notes/${kitId}`);
     await settle(d);
     await shot(d, "notes-dark");
-    await d.goto("/radio/propagation");
-    await d.getByRole("button", { name: "Try London to Birmingham on 40 m" }).click();
-    await expect(d.getByRole("heading", { name: /7\.10 MHz at \d\d:00 UTC/ })).toBeVisible({ timeout: 60_000 });
-    await settle(d, 1500);
-    await shotBetween(
-      d,
-      "propagation-dark",
-      d.getByRole("heading", { name: "Bands", exact: true }),
-      d.getByRole("heading", { name: /The steep path/ }),
-    );
     await dark.close();
   }
 

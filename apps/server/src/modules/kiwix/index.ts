@@ -33,7 +33,7 @@ import { isJunkHit } from "./junk.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
 import { type ArchiveProfile, createRouteMemory, routeArchives, routeWords, TITLE_ANSWER_PRIOR } from "./routing.ts";
 import { createSearchHealth, type SearchMark } from "./search-health.ts";
-import { type Asked, createSearchQueue } from "./search-queue.ts";
+import { type Asked, createPlaces, createSearchQueue } from "./search-queue.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
 
 interface KiwixMeta {
@@ -70,6 +70,11 @@ export interface BookDto {
   ready: boolean;
 }
 
+/** The key in `library_meta` that keeps which archives answered well for which words (routing.ts `RouteMemory`). */
+export const ROUTES_KEY = "search.routes";
+/** How soon after a search what it taught is written down. */
+const ROUTES_SAVE_MS = 10_000;
+
 export interface KiwixService {
   connection: KiwixConnection;
   /** Rewrites the library file from the installed collections. */
@@ -77,6 +82,8 @@ export interface KiwixService {
   books(token: string): Promise<BookDto[]>;
   /** Searches of archives at kiwix-serve now, and searches waiting their turn. */
   searchLoad(): { running: number; waiting: number };
+  /** Forgets which archives answered well for which words: what people searched for. For erasing everything. */
+  forgetSearches(): void;
   /** The English Wikipedia copies, for other modules to look an article up in (Satellites: About this satellite). */
   wikipedia: WikipediaArchives;
 }
@@ -204,10 +211,13 @@ export const referenceTimings = {
    */
   titleLimitMs: 3_000,
   /**
-   * How many title searches are at kiwix-serve at once, beside the full-text ones: one, so
-   * that the two together are never more than the four requests kiwix-serve works on.
+   * How many searches, full text and titles together, are at kiwix-serve at once: the four
+   * requests it works on. Title searches take any of them the full-text searches leave
+   * free (`atOnce` at most), and a place given back goes to a title search first: they
+   * take a tenth of a second on a Raspberry Pi, and one at a time a widened search of
+   * thirty archives waited three to six seconds for its titles alone.
    */
-  titlesAtOnce: 1,
+  placesAtOnce: 4,
 };
 
 /** How a search of reference collections is shaped (routing.ts chooses which archives come first). */
@@ -413,6 +423,8 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     adding?.cancel(row.id);
     files?.forget(row.id);
     lists?.forget(row.id);
+    memory.forget(row.id);
+    saveRoutesSoon();
     const remaining = zimCollections().filter((other) => other.id !== row.id && servable(other));
     await writeLibrary(config.kiwix.libraryPath, remaining.map(toLibraryBook));
   });
@@ -456,6 +468,12 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         .filter((book): book is BookDto => Boolean(book));
     },
     searchLoad: () => queue.load(),
+    forgetSearches() {
+      memory.clear();
+      clearTimeout(routesTimer);
+      routesTimer = undefined;
+      ctx.sqlite.prepare("DELETE FROM library_meta WHERE key = ?").run(ROUTES_KEY);
+    },
     wikipedia: {
       list() {
         return zimCollections()
@@ -612,25 +630,63 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
 
   /** One archive's answer to a search of its full text, as the queue keeps it. */
   type BookAnswer = { refused: false; total: number; hits: Hit[] } | { refused: true; status: number; body: string };
-  const queue = createSearchQueue<BookAnswer>({
-    concurrency: referenceTimings.atOnce,
-    limitMs: referenceTimings.archiveLimitMs,
-    ceilingMs: referenceTimings.archiveCeilingMs,
-    remember: 600,
-    rememberMs: 5 * 60_000,
-  });
-  ctx.onClose.push(() => queue.close());
+  // Titles join the shared places first, so that a place given back goes to a title search before the full text.
+  const places = createPlaces(referenceTimings.placesAtOnce);
   const titleQueue = createSearchQueue<Hit[]>({
-    concurrency: referenceTimings.titlesAtOnce,
+    concurrency: referenceTimings.placesAtOnce,
+    places,
+    onError: (error) => log.warn({ err: error }, "a title search could not tell whoever asked"),
     limitMs: referenceTimings.titleLimitMs,
     ceilingMs: referenceTimings.archiveCeilingMs,
     remember: 600,
     rememberMs: 5 * 60_000,
   });
   ctx.onClose.push(() => titleQueue.close());
+  const queue = createSearchQueue<BookAnswer>({
+    concurrency: referenceTimings.atOnce,
+    places,
+    onError: (error) => log.warn({ err: error }, "a search of an archive could not tell whoever asked"),
+    limitMs: referenceTimings.archiveLimitMs,
+    ceilingMs: referenceTimings.archiveCeilingMs,
+    remember: 600,
+    rememberMs: 5 * 60_000,
+  });
+  ctx.onClose.push(() => queue.close());
 
   // Which archives answered well for which words lately, and which cannot be searched by their full text.
-  const memory = createRouteMemory();
+  // Kept in the database, so that what was learned outlives a restart: written a little after a search teaches it
+  // something, and when the server stops.
+  const readRoutes = () => {
+    const row = ctx.sqlite.prepare("SELECT value FROM library_meta WHERE key = ?").get(ROUTES_KEY) as { value: string } | undefined;
+    try {
+      return row ? JSON.parse(row.value) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const memory = createRouteMemory(2000, readRoutes());
+  let routesTimer: NodeJS.Timeout | undefined;
+  const saveRoutes = () => {
+    clearTimeout(routesTimer);
+    routesTimer = undefined;
+    ctx.sqlite
+      .prepare("INSERT INTO library_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run(ROUTES_KEY, JSON.stringify(memory.saved()));
+  };
+  const saveRoutesSoon = () => {
+    if (routesTimer) return;
+    routesTimer = setTimeout(() => {
+      try {
+        saveRoutes();
+      } catch (error) {
+        log.warn({ err: error }, "what reference search learned could not be kept");
+      }
+    }, ROUTES_SAVE_MS);
+    routesTimer.unref();
+  };
+  ctx.onClose.push(() => {
+    if (routesTimer) saveRoutes();
+  });
   const health = createSearchHealth({
     read: (id) => {
       const row = collections.get(id);
@@ -741,16 +797,9 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         // The words as typed and, when they can be said another way ("tire" for "tyre"), once more that way:
         // never more than two requests to an archive for its full text.
         const patterns = alternate && alternate !== q ? [q, alternate] : [q];
-        // Titles first, for every archive: they answer in a fraction of the time, and put the first results on screen.
-        const titles = rows.map((row) =>
-          titleTerm
-            ? titleQueue.ask(
-                `${zimOf(row)!.uuid}\n${titleTerm}`,
-                (running) => suggestBook(row, titleTerm, referenceShape.titles, running),
-                waiting,
-              )
-            : Promise.resolve<Asked<Hit[]>>({ status: "found", value: [] }),
-        );
+        // The full text is asked first, so that it starts in its three places at once as before; the titles take the
+        // fourth and, since they answer in a fraction of the time and put the first results on screen, every place
+        // given back while titles are still waiting (`placesAtOnce`).
         const fullText = rows.map((row) =>
           health.fullTextNow(row.id)
             ? Promise.all(
@@ -770,6 +819,15 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
                 ),
               )
             : null,
+        );
+        const titles = rows.map((row) =>
+          titleTerm
+            ? titleQueue.ask(
+                `${zimOf(row)!.uuid}\n${titleTerm}`,
+                (running) => suggestBook(row, titleTerm, referenceShape.titles, running),
+                waiting,
+              )
+            : Promise.resolve<Asked<Hit[]>>({ status: "found", value: [] }),
         );
         await Promise.all(
           rows.map(async (row, index) => {
@@ -803,7 +861,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
             else missing.push({ collectionId: row.id, title: row.title, reason: failure === "failed" ? "failed" : "slow" });
             const goodHere = results.filter((result) => result.score >= GOOD_SCORE).length;
             good += goodHere;
-            if (answered) memory.record(route.words, row.id, goodHere > 0);
+            if (answered) {
+              memory.record(route.words, row.id, goodHere > 0);
+              saveRoutesSoon();
+            }
             if (!answered && results.length === 0) return;
             onPart({ collectionId: row.id, title: row.title, results, done: true });
           }),

@@ -3,7 +3,7 @@
  * network share.
  *
  * It copies the two things about the real program that decide how a search feels,
- * both measured against kiwix-serve 3.8.2 (see docs/search.md):
+ * both measured against kiwix-serve 3.8.2 (see docs/search-reference-collections.md):
  *
  *  - it works on a fixed number of requests at once (four, as kiwix-serve does unless
  *    told otherwise) and makes the rest wait their turn;
@@ -25,6 +25,12 @@ export interface SlowBook {
   title: string;
   /** How long one search of this book takes, in milliseconds. */
   delayMs: number;
+  /**
+   * How long one search of its titles takes. Given, a title search takes one of the
+   * program's places for that long, as on a Raspberry Pi; left out, it answers at once and
+   * takes none.
+   */
+  titleDelayMs?: number;
   articles: string[];
   /**
    * Recorded answers instead: a search answers with every hit whose title or snippet
@@ -43,8 +49,10 @@ export interface SlowKiwix {
   books: SlowBook[];
   /** Searches that reached the program, as "book name: word", in the order they began work. */
   started: string[];
-  /** Title searches (suggest), as "book name: term". They answer at once and take no place. */
+  /** Title searches (suggest), as "book name: term". They answer at once and take no place, unless the book has a `titleDelayMs`. */
   suggested: string[];
+  /** The most title searches being worked on at one moment (books with a `titleDelayMs`). */
+  titlesPeak(): number;
   /** Searches being worked on now. */
   running(): number;
   /** Searches waiting for one of the program's places. */
@@ -96,6 +104,8 @@ export async function startSlowKiwix(options: {
   let running = 0;
   let peak = 0;
   let wasted = 0;
+  let titlesRunning = 0;
+  let titlesPeak = 0;
   let idleWaiters: Array<() => void> = [];
 
   const settle = () => {
@@ -125,6 +135,7 @@ export async function startSlowKiwix(options: {
     books: options.books,
     started: [],
     suggested: [],
+    titlesPeak: () => titlesPeak,
     running: () => running,
     waiting: () => queue.length,
     peak: () => peak,
@@ -213,6 +224,14 @@ export async function startSlowKiwix(options: {
       response.setHeader("Content-Type", "application/json");
       const book = options.books.find((candidate) => candidate.name === url.searchParams.get("content"));
       kiwix.suggested.push(`${book?.name ?? "?"}: ${url.searchParams.get("term") ?? ""}`);
+      if (book?.titleDelayMs !== undefined) {
+        await place();
+        titlesRunning += 1;
+        titlesPeak = Math.max(titlesPeak, titlesRunning);
+        await new Promise((resolve) => setTimeout(resolve, book.titleDelayMs));
+        titlesRunning -= 1;
+        leave();
+      }
       if (!book || book.broken || options.titles === false) return response.end("[]");
       const stems = (url.searchParams.get("term") ?? "")
         .toLowerCase()

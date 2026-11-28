@@ -83,7 +83,7 @@ export function createWorldPopAdapter({ client }: AdapterDeps, population: Popul
       const key = meta.options?.sidecar;
       if (!key) throw new PermanentJobError("This download does not say where its grid goes.");
       const { bbox, total } = await population.install(filePath, key, info, signal, (done, all) =>
-        progress(done, all, "Reading the population grid"),
+        progress(done, all, "Reading the population grid", "tiles"),
       );
       return {
         version: String(WORLDPOP_YEAR),

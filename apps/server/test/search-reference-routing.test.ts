@@ -114,6 +114,25 @@ describe("choosing which reference collections to search first", () => {
     expect(memory.share(["stove"], "woodworking")).toBe(0);
   });
 
+  it("keeps what it learned in a form it can be made from again, and ignores a form it does not know", () => {
+    const memory = createRouteMemory();
+    for (let time = 0; time < 3; time += 1) memory.record(["stove"], "woodworking", true);
+    memory.record(["burn"], "wikimed", false);
+    const again = createRouteMemory(2000, JSON.parse(JSON.stringify(memory.saved())));
+    expect(again.share(["stove"], "woodworking")).toBe(1);
+    expect(again.share(["burn"], "wikimed")).toBe(0);
+    expect(first("stove", again)[0]).toBe("woodworking");
+    for (const odd of [
+      null,
+      7,
+      { version: 99, words: [] },
+      { version: 1, words: "x" },
+      { version: 1, words: [["stove", [["a", "yes"]]]] },
+    ]) {
+      expect(createRouteMemory(2000, odd).share(["stove"], "a")).toBe(0);
+    }
+  });
+
   it("searches every archive at once when only a couple would be left over, and always those whose list already matched", () => {
     expect(routeArchives(ARCHIVES.slice(0, 8), route("water")).rest).toEqual([]);
     const plan = routeArchives(ARCHIVES, route("water"), { always: new Set(["ted"]) });
@@ -304,6 +323,40 @@ describe("reference search, routed", () => {
     expect(widened.at(-1)).toMatchObject({ type: "end", searched: 10, more: 0 });
   });
 
+  it("remembers across a restart which archive answered well, and forgets it when everything is erased", async () => {
+    const { app, base, kiwix } = await world(library());
+    const bicycles = library().find((book) => book.title === "Bicycles Q&A")!.name;
+    // The first time, Bicycles Q&A is not among the likeliest for "swing": it is asked only when the search widens.
+    const once = await lines(base, "swing");
+    const firstWave = (all: Line[]) => all.find((line) => line.type === "start")!.collections as number;
+    expect(kiwix.started.slice(0, firstWave(once)).some((entry) => entry.startsWith(`${bicycles}:`))).toBe(false);
+    await kiwix.idle();
+
+    const dir = app.dir;
+    await app.app.close();
+    const again = await createTestApp({ OUTPOST_KIWIX_URL: kiwix.url }, dir);
+    cleanups.push(() => again.close());
+    const againBase = await again.app.listen({ port: 0, host: "127.0.0.1" });
+    const asked = kiwix.started.length;
+    const twice = await lines(againBase, "swing");
+    expect(kiwix.started.slice(asked, asked + firstWave(twice)).some((entry) => entry.startsWith(`${bicycles}:`))).toBe(true);
+
+    // What was searched for is a person's own: erasing everything takes it too, and nothing brings it back.
+    await again.app.close();
+    const third = await createTestApp({ OUTPOST_KIWIX_URL: kiwix.url }, dir);
+    cleanups.push(() => third.close());
+    expect((third.ctx.sqlite.prepare("SELECT count(*) AS n FROM library_meta WHERE key = 'search.routes'").get() as { n: number }).n).toBe(
+      1,
+    );
+    const erase = await third.api("POST", "/api/manage/cleanup/everything", { confirm: "Erase everything" });
+    expect(erase.status).toBe(200);
+    await third.ctx.jobs.whenIdle();
+    await third.app.close();
+    const fourth = await createTestApp({ OUTPOST_KIWIX_URL: kiwix.url }, dir);
+    cleanups.push(() => fourth.close());
+    expect(fourth.ctx.sqlite.prepare("SELECT count(*) AS n FROM library_meta WHERE key = 'search.routes'").get()).toEqual({ n: 0 });
+  });
+
   it("does not search the rest when the person's own library already holds plenty with every word", async () => {
     const { app, base } = await world(library());
     for (let index = 0; index < 5; index += 1) {
@@ -336,13 +389,19 @@ describe("reference search, routed", () => {
         hits: [{ title: "Burn", path: "burn", snippet: "To treat a burn, see burn." }],
       }),
     ]);
+    // Asked about a burn, the encyclopaedia's article named for it is the answer.
+    const about = await lines(base, "burn");
+    const aboutResults = finals(about).find((line) => line.title === "WikiMed Medical Encyclopedia")!.results as Line[];
+    expect(aboutResults[0]).toMatchObject({ title: "Burn" });
+    const word = finals(about).find((line) => line.title === "Wiktionary")!.results[0];
+    expect(word.score).toBeLessThan(aboutResults[0]!.score);
+
+    // Asked what to do for one, it says only what a burn is: the page saying what to do comes first (outpost-1cws).
     const all = await lines(base, "treat a burn");
     const results = finals(all).find((line) => line.title === "WikiMed Medical Encyclopedia")!.results as Line[];
-    expect(results.map((result) => result.title)).toEqual(["Burn", "First aid for minor injuries"]);
-    expect(results[0]!.why).toBe("The title is what was asked; favoured: medical source");
-    const word = finals(all).find((line) => line.title === "Wiktionary")!.results[0];
-    expect(word.why).not.toBe("The title is what was asked");
-    expect(word.score).toBeLessThan(results[0]!.score);
+    expect(results.map((result) => result.title)).toEqual(["First aid for minor injuries", "Burn"]);
+    expect(results[1]!.why).toMatch(/says what it is, not what to do/);
+    expect(results[1]!.why).not.toMatch(/The title is what was asked/);
   });
 });
 
@@ -372,5 +431,41 @@ describe("an archive without a full-text index", () => {
     // The collection's details carry the mark, for the screen to explain.
     const details = (await app.api("GET", `/api/collections/${ids[0]}`)).body;
     expect(details.collection.meta.kiwix.search.fullText).toBe("none");
+  });
+});
+
+describe("reference search on a slow computer", () => {
+  // On a Raspberry Pi a title search took a tenth of a second or more, and they went one at a
+  // time: a widened search of thirty archives waited three to six seconds for its titles alone.
+  const TITLE_MS = 100;
+  const slowShelves = () => [
+    shelf(1, "Motor Vehicle Mechanics Q&A", ["Tyre pressure"], { category: "repair", titleDelayMs: TITLE_MS }),
+    ...Array.from({ length: 23 }, (_, index) =>
+      shelf(index + 2, `Shelf ${index + 2} Q&A`, index === 20 ? ["Tyre swing"] : ["Pressure cooker"], { titleDelayMs: TITLE_MS }),
+    ),
+  ];
+
+  it("asks for titles in every place kiwix-serve has free, never more than its four at once", async () => {
+    const { base, kiwix } = await world(slowShelves());
+    const started = performance.now();
+    const all = await lines(base, "swing", "all");
+    const ms = performance.now() - started;
+    expect(all.at(-1)).toMatchObject({ type: "end", searched: 24, more: 0 });
+    expect(finals(all).flatMap((line) => line.results.map((result: Line) => result.title))).toContain("Tyre swing");
+    expect(kiwix.titlesPeak()).toBeGreaterThan(1);
+    expect(kiwix.peak()).toBeLessThanOrEqual(4);
+    // One at a time, the 24 title searches alone took 2.4 s.
+    expect(ms).toBeLessThan(24 * TITLE_MS * 0.75);
+  });
+
+  it("widens in the same way", async () => {
+    const { base, kiwix } = await world(slowShelves());
+    const started = performance.now();
+    const widened = await lines(base, "swing");
+    const ms = performance.now() - started;
+    expect(widened.find((line) => line.type === "widen")).toBeTruthy();
+    expect(widened.at(-1)).toMatchObject({ type: "end", searched: 24, more: 0 });
+    expect(kiwix.peak()).toBeLessThanOrEqual(4);
+    expect(ms).toBeLessThan(24 * TITLE_MS * 0.75);
   });
 });

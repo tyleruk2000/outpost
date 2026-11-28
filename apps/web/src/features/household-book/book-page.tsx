@@ -132,10 +132,12 @@ export default function BookPage() {
         setWorking(done < total ? `Working out repeater coverage, ${done + 1} of ${total}` : null),
       );
       setWorking("Drawing the repeater maps");
-      const drawn = await gatherMaps(groups, await mapInput(), measureOf(answers.paper)).catch(() => ({
-        maps: {},
-        missing: "This device could not draw the offline map under the repeaters.",
-      }));
+      const drawn = await gatherMaps(groups, { ...(await mapInput()), most: answers.repeaterMapMost }, measureOf(answers.paper)).catch(
+        () => ({
+          maps: {},
+          missing: "This device could not draw the offline map under the repeaters.",
+        }),
+      );
       return { ...gathered, ranges, ...drawn };
     } finally {
       setDrawing(false);

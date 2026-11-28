@@ -45,6 +45,27 @@ describe("the sky track", () => {
     expect(screen.getByText(/Square: where it sets\. Large ring: where it is now\./)).toBeInTheDocument();
   });
 
+  it("keeps the compass letters clear of a rise or set mark on the horizon, wherever it falls", () => {
+    const { container } = render(<SkyPlot pass={pass} path={path_} />);
+    const letters = [...container.querySelectorAll("text")].filter((text) => /^[NESW]$/.test(text.textContent ?? ""));
+    expect(letters).toHaveLength(4);
+    // A mark on the horizon reaches 6.5 out from the ring (the square with its halo); the letter, 12 high and up to
+    // 11 wide, must start further out than that, with a gap.
+    const centre = 120;
+    const ring = 100;
+    for (const letter of letters) {
+      const x = Number(letter.getAttribute("x"));
+      const y = Number(letter.getAttribute("y"));
+      const anchor = letter.getAttribute("text-anchor");
+      const name = letter.textContent;
+      // The edge of the letter nearest the plot.
+      const near = name === "N" ? centre - y : name === "S" ? y - 8.6 - centre : name === "E" ? x - centre : centre - x;
+      if (name === "E") expect(anchor).toBe("start");
+      if (name === "W") expect(anchor).toBe("end");
+      expect(near - ring, name ?? "").toBeGreaterThanOrEqual(8);
+    }
+  });
+
   it("draws a satellite that is always up as one place to point, with no rise or set", () => {
     const always = predictPasses(ESHAIL, LONDON, new Date(Date.parse("2026-11-24T00:00:00Z")), 24, 4)[0]!;
     expect(always.alwaysUp).toBe(true);

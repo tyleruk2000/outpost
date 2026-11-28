@@ -302,7 +302,12 @@ export function createGeofabrikAdapter({ client, ctx }: AdapterDeps, regions: Re
           }
         },
         progress: (pass, passes, bytes, total) =>
-          progress(bytes, total, `Reading the extract, pass ${pass} of ${passes}: ${sink.count.toLocaleString("en-GB")} places so far`),
+          progress(
+            bytes,
+            total,
+            `Reading the extract, pass ${pass} of ${passes}: ${sink.count.toLocaleString("en-GB")} places so far`,
+            "bytes",
+          ),
       });
       const notes = meta.options?.region && layers.has("food") ? [meta.countries[0] === "GB" ? COVERAGE_UK : COVERAGE_OSM_ONLY] : undefined;
       return {

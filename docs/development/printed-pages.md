@@ -75,16 +75,30 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   word it cannot in Noto Sans (`fallback.ts`): Latin, Greek and Cyrillic in full, Arabic,
   Hebrew, Devanagari, Thai, Chinese (GB 2312 level 1 and kana) and Korean (KS X 1001
   syllables), each font loaded only when a document uses it, in text and in a drawing's
-  `<text>` alike. The fallbacks have one weight, so bold in them prints regular.
+  `<text>` alike. Noto Sans, Noto Sans Arabic and Noto Sans Hebrew have a bold (instanced at
+  700 from the same variable files, subset to the regular's letters); the others have one
+  weight, so bold in them prints regular. Every fallback is given the book's line (Atkinson's
+  ascender and descender, `withBookLine`), so a name in another script sits on the same
+  baseline as the Latin beside it and does not make its line or table row taller.
   `printable()` writes ′ ″ arrows and ⅓ with marks the typeface has.
 - Arabic and Hebrew read right to left. `renderPdf` puts each line in the order it is
   drawn (the Unicode Bidirectional Algorithm, bidi-js): words from the right, brackets
   mirrored, figures and Latin left to right inside them. Arabic letters are joined by the
   font engine inside pdfmake. A line that starts with Arabic or Hebrew is read as a
-  right-to-left line; it is still placed by the paper's alignment (left, unless set).
+  right-to-left line; it is still placed by the paper's alignment (left, unless set), except
+  in a `dataTable`, where a column whose cells all start with Arabic or Hebrew is set against
+  its right, heading and all; a column that mixes them with left-to-right cells goes by its
+  heading's direction. The book's line leaves Arabic's lowest marks (kasratan, in the bold too)
+  well clear of a table's rule; `print-kit.test.ts` measures it.
   The order is worked out for a passage as one line, so a right-to-left passage that wraps
   reads its lines in the wrong order: use these scripts for names and short phrases, not
-  paragraphs. This takes bidi-js and fontkit, loaded only when a document has them.
+  paragraphs. This takes bidi-js and fontkit, loaded only when a document has them. Ordering
+  each line on its own needs a hook between pdfmake's line breaking and its drawing, which
+  its browser build does not offer (see the note in `order.ts`).
+- `renderPdf` reports `textMaps`: what `textForMarks` found in pdfkit's insides. A test pins
+  the pdfmake and pdfkit versions it was read against; after an upgrade, run
+  `print-kit.test.ts`, read `textForMarks` against the new pdfkit, look at the right-to-left
+  sample, then set the versions in the test.
 - In a drawing, a `<text>` holding Arabic or Hebrew is drawn as shapes (pdfmake's drawing
   leaves out glyphs of no width, and Noto Sans Arabic draws its letters' dots as such),
   with the same words over it in invisible ink so a search still finds them. It follows

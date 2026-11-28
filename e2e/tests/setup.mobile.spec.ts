@@ -57,7 +57,10 @@ test.describe("setting up answers and chat, on a phone", () => {
     await page.getByRole("button", { name: "More" }).click();
     // The guide is in view, so the group it is in, under Settings, is open already.
     await expect(
-      page.getByRole("dialog", { name: "More" }).getByRole("list", { name: "Under Settings" }).getByRole("link", { name: "Set-up guide" }),
+      page
+        .getByRole("dialog", { name: "More" })
+        .getByRole("list", { name: "Under Settings" })
+        .getByRole("link", { name: "Search and chat set-up" }),
     ).toBeVisible();
     await page.keyboard.press("Escape");
 

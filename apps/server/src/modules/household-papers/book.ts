@@ -21,6 +21,7 @@ import {
   type BookSectionId,
   type BookSource,
   DEFAULT_BOOK_ANSWERS,
+  REPEATER_MAP_CHOICES,
 } from "@outpost/shared";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -109,6 +110,10 @@ export const bookSchema = z
     planIds: z.array(itemId).max(200).default([]),
     radioPlanChoice: z.enum(["all", "some"]).default("all"),
     radioPlanIds: z.array(itemId).max(200).default([]),
+    repeaterMapMost: z
+      .union([z.literal(REPEATER_MAP_CHOICES[0]), z.literal(REPEATER_MAP_CHOICES[1]), z.literal(REPEATER_MAP_CHOICES[2])])
+      .nullable()
+      .default(null),
     baseAnswersAt: z.number().int().nonnegative().nullable().optional(),
   })
   .strict();
@@ -135,7 +140,10 @@ export interface BookService {
 
 /** Answers kept by an older version may lack a field a newer one added: the default stands in for it. */
 function withDefaults(stored: unknown): BookAnswers {
-  const parsed = bookSchema.safeParse({ ...(stored as object) });
+  const kept = { ...(stored as object) } as Record<string, unknown>;
+  // A number of repeaters a map is limited to that is not one of the choices (kept by hand, or by an older version) reads as all.
+  if (!REPEATER_MAP_CHOICES.includes(kept.repeaterMapMost as never)) kept.repeaterMapMost = null;
+  const parsed = bookSchema.safeParse(kept);
   if (!parsed.success) return { ...DEFAULT_BOOK_ANSWERS };
   const { baseAnswersAt: _base, ...answers } = parsed.data;
   // Answers saved before the binder became part of the book (they have no `planChoice`) chose from fewer sections:

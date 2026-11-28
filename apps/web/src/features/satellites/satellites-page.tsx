@@ -66,7 +66,7 @@ import {
 } from "./engine";
 import { sampleTrack } from "./ground-track";
 import { GroundTrack } from "./ground-track-map";
-import { byMain } from "./main-transmitter";
+import { byMain, transmitterGroups } from "./main-transmitter";
 import { type ManualSatellite, parseManualElements } from "./manual";
 import { satelliteMapLink, useChosenSatellite } from "./map";
 import { SatellitePicker } from "./satellite-picker";
@@ -282,6 +282,24 @@ function PassRowLine({ entry, now, onOpen }: { entry: ScheduledPass; now: Date; 
   );
 }
 
+/**
+ * The passes the list shows: still to end, and, when asked, only those under way now (what can be worked this
+ * minute), only the high ones, and only those whose satellite answers what was typed.
+ */
+export function passesShown(
+  entries: ScheduledPass[],
+  now: Date,
+  { upNow, workableOnly, needle }: { upNow: boolean; workableOnly: boolean; needle: string },
+): ScheduledPass[] {
+  return entries.filter(
+    (entry) =>
+      entry.pass.los > now &&
+      (!upNow || entry.pass.aos <= now) &&
+      (!workableOnly || entry.workable) &&
+      satelliteMatches(entry.satellite.name, entry.satellite.noradId, needle),
+  );
+}
+
 function PassesTab({
   amateur,
   observer,
@@ -296,16 +314,15 @@ function PassesTab({
   const [hours, setHours] = useState<WindowValue>("24");
   const [query, setQuery] = useState("");
   const [workableOnly, setWorkableOnly] = useState(true);
+  const [upNow, setUpNow] = useState(false);
   const [showing, setShowing] = useState(PAGE_OF_PASSES);
   const workableId = useId();
+  const upNowId = useId();
   const bucket = Math.floor(now.getTime() / BUCKET_MS);
   const from = useMemo(() => new Date(bucket * BUCKET_MS), [bucket]);
   const schedule = usePassSchedule(amateur, observer, from, { hours: Number(hours), minElevationDeg: FLOOR_ELEVATION_DEG });
   const needle = query.trim().toLowerCase();
-  const visible = schedule.entries.filter(
-    (entry) =>
-      entry.pass.los > now && (!workableOnly || entry.workable) && satelliteMatches(entry.satellite.name, entry.satellite.noradId, needle),
-  );
+  const visible = passesShown(schedule.entries, now, { upNow, workableOnly, needle });
   const days: Array<{ day: string; entries: ScheduledPass[] }> = [];
   for (const entry of visible.slice(0, showing)) {
     const day = dayWords(entry.pass.aos, now);
@@ -354,17 +371,32 @@ function PassesTab({
             Only passes {WORKABLE_ELEVATION_DEG}° high or more
           </label>
         </div>
+        <div className="flex min-h-11 items-center gap-2">
+          <Checkbox
+            id={upNowId}
+            checked={upNow}
+            onCheckedChange={(next) => {
+              setUpNow(next === true);
+              setShowing(PAGE_OF_PASSES);
+            }}
+          />
+          <label htmlFor={upNowId} className="flex items-center self-stretch text-small text-ink">
+            Only those up now
+          </label>
+        </div>
       </div>
       <p className="mb-2 text-small text-ink-muted" role="status">
         {schedule.computing
           ? `Working out passes: ${schedule.done} of ${schedule.total} satellites…`
-          : needle
-            ? `${plural(visible.length, "pass", "passes")} matching “${query.trim()}”${
-                visible.length > showing ? `; the first ${showing} shown` : ""
-              }, of ${schedule.entries.length} in all.`
-            : `${plural(schedule.entries.length, "pass", "passes")} of amateur satellites, ${workableCount} of them ${WORKABLE_ELEVATION_DEG}° high or more${
-                visible.length > showing ? `; the first ${showing} shown` : ""
-              }. Passes that never rise ${FLOOR_ELEVATION_DEG}° above the horizon are left out.`}
+          : upNow
+            ? `${plural(visible.length, "satellite", "satellites")} up now${workableOnly ? ` on a pass ${WORKABLE_ELEVATION_DEG}° high or more` : ""}${needle ? ` matching “${query.trim()}”` : ""}.`
+            : needle
+              ? `${plural(visible.length, "pass", "passes")} matching “${query.trim()}”${
+                  visible.length > showing ? `; the first ${showing} shown` : ""
+                }, of ${schedule.entries.length} in all.`
+              : `${plural(schedule.entries.length, "pass", "passes")} of amateur satellites, ${workableCount} of them ${WORKABLE_ELEVATION_DEG}° high or more${
+                  visible.length > showing ? `; the first ${showing} shown` : ""
+                }. Passes that never rise ${FLOOR_ELEVATION_DEG}° above the horizon are left out.`}
       </p>
       {schedule.computing && visible.length === 0 ? (
         <div className="grid gap-2">
@@ -374,15 +406,16 @@ function PassesTab({
         </div>
       ) : visible.length === 0 ? (
         <p className="text-small text-ink-muted">
-          {needle || workableOnly ? (
+          {needle || workableOnly || upNow ? (
             <>
-              No pass matches.{" "}
+              {upNow ? `Nothing ${workableOnly ? "worth working " : ""}is up now. ` : "No pass matches. "}
               <button
                 type="button"
                 className="text-primary underline underline-offset-2"
                 onClick={() => {
                   setQuery("");
                   setWorkableOnly(false);
+                  setUpNow(false);
                 }}
               >
                 Show every pass
@@ -488,74 +521,38 @@ function Transmitters({
           : "SatNOGS DB lists no transmitter in use on this satellite."}
       </p>
     );
+  const groups = transmitterGroups(transmitters);
+  const table = (list: SatelliteTransmitter[], label: string) => (
+    <TransmitterTable transmitters={list} label={label} state={state} placeKnown={placeKnown} licensed={licensed} />
+  );
   return (
     <div>
-      <Table label="Transmitters, with the frequencies corrected for Doppler now" stack>
-        <TableHead>
-          <Tr>
-            <Th>What</Th>
-            <Th numeric>Down: published, and to listen on now</Th>
-            <Th numeric>Up: published{licensed ? ", and to send on now" : ""}</Th>
-          </Tr>
-        </TableHead>
-        <tbody>
-          {transmitters.map((transmitter) => {
-            const tuned = dopplerTuning(state.rangeRateKmS, transmitter.downlinkLowHz, transmitter.uplinkLowHz);
-            const up = placeKnown && state.elevationDeg > 0;
-            return (
-              <Tr key={transmitter.id} className="last:border-b-0">
-                <Td label="What">
-                  {transmitter.description}
-                  <span className="block text-ink-muted">
-                    <Joined
-                      parts={[
-                        transmitter.mode,
-                        transmitter.type,
-                        transmitter.invert ? "inverting" : null,
-                        transmitter.baud ? `${transmitter.baud} baud` : null,
-                      ]}
-                    />
-                  </span>
-                </Td>
-                <Td label="Down" numeric>
-                  {transmitter.downlinkLowHz ? (
-                    <span>
-                      {frequencyWords(transmitter.downlinkLowHz)}
-                      {transmitter.downlinkHighHz && transmitter.downlinkHighHz !== transmitter.downlinkLowHz
-                        ? ` to ${frequencyWords(transmitter.downlinkHighHz)}`
-                        : ""}
-                      {up && tuned.downlinkHz ? (
-                        <span className="block text-ink-muted">
-                          now {frequencyWords(tuned.downlinkHz)} ({shiftWords(tuned.downlinkHz - transmitter.downlinkLowHz)})
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : (
-                    "none"
-                  )}
-                </Td>
-                <Td label="Up" numeric>
-                  {transmitter.uplinkLowHz ? (
-                    <span>
-                      {frequencyWords(transmitter.uplinkLowHz)}
-                      {transmitter.uplinkHighHz && transmitter.uplinkHighHz !== transmitter.uplinkLowHz
-                        ? ` to ${frequencyWords(transmitter.uplinkHighHz)}`
-                        : ""}
-                      {up && licensed && tuned.uplinkHz ? (
-                        <span className="block text-ink-muted">
-                          now {frequencyWords(tuned.uplinkHz)} ({shiftWords(tuned.uplinkHz - transmitter.uplinkLowHz)})
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : (
-                    "none"
-                  )}
-                </Td>
-              </Tr>
+      {groups.length === 1 && groups[0]!.id === "all" ? (
+        table(groups[0]!.transmitters, "Transmitters, with the frequencies corrected for Doppler now")
+      ) : (
+        <div className="grid gap-5">
+          <p className="text-small text-ink-muted">
+            {plural(
+              groups.reduce((sum, group) => sum + group.transmitters.length, 0),
+              "transmitter",
+            )}{" "}
+            listed, grouped by what each is for.
+          </p>
+          {groups.map((group) => {
+            const title = `${group.title} (${group.transmitters.length})`;
+            return group.folded ? (
+              <Disclosure key={group.id} summary={title}>
+                {table(group.transmitters, group.title)}
+              </Disclosure>
+            ) : (
+              <section key={group.id} aria-label={group.title}>
+                <h3 className="mb-1 text-body font-semibold text-ink">{title}</h3>
+                {table(group.transmitters, group.title)}
+              </section>
             );
           })}
-        </tbody>
-      </Table>
+        </div>
+      )}
       <p className="mt-2 text-small text-ink-muted">
         {placeKnown
           ? "The corrected frequencies are shown while the satellite is above the horizon here. A satellite coming nearer is heard higher than published."
@@ -564,6 +561,89 @@ function Transmitters({
         4.0); a transmitter listed as in use may still be off.
       </p>
     </div>
+  );
+}
+
+function TransmitterTable({
+  transmitters,
+  label,
+  state,
+  placeKnown,
+  licensed,
+}: {
+  transmitters: SatelliteTransmitter[];
+  label: string;
+  state: SatelliteState;
+  placeKnown: boolean;
+  licensed: boolean;
+}) {
+  return (
+    <Table label={label} stack>
+      <TableHead>
+        <Tr>
+          <Th>What</Th>
+          <Th numeric>Down: published, and to listen on now</Th>
+          <Th numeric>Up: published{licensed ? ", and to send on now" : ""}</Th>
+        </Tr>
+      </TableHead>
+      <tbody>
+        {transmitters.map((transmitter) => {
+          const tuned = dopplerTuning(state.rangeRateKmS, transmitter.downlinkLowHz, transmitter.uplinkLowHz);
+          const up = placeKnown && state.elevationDeg > 0;
+          return (
+            <Tr key={transmitter.id} className="last:border-b-0">
+              <Td label="What">
+                {transmitter.description}
+                <span className="block text-ink-muted">
+                  <Joined
+                    parts={[
+                      transmitter.mode,
+                      transmitter.type,
+                      transmitter.invert ? "inverting" : null,
+                      transmitter.baud ? `${transmitter.baud} baud` : null,
+                    ]}
+                  />
+                </span>
+              </Td>
+              <Td label="Down" numeric>
+                {transmitter.downlinkLowHz ? (
+                  <span>
+                    {frequencyWords(transmitter.downlinkLowHz)}
+                    {transmitter.downlinkHighHz && transmitter.downlinkHighHz !== transmitter.downlinkLowHz
+                      ? ` to ${frequencyWords(transmitter.downlinkHighHz)}`
+                      : ""}
+                    {up && tuned.downlinkHz ? (
+                      <span className="block text-ink-muted">
+                        now {frequencyWords(tuned.downlinkHz)} ({shiftWords(tuned.downlinkHz - transmitter.downlinkLowHz)})
+                      </span>
+                    ) : null}
+                  </span>
+                ) : (
+                  "none"
+                )}
+              </Td>
+              <Td label="Up" numeric>
+                {transmitter.uplinkLowHz ? (
+                  <span>
+                    {frequencyWords(transmitter.uplinkLowHz)}
+                    {transmitter.uplinkHighHz && transmitter.uplinkHighHz !== transmitter.uplinkLowHz
+                      ? ` to ${frequencyWords(transmitter.uplinkHighHz)}`
+                      : ""}
+                    {up && licensed && tuned.uplinkHz ? (
+                      <span className="block text-ink-muted">
+                        now {frequencyWords(tuned.uplinkHz)} ({shiftWords(tuned.uplinkHz - transmitter.uplinkLowHz)})
+                      </span>
+                    ) : null}
+                  </span>
+                ) : (
+                  "none"
+                )}
+              </Td>
+            </Tr>
+          );
+        })}
+      </tbody>
+    </Table>
   );
 }
 

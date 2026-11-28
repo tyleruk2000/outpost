@@ -675,6 +675,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       // left, it holds none of what was erased.
       sqlite.exec("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')");
       sqlite.exec("INSERT INTO chunks_words(chunks_words) VALUES ('rebuild')");
+      // Which reference collections answered well for which words: the words are what was searched for.
+      ctx.services.kiwix?.forgetSearches();
     })();
     personal.settings = db.select({ n: sql<number>`count(*)` }).from(settingsTable).get()?.n ?? 0;
     settings.reset();

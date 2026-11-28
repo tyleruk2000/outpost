@@ -68,9 +68,11 @@ describe("search quality on the household evaluation set", () => {
   /** The same searches with search by meaning on, when the built-in model is here. */
   const meaningRows: Row[] = [];
   const keywordAgain: Row[] = [];
+  /** scripts/search-eval/held-out.json: questions nobody tuned on, to see whether tuning carries over. */
+  const heldOutRows: Row[] = [];
   // biome-ignore lint/suspicious/noExplicitAny: rows of a plain JavaScript module
   const referenceRows: any[] = [];
-  let evaluate: (into: Row[]) => Promise<void>;
+  let evaluate: (into: Row[], queries?: Query[]) => Promise<void>;
   /** Set once the first hook has finished: the passes with search by meaning build on what it set up. */
   let keywordDone = false;
 
@@ -104,8 +106,8 @@ describe("search quality on the household evaluation set", () => {
     }
     for (const entity of library()) app.ctx.services.search.upsert(entity);
     const pool = recorded.collections.flatMap((collection) => collection.hits).map(asResult);
-    evaluate = async (into: Row[]) => {
-      for (const query of loadQueries() as Query[]) {
+    evaluate = async (into: Row[], queries = loadQueries() as Query[]) => {
+      for (const query of queries) {
         const started = performance.now();
         let { body } = await app.api("GET", `/api/search?q=${encodeURIComponent(query.q)}&limit=20`);
         const ms = performance.now() - started;
@@ -128,6 +130,8 @@ describe("search quality on the household evaluation set", () => {
       }
     };
     await evaluate(rows);
+    // The held-out questions, nobody tuned on: reported on their own, never a target.
+    await evaluate(heldOutRows, loadQueries("held-out.json") as Query[]);
     // The reference collections on their own, as the search screen asks for them, one search after another.
     const base = await app.app.listen({ port: 0, host: "127.0.0.1" });
     for (const query of loadQueries() as Query[]) {
@@ -149,7 +153,7 @@ describe("search quality on the household evaluation set", () => {
         : "";
       writeFileSync(
         process.env.SEARCH_EVAL_OUT,
-        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n${formatSummary("fixture library, persona questions", summarise(persona(rows)))}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
+        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n${formatSummary("fixture library, persona questions", summarise(persona(rows)))}\n${formatSummary("held-out questions (not tuned on)", summarise(heldOutRows))}\n\n${formatTable(heldOutRows)}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
       );
     }
     await app?.close();
@@ -193,6 +197,18 @@ describe("search quality on the household evaluation set", () => {
     expect(bleeding.titles.slice(0, 3)).toContain("First aid manual");
     // Low beside the others: "how to pick a lock" and "sunrise tomorrow" have no answer in the recorded collections.
     expect(summarise(persona(rows)).ndcg5).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it("puts first aid before encyclopaedia articles named for the injury when asked what to do for a burn", () => {
+    for (const q of ["what to do for a burn", "treat a burn"]) {
+      const row = rows.find((candidate) => candidate.q === q)!;
+      expect(["Burns and scalds", "First aid manual"], `${q}: ${row.titles.slice(0, 5).join(" | ")}`).toContain(row.titles[0]);
+      expect(row.titles.slice(0, 3), q).toContain("First aid manual");
+      expect(
+        row.titles.slice(0, 5).filter((title) => /Ken Burns|Mr\. Burns/.test(title)),
+        q,
+      ).toEqual([]);
+    }
   });
 
   it("answers the owner's question with the car battery page first", () => {

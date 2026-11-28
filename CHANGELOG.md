@@ -384,7 +384,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - **Communication plans**: stations, hours and bands, each pair both ways, with primary
   and alternate bands chosen by a stated rule; PDF and Markdown.
 - **Contact log**: contacts typed or imported from ADIF 3.1.8 (large files as a job, all
-  or nothing), set beside the predictions as counts.
+  or nothing), set beside the predictions as counts. **Edit** puts an entry right in
+  place; one from a file still goes back with it.
 - **Compare with a second model (ITU P.533)**: optional, built on your computer from the
   ITU's source by **Build the P.533 engine**, with its 137 MB of maps downloaded on
   request; nothing of the ITU's ships with Outpost.
@@ -626,6 +627,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   quick search.
 - **Which model**: seven models compared on a Mac for answers and looking things up.
 - Map and radio quick starts for whoever did not set Outpost up.
+- The map and search guides in smaller parts: the Maps screen, map data, styles and
+  layers, places and coordinates, reach, walking and cycling, and sun and radio; search,
+  ranking, reference collections, OCR and search by meaning, each a guide of its own.
+  **How search by meaning works** is listed under Help too.
 
 #### Chat: tools a model can use, and MCP
 
@@ -653,6 +658,21 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   memory limits are off on Raspberry Pi OS, and leaves Docker's networks out of the
   addresses it prints.
 - `nas-share.sh`, new, tried against a Synology NAS.
+- Follow-ups from that install: **Storage → Connect a share** in Docker leads with the
+  `nas-share.sh` line filled in from the form; the restore, passphrase, keeping-fewer and
+  erasing notices, and the clock's, say how to open Outpost as the Pi with
+  `on-this-pi.sh`; **Settings → Who can use this library** shows the address for phones
+  with a QR code made in the browser; Settings' **Set-up guide** is now **Search and chat
+  set-up**, beside a new **Raspberry Pi set-up**; a guide opened at a heading stays on it
+  while the page settles.
+- **Tasks say what they count**: looking through an import counts files then pages,
+  reading and bringing in a Calibre library books, and a map layer read from a file its
+  bytes or the population grid's tiles, so a task reads "3 of 12 files", not a bare
+  number. The downloads plan lists the tasks alongside, each with when it should finish.
+- **The container keeps the Pi's time zone.** It had none, so it ran on UTC and the
+  nightly backup ran at 4:00 am in a British summer. `compose.yaml` passes `TZ` from
+  `.env` (UTC when it is not set) and `install.sh` sets it to the Pi's own zone where
+  `.env` has no `TZ`. Backup file names and logs stay in UTC.
 
 ### Changed
 
@@ -672,6 +692,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   a save from an older copy and offer a choice; at most 500 power plans.
 - **Finding your way**: Downloads, Storage and Settings always in view; child screens lead
   back; one name for each thing; Settings lists its sections.
+- **Reference collections searched widely answer sooner**: their title searches, a tenth
+  of a second each on a Pi, use every place at kiwix-serve the full-text searches leave
+  free instead of going one at a time (never more than its four at once). Thirty
+  archives had waited three to six seconds for their titles alone.
 - **Quick search** finds screens and Settings sections by everyday words, and lists the
   shortcuts; Search puts what is on this device first.
 - **One way everywhere**: one look for toasts, separators, dates, empty states and
@@ -700,6 +724,27 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 ### Fixed
 
 - Search counts every match, so every page can be reached.
+- "How to preserve fish" finds the canning guide: "preserve" beside a food also finds
+  canning, curing, smoking, salting, drying and pickling it.
+- Which reference collections answered well for which words is remembered across a
+  restart, so the likeliest are still asked first; **Erase everything** forgets it.
+- "What to do for a burn" and "treat a burn" put first aid first, not encyclopaedia
+  articles named for the injury (or "Ken Burns"): asked what to do about an injury or an
+  illness, an encyclopaedia's article says what it is.
+- A whole book found by its words says which chapter matched: a PDF's bookmarks name the
+  chapter of each page, scanned pages read by OCR included, and are searched and shown
+  as other documents' headings are. A PDF added before gets them with **Read text again**.
+- "Bicarbonate of soda" also finds "baking soda" and "bicarb", and "accident and
+  emergency" the other names for it: a name in the table of other ways of saying things
+  with a small word in it never matched, as the small words are left out of a search first.
+- **Run the full check** under Storage, Database also checks the search index against
+  the passages it was built from, says in words when they differ, and offers **Build the
+  search index again** instead of a restore.
+- Encrypting a page no longer breaks the search index ("database disk image is
+  malformed" from "Did you mean"). A passage retitled or retagged had been changed in
+  place, which SQLite 3.54's erasing delete cannot then take out cleanly; passages are now
+  put back under new numbers with their vectors, and both indexes are built again once at
+  the update (a few seconds on a Pi), which also repairs one already broken.
 - CSV numbers read by the file's own decimal mark, with ambiguous cells refused.
 - Answers decline only when the model says the passages do not hold the answer.
 - Stream errors on a full or unplugged drive fail the download, not the process.

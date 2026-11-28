@@ -438,6 +438,8 @@ export async function readPbf(filePath: string, options: PbfReadOptions): Promis
     if (blocks % 20 === 0) options.progress?.(1, passes, blob.offset, total);
   }
   if (!header) throw new PbfError("This is not an OpenStreetMap PBF file: it has no header.");
+  // The end of the first pass is said too: a small extract has fewer than 20 blocks, and said nothing at all.
+  options.progress?.(1, passes, total, total);
 
   // Pass 2: the ways that relations are made of.
   const memberWays = new Map<number, number[]>();

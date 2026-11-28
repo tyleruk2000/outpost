@@ -101,6 +101,45 @@ describe("semantic and hybrid search", () => {
     await app.ctx.jobs.whenIdle();
   }
 
+  it("follows a retitled item's passages to their new numbers without reading every vector again", async () => {
+    await buildIndex();
+    const { index } = app.ctx.services.semantic;
+    const first = (await app.api("GET", "/api/search?q=purification&mode=semantic")).body;
+    const before = first.results[0].passages[0].chunkId as number;
+    const loads = index.loads();
+    expect(loads).toBeGreaterThan(0);
+    app.ctx.services.search.upsert({
+      kind: "document",
+      entityId: "d-water",
+      title: "Field hygiene, second edition",
+      url: "/library/documents/d-water",
+      collection: "Medicine and first aid",
+      sourcePath: "documents/d-water/hygiene.pdf",
+      sections: [{ page: 3, heading: "Safe drinking", text: "Boil it for one minute, or filter and treat it, before drinking." }],
+    });
+    const { body } = await app.api("GET", "/api/search?q=purification&mode=semantic");
+    expect(body.results[0]).toMatchObject({ entityId: "d-water", title: "Field hygiene, second edition" });
+    const after = body.results[0].passages[0].chunkId as number;
+    expect(after).not.toBe(before);
+    expect(index.loads()).toBe(loads);
+  });
+
+  it("leaves out vectors made for passages that went while they were being made", async () => {
+    await buildIndex();
+    const { index } = app.ctx.services.semantic;
+    const before = index.count("test:concepts");
+    const live = (app.ctx.sqlite.prepare("SELECT max(id) AS id FROM chunks").get() as { id: number }).id;
+    const vector = new Float32Array([1, 0, 0, 0]);
+    // A passage retitled mid-build has a new number; the vector made for its old one has nowhere to go.
+    expect(() =>
+      index.upsert("test:concepts", [
+        { chunkId: live + 1000, contentHash: "gone", vector },
+        { chunkId: live, contentHash: "h", vector },
+      ]),
+    ).not.toThrow();
+    expect(index.count("test:concepts")).toBe(before);
+  });
+
   it("stays a keyword search, and says so, until vectors exist", async () => {
     const { body } = await app.api("GET", "/api/search?q=purification&mode=semantic");
     expect(body.mode).toBe("keyword");

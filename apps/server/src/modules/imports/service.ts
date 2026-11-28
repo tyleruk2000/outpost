@@ -268,7 +268,7 @@ export async function createImportsService(ctx: AppContext): Promise<ImportsServ
         budget,
         label: name,
         signal: run.signal,
-        onProgress: (current, total) => run.progress({ current, total, message: `Unpacking ${name}` }),
+        onProgress: (current, total) => run.progress({ current, total, message: `Unpacking ${name}`, unit: "files" }),
       });
       leftOut.push(...result.leftOut.map((entry) => ({ ...entry, path: `${prefix}${entry.path}` })));
       ignored += result.ignored;
@@ -288,7 +288,11 @@ export async function createImportsService(ctx: AppContext): Promise<ImportsServ
       const files = await listTree(treeDir(id));
       const analysis = await buildPlan(
         { treeDir: treeDir(id), files, ...unpacked },
-        { lookup, signal: run.signal, onProgress: (current, total) => run.progress({ current, total, message: "Reading the pages" }) },
+        {
+          lookup,
+          signal: run.signal,
+          onProgress: (current, total) => run.progress({ current, total, message: "Reading the pages", unit: "pages" }),
+        },
       );
       // Discarded while it was being read: `discard` has already cleaned up.
       if (find(id)?.state !== "analysing") return undefined;

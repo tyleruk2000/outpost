@@ -86,9 +86,10 @@ tables of figures take more tokens, so can still be refused.
 ### In Docker, or with the model on another machine
 
 In Docker, `127.0.0.1` is the container. With Docker Desktop use
-`http://host.docker.internal:11434/v1` (tried by the first press). On Linux, add
-`extra_hosts: ["host.docker.internal=host-gateway"]` to the `outpost` service and make the
-model server listen where the container can reach it (`OLLAMA_HOST=0.0.0.0:11434`, or
+`http://host.docker.internal:11434/v1` (tried by the first press). On Linux the
+`compose.yaml` Outpost comes with already gives the container that name (in a Compose file
+of your own, add `extra_hosts: ["host.docker.internal:host-gateway"]` to the `outpost`
+service); make the model server listen where the container can reach it (`OLLAMA_HOST=0.0.0.0:11434`, or
 `--host 0.0.0.0`). See [setup-guide.md](setup-guide.md#when-outpost-runs-in-docker).
 
 A model on another machine works the same way: enter its address. A model server on your
@@ -140,7 +141,7 @@ library of scanned manuals will do worse. Untried set-ups are in
   passages go there, over plain HTTP unless the address is `https`.
 - **Search by meaning is separate**: its index embeds every passage, contacts included.
   The built-in model sends nothing anywhere
-  ([search.md](search.md#a-local-embedding-server-local-server)).
+  ([search-by-meaning.md](search-by-meaning.md#a-local-embedding-server-local-server)).
 
 ### Which addresses are contacted
 
@@ -321,6 +322,6 @@ model's. Fields: [development/answers-and-search.md](development/answers-and-sea
 ## Planning for a change of embedding model
 
 Vectors are kept per model, so switching model deletes nothing and switching back reuses
-the old ones (see [search.md](search.md#changing-the-model)). Allow time and room for two
+the old ones (see [search-by-meaning.md](search-by-meaning.md#changing-the-model)). Allow time and room for two
 sets during a change, or build on a faster machine and
-[move them](search.md#moving-vectors-between-installations).
+[move them](search-by-meaning.md#moving-vectors-between-installations).

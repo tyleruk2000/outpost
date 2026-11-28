@@ -1,5 +1,6 @@
 import type { ImportDto } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { jobs } from "../src/db/schema.ts";
 import { convertPage, parseFrontmatter, scanConstructs } from "../src/modules/imports/convert.ts";
 import { rowPageMatcher, tableDoc, toTable, truncationNote } from "../src/modules/imports/database.ts";
 import { allRowsTwinOf, naturalCompare, pathKey, pickIndexFile, splitNotionName } from "../src/modules/imports/names.ts";
@@ -47,6 +48,12 @@ function handbookZip(): Promise<Buffer> {
 describe("a folder of Markdown files in a ZIP", () => {
   it("plans a page for the folder from its README, and a parent page only where structure needs one", async () => {
     const dto = await analyse(app, [{ name: "handbook.zip", content: await handbookZip() }]);
+    // Unpacking counts files and reading counts pages, so the task reads "3 of 12 pages", not a bare number.
+    const analysing = app.ctx.jobs.detail(
+      (app.ctx.db.select().from(jobs).all() as Array<{ id: string; type: string }>).find((job) => job.type === "import.analyse")!.id,
+    );
+    expect(analysing.job.progressUnit).toBe("pages");
+    expect(analysing.samples.map((sample) => sample.unit)).toContain("files");
     const analysis = dto.analysis!;
     expect(analysis.source).toBe("mixed"); // Markdown and one plain text file
     expect(dto.kind).toBe("mixed");

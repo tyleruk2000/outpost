@@ -172,9 +172,10 @@ size. Each place leads to **Offline maps**, the one place map data is added, upd
 removed. Routes, walking and cycling and the records of nearby places are kept with Outpost's
 own data, not on a storage location, and do not move. They are in the row's size but in no
 location's bar above, so the row says how much of it is there ("3.00 GB on Internal storage,
-as in its bar above; 500 MB of routes and nearby places in Outpost's own data, which the
-bars above do not show"); each location's figure under Offline maps is the bar's. When a place is over a year old, the section says so. See
-[updating](maps.md#updating).
+as in its bar above; 500 MB of routes, walking and cycling and nearby places in Outpost's own
+data, which the bars above do not show"); each location's figure under Offline maps is the
+bar's. When a place is over a year old, the section says so. See
+[updating](map-data.md#updating).
 
 ## Checking files
 
@@ -200,8 +201,10 @@ the last backup.
 - **Earlier versions of pages**: **Clear earlier versions** erases them, leaving the
   pages ([notes-and-imports.md](notes-and-imports.md#earlier-versions)).
 - **Check the database** runs SQLite's quick check; **Run the full check** also checks
-  every index. Both only read. If problems are found, restore the newest backup that
-  passed its check.
+  every index, and that the search index matches the passages it was built from. Both
+  only read. If problems are found, restore the newest backup that passed its check. If
+  only the search index is out of step, **Build the search index again** rebuilds it from
+  your notes and files instead (seconds on a Pi; saving waits meanwhile), and checks again.
 - **Reclaim unused space** rewrites the file smaller. It needs room for two copies and
   no job running; while it runs nothing can be saved, and it cannot be stopped part way.
   Only at the computer Outpost runs on, or with `OUTPOST_ALLOW_REMOTE_ERASE=true`.

@@ -55,7 +55,8 @@ const normalise = (word: string) => word.normalize("NFKD").replace(/\p{M}/gu, ""
 
 const nextLetter = (letter: string) => String.fromCodePoint(letter.codePointAt(0)! + 1);
 
-export function createSuggester(sqlite: Database.Database) {
+/** `failed` hears of a word list that could not be read. */
+export function createSuggester(sqlite: Database.Database, failed: (error: unknown) => void = () => {}) {
   let vocabulary: Database.Statement | null = null;
   const words = () => {
     if (!vocabulary) {
@@ -128,7 +129,7 @@ export function createSuggester(sqlite: Database.Database) {
       if (parsed.quoted?.[index] || parsed.joined?.[index] || term.includes(" ") || STOP_WORDS.has(term.toLowerCase())) return;
       const held = counts[index] ?? 0;
       if (held > 0 && !(nothingFound && held <= RARE_PASSAGES)) return;
-      const word = safely(() => nearest(term, held));
+      const word = safely(() => nearest(term, held), failed);
       if (word) changes.push({ typed: term, word });
     });
     if (changes.length === 0) return null;
@@ -143,18 +144,19 @@ export function createSuggester(sqlite: Database.Database) {
     return query === q ? null : { query, words: changes.map((change) => change.word) };
   }
 
-  return { suggest, nearest };
+  return { suggest, nearest: (typed: string, held: number) => safely(() => nearest(typed, held), failed) };
 }
 
 /**
- * A suggestion is an extra, and never worth failing a search for. The word list is read
- * through SQLite's fts5vocab, which reports "database disk image is malformed" for some
- * words when the index of a passage was taken out with other text than it was put in with.
+ * A suggestion is an extra, and never worth failing a search for; but a word list that
+ * cannot be read means the index is broken, which is said, not hidden. (It was broken by
+ * erasing a passage that had been changed in place: see migration 0049.)
  */
-function safely(find: () => string | null): string | null {
+function safely(find: () => string | null, failed: (error: unknown) => void): string | null {
   try {
     return find();
-  } catch {
+  } catch (error) {
+    failed(error);
     return null;
   }
 }

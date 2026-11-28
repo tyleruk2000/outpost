@@ -324,9 +324,9 @@ export const SETUP_GUIDE: Guide = {
         { kind: "text", text: "With Docker Desktop, on a Mac or on Windows, the name works as it is." },
         {
           kind: "text",
-          text: "With Docker on Linux, add this to the `outpost` service in `compose.yaml`, then start Outpost again:",
+          text: "With Docker on Linux, a Raspberry Pi included, the `compose.yaml` that comes with Outpost already gives the container the name, so there is nothing to add. In a Compose file of your own, add this to the `outpost` service, then start Outpost again:",
         },
-        { kind: "command", command: 'extra_hosts:\n  - "host.docker.internal=host-gateway"' },
+        { kind: "command", command: 'extra_hosts:\n  - "host.docker.internal:host-gateway"' },
         {
           kind: "text",
           text: "If Ollama is still not found, tell it to listen on the network as in the section above: seen from a container, the machine it runs on is another computer.",

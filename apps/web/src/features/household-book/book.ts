@@ -140,17 +140,25 @@ import type { Block } from "@/features/propagation/plans/document";
 import { BLEACH_STEPS, METHODS, PLANNING_FIGURES, WATER_SOURCES } from "@/features/tools/water/guidance";
 import { purificationBlocks } from "@/features/tools/water/purification-sheet";
 import type { GoRow, LastingRow } from "./book-figures";
-import { goFlow, lastingDrawing, powerCutTimeline, safeWaterFlow, waterNeedsDrawing } from "./book-figures";
+import {
+  goFlow,
+  lastingDrawing,
+  powerCutTimeline,
+  type RepeaterExample,
+  repeaterHowDrawing,
+  safeWaterFlow,
+  waterNeedsDrawing,
+} from "./book-figures";
 import { type BookRadioPlan, radioPlansContent } from "./book-radio";
 import {
   type BookRepeaterRange,
   type ChosenRepeater,
   chooseRepeaters,
   horizonRange,
-  mappedGroups,
   placeLabel,
   type RepeaterGroup,
   repeaterLocations,
+  repeaterMapGroups,
   SEARCH_WORDS,
 } from "./book-repeaters";
 import { CDC_HYGIENE, FIRST_AID_PAGES, FIRST_AID_POINTERS, KIT_FROM_PAGES, NHS_CREDIT, NHS_READ, RECOVERY_POSITION } from "./first-aid";
@@ -967,6 +975,14 @@ function inputCell(repeater: RepeaterDto): string {
 }
 const formatDecimalShift = (value: number) => String(Number(value.toFixed(4)));
 
+/** A repeater's figures as the drawing of how one works writes them. */
+const repeaterExample = (repeater: RepeaterDto): RepeaterExample => ({
+  callsign: repeater.callsign,
+  output: `${mhz(repeater.outputHz)} MHz`,
+  input: `${mhz(repeater.inputHz ?? repeater.outputHz)} MHz`,
+  tone: repeater.ctcssHz ? `the tone ${repeater.ctcssHz} Hz` : repeater.dcsCode ? `DCS ${repeater.dcsCode}` : null,
+});
+
 function repeaterRow(c: Context, each: ChosenRepeater, journey: boolean): string[] {
   const { repeater } = each;
   const range = c.repeaterRanges?.[repeater.id] ?? horizonRange(repeater);
@@ -1024,8 +1040,18 @@ function repeaterContent(c: Context, notes: NoteList, summary: string[]): Conten
           { right: [1, 2] },
         ),
       );
-      // What the columns mean, once, under the first table.
-      if (!keyed) content.push({ text: rich(REPEATER_KEY) as never, fontSize: PRINT_TYPE.small, margin: [0, 0, 0, 6] } as Content);
+      // What the columns mean, once, under the first table, and the same drawn, with a repeater of the table's own.
+      if (!keyed) {
+        content.push({ text: rich(REPEATER_KEY) as never, fontSize: PRINT_TYPE.small, margin: [0, 0, 0, 6] } as Content);
+        const shown = group.chosen.find((each) => each.repeater.inputHz !== null && each.repeater.inputHz !== each.repeater.outputHz);
+        content.push(
+          figure(repeaterHowDrawing(c.measure, shown ? repeaterExample(shown.repeater) : null).svg, {
+            title: "How a repeater works",
+            width: c.measure,
+            caption: `The key above, drawn${shown ? `, with ${shown.repeater.callsign} from the table` : ""}. Two radios out of reach of each other can each reach a repeater on high ground: it hears one on the input and sends it out again on the output, where the other listens. Set both frequencies, and the tone, in your radio.`,
+          }),
+        );
+      }
       keyed = true;
     }
     if (group.also.length > 0) {
@@ -1058,7 +1084,7 @@ function repeaterContent(c: Context, notes: NoteList, summary: string[]): Conten
       `Amateur radio repeaters from Outpost's repeater list${from.length > 0 ? `: ${from.join("; ")}` : ""}. A list says what was listed on its date, not what is on the air now.`,
     ),
   );
-  for (const group of mappedGroups(groups))
+  for (const group of repeaterMapGroups(groups, c.answers.repeaterMapMost ?? null))
     content.push(
       repeaterFigure({
         group,

@@ -153,7 +153,7 @@ describe("the set-up guide, inside Outpost", () => {
 
     const docker = screen.getByRole("region", { name: "When Outpost runs in Docker" });
     expect(docker).toHaveTextContent("host.docker.internal");
-    expect(within(docker).getByText(/host\.docker\.internal=host-gateway/)).toBeVisible();
+    expect(within(docker).getByText(/host\.docker\.internal:host-gateway/)).toBeVisible();
 
     const wrong = screen.getByRole("region", { name: "Three things that go wrong, and the fix" });
     expect(within(wrong).getAllByRole("listitem")).toHaveLength(3);

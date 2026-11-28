@@ -13,6 +13,7 @@
  * ("to be or not to be") keeps them all.
  */
 
+import { STOP_WORDS } from "./stop-words.ts";
 import { findExpansions } from "./synonyms.ts";
 
 export interface ParsedQuery {
@@ -34,20 +35,7 @@ export interface ParsedQuery {
   joined?: boolean[];
 }
 
-/**
- * Words that shape a question and say nothing about its subject. Kept short on
- * purpose: "not", "without", "off" and "no" change what is meant and are never dropped.
- */
-export const STOP_WORDS: ReadonlySet<string> = new Set(
-  (
-    "a an the and or of to in on at by for from with into onto as about " +
-    "how what when where why which who whom whose " +
-    "do does did doing done is are was were be been being am " +
-    "can could should would will shall may might must " +
-    "i me my mine we us our you your he him his she her it its they them their there " +
-    "this that these those if so than then also just please "
-  ).split(" "),
-);
+export { STOP_WORDS };
 
 /**
  * "Won't" and the like typed without the apostrophe, as a thumb types them, are read as

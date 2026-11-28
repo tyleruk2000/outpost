@@ -11,12 +11,15 @@ import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
 import { type BookInputs, bookRepeaterGroups, makeBook } from "./book";
+import { repeaterHowDrawing } from "./book-figures";
 import {
   chooseRepeaters,
   horizonRange,
   mappedGroups,
   REPEATERS_PER_PLACE,
   repeaterLocations,
+  repeaterMapBbox,
+  repeaterMapGroups,
   repeaterQueries,
   searchRadiusKm,
 } from "./book-repeaters";
@@ -270,12 +273,68 @@ describe("the repeaters in the book", () => {
     expect(words).toContain("drawn to scale on a plain grid");
   });
 
+  it("keeps the tables' order of preference when drawing only a few: FM first, nearest first within it", () => {
+    const at = (callsign: string, km: number, over: Partial<RepeaterDto> = {}) => {
+      const each = repeater(callsign, km, 0, over) as RepeaterDto & { lat: number; lon: number };
+      return { repeater: each, distanceMeters: km * 1000, bearingDegrees: 90 };
+    };
+    const group = {
+      location: locations[0]!,
+      chosen: [at("GB3FMA", 5), at("GB3FMB", 8), at("GB3DIG", 1, { modes: ["dmr"] })],
+      also: [{ ...at("GB3FMC", 3), listedUnder: "Home" }],
+    };
+    const [drawn] = repeaterMapGroups([group], 2);
+    expect([...drawn!.chosen, ...drawn!.also].map((each) => each.repeater.callsign).sort()).toEqual(["GB3FMA", "GB3FMC"]);
+    expect(drawn!.hidden).toBe(2);
+  });
+
+  it("draws only the nearest few on each map when asked, framed round them, with the rest still in the tables", async () => {
+    const groups = bookRepeaterGroups(bookInputs());
+    const every = repeaterMapGroups(groups, null);
+    const nearest = repeaterMapGroups(groups, 2);
+    expect(nearest.map((group) => group.location.key)).toEqual(every.map((group) => group.location.key));
+    const home = nearest[0]!;
+    expect([...home.chosen, ...home.also].map((each) => each.repeater.callsign)).toEqual(["GB3NEAR", "GB3UHF"]);
+    expect(home.hidden).toBe(4);
+    // The frame closes in round the two.
+    const span = (bbox: number[]) => bbox[2]! - bbox[0]!;
+    expect(span(repeaterMapBbox(home))).toBeLessThan(span(repeaterMapBbox(every[0]!)) / 2);
+    const fewer = makeBook(bookInputs({ answers: { ...answers, repeaterMapMost: 2 } }));
+    const fewerWords = contentText(fewer.document.content);
+    expect(fewerWords).toContain("Only the nearest 2 are drawn, as chosen for the book; the 4 further away are in the tables.");
+    // The tables are as before.
+    for (const callsign of ["GB3A", "GB3B", "GB3C", "GB3E"]) expect(fewerWords).toContain(callsign);
+    const { svg } = repeaterMapSvg({ group: home, locations: [], ranges: {}, map: null, missing: null, measure: 499 });
+    expect(svg).toContain('data-circle="GB3NEAR"');
+    expect(svg).not.toContain('data-circle="GB3E"');
+    // To look at, with OUTPOST_PRINT_SAMPLES set.
+    if (process.env.OUTPOST_PRINT_SAMPLES) writeSample("book-repeaters-nearest", (await renderPdf(fewer.document)).bytes);
+  }, 60_000);
+
   it("says what output, input, shift and tone mean, once, by the first table", () => {
     expect(words).toContain(
       "Output: the frequency you listen on (the repeater transmits, your radio receives). Input: the frequency you transmit on (your radio sends, the repeater listens). Shift: input minus output. Tone (CTCSS): the sub-audible tone your radio must send to open the repeater",
     );
     expect(words.split("Output: the frequency you listen on")).toHaveLength(2);
     expect(words.indexOf("Output: the frequency")).toBeGreaterThan(words.indexOf("GB3NEAR"));
+  });
+
+  it("draws how a repeater works once, by the key, with the first repeater's own figures", () => {
+    expect(words.split("How a repeater works")).toHaveLength(2);
+    expect(words.indexOf("How a repeater works")).toBeGreaterThan(words.indexOf("Output: the frequency"));
+    expect(words.indexOf("How a repeater works")).toBeLessThan(words.indexOf("Meet near home: Village hall"));
+    expect(words).toContain("Repeater GB3NEAR");
+    expect(words).toContain("You send on the input");
+    expect(words).toContain("145.0000 MHz, with the tone 77 Hz");
+    expect(words).toContain("145.6000 MHz: every radio in range listens there");
+    expect(words).toContain("out of reach of each other direct");
+  });
+
+  it("draws how a repeater works in words alone where the first has no input listed", () => {
+    const { svg } = repeaterHowDrawing(499, null);
+    expect(svg).toContain(">You send on the input<");
+    expect(svg).toContain(">with its tone, if it has one<");
+    expect(svg).not.toContain("MHz");
   });
 
   it("draws each repeater's circle with its own dash where no terrain is installed, with the callsigns and the key", () => {

@@ -265,7 +265,7 @@ said plainly ("Walking and cycling is not added for France").
 
 To turn the add-on on, see [Street routes on a Raspberry Pi](deployment.md#street-routes);
 **Walking and cycling** is then one of the choices in **Add a place** (see
-[maps.md](maps.md#walking-and-cycling)).
+[map-getting-around.md](map-getting-around.md#walking-and-cycling)).
 
 ## Reachable from here
 
@@ -282,7 +282,7 @@ the areas come from:
 - **Streets**: over every street, by car or bicycle, where walking and cycling is added for
   the place.
 - **On foot**: over the installed terrain, faster on paths, barred by water and cliffs, at
-  the pace you choose (see [maps.md](maps.md#on-foot-over-the-terrain)). It needs terrain,
+  the pace you choose (see [map-getting-around.md](map-getting-around.md#on-foot-over-the-terrain)). It needs terrain,
   not streets, and counts the hills.
 - **Main roads only**: by car over the routes added, on every installation with them. The point is joined to the nearest main road; streets off the main roads are
   not counted, so the true area is a little larger near towns.

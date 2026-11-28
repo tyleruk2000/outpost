@@ -22,6 +22,7 @@ import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./down
 import { describeDownload, mapTaskTitle } from "./download-text";
 import { PlanControls } from "./plan-controls";
 import { PlanSection } from "./plan-section";
+import { PlanTasks } from "./plan-tasks";
 import { queuePosition, queuePositions, stalledWords } from "./plan-text";
 import { TaskRow } from "./task-row";
 import { filterOf, type TaskFilter } from "./task-text";
@@ -446,7 +447,10 @@ export default function DownloadsPage() {
       ) : (
         <>
           {active.length === 0 ? null : plan.data && queued > 0 ? (
-            <PlanSection plan={plan.data} fetchedAt={plan.dataUpdatedAt} stale={plan.isError} stalled={stalled} />
+            <>
+              <PlanSection plan={plan.data} fetchedAt={plan.dataUpdatedAt} stale={plan.isError} stalled={stalled} />
+              <PlanTasks tasks={otherWork} now={jobs.dataUpdatedAt || plan.dataUpdatedAt} />
+            </>
           ) : plan.isPending ? (
             <div className="grid gap-4" aria-busy>
               <Skeleton className="h-14 max-w-[36rem]" />
