@@ -63,7 +63,7 @@ are counted into patches: move closer.
 ## Providers
 
 Each publisher's terms, quoted with the day read, are in
-[sources.md](sources.md#reference-layers) (R1 to R20).
+[sources.md](sources.md#reference-layers) (RL1 to RL20).
 
 | Provider | What | How it is used |
 | --- | --- | --- |
@@ -227,7 +227,7 @@ file is on another host, which Outpost does not follow: choose its Länder.
 ### A second source for the United States (not built)
 
 The USDA's list of SNAP retailers could be a second US source, but its pages refused to
-be read, so its terms are unknown and nothing was built ([sources.md](sources.md), R19).
+be read, so its terms are unknown and nothing was built ([sources.md](sources.md), RL19).
 In the European Union no official list was found: OpenStreetMap is the source (R20).
 
 ## What is not built, and why
