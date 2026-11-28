@@ -164,9 +164,12 @@ export function Segmented<T extends string>({
 // ── Radio ──────────────────────────────────────────────────────────────────
 
 /**
- * One choice of a radio group with words beside it: a round 18 px mark, with a dot when chosen.
+ * One choice of a radio group with words beside it: a round 18 px mark, with a dot when chosen. Both
+ * are in rem, so they grow with the text beside them (at 200% text an 18 px ring held a dot larger
+ * than itself), as a tick box and a switch do.
  * The same look wherever a radio is drawn (a native `<input type="radio">` with `accent-primary`
- * looks alike). Its reach is 44 px for a finger, from an invisible box round it, so the mark itself
+ * looks alike). Its reach is at least 44 px for a finger at any text size (2.75rem, or 44 px where the
+ * text is smaller than usual), from an invisible box round it, so the mark itself
  * never grows into a square. `outpost-radio` lets a screen's own touch rule tell it from a
  * segmented control, which is a radio group too.
  */
@@ -174,7 +177,7 @@ export function RadioItem({ className, ...props }: Omit<ComponentProps<typeof Ra
   return (
     <RadioPrimitive.Item
       className={cn(
-        "outpost-radio relative mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:-inset-[13px] data-[state=checked]:border-primary disabled:opacity-50",
+        "outpost-radio relative mt-0.5 grid size-[1.125rem] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:top-1/2 before:left-1/2 before:size-[max(2.75rem,44px)] before:-translate-x-1/2 before:-translate-y-1/2 data-[state=checked]:border-primary disabled:opacity-50",
         className,
       )}
       {...props}
@@ -263,7 +266,7 @@ export function Select<T extends string>({
  * pseudo-element centred on it: the control looks the same and takes no more room.
  */
 const touchArea =
-  "pointer-coarse:before:absolute pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2 pointer-coarse:before:content-['']";
+  "pointer-coarse:before:absolute pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-[max(2.75rem,44px)] pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2 pointer-coarse:before:content-['']";
 
 export function Switch({ className, ...props }: ComponentProps<typeof SwitchPrimitive.Root>) {
   return (
@@ -284,7 +287,7 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        "relative grid size-[18px] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
+        "relative grid size-[1.125rem] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
         touchArea,
         className,
       )}

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
-import type { MapRegionsResponse, MapSources } from "@outpost/shared";
+import type { MapDataResponse, MapRegionsResponse, MapSources } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createHttpClient } from "../src/core/http.ts";
 import { WrittenRecord } from "../src/core/written.ts";
@@ -354,6 +354,17 @@ describe("downloading a region", () => {
     expect(terrainCollection).toMatchObject({ kind: "terrain", title: "Ålps & Friends (terrain)" });
     expect(terrainCollection.meta.map).toMatchObject({ tileType: "terrain", minZoom: 0, maxZoom: 5, bounds: REGION_BBOX });
     expect(terrainCollection.attribution).toContain("Mapterhorn");
+    // Its source gives no date: Offline maps says so, rather than the day it was downloaded as the day of its data.
+    const listed = (await app.api<MapDataResponse>("GET", "/api/maps/data")).body;
+    const heights = [...listed.countries.flatMap((c) => c.rows.flatMap((r) => r.items)), ...listed.world, ...listed.other].find(
+      (item) => item.kind === "terrain",
+    );
+    expect(heights).toMatchObject({ dataDate: null, undated: expect.stringMatching(/gives no date for its heights$/) });
+    const map = [...listed.countries.flatMap((c) => c.rows.flatMap((r) => r.items)), ...listed.world, ...listed.other].find(
+      (item) => item.kind === "map",
+    );
+    expect(map?.dataDate).toBe("2026-11-15");
+    expect(map?.undated).toBeUndefined();
 
     // Terrain tiles are images: served as they are, with no Content-Encoding.
     const tile = await getRaw("/api/maps/terrain/5/17/9.webp");

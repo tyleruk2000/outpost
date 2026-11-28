@@ -5,7 +5,16 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { fromOsGrid, type OsNamesCheck, type PlaceSearchResponse, type PlacesDataset, parsePostcode, toOsGrid } from "@outpost/shared";
+import {
+  fromOsGrid,
+  type MapDataCheckResponse,
+  type MapDataResponse,
+  type OsNamesCheck,
+  type PlaceSearchResponse,
+  type PlacesDataset,
+  parsePostcode,
+  toOsGrid,
+} from "@outpost/shared";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { DownloadRow } from "../src/modules/downloads/types.ts";
 import {
@@ -320,6 +329,34 @@ describe("downloading OS Open Names", () => {
     expect((await app!.api("DELETE", `/api/maps/places/datasets/${held[0]!.id}`)).status).toBe(200);
     expect((app!.ctx.sqlite.prepare("SELECT count(*) AS n FROM places").get() as { n: number }).n).toBe(0);
     expect(fs.existsSync(path.join(app!.ctx.services.storage.getDefault().path, second.relPath))).toBe(false);
+  });
+});
+
+describe("OS Open Names on Offline maps", () => {
+  afterEach(stop);
+
+  it("is dated by its edition, and checked and updated through Review updates like any other download", async () => {
+    await start();
+    await installSample();
+    const names = () =>
+      (app!.ctx.services.collections.list({ kind: "places" })[0] ?? null) as { id: string; version: string | null } | null;
+    const data = async () => {
+      const answer = (await app!.api<MapDataResponse>("GET", "/api/maps/data")).body;
+      return answer.countries.find((c) => c.country === "GB")!.rows.find((r) => r.kind === "names")!.items[0]!;
+    };
+    // Its edition (2026-10) is its date, not the day it was downloaded: what "over a year old" and the review go by.
+    expect(await data()).toMatchObject({ dataDate: "2026-10-01", update: { how: "download" } });
+
+    standIn!.edition = "2027-01";
+    const check = await app!.api<MapDataCheckResponse>("POST", "/api/maps/data/check", { collectionId: names()!.id });
+    expect(check.status).toBe(200);
+    expect(check.body).toMatchObject({ newer: true, dataDate: "2027-01-01" });
+    const update = await app!.api<{ downloadIds: string[] }>("POST", "/api/maps/data/update", { collectionId: names()!.id });
+    expect(update.status, JSON.stringify(update.body)).toBe(200);
+    expect(update.body.downloadIds).toHaveLength(1);
+    expect((await settled(update.body.downloadIds[0]!)).state).toBe("completed");
+    expect(names()!.version).toBe("2027-01");
+    expect((await data()).dataDate).toBe("2027-01-01");
   });
 });
 

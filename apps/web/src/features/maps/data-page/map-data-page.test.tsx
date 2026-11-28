@@ -141,6 +141,12 @@ function serve(data: MapDataResponse, extra: Record<string, unknown> = {}) {
   });
 }
 
+/** How many times something was posted, with a body or none. */
+const postedTimes = (path: string) =>
+  (fetch as unknown as { mock: { calls: Array<[string, RequestInit | undefined]> } }).mock.calls.filter(
+    ([url, init]) => String(url).includes(path) && init?.method === "POST",
+  ).length;
+
 const posted = (path: string) =>
   (fetch as unknown as { mock: { calls: Array<[string, RequestInit | undefined]> } }).mock.calls
     .filter(([url, init]) => String(url).includes(path) && init?.method === "POST")
@@ -205,7 +211,7 @@ describe("Offline maps", () => {
     expect(names).toEqual([
       expect.stringMatching(/^United Kingdom/),
       "France",
-      "Lake shore · drawn",
+      "Lake shore · Drawn on the map",
       expect.stringMatching(/^World basics/),
     ]);
     // The download feeding the routes and the source file is one line, not two.
@@ -250,6 +256,34 @@ describe("Offline maps", () => {
     expect(details).toHaveTextContent(/Source file/);
   });
 
+  it("offers a drawn area its nearby places, opening Add a place for the same box with Nearby places ticked", async () => {
+    const user = userEvent.setup();
+    serve(
+      mapData({
+        other: [
+          item({
+            key: "lake",
+            kind: "imagery",
+            title: "Lake shore",
+            collectionId: "lake",
+            sizeBytes: 200_000_000,
+            bbox: [6.8, 45.9, 7, 46],
+          }),
+        ],
+      }),
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    const row = (await screen.findAllByRole("listitem")).find((each) => each.getAttribute("data-place")?.startsWith("area:"))!;
+    expect(within(row).getByText("Drawn on the map")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: /Add nearby places for Lake shore/i }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Lake shore?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Nearby places/ })).toBeChecked();
+    expect(
+      within(dialog).getByRole("list", { name: "Kinds from OpenStreetMap, asked of an Overpass server for the area" }),
+    ).toBeInTheDocument();
+  });
+
   it("with nothing yet, offers one button: Add a place", async () => {
     serve(mapData({ summary: { totalBytes: 0, locations: [], active: 0 } }));
     renderScreen(<MapDataPage />, "/maps/data");
@@ -273,6 +307,43 @@ describe("Add a place", () => {
     expect(within(dialog).getByText("Part of France")).toBeInTheDocument();
     // Found here: nothing was asked of anyone else.
     expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
+  });
+
+  it("finds a part of a country once Geofabrik's list is read from the Where step, on a press", async () => {
+    const user = userEvent.setup();
+    let listed = false;
+    const server = serve(mapData({ regionsListed: false }), {
+      "GET /api/maps/data/where": ({ url }: { url: URL }) =>
+        /^rh/i.test(url.searchParams.get("q") ?? "") && listed
+          ? {
+              results: [
+                {
+                  ...FRANCE,
+                  type: "part",
+                  name: "Rhône-Alpes",
+                  regionId: "france",
+                  part: { regionId: "rhone-alpes", name: "Rhône-Alpes" },
+                },
+              ],
+              regionsListed: true,
+            }
+          : { results: [], regionsListed: listed },
+      "POST /api/reference/regions": () => {
+        listed = true;
+        return { held: true, readAt: 1, source: "https://download.geofabrik.de/index-v1-nogeom.json", regions: [], suggested: [] };
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await user.type(within(dialog).getByRole("searchbox", { name: "Country, region or town" }), "Rhône");
+    expect(await within(dialog).findByText(/Nothing is called that/)).toBeInTheDocument();
+    // Nothing is asked of Geofabrik until the press.
+    expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
+    expect(within(dialog).getByText(/A part of a country .* is found once Geofabrik's list of its files is read/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Read the list of parts" }));
+    expect(await within(dialog).findByRole("button", { name: /Rhône-Alpes/ })).toBeInTheDocument();
+    expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual(["POST /api/reference/regions"]);
+    expect(within(dialog).queryByRole("button", { name: "Read the list of parts" })).not.toBeInTheDocument();
   });
 
   it("builds routes from the person's own .osm.pbf already in storage, downloading nothing and leaving the file", async () => {
@@ -397,6 +468,91 @@ describe("Add a place", () => {
     );
   });
 
+  it.each([
+    ["building", "Another build is under way", "are being built now"],
+    ["waiting", "Another build is waiting", "are waiting to be built"],
+  ] as const)("says before the press when walking and cycling must wait for a build %s", async (state, title, words) => {
+    serve(mapData({ streetsInstalled: true, countryFileChoice: { keep: true, locationId: null } }), {
+      "GET /api/streets/status": {
+        state: "building",
+        installed: true,
+        message: null,
+        tileset: null,
+        build: {
+          jobId: "j1",
+          name: "Kent",
+          state,
+          stage: null,
+          stageLabel: null,
+          step: null,
+          message: null,
+          startedAt: 1,
+          expectedMs: null,
+        },
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&country=FR&kinds=streets");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for France?" });
+    expect(await within(dialog).findByText(title)).toBeInTheDocument();
+    expect(within(dialog).getByText(new RegExp(`Walking and cycling for Kent ${words}.*can be cancelled there`))).toBeInTheDocument();
+  });
+
+  it("cancels a walking and cycling build waiting from its row, and tries again or dismisses one that failed", async () => {
+    const user = userEvent.setup();
+    const waiting = item({
+      key: "task:j2:streets",
+      kind: "streets",
+      title: "Streets for routes: East Sussex",
+      state: "waiting",
+      collectionId: null,
+      sizeBytes: null,
+      taskId: "j2",
+      progress: {
+        current: 0,
+        total: null,
+        unit: null,
+        message: "Starts once the walking and cycling build under way (Kent) has finished.",
+        step: null,
+      },
+    });
+    const failed = item({
+      key: "task:j3:streets",
+      kind: "streets",
+      title: "Streets for routes: Kent",
+      state: "failed",
+      collectionId: null,
+      sizeBytes: null,
+      taskId: "j3",
+      reason: "Kent's source file is no longer kept on a connected storage location.",
+    });
+    serve(
+      mapData({
+        streetsInstalled: true,
+        countries: [
+          country("GB", "United Kingdom", { map: [item()], streets: [waiting] }),
+          country("FR", "France", { map: [item({ key: "f" })], streets: [failed] }),
+        ],
+      }),
+      {
+        "GET /api/jobs": { jobs: [{ id: "j2", state: "queued", progress: { current: 0, total: null, message: null } }] },
+        "POST /api/jobs/j2/cancel": { job: {} },
+        "POST /api/jobs/j3/resume": { job: {} },
+        "POST /api/streets/builds/j3/dismiss": { ok: true },
+      },
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click(await screen.findByRole("button", { name: "United Kingdom" }));
+    expect(await screen.findByText("Starts once the walking and cycling build under way (Kent) has finished.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel walking and cycling for East Sussex" }));
+    await waitFor(() => expect(postedTimes("/api/jobs/j2/cancel")).toBe(1));
+    await user.click(screen.getByRole("button", { name: "France" }));
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(postedTimes("/api/jobs/j3/resume")).toBe(1));
+    await user.click(screen.getByRole("button", { name: "Dismiss: walking and cycling for Kent" }));
+    await waitFor(() => expect(postedTimes("/api/streets/builds/j3/dismiss")).toBe(1));
+  });
+
   it("says the remembered source-file choice in one line on the main view, with Change, and in the total", async () => {
     const user = userEvent.setup();
     serve(mapData({ countryFileChoice: { keep: true, locationId: "nas" } }), {
@@ -462,7 +618,12 @@ describe("Add a place", () => {
     // No separate dialog and no other source's question for what the source file holds.
     expect(within(dialog).queryByText(/Nearby places from other sources/)).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Check size" }));
-    await user.click(await within(dialog).findByRole("button", { name: /^Download · / }));
+    const download = await within(dialog).findByRole("button", { name: /^Download · / });
+    // Each kind ticked says what its places take, from the source file's size (5.4 GB here); one left unticked says nothing.
+    expect(within(fromFile).getByRole("checkbox", { name: "Hospitals" })).toHaveAccessibleDescription(/up to 126 MB/);
+    expect(within(fromFile).getByRole("checkbox", { name: "Food and supplies" })).not.toHaveAccessibleDescription(/up to/);
+    expect(within(dialog).getByText(/Nothing more is downloaded for these: each size is the most its places take/)).toBeInTheDocument();
+    await user.click(download);
     await waitFor(() =>
       expect(posted("/api/maps/data/add")).toEqual([
         { regionId: "france", kinds: ["places"], keep: false, layers: ["hospitals", "shelters"] },
@@ -570,6 +731,62 @@ describe("Add a place", () => {
     expect(await within(dialog).findByRole("radio", { name: /12 July 2026/ })).toBeInTheDocument();
     expect(within(dialog).getByText(/cloud over the scene 0\.4%/)).toBeInTheDocument();
     expect(posted("/api/maps/imagery/scenes")).toEqual([{ bbox: [6.8, 45.9, 7, 46] }]);
+  });
+
+  it("leaves Map unticked for an area a held map already covers, so its satellite pictures are one tick away", async () => {
+    const region = (over: Record<string, unknown>) => ({
+      id: "fr",
+      regionId: null,
+      name: "France",
+      tileType: "vector",
+      bounds: [-5, 41, 10, 51],
+      minZoom: 0,
+      maxZoom: 15,
+      sizeBytes: 1,
+      sourceBuild: null,
+      installedAt: 1,
+      locationId: "loc1",
+      locationName: "Internal storage",
+      available: true,
+      status: "installed",
+      ...over,
+    });
+    serve(mapData(), { "GET /api/maps/overview": { regions: [region({})], places: [], counts: { markers: 0, tracks: 0, places: 0 } } });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&bbox=6.8,45.9,7.0,46.0&name=Chamonix%20valley");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).not.toBeChecked();
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).toHaveAccessibleDescription(/A map you hold already covers this view\./);
+    expect(within(dialog).getByRole("checkbox", { name: /Satellite pictures/ })).not.toBeChecked();
+  });
+
+  it("ticks Map for an area whose covering map is on a drive not connected now", async () => {
+    serve(mapData(), {
+      "GET /api/maps/overview": {
+        regions: [{ id: "fr", tileType: "vector", bounds: [-5, 41, 10, 51], maxZoom: 15, status: "installed", available: false }],
+        places: [],
+        counts: { markers: 0, tracks: 0, places: 0 },
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&bbox=6.8,45.9,7.0,46.0&name=Chamonix%20valley");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).toBeChecked();
+    expect(within(dialog).queryByText(/A map you hold already covers this view/)).not.toBeInTheDocument();
+  });
+
+  it("ticks Map for an area no held map covers in detail", async () => {
+    serve(mapData(), {
+      "GET /api/maps/overview": {
+        regions: [{ id: "w", tileType: "vector", bounds: [-180, -85, 180, 85], maxZoom: 6, status: "installed", available: true }],
+        places: [],
+        counts: { markers: 0, tracks: 0, places: 0 },
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&bbox=6.8,45.9,7.0,46.0&name=Chamonix%20valley");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Map/ })).toBeChecked();
   });
 
   it("offers a country in parts, all ticked, and reads only the parts left ticked", async () => {
@@ -769,6 +986,41 @@ describe("removing and updating by place", () => {
     expect(within(dialog).getByRole("heading", { name: "France · Map from 1 Jun 2025" })).toBeInTheDocument();
     expect(dialog).not.toHaveTextContent("Natural Earth");
   });
+
+  it("says hills and heights have no date to compare, before and after Check, rather than a date they do not have", async () => {
+    const user = userEvent.setup();
+    const undated = "Mapterhorn gives no date for its heights";
+    serve(
+      mapData({
+        countries: [
+          country("FR", "France", {
+            terrain: [
+              item({
+                key: "t",
+                kind: "terrain",
+                title: "France (terrain)",
+                collectionId: "t",
+                dataDate: null,
+                undated,
+                update: { how: "download", hosts: ["download.mapterhorn.com"], note: null },
+              }),
+            ],
+          }),
+        ],
+      }),
+      {
+        "POST /api/maps/data/check": { hosts: ["download.mapterhorn.com"], sizeBytes: 1_200_000_000, dataDate: null, newer: null },
+      },
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click(await screen.findByRole("button", { name: "Actions for France" }));
+    await user.click(await screen.findByRole("menuitem", { name: /Update/ }));
+    const dialog = await screen.findByRole("dialog", { name: /Update/ });
+    expect(dialog).toHaveTextContent(`France (terrain) · Hills and heights · ${undated}`);
+    expect(dialog).toHaveTextContent(`${undated}, so Outpost cannot tell whether it is newer than yours`);
+    await user.click(within(dialog).getByRole("button", { name: /Check for a newer copy/ }));
+    expect(await within(dialog).findByText(new RegExp(`^${undated} to compare with yours: 1\\.20 GB to download`))).toBeInTheDocument();
+  });
 });
 
 describe("Storage", () => {
@@ -807,6 +1059,37 @@ describe("Storage", () => {
     expect(uk).toHaveTextContent("Routes");
     expect(uk).toHaveTextContent("43%");
     expect(screen.getByText(/1 place is over a year old\./)).toBeInTheDocument();
+    // Nothing in Outpost's own data here: the location's bar and this figure are the same, and nothing more is said.
+    expect(screen.queryByTestId("maps-own-data")).not.toBeInTheDocument();
+  });
+
+  it("says what of its figure is in Outpost's own data, which the locations' bars do not show", async () => {
+    serve(
+      mapData({
+        summary: {
+          totalBytes: 3_500_000_000,
+          locations: [
+            { locationId: "loc1", name: "Internal storage", bytes: 3_000_000_000, available: true },
+            { locationId: null, name: "Outpost's own data", bytes: 500_000_000, available: true },
+          ],
+          active: 0,
+        },
+        countries: [country("GB", "United Kingdom", { map: [item()] })],
+      }),
+    );
+    renderScreen(
+      <table>
+        <tbody>
+          <OfflineMapsRows color="green" bytes={1} />
+        </tbody>
+      </table>,
+      "/storage",
+    );
+    const row = await screen.findByRole("row", { name: /Offline maps/ });
+    await waitFor(() => expect(row).toHaveTextContent("3.50 GB"));
+    expect(screen.getByTestId("maps-own-data")).toHaveTextContent(
+      "3.00 GB on Internal storage, as in its bar above; 500 MB of routes, walking and cycling and nearby places in Outpost's own data, which the bars above do not show.",
+    );
   });
 });
 

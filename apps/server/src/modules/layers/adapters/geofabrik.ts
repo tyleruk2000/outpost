@@ -16,6 +16,7 @@
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
+import { databaseAllowance } from "@outpost/shared";
 import { AppError } from "../../../core/errors.ts";
 import { PermanentJobError } from "../../../core/jobs.ts";
 import { countryOf } from "../countries.ts";
@@ -31,21 +32,6 @@ import { readPbf, wantedFor } from "./pbf.ts";
 export const GEOFABRIK_INDEX = `${GEOFABRIK_BASE}/${INDEX_PATH}`;
 const provider = PROVIDERS.find((entry) => entry.id === "osm-extract")!;
 
-/**
- * Places in a megabyte of extract, at most, for the database's allowance. Worked out from
- * Monaco's extract of 16 November 2026 (708,123 bytes: 84 places of food and supplies, 23
- * of the other five layers), a city state: a region with countryside holds fewer a megabyte.
- */
-const FOOD_PER_MB = 120;
-const OTHERS_PER_MB = 35;
-const DATABASE_BYTES_PER_RECORD = 700;
-/**
- * Routes and rights of way are lines: few records, each holding every point of its line.
- * Not measured on a real extract: a generous allowance (lines are at most the ways they are
- * made of, and ways with their points are a minority of an extract's bytes), said as an
- * allowance on screen.
- */
-const LINE_BYTES_PER_MB = 60_000;
 export const COVERAGE_OSM_ONLY = "OpenStreetMap only: likely to be fuller in towns than in the country.";
 export const COVERAGE_UK =
   "OpenStreetMap; in the United Kingdom the Food Standards Agency's list can be added for the area on screen, which holds more of the shops.";
@@ -99,15 +85,6 @@ export async function md5File(filePath: string, signal?: AbortSignal): Promise<s
   const hash = crypto.createHash("md5");
   for await (const chunk of fs.createReadStream(filePath, { highWaterMark: 1 << 20, signal })) hash.update(chunk as Buffer);
   return hash.digest("hex");
-}
-
-/** The most the database is likely to hold for a file of this size read for these layers. */
-export function databaseAllowance(bytes: number, layers: string[]): number {
-  const mb = bytes / 1048576;
-  const others = layers.some((layer) => layer !== "food" && layer !== "routes" && layer !== "rights-of-way");
-  const records = mb * ((layers.includes("food") ? FOOD_PER_MB : 0) + (others ? OTHERS_PER_MB : 0));
-  const lines = layers.filter((layer) => layer === "routes" || layer === "rights-of-way").length;
-  return Math.round(records * DATABASE_BYTES_PER_RECORD + mb * lines * LINE_BYTES_PER_MB);
 }
 
 const layerWords = (layers: string[]) => {

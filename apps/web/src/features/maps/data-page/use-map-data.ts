@@ -67,6 +67,23 @@ export function useRepairSourceFile() {
   });
 }
 
+/**
+ * A walking and cycling build's task, from its row on Offline maps: cancel one under way or waiting,
+ * try one that failed again, or dismiss it (it stays under Downloads and tasks).
+ */
+export function useStreetsBuildAction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jobId, action }: { jobId: string; action: "cancel" | "resume" | "dismiss" }) =>
+      action === "dismiss"
+        ? api.post(`/api/streets/builds/${encodeURIComponent(jobId)}/dismiss`)
+        : api.post(`/api/jobs/${encodeURIComponent(jobId)}/${action}`),
+    onSuccess: () => {
+      for (const key of [["maps"], ["jobs"], ["streets"]]) void client.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
 /** Asks the source, on a press, how large and how new its newest copy is. Nothing is downloaded. */
 export function useCheckUpdate() {
   return useMutation({

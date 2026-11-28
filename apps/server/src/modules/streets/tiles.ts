@@ -28,7 +28,7 @@ import {
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
-import { type JobProgress, PermanentJobError } from "../../core/jobs.ts";
+import { type JobProgress, type JobRow, PermanentJobError } from "../../core/jobs.ts";
 import type { SidecarStatus, StreetsConnection, TilesetFile } from "./connection.ts";
 
 export const STREETS_BUILD_JOB = "streets.build";
@@ -37,7 +37,11 @@ export const WORK_FOLDER = "outpost-streets-work";
 const FOLLOW_EVERY_MS = 3_000;
 /** How long the service has to take a request before Outpost says it is not running. It looks every 5 s. */
 const TAKE_WITHIN_MS = 60_000;
-const STOP_WITHIN_MS = 60_000;
+/**
+ * How long a cancelled build waits for the service to stop before the task ends. Short: a build queued
+ * behind it waits for the service itself (whileBusy), however long the service takes to stop.
+ */
+const STOP_WITHIN_MS = 5_000;
 const LOST_AFTER_MS = 30_000;
 
 // ── What a build costs ──────────────────────────────────────────────────────
@@ -123,7 +127,20 @@ export interface StreetsBuildPayload {
   /** Import: a tiles file built elsewhere. */
   import?: FileRef;
   expectedMs?: number | null;
+  /**
+   * The places asked for, by name too: the files and the places kept from the streets in use are
+   * worked out when the build starts, so that one queued behind another builds on what that one made.
+   */
+  requested?: Array<{ regionId: string; name: string; country?: string | null }>;
+  /** Keep the places the streets in use have (with a kept file still) beside those asked for. */
+  keep?: boolean;
+  /** Set by the person on Offline maps: a failed build no longer shown there. */
+  dismissed?: boolean;
 }
+
+/** How long a build waits for the streets service to finish one it did not start (an hour's build, a slow stop). */
+const BUSY_WITHIN_MS = 3 * 60 * 60_000;
+const BUSY_EVERY_MS = 5_000;
 
 const STAGES: Record<string, string> = {
   merge: "Joining the source files",
@@ -200,6 +217,18 @@ export interface StreetsTiles {
   countryFiles(): StreetsCountryFile[];
   estimate(regionIds: string[], coming?: StreetsEstimateRequest["coming"]): StreetsEstimate;
   build(input: { regions: string[]; workLocationId?: string }): { jobId: string; estimate: StreetsEstimate };
+  /**
+   * A build asked for as a consequence of something else (Add a place, once the source file is kept):
+   * started now with the streets in use kept, or, while another build runs, kept waiting and started
+   * once that one has finished. Offline maps says it is waiting.
+   */
+  buildOrWait(input: { regions: string[]; workLocationId?: string }): { jobId: string; waiting: boolean };
+  /** The builds under way and waiting, oldest first: the first is the one the service is (or will be) on. */
+  queue(): JobRow[];
+  /** The last build, when it failed and the person has not dismissed it from Offline maps. */
+  lastFailure(): JobRow | null;
+  /** Takes a failed build off Offline maps. */
+  dismiss(jobId: string): void;
   /** The regions a build adding these keeps: those in the streets in use (with a kept file still) and these. */
   adding(regionIds: string[]): string[];
   importFile(input: { locationId: string; relPath: string; name?: string }): { jobId: string };
@@ -218,6 +247,12 @@ export interface StreetsTiles {
 export function createStreetsTiles(ctx: AppContext, connection: StreetsConnection): StreetsTiles {
   const dir = connection.dir;
   const file = (name: string) => resolveInside(dir, name);
+  // A build waiting was once kept in this file; it is a queued task now. One left by an earlier build is not read.
+  const oldWaiting = path.join(ctx.config.dataDir, "streets-waiting.json");
+  if (fs.existsSync(oldWaiting)) {
+    ctx.log.warn({ file: oldWaiting }, "a walking and cycling build waiting in an old file was not read; ask for it again");
+    fs.rmSync(oldWaiting, { force: true });
+  }
 
   function countryFiles(): StreetsCountryFile[] {
     const { storage } = ctx.services;
@@ -267,55 +302,123 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
     );
   }
 
+  /** Builds under way or waiting, oldest first: the queue runs one at a time, in this order. */
   function activeJobs() {
-    return ctx.jobs.list({ states: ["queued", "running", "paused"], types: [STREETS_BUILD_JOB] });
+    return ctx.jobs.list({ states: ["queued", "running", "paused"], types: [STREETS_BUILD_JOB] }).reverse();
   }
 
-  function assertCanStart() {
+  function assertInstalled() {
     if (!connection.installed())
       throw badRequest(
         "Streets for routes are not installed. They are an optional add-on: with Docker, set COMPOSE_PROFILES=routes and start Outpost again.",
       );
-    if (activeJobs().length > 0) throw conflict("Streets are already being built. Wait for that to finish, or stop it.");
-    const said = connection.status();
-    if (said?.state === "building") throw conflict("The streets service is already building. Wait for it to finish.");
+  }
+
+  /** The places a build under way or waiting is for, as far as its record says. */
+  function placesOf(job: JobRow): Set<string> {
+    const payload = job.payload as StreetsBuildPayload;
+    return new Set([
+      ...(payload.requested ?? []).map((r) => r.regionId),
+      ...(payload.regions ?? []).flatMap((r) => (r.regionId ? [r.regionId] : [])),
+    ]);
+  }
+
+  /** Asking again for what is being built, or already waiting, would build the same for an hour again: said instead. */
+  function assertNotAsked(regionIds: string[], names: string[]) {
+    for (const job of activeJobs()) {
+      const has = placesOf(job);
+      if (regionIds.length > 0 && regionIds.every((id) => has.has(id)))
+        throw conflict(
+          job.state === "running"
+            ? `Walking and cycling for ${listWords(names)} are already being built.`
+            : `Walking and cycling for ${listWords(names)} are already waiting to be built.`,
+        );
+    }
   }
 
   const listWords = (words: string[]) => (words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
 
-  function build(input: { regions: string[]; workLocationId?: string }) {
-    assertCanStart();
+  /**
+   * A build of these places, as a task on the streets queue (one at a time): it starts now, or once
+   * the one in front has finished. Its files are worked out when it starts. `keep`: with the places
+   * the streets in use have.
+   */
+  function enqueue(input: { regions: string[]; workLocationId?: string; keep: boolean }) {
+    assertInstalled();
     const files = chosen(input.regions);
+    assertNotAsked(
+      files.map((f) => f.regionId),
+      files.map((f) => f.name),
+    );
     if (input.workLocationId) {
       const location = ctx.services.storage.list().find((l) => l.id === input.workLocationId);
       if (!location) throw badRequest("That storage location is not known.");
       if (!ctx.services.storage.isAvailable(location.id)) throw badRequest(`“${location.name}” is not connected.`);
     }
-    const est = estimate(input.regions);
+    const est = estimate(input.keep ? adding(input.regions) : input.regions);
     const name = listWords(files.map((f) => f.name));
+    const waiting = activeJobs().length > 0;
     const payload: StreetsBuildPayload = {
       name,
-      files: files.map((f) => {
+      requested: files.map((f) => ({ regionId: f.regionId, name: f.name, country: f.country })),
+      keep: input.keep,
+      workLocationId: input.workLocationId ?? null,
+      expectedMs: est.minutes * 60_000,
+    };
+    // No subject: a source file may be removed while its build waits, and the build then says so.
+    const job = ctx.jobs.enqueue(STREETS_BUILD_JOB, payload, { title: `${name}: walking and cycling`, maxAttempts: 1 });
+    ctx.events.publish({ type: "streets.changed" });
+    ctx.events.publish({ type: "maps.changed" });
+    return { jobId: job.id, estimate: est, waiting };
+  }
+
+  function build(input: { regions: string[]; workLocationId?: string }) {
+    const { jobId, estimate: est } = enqueue({ ...input, keep: false });
+    return { jobId, estimate: est };
+  }
+
+  function buildOrWait(input: { regions: string[]; workLocationId?: string }) {
+    const { jobId, waiting } = enqueue({ ...input, keep: true });
+    return { jobId, waiting };
+  }
+
+  /** Works out, as it starts, what a build asked for by place builds: the files kept now, and the places kept from those in use. */
+  function resolve(payload: StreetsBuildPayload): StreetsBuildPayload {
+    if (!payload.requested) return payload;
+    const files = countryFiles();
+    for (const asked of payload.requested) {
+      if (!files.some((f) => f.regionId === asked.regionId))
+        throw new PermanentJobError(
+          `${asked.name}'s source file is no longer kept on a connected storage location, so walking and cycling for it cannot be built. Add ${asked.name} again with its source file kept, then try again.`,
+        );
+    }
+    const ids = payload.keep ? adding(payload.requested.map((r) => r.regionId)) : payload.requested.map((r) => r.regionId);
+    const chosenFiles = chosen(ids);
+    const est = estimate(ids);
+    return {
+      ...payload,
+      name: listWords(chosenFiles.map((f) => f.name)),
+      files: chosenFiles.map((f) => {
         const row = ctx.services.collections.get(f.collectionId)!;
         return { locationId: row.locationId, relPath: row.relPath };
       }),
       regions: est.regions,
-      workLocationId: input.workLocationId ?? null,
       expectedMs: est.minutes * 60_000,
     };
-    const job = ctx.jobs.enqueue(STREETS_BUILD_JOB, payload, {
-      title: `${name}: walking and cycling`,
-      // While it is read, the (first) country file is not moved or removed.
-      subject: `collection:${files[0]!.collectionId}`,
-      maxAttempts: 1,
-    });
-    ctx.events.publish({ type: "streets.changed" });
-    ctx.events.publish({ type: "maps.changed" });
-    return { jobId: job.id, estimate: est };
+  }
+
+  /** The places a build adding these keeps: those in the streets in use (with a kept file still) and these. */
+  function adding(regionIds: string[]) {
+    // One set of streets is in use at a time: the places it has already, with a kept file still, and these.
+    const kept = new Set(countryFiles().map((f) => f.regionId));
+    const had = (tilesetOf(connection.status()?.current)?.regions ?? [])
+      .map((r) => r.regionId)
+      .filter((id): id is string => id !== null && kept.has(id));
+    return [...new Set([...had, ...regionIds])];
   }
 
   function importFile(input: { locationId: string; relPath: string; name?: string }) {
-    assertCanStart();
+    assertInstalled();
     const resolved = ctx.services.storage.resolve(input.locationId, input.relPath);
     if (!resolved.endsWith(".tar")) throw badRequest("Choose a streets file: a .tar made by deploy/valhalla/build-tiles.sh.");
     if (!fs.existsSync(resolved)) throw badRequest("That file is not there.");
@@ -350,14 +453,49 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
     }
   }
 
-  async function runJob({ jobId, payload, signal, progress }: Parameters<StreetsTiles["runJob"]>[0]) {
-    const stages = stagesOf(payload);
-    const started = connection.status();
+  /**
+   * Waits while the service is building something that is not this task (one cancelled and slow to stop,
+   * or one Outpost did not start), up to a bound; a cancel while waiting stops nothing of the other's.
+   */
+  async function whileBusy(jobId: string, signal: AbortSignal, progress: (update: JobProgress) => void) {
+    const until = Date.now() + BUSY_WITHIN_MS;
+    let said = false;
+    for (;;) {
+      const status = connection.status();
+      if (status?.state !== "building" || status.id === jobId) return;
+      if (!said) {
+        const message = "Waiting for the streets service to finish the build it is doing";
+        progress({ current: 0, total: null, message, stage: message });
+        said = true;
+      }
+      if (Date.now() > until)
+        throw new PermanentJobError(
+          "The streets service was still busy with another build after 3 hours. Try again once it has finished: Retry under Downloads and tasks.",
+        );
+      await sleep(BUSY_EVERY_MS, signal);
+      if (signal.aborted) throw new DOMException("Stopped.", "AbortError");
+    }
+  }
+
+  async function runJob({ jobId, payload: given, signal, progress }: Parameters<StreetsTiles["runJob"]>[0]) {
     const ours = (s: SidecarStatus | null) => s?.id === jobId;
+    let payload = given;
+    let stages = stagesOf(payload);
+    const started = connection.status();
 
     if (!ours(started)) {
       if (!connection.installed()) throw new PermanentJobError("Streets for routes are not installed, so nothing can build them.");
-      if (started?.state === "building") throw new PermanentJobError("The streets service is busy with another build.");
+      if (!payload.import && !payload.files && !payload.requested) {
+        ctx.log.error({ job: jobId, payload }, "a walking and cycling build's record names no places");
+        throw new PermanentJobError(
+          "This build's record is damaged: it names no places. Ask for walking and cycling again on Offline maps.",
+        );
+      }
+      await whileBusy(jobId, signal, progress);
+      payload = resolve(payload);
+      stages = stagesOf(payload);
+      // Kept with the task, so that its stages, and a restart following it, read what it builds.
+      if (given.requested) ctx.jobs.annotate(jobId, payload);
       const request: Record<string, unknown> = { id: jobId, name: payload.name };
       if (payload.import) {
         request.import = ctx.services.storage.resolve(payload.import.locationId, payload.import.relPath);
@@ -444,14 +582,21 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
     countryFiles,
     estimate,
     build,
-    adding(regionIds) {
-      // One set of streets is in use at a time: the places it has already, with a kept file still, and these.
-      const kept = new Set(countryFiles().map((f) => f.regionId));
-      const had = (tilesetOf(connection.status()?.current)?.regions ?? [])
-        .map((r) => r.regionId)
-        .filter((id): id is string => id !== null && kept.has(id));
-      return [...new Set([...had, ...regionIds])];
+    buildOrWait,
+    queue: activeJobs,
+    lastFailure() {
+      const last = ctx.jobs.list({ types: [STREETS_BUILD_JOB], limit: 1 })[0];
+      return last?.state === "failed" && !(last.payload as StreetsBuildPayload).dismissed ? last : null;
     },
+    dismiss(jobId) {
+      const job = ctx.jobs.get(jobId);
+      if (!job || job.type !== STREETS_BUILD_JOB) throw new AppError("not_found", "That build was not found.");
+      if (job.state !== "failed") throw conflict("Only a build that failed can be dismissed.");
+      ctx.jobs.annotate(jobId, { ...(job.payload as StreetsBuildPayload), dismissed: true });
+      ctx.events.publish({ type: "maps.changed" });
+      ctx.events.publish({ type: "streets.changed" });
+    },
+    adding,
     importFile,
     async remove() {
       if (!connection.installed()) throw badRequest("Streets for routes are not installed.");
@@ -480,6 +625,7 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
         const stage = ours ? (said.stage ?? null) : null;
         return {
           jobId: job.id,
+          name: payload.name ?? null,
           state: ours ? "building" : "waiting",
           stage,
           stageLabel: stage ? (STAGES[stage] ?? stage) : null,

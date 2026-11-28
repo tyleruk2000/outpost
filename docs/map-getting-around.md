@@ -82,6 +82,13 @@ country's source file; nothing more is downloaded once that file is kept.
 3. Press the button that starts it. The row shows each stage with its progress (step 3 of 5)
    and the time left; routes keep working on what is in use meanwhile.
 
+One build runs at a time. Asked for while another is under way (a second country added
+while the first builds, or a source file that finishes downloading during a build), it is
+queued: **What for France?** says so before you press, it shows as **Waiting** on Offline
+maps and under **Downloads and tasks**, where it can be cancelled, and it starts by itself
+when the service is free, with the places already built kept in the new set. Asking again
+for places already being built, or already waiting, queues nothing and says so.
+
 **Remove…** in the place's **⋯** menu lets you tick **Walking and cycling**; the source file
 stays unless you tick it too. Where the add-on is not installed, Offline maps says so in one
 line ("Walking and cycling: not set up"), with how to add it.

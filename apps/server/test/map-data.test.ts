@@ -161,6 +161,15 @@ describe("one country file for roads and places", () => {
     const collection = app.ctx.services.collections.get(packs[0].id)!;
     expect(packs[0].sizeBytes).toBeGreaterThan(collection.sizeBytes + packs[0].records * 100);
     expect(rowOf(answer, "places")[0]!.sizeBytes).toBe(packs[0].sizeBytes);
+    // Where it is: its records are in the database, under Outpost's own data; its location holds only its file, as Storage counts it.
+    const usage = app.ctx.services.storage.usage().find((entry) => entry.locationId === collection.locationId);
+    const mapKinds = ["map", "terrain", "places", "layer", "extract"];
+    const onLocation = mapKinds.reduce((sum, kind) => sum + (usage?.byKind[kind]?.bytes ?? 0), 0);
+    expect(answer.summary.locations.find((entry) => entry.locationId === collection.locationId)?.bytes ?? 0).toBe(onLocation);
+    expect(answer.summary.locations.find((entry) => entry.locationId === null)?.bytes).toBe(
+      packs[0].sizeBytes - collection.sizeBytes + networks[0].sizeBytes,
+    );
+    expect(answer.summary.locations.reduce((sum, entry) => sum + entry.bytes, 0)).toBe(answer.summary.totalBytes);
     expect(rowOf(answer, "extract")).toEqual([]);
     expect(mc.lastRead).toMatchObject({ fileName: "monaco-261121.osm.pbf", bytes: body.length, kept: false, dataDate: "2026-11-21" });
     expect(answer.countryFileChoice.keep).toBe(false);

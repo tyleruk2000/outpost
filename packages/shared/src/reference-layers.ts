@@ -698,3 +698,35 @@ export interface ReferenceRegionsResponse {
   /** Regions to offer first, worked out from what is held (the home place, packs already held); nothing is asked. */
   suggested: Array<{ id: string; why: string }>;
 }
+
+/**
+ * Places in a megabyte of a source file (a Geofabrik extract), at most, for what reading it takes
+ * in the database. Worked out from Monaco's extract of 16 November 2026 (708,123 bytes, 0.675 MiB:
+ * 84 places of food and supplies, 23 of the five point layers between them), a city state, and
+ * rounded up (food was 120, which is less than Monaco's own 124): a region with countryside holds
+ * fewer a megabyte.
+ */
+const FOOD_PER_MB = 125;
+/** The five point layers between them; any one of them could hold them all, so each is allowed all of it. */
+const POINTS_PER_MB = 35;
+const DATABASE_BYTES_PER_RECORD = 700;
+/**
+ * Routes and rights of way are lines: few records, each holding every point of its line. Not
+ * measured on a real extract: a generous allowance (lines are at most the ways they are made of,
+ * and ways with their points are a minority of an extract's bytes), said as an allowance on screen.
+ */
+const LINE_BYTES_PER_MB = 60_000;
+
+/** The most the database is likely to hold for a source file of this many bytes read for these layers: an upper bound. */
+export function databaseAllowance(bytes: number, layers: readonly string[]): number {
+  const mb = bytes / 1048576;
+  const points = layers.some((layer) => layer !== "food" && layer !== "routes" && layer !== "rights-of-way");
+  const records = mb * ((layers.includes("food") ? FOOD_PER_MB : 0) + (points ? POINTS_PER_MB : 0));
+  const lines = new Set(layers.filter((layer) => layer === "routes" || layer === "rights-of-way")).size;
+  return Math.round(records * DATABASE_BYTES_PER_RECORD + mb * lines * LINE_BYTES_PER_MB);
+}
+
+/** The most one layer read from a source file of this many bytes is likely to take: each kind's "up to", alone. */
+export function layerAllowance(bytes: number, layer: string): number {
+  return databaseAllowance(bytes, [layer]);
+}

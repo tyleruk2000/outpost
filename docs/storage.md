@@ -169,8 +169,12 @@ nearby places, source files, satellite pictures) is one row: **Offline maps**, i
 it is kept, and **Manage**. Press **Offline maps** to open it to each place (a country, an area
 drawn on the map, World basics) with the same marks as on Offline maps, where it is kept and its
 size. Each place leads to **Offline maps**, the one place map data is added, updated, moved and
-removed. Routes are kept with Outpost's own data, not on a storage location,
-and do not move. When a place is over a year old, the section says so. See
+removed. Routes, walking and cycling and the records of nearby places are kept with Outpost's
+own data, not on a storage location, and do not move. They are in the row's size but in no
+location's bar above, so the row says how much of it is there ("3.00 GB on Internal storage,
+as in its bar above; 500 MB of routes, walking and cycling and nearby places in Outpost's own
+data, which the bars above do not show"); each location's figure under Offline maps is the
+bar's. When a place is over a year old, the section says so. See
 [updating](map-data.md#updating).
 
 ## Checking files

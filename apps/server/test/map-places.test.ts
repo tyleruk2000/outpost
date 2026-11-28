@@ -100,9 +100,14 @@ describe("places from the rows", () => {
     expect(france.sourceFile?.downloadId).toBe("d1");
     // On disk: the map, terrain and names; the download is not yet.
     expect(france.sizeBytes).toBe(300);
-    expect(places[1]!.bundles.map((bundle) => bundle.kind)).toEqual(["map"]);
+    // A drawn area always offers a map and its nearby places, as Add a place does for an area.
+    expect(places[1]!.bundles.map((bundle) => bundle.kind)).toEqual(["map", "nearby"]);
     expect(places[1]!.items).toHaveLength(2);
-    expect(places[2]!.bundles.map((bundle) => bundle.kind)).toEqual(["imagery"]);
+    expect(places[2]!.bundles.map((bundle) => [bundle.kind, bundle.state])).toEqual([
+      ["map", "none"],
+      ["nearby", "none"],
+      ["imagery", "ready"],
+    ]);
   });
 
   it("says what is under way before a failed copy of the same thing", () => {

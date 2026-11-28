@@ -354,8 +354,15 @@ export function createCountryFileRepair(ctx: AppContext, client: HttpClient) {
   // Soon after start: a repair cut short by a power cut has its file put back from the undo beside it.
   const leftOver = setTimeout(() => {
     void (async () => {
-      for (const row of collections.list({ kind: "extract" })) {
-        if (!storage.isAvailable(row.locationId)) continue;
+      // A server closed at once after it started (a test, a quick restart) has no database to look in: nothing to put back then.
+      let rows: ReturnType<typeof collections.list> = [];
+      try {
+        rows = collections.list({ kind: "extract" }).filter((row) => storage.isAvailable(row.locationId));
+      } catch (error) {
+        ctx.log.debug({ err: error }, "source files not looked at for unfinished repairs: the server is closing");
+        return;
+      }
+      for (const row of rows) {
         try {
           if (await restoreFromUndo(storage.resolve(row.locationId, row.relPath)))
             ctx.log.info({ collection: row.id }, "A source file's unfinished repair was put back as it was");

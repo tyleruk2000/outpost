@@ -28,8 +28,8 @@ export function StoragePlace({ place }: { place: MapDataPlace }) {
           <StateMark key={bundle.kind} bundle={bundle} name={BUNDLE_NAMES[bundle.kind]} place={place.name} labelled />
         ))}
       </span>
-      <span className="ml-auto flex items-baseline gap-3 text-small">
-        <span className="text-ink-muted">{place.locations.join(", ")}</span>
+      <span className="ml-auto flex min-w-0 items-baseline justify-between gap-3 text-small @max-[28rem]:basis-full">
+        <span className="min-w-0 text-ink-muted">{place.locations.join(", ")}</span>
         <span className="tabular font-medium whitespace-nowrap text-ink">{formatBytes(place.sizeBytes)}</span>
       </span>
     </li>
@@ -47,12 +47,18 @@ export function OfflineMapsRows({ color, bytes }: { color: string; bytes: number
   const id = useId();
   const places = data.data ? placesIn(data.data).filter((place) => place.sizeBytes > 0) : [];
   const total = data.data?.summary.totalBytes ?? bytes;
-  const where = data.data?.summary.locations.filter((location) => location.bytes > 0).map((location) => location.name) ?? [];
+  const held = data.data?.summary.locations.filter((location) => location.bytes > 0) ?? [];
+  const where = held.map((location) => location.name);
+  /**
+   * Routes, walking and cycling and the records of nearby places are in Outpost's own data, on its own disk, which no
+   * location's bar above counts: said, so that the bars and this figure can be told apart.
+   */
+  const own = held.find((location) => location.locationId === null)?.bytes ?? 0;
   const stale = places.filter((place) => place.stale > 0).length;
   const count = data.data ? plural(places.length, "place") : null;
   return (
     <>
-      <tr data-pattern="storage-row">
+      <tr data-pattern="storage-row" className={cn(own > 0 && "border-b-0")}>
         <td className="py-2.5 pr-4">
           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             {places.length > 0 ? (
@@ -92,9 +98,25 @@ export function OfflineMapsRows({ color, bytes }: { color: string; bytes: number
         <td className="tabular py-2.5 pr-4 text-right whitespace-nowrap text-ink-muted @max-[20rem]:hidden">{count}</td>
         <td className="tabular py-2.5 text-right font-medium whitespace-nowrap text-ink">{total > 0 ? formatBytes(total) : "None yet"}</td>
       </tr>
+      {own > 0 ? (
+        // A row of its own, the table's whole width: in the first cell beside the size it was a column of a word or two on a phone.
+        <tr className={cn(open && places.length > 0 && "border-b-0")}>
+          <td colSpan={3} className="pb-2.5 pl-5 @max-[20rem]:pl-0">
+            <p className="max-w-[60ch] text-small text-ink-muted" data-testid="maps-own-data">
+              {held.length > 1
+                ? `${held
+                    .filter((location) => location.locationId !== null)
+                    .map((location) => `${formatBytes(location.bytes)} on ${location.name}`)
+                    .join(", ")}, as in its bar above; `
+                : ""}
+              {formatBytes(own)} of routes, walking and cycling and nearby places in Outpost's own data, which the bars above do not show.
+            </p>
+          </td>
+        </tr>
+      ) : null}
       {open && places.length > 0 ? (
         <tr id={id}>
-          <td colSpan={3} className="pb-3 pl-5">
+          <td colSpan={3} className="pb-3 pl-5 @max-[20rem]:pl-0">
             <ul aria-label="Offline maps by place" className="divide-y divide-border">
               {places.map((place) => (
                 <StoragePlace key={place.key} place={place} />

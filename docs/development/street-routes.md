@@ -65,6 +65,21 @@ an SD card): Outpost passes `<location>/outpost-streets-work`, the service refus
 folder not so named, builds in it, copies the finished streets onto its own volume, and
 deletes it. That location must be mounted read-write in the `valhalla` service.
 
+The service runs as root and Outpost as another user (the image's `node`, uid 1000). On
+starting, the service gives the shared folder to `OUTPOST_UID`:`OUTPOST_GID` (1000:1000
+unless `compose.yaml` passes others from `.env`), so that Outpost can write `request.json`
+and `cancel` there. `test/streets-valhalla.test.ts` (`OUTPOST_TEST_VALHALLA=1`, Docker)
+runs it the same way: the service as root in a folder Docker makes, Outpost as the user
+running the test, or as uid 1000 when that is root.
+
+A build asked for while another runs is a `streets.build` task queued behind it (the
+queue runs one at a time). Its record names the places asked for; which files, and which
+places of the streets in use are kept beside them, is worked out when it starts. Before
+writing `request.json` it waits, up to three hours, while the service says it is building
+something else (a cancelled build slow to stop, one Outpost did not start), then fails with
+words and can be retried. A request for places already being built or waiting is refused
+(409) rather than queued again.
+
 ## The build task
 
 `streets.build` (queue `streets`, one at a time, not paused or retried by itself):
