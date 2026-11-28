@@ -109,7 +109,7 @@ export function OfflineMapsRows({ color, bytes }: { color: string; bytes: number
                     .map((location) => `${formatBytes(location.bytes)} on ${location.name}`)
                     .join(", ")}, as in its bar above; `
                 : ""}
-              {formatBytes(own)} of routes and nearby places in Outpost's own data, which the bars above do not show.
+              {formatBytes(own)} of routes, walking and cycling and nearby places in Outpost's own data, which the bars above do not show.
             </p>
           </td>
         </tr>

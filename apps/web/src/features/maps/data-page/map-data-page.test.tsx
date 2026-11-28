@@ -1088,7 +1088,7 @@ describe("Storage", () => {
     const row = await screen.findByRole("row", { name: /Offline maps/ });
     await waitFor(() => expect(row).toHaveTextContent("3.50 GB"));
     expect(screen.getByTestId("maps-own-data")).toHaveTextContent(
-      "3.00 GB on Internal storage, as in its bar above; 500 MB of routes and nearby places in Outpost's own data, which the bars above do not show.",
+      "3.00 GB on Internal storage, as in its bar above; 500 MB of routes, walking and cycling and nearby places in Outpost's own data, which the bars above do not show.",
     );
   });
 });

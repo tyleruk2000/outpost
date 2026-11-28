@@ -799,7 +799,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   country and pressing **Check size** first.
 - Radio buttons and tick boxes grow with the text: at 200% the radio's dot no longer
   spilled out of its ring, and the source file's choices no longer looked half the size of
-  their words.
+  their words. Their reach for a finger is at least 44 px at any text size, smaller text
+  included.
 - Walking and cycling asked for while another build runs (a source file finishing its
   download mid-build, or a second country) is a task queued behind it: it shows as waiting
   on Offline maps and under Downloads and tasks, can be cancelled from either, survives a
