@@ -34,7 +34,15 @@ import { SaveGpxButton } from "../road-route/road-route-panel";
 import { RouteCardPdf } from "../road-route/route-card-pdf";
 import { AddRoadsButton, problemCountries, problemOf, RouteNeedsNotice } from "../road-route/route-needs";
 import { DoorToDoorList, StreetLinesList, StreetsCredit } from "../road-route/street-directions";
-import { addStreetsLabel, ROUTE_MODES, type RouteMode, streetsTitle, unavailableLine } from "../road-route/street-words";
+import {
+  addStreetsLabel,
+  climbText,
+  ROUTE_MODES,
+  type RouteMode,
+  steepestText,
+  streetsTitle,
+  unavailableLine,
+} from "../road-route/street-words";
 import { routeTitle, suggestedName } from "../road-route/words";
 import { type Directions, MAX_STOPS } from "./use-directions";
 import { type DirectionsRoute, pointLabel, routeSummary } from "./words";
@@ -230,6 +238,20 @@ function SheetBody({
   );
 }
 
+/** A walk or a ride timed over the installed terrain: its climb and its steepest stretch, as the panel's totals say them. */
+export function RouteClimb({ route }: { route: DirectionsRoute }) {
+  if (!("mode" in route) || !route.hills) return null;
+  const climb = climbText(route.hills);
+  const steepest = steepestText(route);
+  return (
+    <p className="tabular text-small text-ink">
+      <span aria-hidden>{climb.short}</span>
+      <span className="sr-only">{climb.words}</span>
+      {steepest ? <span className="text-ink-muted">. {steepest}</span> : null}
+    </p>
+  );
+}
+
 function Summary({ directions, route }: { directions: Directions; route: DirectionsRoute }) {
   const { distance, time, how } = routeSummary(route);
   const save = useSaveRoadRoute();
@@ -248,6 +270,7 @@ function Summary({ directions, route }: { directions: Directions; route: Directi
           <span className="tabular text-lead text-ink-muted">{time}</span>
         </h2>
         <p className="text-small text-ink">{how}</p>
+        <RouteClimb route={route} />
         {warnings.length > 0 ? (
           <p className="mt-1 flex items-start gap-1.5 text-small text-warning">
             <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />

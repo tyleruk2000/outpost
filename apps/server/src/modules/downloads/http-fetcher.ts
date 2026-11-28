@@ -185,7 +185,10 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
   // What the server says is exact. What the download stated (a catalogue's size) may be a little out, so it is given room.
   // With neither, there is still a ceiling, so a server that never stops cannot fill the storage.
   const limit = total ?? (stated === null ? unstatedMax : Math.ceil(stated * 1.1) + 1024 * 1024);
-  context.progress(received, total);
+  // A server that says no length leaves the size in the row as it was: written over with
+  // "unknown", the stated size was gone by the next attempt, which then took anything.
+  const known = total ?? undefined;
+  context.progress(received, known);
   if (response.body) {
     // pipeline() applies backpressure: the socket is only read as fast as the disk writes.
     await pipeline(
@@ -211,7 +214,7 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
             await context.throttle(slice.length);
             context.written.append(received, slice);
             received += slice.length;
-            context.progress(received, total);
+            context.progress(received, known);
             yield slice;
           }
         }

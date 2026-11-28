@@ -10,10 +10,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CHANNEL_TRIP } from "../road-route/test-route";
-import { WALK } from "../road-route/test-streets";
+import { HILLY_WALK, READY as STREETS_READY, WALK } from "../road-route/test-streets";
 import { DirectionsPicker } from "./picker";
 import { DirectionsBar } from "./route-bar";
-import { DirectionsSheet } from "./route-sheet";
+import { DirectionsSheet, RouteClimb } from "./route-sheet";
 import { useDirections } from "./use-directions";
 import {
   defaultStart,
@@ -61,6 +61,19 @@ describe("the words of Directions", () => {
     });
     expect(routeSummary(WALK).how).toMatch(/^Walking/);
     expect(endsTitle([{ ...REIMS, name: "Home" }, REIMS])).toBe("Home → Reims");
+  });
+
+  it("shows a walk's climb under its totals, as the panel does, and nothing for a route without heights", () => {
+    const { unmount } = render(<RouteClimb route={HILLY_WALK} />);
+    expect(screen.getByText("↑ 310 m ↓ 280 m")).toBeInTheDocument();
+    expect(screen.getByText("310 m of climb, 280 m of descent")).toHaveClass("sr-only");
+    expect(screen.getByText(/Steepest: 14% uphill for 250 m, 1\.2 km from the start \(Continue onto Downs Lane\)\./)).toBeInTheDocument();
+    unmount();
+    for (const route of [WALK, CHANNEL_TRIP]) {
+      const { container: none, unmount: done } = render(<RouteClimb route={route} />);
+      expect(none).toBeEmptyDOMElement();
+      done();
+    }
   });
 
   it("cuts a drive into its roads and crossings, and a walk into its turns", () => {
@@ -121,7 +134,7 @@ const READY: RoadCoverageResponse = {
 let planned: unknown[] = [];
 let saved: unknown[] = [];
 /** The server, with the route held until `release` is called when `hold` is set. */
-function serve({ hold = false }: { hold?: boolean } = {}) {
+function serve({ hold = false, streets = false }: { hold?: boolean; streets?: boolean } = {}) {
   planned = [];
   saved = [];
   let release: () => void = () => {};
@@ -132,7 +145,8 @@ function serve({ hold = false }: { hold?: boolean } = {}) {
       const path = String(input).split("?")[0];
       const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
       if (path === "/api/roads/networks") return json({ networks: [], building: [], credit: CHANNEL_TRIP.credit });
-      if (path === "/api/streets/status") return json({ installed: false });
+      if (path === "/api/streets/status") return json(streets ? STREETS_READY : { installed: false });
+      if (path === "/api/streets/route") return json({ ...HILLY_WALK, plannedAt: Date.now() });
       if (path === "/api/roads/coverage") return json(READY);
       if (path === "/api/roads/routes" && init?.method === "POST") {
         saved.push(body);
@@ -264,6 +278,18 @@ describe("Directions on a phone", () => {
     expect(await within(sheet).findByRole("button", { name: "Saved" })).toHaveAttribute("aria-pressed", "true");
     expect(saved).toHaveLength(1);
     expect(within(sheet).getByText(/^Saved as “/)).toBeInTheDocument();
+  });
+
+  it("shows a walk's climb in the sheet, under the totals", async () => {
+    serve({ streets: true });
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Open directions" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Where to?" })).getByRole("option", { name: /^Reims/ }));
+    await userEvent.click(await screen.findByRole("radio", { name: "Walk" }));
+    const sheet = screen.getByRole("region", { name: "Directions" });
+    expect(await within(sheet).findByText("↑ 310 m ↓ 280 m")).toBeInTheDocument();
+    expect(within(sheet).getByText("310 m of climb, 280 m of descent")).toHaveClass("sr-only");
+    expect(within(sheet).getByRole("heading", { name: /\d km/ })).toBeInTheDocument();
   });
 
   it("walks the steps one at a time from the list", async () => {

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EventBus } from "../src/core/events.ts";
-import { JobQueue } from "../src/core/jobs.ts";
+import { JobQueue, MAX_INTERRUPTIONS } from "../src/core/jobs.ts";
 import { openDatabase } from "../src/db/client.ts";
 import { jobs } from "../src/db/schema.ts";
 
@@ -174,13 +174,149 @@ describe("the job runner", () => {
     const job = before.enqueue("long", {}, { title: "Long" });
     await begun;
     await before.close();
-    expect(before.get(job.id)?.state).toBe("running");
+    // Stopped in good order: queued for the next start, having used no attempt.
+    expect(before.get(job.id)).toMatchObject({ state: "queued", attempts: 0, interruptions: 0 });
 
     const after = new JobQueue(shared.db, new EventBus(), log);
     after.register("long", { queue: "work", run: async ({ job: row }) => ({ resumedFrom: row.progressMessage }) });
     after.start();
     await after.whenIdle(2000);
-    expect(after.get(job.id)).toMatchObject({ state: "succeeded", attempts: 2, result: { resumedFrom: "Resuming after restart" } });
+    // Being stopped by a restart is not a failed attempt: the job is still on its first.
+    expect(after.get(job.id)).toMatchObject({ state: "succeeded", attempts: 1, result: { resumedFrom: "Resuming after restart" } });
     await after.close();
+  });
+
+  it("does not count restarts as attempts, so a job resumed many times keeps its retries and never shows more than its maximum", async () => {
+    const shared = openDatabase(":memory:");
+    open.push(shared.sqlite);
+    let id = "";
+    // Five restarts part of the way through a job allowed three attempts.
+    for (let restart = 0; restart < 5; restart++) {
+      const runner = new JobQueue(shared.db, new EventBus(), log);
+      let started!: () => void;
+      const begun = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      runner.register("build", {
+        queue: "work",
+        run: ({ signal }) =>
+          new Promise((_resolve, reject) => {
+            started();
+            signal.addEventListener("abort", () => reject(new Error("stopped")));
+          }),
+      });
+      if (restart === 0) id = runner.enqueue("build", {}, { title: "Build", maxAttempts: 3 }).id;
+      runner.start();
+      await begun;
+      expect(runner.get(id)?.attempts).toBeLessThanOrEqual(3);
+      await runner.close();
+      expect(runner.get(id)).toMatchObject({ attempts: 0, interruptions: 0 });
+    }
+
+    // Then it fails twice and succeeds on its third attempt: all three are still there to use.
+    const last = new JobQueue(shared.db, new EventBus(), log);
+    let runs = 0;
+    last.register("build", {
+      queue: "work",
+      run: async () => {
+        runs += 1;
+        if (runs < 3) throw new Error("not yet");
+        return { ok: true };
+      },
+    });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    last.start();
+    for (let i = 0; i < 4 && last.get(id)?.state !== "succeeded"; i++) await vi.advanceTimersByTimeAsync(10_000);
+    expect(last.get(id)).toMatchObject({ state: "succeeded", attempts: 3, maxAttempts: 3 });
+    const messages = last.detail(id).events.map((event) => event.message);
+    expect(messages).not.toContainEqual(expect.stringMatching(/Attempt [4-9] of 3/));
+    await last.close();
+  });
+
+  describe("a server that dies while a job runs (a power cut), with no orderly stop", () => {
+    /** One process: it starts, its job begins, and it dies there (close() is never called). */
+    async function dieDuring(shared: ReturnType<typeof openDatabase>, enqueue?: { maxAttempts: number }): Promise<string | undefined> {
+      const runner = new JobQueue(shared.db, new EventBus(), log);
+      let started!: () => void;
+      const begun = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      runner.register("long", {
+        queue: "work",
+        run: () =>
+          new Promise(() => {
+            started();
+          }),
+      });
+      const id = enqueue ? runner.enqueue("long", {}, { title: "Long", ...enqueue }).id : undefined;
+      runner.start();
+      await begun;
+      return id;
+    }
+    function fresh() {
+      const shared = openDatabase(":memory:");
+      open.push(shared.sqlite);
+      return shared;
+    }
+
+    it("does not use a one-attempt job's attempt: it survives two power cuts and finishes on the third start", async () => {
+      const shared = fresh();
+      const id = (await dieDuring(shared, { maxAttempts: 1 }))!;
+      await dieDuring(shared);
+      const after = new JobQueue(shared.db, new EventBus(), log);
+      after.register("long", { queue: "work", run: async ({ job }) => ({ attempts: job.attempts, interruptions: job.interruptions }) });
+      after.start();
+      await after.whenIdle(2000);
+      // Shown as its first attempt of one, with the two power cuts counted apart; finishing clears them.
+      expect(after.get(id)).toMatchObject({
+        state: "succeeded",
+        attempts: 1,
+        maxAttempts: 1,
+        interruptions: 0,
+        result: { attempts: 1, interruptions: 2 },
+      });
+      await after.close();
+    });
+
+    it(`is not started again after ${MAX_INTERRUPTIONS} in a row, and says so; Resume starts it afresh`, async () => {
+      const shared = fresh();
+      const id = (await dieDuring(shared, { maxAttempts: 1 }))!;
+      for (let cut = 1; cut < MAX_INTERRUPTIONS; cut++) await dieDuring(shared);
+      const settled: string[] = [];
+      const after = new JobQueue(shared.db, new EventBus(), log);
+      const ran = vi.fn(async () => ({}));
+      after.register("long", { queue: "work", run: ran, onSettled: (job) => void settled.push(job.state) });
+      after.start();
+      await after.whenIdle(2000);
+      expect(ran).not.toHaveBeenCalled();
+      const job = after.get(id)!;
+      expect(job).toMatchObject({ state: "failed", attempts: 0, interruptions: 3, errorKind: "interrupted" });
+      expect(job.error).toBe("Outpost stopped while this was running, 3 times, so it was not started again. Resume it to try again.");
+      expect(job.finishedAt).not.toBeNull();
+      expect(settled).toEqual(["failed"]);
+      after.resume(id);
+      await after.whenIdle(2000);
+      expect(after.get(id)).toMatchObject({ state: "succeeded", attempts: 1, interruptions: 0 });
+      await after.close();
+    });
+
+    it("leaves ordinary failures counting against the job's attempts, and never shows more attempts than it has", async () => {
+      const shared = fresh();
+      const id = (await dieDuring(shared, { maxAttempts: 2 }))!;
+      const after = new JobQueue(shared.db, new EventBus(), log);
+      after.register("long", {
+        queue: "work",
+        run: async () => {
+          throw new Error("not this time");
+        },
+      });
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+      after.start();
+      for (let i = 0; i < 4 && after.get(id)?.state !== "failed"; i++) await vi.advanceTimersByTimeAsync(10_000);
+      expect(after.get(id)).toMatchObject({ state: "failed", attempts: 2, maxAttempts: 2, error: "not this time", interruptions: 0 });
+      const said = after.detail(id).events.map((event) => event.message ?? "");
+      expect(said.filter((message) => /^Attempt \d+ of 2$/.test(message))).toEqual(["Attempt 2 of 2"]);
+      await after.close();
+    });
   });
 });

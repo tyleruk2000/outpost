@@ -46,7 +46,11 @@ One button, **Add a place**, wherever a map, routes or nearby places are offered
    is looked up elsewhere. Or tap a country on the small map of the world, or choose a
    suggestion: where the map is now, home, the whole world, **Draw an area on the map**, or
    **Import a file**. Nothing is chosen for you. A region Geofabrik names in its own language
-   is found by its English name too: "Bavaria" finds Bayern, "Catalonia" Cataluña.
+   is found by its English name too: "Bavaria" finds Bayern, "Catalonia" Cataluña. A map of
+   a part is of the part alone where Outpost knows its outline (a ready-made area of its
+   name, such as England, or the regions layer of Nearby places); otherwise it covers the
+   whole country. Offline maps lists a map under the country most of its land is in, a map
+   you imported or drew too; one across several countries is under **Other areas**.
 2. **What for France?** **Map** and **Routes** are ticked, **Nearby places** is not.
    Ticked, **Nearby places** opens to **Which kinds** (see below). The source file is one
    line under the ticks (see below). **More choices** has the detail of the map, hills and
@@ -127,6 +131,11 @@ Nothing is checked or downloaded until you press:
   from a newer one (**Download a newer file**).
 - **Update all** does every place listed. A map imported from a file of your own cannot be
   fetched again: import a newer file.
+- A kept source file that no longer matches its checksum (Storage's check says so) offers
+  **Repair the damaged part** in its place's details: only the damaged stretch is fetched
+  again from download.geofabrik.de, not the whole file, and the file is then checked against
+  Geofabrik's checksum. If that fails, or the damage is too large, the file is left as it was
+  and you are told to download it again.
 
 ### Removing
 

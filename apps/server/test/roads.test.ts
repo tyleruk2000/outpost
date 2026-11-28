@@ -22,8 +22,9 @@ import {
   wrapRoadText,
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AppError } from "../src/core/errors.ts";
+import { AppError } from "../src/core/errors.ts";
 import { buildNetwork, CLASS, parseDuration, parseMaxspeed, SIGN_SEPARATOR } from "../src/modules/roads/build.ts";
+import { reachesNorthernIreland } from "../src/modules/roads/countries.ts";
 import { coverageOf } from "../src/modules/roads/coverage.ts";
 import { placeQuality, samePlace } from "../src/modules/roads/directions.ts";
 import { buildGraph } from "../src/modules/roads/graph.ts";
@@ -220,6 +221,53 @@ describe("directions as the owner writes them, on British roads", () => {
     expect(ownName(" Oxford ")).toBe("Oxford");
     // A point pressed on the map has only its position for a name: its place says more.
     expect(ownName("Point at 51.7520, -1.2577")).toBeNull();
+  });
+});
+
+describe("Great Britain's roads and Northern Ireland", () => {
+  it("never joins a point in Northern Ireland to a road across the sea in Great Britain, and says its roads are not held", async () => {
+    // The A77 from Portpatrick: Donaghadee, on the Ards peninsula, is 35 km away over the North Channel; Larne harbour 44 km.
+    const body = buildPbf({
+      nodes: [
+        { id: 1, lat: 54.842, lon: -5.117 },
+        { id: 2, lat: 54.903, lon: -5.024 },
+        { id: 3, lat: 55.0, lon: -5.0 },
+      ],
+      ways: [{ id: 1, refs: [1, 2, 3], tags: { highway: "trunk", ref: "A77" } }],
+      relations: [],
+      timestamp: Date.parse("2026-11-20T21:00:00Z") / 1000,
+    });
+    const data = await buildNetwork(write("galloway.osm.pbf", body));
+    const file = path.join(dir, "galloway.roads");
+    await writeNetworkFile(file, data, { country: "GB", name: "Galloway" });
+    const graph = buildGraph([
+      { network: { id: "g", name: "Galloway", country: "GB", dataDate: "2026-11-20" }, data: await readNetworkFile(file) },
+    ]);
+    for (const start of [
+      { lat: 54.643, lon: -5.537, name: "Donaghadee" },
+      { lat: 54.851, lon: -5.803, name: "Larne harbour" },
+    ]) {
+      const points = [start, { lat: 55.0, lon: -5.0, name: "Ballantrae road" }];
+      let error: unknown;
+      try {
+        planRoute(graph, points, {
+          crossing: "any",
+          units: "km",
+          request: { points },
+          regionOf: (code) => (code === "GB" ? "united-kingdom" : null),
+        });
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(AppError);
+      expect((error as AppError).message).toContain(
+        `“${start.name}” is in Northern Ireland, and Northern Ireland's roads are not held: those kept are Great Britain's. Add roads for all of the United Kingdom`,
+      );
+      expect((error as AppError).details).toMatchObject({
+        far: [{ index: 0, country: { code: "GB", regionId: "united-kingdom" } }],
+      });
+    }
+    expect(reachesNorthernIreland(data.nodeLat, data.nodeLon)).toBe(false);
   });
 });
 
@@ -474,7 +522,7 @@ describe("the road routes API", () => {
     const coverage = body as RoadCoverageResponse;
     expect(coverage.points).toEqual([{ country: "GB" }, { country: "FR" }]);
     expect(coverage.countries.map((c) => [c.code, c.name, c.state, c.parts])).toEqual([
-      ["GB", "United Kingdom", "ready", []],
+      ["GB", "Great Britain", "ready", []],
       ["FR", "France", "part", ["france-north"]],
     ]);
     expect(coverage.seaCrossing).toBe(true);
@@ -556,6 +604,13 @@ describe("the road routes API", () => {
     expect(
       (await app.api("POST", "/api/roads/networks", { locationId: location().id, relPath: "../../etc/passwd", name: "x" })).status,
     ).toBe(400);
+    // A link in the location to a file outside every storage location is not followed; a folder is not a file.
+    const outside = write("outside.osm.pbf", greatBritain());
+    fs.mkdirSync(path.join(location().path, "maps"), { recursive: true });
+    fs.symlinkSync(outside, path.join(location().path, "maps", "linked.osm.pbf"));
+    const linked = await app.api("POST", "/api/roads/networks", { locationId: location().id, relPath: "maps/linked.osm.pbf", name: "x" });
+    expect(linked.status).toBe(403);
+    expect((await app.api("POST", "/api/roads/networks", { locationId: location().id, relPath: "maps", name: "x" })).status).toBe(400);
     expect((await app.api("POST", "/api/roads/route", { points: [LEATHERHEAD, CHAMONIX] })).body.error.message).toMatch(
       /^United Kingdom and France have no roads yet/,
     );

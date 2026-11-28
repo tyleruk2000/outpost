@@ -24,6 +24,7 @@ import {
   routePointsReplaceSchema,
   trackPatchSchema,
 } from "./annotations.ts";
+import { createCountryFileRepair } from "./country-file-repair.ts";
 import { createCountryFiles } from "./country-files.ts";
 import { createElevationSampler, type ElevationSampler } from "./elevation.ts";
 import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./extract-download.ts";
@@ -214,7 +215,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   // Place names for Great Britain (OS Open Names) are registered at the end; the add uses them once they are.
   let osNames: OsNamesService | undefined;
   const mapDataAdd = createMapDataAdd(ctx, () => osNames);
-  const mapDataWhere = createMapDataWhere(ctx, client);
+  const mapDataWhere = createMapDataWhere(ctx, client, () => regions.presets());
   app.get("/api/maps/data", async (): Promise<MapDataResponse> => mapData());
   app.get("/api/maps/data/where", async (request) => mapDataWhere(mapDataWhereSchema.parse(request.query)));
   app.post("/api/maps/data/add", async (request) => mapDataAdd(mapDataAddSchema.parse(request.body)));
@@ -222,6 +223,9 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const mapDataUpdates = createMapDataUpdates(ctx, client, () => osNames);
   app.post("/api/maps/data/check", async (request) => mapDataUpdates.check(mapDataCheckSchema.parse(request.body).collectionId));
   app.post("/api/maps/data/update", async (request) => mapDataUpdates.update(mapDataUpdateSchema.parse(request.body).collectionId));
+  // A damaged source file: only the damaged stretch fetched again, with a bounded Range request, on a press.
+  const repairs = createCountryFileRepair(ctx, client);
+  app.post("/api/maps/data/repair", async (request) => repairs.start(mapDataCheckSchema.parse(request.body).collectionId));
 
   app.get("/api/maps/regions", async () => {
     return regions.list();

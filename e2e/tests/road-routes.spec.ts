@@ -126,7 +126,7 @@ test.describe("road routes", () => {
 
       // Said before Plan route is pressed, worked out on this device.
       await expect(page.getByText("France has no roads yet")).toBeVisible();
-      await expect(page.getByText("This route runs through France. United Kingdom is ready.")).toBeVisible();
+      await expect(page.getByText("This route runs through France. Great Britain is ready.")).toBeVisible();
       const plan = page.getByRole("button", { name: "Plan route" });
       await expect(plan).toBeDisabled();
       await expect(page.getByText("Add France first")).toBeVisible();

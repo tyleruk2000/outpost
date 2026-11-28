@@ -39,7 +39,18 @@ import {
   type ReferenceRegionsResponse,
 } from "@outpost/shared";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, CircleAlert, FileUp, Globe, House, LocateFixed, Search, SquareDashedMousePointer } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  CircleAlert,
+  FileUp,
+  Globe,
+  House,
+  LocateFixed,
+  Route,
+  Search,
+  SquareDashedMousePointer,
+} from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -63,6 +74,7 @@ import { isCameraView, readStored, STORAGE_KEYS } from "../lib/view";
 import { DestinationPicker, useDestination } from "../panels/destination";
 import { suggestedFileLocation } from "./country-file-choice";
 import { heldKind, type NearbyKind, type NearbyPlace, nearbyKindsFor, otherRequests, SOURCE_FILE } from "./nearby-kinds";
+import { OwnRoadsFile } from "./own-roads-file";
 import { touchSize } from "./pattern";
 import { OWN, WalkDetails, walkCostLine } from "./streets-build";
 import { mapDataKeys, useAddMapData } from "./use-map-data";
@@ -131,7 +143,8 @@ function chosenOf(result: MapDataWhereResult, part: boolean): Chosen {
     countryName: part && result.part ? result.countryName : null,
     regionId: result.regionId,
     part: part ? result.part : null,
-    bbox: result.bbox,
+    // A part's own box where the server knows it, so that a map of Kent is not a map of the United Kingdom.
+    bbox: part && result.part && result.partBbox ? result.partBbox : result.bbox,
   };
 }
 
@@ -145,13 +158,36 @@ const WORLD: Chosen = {
   bbox: [-180, -85, 180, 85],
 };
 
-/** The ready-made map of a country (`country-fr`), or of anything of the same name. */
+/**
+ * The ready-made map of a country (`country-fr`), or of anything of the same name. For a part
+ * of a country, only a ready-made area of the part's own name (England): never the country's,
+ * whose box is the whole country.
+ */
 export function presetFor(place: Chosen, presets: MapRegionPresetStatus[]): MapRegionPresetStatus | null {
   if (place.type === "world") return presets.find((preset) => preset.id === "world") ?? null;
   if (place.type === "area") return null;
+  if (place.part) {
+    const names = new Set([fold(place.part.name), fold(place.part.name.replace(/\s*\(.*\)$/, ""))]);
+    return presets.find((preset) => names.has(fold(preset.name))) ?? null;
+  }
   const code = place.code?.toLowerCase();
   const name = fold(place.countryName ?? place.name);
   return presets.find((preset) => preset.id === `country-${code}`) ?? presets.find((preset) => fold(preset.name) === name) ?? null;
+}
+
+/**
+ * What a map of a place is called and which ready-made area it is: a country by its name and
+ * `country-xx`; a part by its own name ("Kent"), as the ready-made area of that name where there
+ * is one and as no ready-made area otherwise, so that it is not taken for all of its country.
+ */
+export function mapAreaOf(place: Chosen, preset: MapRegionPresetStatus | null): { name: string; regionId: string | undefined } {
+  if (place.part) return { name: preset?.name ?? place.name, regionId: preset?.id };
+  if (place.type === "country")
+    return {
+      name: place.countryName ?? place.name,
+      regionId: preset?.id ?? (place.code ? `country-${place.code.toLowerCase()}` : undefined),
+    };
+  return { name: preset?.name ?? place.name, regionId: preset?.id };
 }
 
 /** The deepest detail a box can have and stay a sensible download. */
@@ -199,12 +235,14 @@ function Where({
   onChoose,
   onDraw,
   onImport,
+  onOwnRoads,
   heading,
 }: {
   data: MapDataResponse;
   onChoose: (places: Chosen[]) => void;
   onDraw: () => void;
   onImport: () => void;
+  onOwnRoads: () => void;
   heading: React.RefObject<HTMLHeadingElement | null>;
 }) {
   const home = useHomeCountry();
@@ -354,6 +392,12 @@ function Where({
           onChoose={onDraw}
         />
         <SuggestionButton icon={<FileUp />} title="Import a file" note="GeoJSON, KML, GPX or a CSV of places" onChoose={onImport} />
+        <SuggestionButton
+          icon={<Route />}
+          title="Routes from your own file"
+          note="An OpenStreetMap source file (.osm.pbf) already in storage"
+          onChoose={onOwnRoads}
+        />
       </ul>
     </div>
   );
@@ -545,7 +589,7 @@ function Flow({
   const add = useAddMapData();
   const startPlaces = useStartPlaces();
   const heading = useRef<HTMLHeadingElement>(null);
-  const [step, setStep] = useState<"where" | "what" | "picture">("where");
+  const [step, setStep] = useState<"where" | "what" | "picture" | "own-roads">("where");
   const [places, setPlaces] = useState<Chosen[]>([]);
   const [ticks, setTicks] = useState<Set<Choosable>>(new Set());
   const [hills, setHills] = useState(true);
@@ -891,12 +935,12 @@ function Flow({
         const box = boxOf(place);
         if (ticks.has("map") && box) {
           const preset = presetOf(place);
-          const name = place.type === "country" ? (place.countryName ?? place.name) : (preset?.name ?? place.name);
+          const area = mapAreaOf(place, preset);
           requests.push({
             kinds: ["map", ...(hills ? (["terrain"] as const) : []), ...(place.code ? (["names"] as const) : [])],
             map: {
-              name,
-              regionId: preset?.id ?? (place.code ? `country-${place.code.toLowerCase()}` : undefined),
+              name: area.name,
+              ...(area.regionId ? { regionId: area.regionId } : {}),
               bbox: box,
               maxZoom: zoomOf(place),
             },
@@ -952,8 +996,23 @@ function Flow({
             navigate("/maps?offline=draw");
           }}
           onImport={onImport}
+          onOwnRoads={() => setStep("own-roads")}
         />
       </DialogBody>
+    );
+  }
+
+  if (step === "own-roads") {
+    return (
+      <OwnRoadsFile
+        heading={
+          <h3 ref={heading} tabIndex={-1} className="font-title text-lead text-ink focus:outline-none">
+            Routes from your own file
+          </h3>
+        }
+        onBack={() => setStep("where")}
+        onDone={onClose}
+      />
     );
   }
 
