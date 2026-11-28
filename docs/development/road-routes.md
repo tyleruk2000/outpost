@@ -48,8 +48,10 @@ POST /api/roads/route ─▶ graph.ts: every installed network joined in memory
   in, from the server's own country outlines (`layers/borders.ts`, Natural Earth 1:10m),
   so a town by a border (Freilassing, Vancouver) or Lesotho is in the right country.
   `inNorthernIreland` and `reachesNorthernIreland`: a network's build records in its
-  `stats` whether its junctions reach Northern Ireland (Geofabrik's Great Britain does not;
-  older rows are judged by region id, then box). One that does not is named Great Britain
+  `stats` whether its junctions reach Northern Ireland (Geofabrik's United Kingdom does, its
+  Great Britain does not; never judged by region id). A network built before that was
+  recorded is read once, soon after start (`recordNorthernIreland`), and the answer kept;
+  until then its box says. One that does not is named Great Britain
   (`networkName`, service.ts), covers no point there in coverage, and plan.ts never joins a
   point there to a node in Great Britain.
 - **speeds.ts**: the speed table (below).

@@ -14,8 +14,8 @@ export function countryOfPoint(lat: number, lon: number): string | null {
 }
 
 /**
- * Northern Ireland. Geofabrik's Great Britain holds England, Scotland and Wales only;
- * Northern Ireland's roads are in "Ireland and Northern Ireland". So each network is asked
+ * Northern Ireland. Geofabrik's Great Britain holds England, Scotland and Wales only; its
+ * United Kingdom holds Northern Ireland too. So each network is asked, by its junctions,
  * at its build whether its roads reach Northern Ireland, and a point there is not taken as
  * covered by one whose roads do not. The outline is the United Kingdom's ring on the
  * island of Ireland in the bundled borders.
@@ -55,8 +55,12 @@ export function inNorthernIreland(lat: number, lon: number): boolean {
   return ring ? inRing(ring, lon, lat) : false;
 }
 
-/** Junctions in Northern Ireland a network needs before its roads are said to reach it (a stray node is not enough). */
-const NI_ENOUGH = 5;
+/**
+ * Junctions in Northern Ireland a network needs before its roads are said to reach it: one
+ * is not enough (Great Britain's may hold the Larne end of the ferry from Cairnryan), two
+ * are a road. Only junctions and road ends are nodes, so a road through Belfast is two.
+ */
+const NI_ENOUGH = 2;
 
 /** Whether a network's junctions (in 1e-7 degrees, as built) reach Northern Ireland. */
 export function reachesNorthernIreland(nodeLat: ArrayLike<number>, nodeLon: ArrayLike<number>): boolean {

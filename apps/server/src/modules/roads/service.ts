@@ -112,28 +112,28 @@ export interface RoadsService {
   ): Promise<Record<string, unknown>>;
   /** For tests and measurements: the graph as loaded now. */
   loadGraph(): Promise<Graph>;
+  /** Works out, from each network's own file, whether its roads reach Northern Ireland, for those built before that was recorded. Returns how many. */
+  recordNorthernIreland(): Promise<number>;
   close(): void;
 }
 
 export { ownName };
 
 /**
- * Whether a network's roads reach Northern Ireland: as found at its build; for one built
- * before that was asked, by its Geofabrik region (Great Britain's and the United Kingdom's
- * hold England, Scotland and Wales only), else by whether its box reaches there.
+ * Whether a network's roads reach Northern Ireland, by its own junctions, never by its
+ * region's name (Geofabrik's United Kingdom holds Northern Ireland, its Great Britain does
+ * not): as recorded at its build, or worked out once from its file for one built before
+ * (`recordNorthernIreland`). Until then, whether its box reaches there.
  */
-export function networkReachesNorthernIreland(row: Pick<NetworkRow, "regionId" | "bbox" | "stats">): boolean {
+export function networkReachesNorthernIreland(row: Pick<NetworkRow, "bbox" | "stats">): boolean {
   const found = row.stats?.northernIreland;
   if (typeof found === "boolean") return found;
-  const region = row.regionId ?? "";
-  if (/northern-ireland/.test(region)) return true;
-  if (/(^|\/)(great-britain|united-kingdom)(\/|$)/.test(region)) return false;
   const box = row.bbox;
   return Boolean(box && box[0] < -5.43 && box[2] > -8.18 && box[1] < 55.25 && box[3] > 54.03);
 }
 
 /** "Great Britain" for a United Kingdom network whose roads stop short of Northern Ireland; else its own name. */
-export function networkName(row: Pick<NetworkRow, "name" | "country" | "regionId" | "bbox" | "stats">): string {
+export function networkName(row: Pick<NetworkRow, "name" | "country" | "bbox" | "stats">): string {
   return row.country === "GB" && row.name === "United Kingdom" && !networkReachesNorthernIreland(row) ? "Great Britain" : row.name;
 }
 
@@ -417,6 +417,36 @@ export function createRoadsService(ctx: AppContext): RoadsService {
   const phaseOf = (state: string, downloading: boolean): RoadBuildingPhase =>
     state === "failed" ? "failed" : state === "queued" || state === "paused" ? "waiting" : downloading ? "downloading" : "building";
 
+  /** Once, for networks built before their build recorded it: read each one's file and keep the answer in its stats. */
+  async function recordNorthernIreland(): Promise<number> {
+    let done = 0;
+    for (const row of rows()) {
+      if (typeof row.stats?.northernIreland === "boolean") continue;
+      let reaches: boolean;
+      try {
+        const data = await readNetworkFile(resolveInside(ctx.config.dataDir, row.relPath));
+        reaches = reachesNorthernIreland(data.nodeLat, data.nodeLon);
+      } catch (error) {
+        ctx.log.warn({ err: error, network: row.id }, "A road network could not be read to see whether it reaches Northern Ireland");
+        continue;
+      }
+      ctx.db
+        .update(roadNetworks)
+        .set({ stats: { ...(row.stats ?? {}), northernIreland: reaches } })
+        .where(eq(roadNetworks.id, row.id))
+        .run();
+      done += 1;
+    }
+    if (done > 0) changed();
+    return done;
+  }
+  // Soon after start, in the background: a file read per older network, once.
+  let recording: NodeJS.Timeout | null = setTimeout(() => {
+    recording = null;
+    void recordNorthernIreland().catch((error) => ctx.log.warn({ err: error }, "Road networks could not be looked at for Northern Ireland"));
+  }, 5_000);
+  recording.unref();
+
   function list(): RoadNetworksResponse {
     const jobs = ctx.jobs.list({ states: ["queued", "running", "paused"], types: [BUILD_JOB] });
     const downloads = ctx.services.downloads.unfinished().filter(isRoadsDownload);
@@ -619,8 +649,10 @@ export function createRoadsService(ctx: AppContext): RoadsService {
       changed();
       return saved;
     },
+    recordNorthernIreland,
     close() {
       if (idle) clearTimeout(idle);
+      if (recording) clearTimeout(recording);
       forget();
     },
   };

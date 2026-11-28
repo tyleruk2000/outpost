@@ -177,11 +177,11 @@ crosses for more than a corner. Before you press anything it says what is missin
   "Add France first".
 - **Only part of France has roads**: roads are kept for a part of the country and a point
   of the route is outside it. **Add roads for all of France**.
-- **Great Britain and Northern Ireland**: the United Kingdom's roads from OpenStreetMap's
-  usual source cover England, Scotland and Wales only, so with those kept the panel says
-  **Great Britain**, not the United Kingdom. A point in Northern Ireland is not taken as
-  covered by them (nor joined to a road across the sea): its roads come with Ireland's, and
-  the message says "Add roads for Ireland".
+- **Great Britain and Northern Ireland**: roads kept for England, Scotland and Wales alone
+  (Geofabrik's Great Britain, or a file of your own) are called **Great Britain**, not the
+  United Kingdom, by what their roads reach. A point in Northern Ireland is not taken as
+  covered by them, nor joined to a road across the sea: the message says Northern Ireland's
+  roads are not held, and **Add roads for all of the United Kingdom** brings them.
 - **On their way**: while a country's roads download and are built, the panel shows it in
   the words of Offline maps with a bar: "France: Downloading 1.20 of 4.90 GB, 18 minutes left",
   then "Building". You can leave the screen. When they are ready it says "France is

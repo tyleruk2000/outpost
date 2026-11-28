@@ -92,12 +92,13 @@ describe("the United Kingdom's roads, when they are Great Britain's", () => {
     expect(both.countries.find((c) => c.code === "GB")).toMatchObject({ name: "United Kingdom", state: "ready" });
   });
 
-  it("names a United Kingdom network by what its roads reach", () => {
-    const row = { name: "United Kingdom", country: "GB", regionId: "united-kingdom", bbox: gbBox, stats: {} };
-    expect(networkName(row)).toBe("Great Britain");
-    expect(networkName({ ...row, stats: { northernIreland: true } })).toBe("United Kingdom");
-    expect(networkName({ ...row, regionId: null, stats: { northernIreland: false } })).toBe("Great Britain");
-    expect(networkReachesNorthernIreland({ regionId: "ireland-and-northern-ireland", bbox: null, stats: null })).toBe(true);
-    expect(networkName({ ...row, name: "Kent", regionId: "great-britain/england/kent" })).toBe("Kent");
+  it("names a United Kingdom network by what its roads reach, never by its region", () => {
+    const row = { name: "United Kingdom", country: "GB", bbox: gbBox, stats: { northernIreland: true } };
+    expect(networkName(row)).toBe("United Kingdom");
+    expect(networkName({ ...row, stats: { northernIreland: false } })).toBe("Great Britain");
+    // Not yet worked out: by its box, which reaches Northern Ireland, so nothing is taken away.
+    expect(networkReachesNorthernIreland({ bbox: gbBox, stats: {} })).toBe(true);
+    expect(networkReachesNorthernIreland({ bbox: [-1, 50, 1.5, 52], stats: null })).toBe(false);
+    expect(networkName({ ...row, name: "Kent", stats: { northernIreland: false } })).toBe("Kent");
   });
 });

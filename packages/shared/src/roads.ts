@@ -35,9 +35,9 @@ export interface RoadNetworkDto {
   source: string;
   bbox: [number, number, number, number] | null;
   /**
-   * Whether its roads reach Northern Ireland. Geofabrik's Great Britain does not (Northern
-   * Ireland is in "Ireland and Northern Ireland"); such a network is named Great Britain,
-   * not United Kingdom, and a point in Northern Ireland is not taken as covered by it.
+   * Whether its roads reach Northern Ireland, by its own junctions. Geofabrik's United
+   * Kingdom does, its Great Britain does not; a United Kingdom network that does not is
+   * named Great Britain, and a point in Northern Ireland is not taken as covered by it.
    */
   northernIreland: boolean;
   /** False when its file is missing (a restore from another machine, a drive): install it again. */

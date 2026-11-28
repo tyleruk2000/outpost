@@ -106,7 +106,7 @@ export function coverageOf(
   regionOf: (code: string) => string | null,
 ): RoadCoverageResponse {
   const { samples, pointCountries, seaCrossing } = samplesAlong(points);
-  // Northern Ireland's roads are in a network that reaches it (Ireland and Northern Ireland's, say), never in Great Britain's.
+  // Northern Ireland's roads are in a network whose junctions reach it (the United Kingdom's, Ireland and Northern Ireland's), never in Great Britain's.
   const reachingNi = networks.filter((n) => n.available && n.northernIreland);
   const countries: RoadCoverageCountry[] = countriesInOrder(samples).map((code) => {
     const ownKept = networks.filter((n) => n.country === code && n.available);
