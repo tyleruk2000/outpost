@@ -229,6 +229,14 @@ export const TASK_KINDS: Record<string, TaskKind> = {
     retry: true,
     from: { to: "/maps/data", label: "Open Offline maps" },
   },
+  "maps.country-file.repair": {
+    name: "Repairing a source file",
+    about:
+      "Fetches only the damaged part of a kept source file again from Geofabrik, then checks the whole file against Geofabrik's checksum. If that fails, the file is left as it was.",
+    pause: "restarts",
+    retry: true,
+    from: { to: "/maps/data", label: "Open Offline maps" },
+  },
   "roads.build": {
     name: "Building routes",
     about: "Reads the main roads out of a place's source file and makes the routes drives are planned on.",
