@@ -228,6 +228,8 @@ export function createCalibreService(ctx: AppContext): CalibreService {
         createdAt: Date.now(),
       })
       .run();
+    // Search finds a book by its series as well as its title.
+    if (book.series) await ctx.services.documents.refreshSearch(documentId);
   }
 
   async function description(root: string, book: ScannedBook): Promise<string | null> {

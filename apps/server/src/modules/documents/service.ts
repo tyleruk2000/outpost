@@ -31,7 +31,7 @@ import { resolveInside, safeFileName } from "../../core/fs-safe.ts";
 import { sha256File } from "../../core/hashing.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, PermanentJobError } from "../../core/jobs.ts";
-import { bookChapters, collections, documents, documentTags, tags } from "../../db/schema.ts";
+import { bookChapters, bookDetails, collections, documents, documentTags, tags } from "../../db/schema.ts";
 import type { LocationRow } from "../storage/service.ts";
 import { readAudioFacts } from "./audio-tags.ts";
 import { ExtractionFailure, runExtraction } from "./extract-host.ts";
@@ -155,6 +155,8 @@ export interface DocumentsService {
    * `forget` only Outpost's record goes and the file is left where it is.
    */
   remove(id: string, options?: { forget?: boolean }): Promise<void>;
+  /** Writes the search entry again, after another module recorded more about the document (a book's series). */
+  refreshSearch(id: string): Promise<void>;
   /** Records that another module has moved the original. Touches no files. */
   relocate(id: string, locationId: string, relPath: string): Promise<DocumentDto>;
   /** Queues reading the text again, unless that is already under way. */
@@ -312,6 +314,17 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     return found;
   }
 
+  /** "Series: Dune, book 2" for a book that came from Calibre with a series, for search to find it by. */
+  function seriesLine(documentId: string): string | null {
+    const row = db
+      .select({ series: bookDetails.series, index: bookDetails.seriesIndex })
+      .from(bookDetails)
+      .where(eq(bookDetails.documentId, documentId))
+      .get();
+    if (!row?.series) return null;
+    return row.index === null ? `Series: ${row.series}` : `Series: ${row.series}, book ${row.index}`;
+  }
+
   /** True for every document that is not a chapter of a book. */
   const notAChapter = sql`not exists (select 1 from ${bookChapters} where ${bookChapters.documentId} = ${documents.id})`;
 
@@ -365,7 +378,10 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     // A chapter is told apart from other chapters of the same name by its book.
     const book = booksOf([row.id]).get(row.id);
     // A recording has no text, so its author is what search can find it by. A chapter is found through its book.
-    const byline = !book && row.author && formatForExt(row.ext)?.type === "audio" ? [{ text: `By ${row.author}` }] : [];
+    const byline: ExtractedSection[] = !book && row.author && formatForExt(row.ext)?.type === "audio" ? [{ text: `By ${row.author}` }] : [];
+    // A book's series is found as its title is: "Discworld" finds every book of it.
+    const series = seriesLine(row.id);
+    if (series) byline.push({ text: series });
     search.upsert({
       kind: SEARCH_KIND,
       entityId: row.id,
@@ -831,7 +847,9 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       const conditions: SQL[] = [];
       if (query.q) {
         const pattern = `%${escapeLike(query.q)}%`;
-        conditions.push(sql`(${documents.title} like ${pattern} escape '\\' or ${documents.originalName} like ${pattern} escape '\\')`);
+        conditions.push(
+          sql`(${documents.title} like ${pattern} escape '\\' or ${documents.originalName} like ${pattern} escape '\\' or exists (select 1 from ${bookDetails} where ${bookDetails.documentId} = ${documents.id} and ${bookDetails.series} like ${pattern} escape '\\'))`,
+        );
       }
       if (query.category) conditions.push(sql`${documents.category} = ${query.category} collate nocase`);
       if (query.type) conditions.push(inArray(documents.ext, extensionsOfType(query.type)));
@@ -945,6 +963,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       await extracted.remove(id);
       changed(id);
     },
+
+    refreshSearch: (id) => reindex(id),
 
     async relocate(id, locationId, relPath) {
       requireRow(id);

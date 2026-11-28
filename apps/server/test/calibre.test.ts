@@ -206,6 +206,36 @@ describe("bringing in a Calibre library", () => {
     expect(fs.existsSync(path.join(library, "Frank Herbert", "Dune (1)", "Dune - Frank Herbert.epub"))).toBe(true);
   });
 
+  it("finds a book by its series, in search and in the library's own list, a book already there included", async () => {
+    const add = async (folder: string, title: string, index: string) => {
+      const dir = path.join(library, "Ann Mariner", folder);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "metadata.opf"),
+        calibreOpf({ title, authors: ["Ann Mariner"], series: "Tales of the Lighthouse", index, uuid: `u-${folder}` }),
+      );
+      fs.writeFileSync(path.join(dir, `${title} - Ann Mariner.txt`), `${title}: the lamp was lit at dusk.`);
+    };
+    await add("Keeper (4)", "The Keeper", "2.0");
+    // Already in the library before it is brought in from Calibre: it gets its series too.
+    const earlier = path.join(app.dir, "Fog - Ann Mariner.txt");
+    fs.writeFileSync(earlier, "Fog: the horn sounded all night.");
+    await app.ctx.services.documents.ingestFile({ sourcePath: earlier, originalName: "Fog - Ann Mariner.txt" });
+    await add("Fog (5)", "Fog", "3.0");
+    fs.copyFileSync(earlier, path.join(library, "Ann Mariner", "Fog (5)", "Fog - Ann Mariner.txt"));
+
+    const dto = await read();
+    await app.api("POST", `/api/calibre/${dto.id}/commit`, { mode: "in-place" });
+    await app.ctx.jobs.whenIdle();
+
+    const found = (await app.api("GET", `/api/search?q=${encodeURIComponent("lighthouse tales")}`)).body.results as Array<{
+      title: string;
+    }>;
+    expect(found.map((result) => result.title).sort()).toEqual(["Fog - Ann Mariner", "The Keeper"]);
+    const listed = (await app.api("GET", "/api/documents?q=lighthouse")).body.documents as Array<{ title: string }>;
+    expect(listed.map((doc) => doc.title).sort()).toEqual(["Fog - Ann Mariner", "The Keeper"]);
+  });
+
   it("copies the books into the library, and a second import adds nothing twice", async () => {
     const before = snapshot(library);
     const first = await read();

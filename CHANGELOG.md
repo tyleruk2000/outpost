@@ -608,7 +608,7 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   through updates, listed under **Library → Learning** and printable
   (`0029_learning_progress`).
 - **Import from Calibre** under Library: copy the books or use them in place; the Calibre
-  folder is only read.
+  folder is only read. Search and the library's list find a book by its series.
 
 #### Catalogue additions (17 November 2026)
 
