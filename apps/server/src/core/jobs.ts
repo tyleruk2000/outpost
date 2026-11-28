@@ -189,9 +189,16 @@ export class JobQueue {
     if (this.started) return;
     this.started = true;
     const left = this.db.select({ id: jobs.id }).from(jobs).where(eq(jobs.state, "running")).all();
+    // Starting a run counts an attempt; one cut short by the process stopping did not fail,
+    // so it is given back. Otherwise a job resumed a few times shows "attempt 6 of 3".
     this.db
       .update(jobs)
-      .set({ state: "queued", updatedAt: Date.now(), progressMessage: "Resuming after restart" })
+      .set({
+        state: "queued",
+        attempts: sql`max(${jobs.attempts} - 1, 0)`,
+        updatedAt: Date.now(),
+        progressMessage: "Resuming after restart",
+      })
       .where(eq(jobs.state, "running"))
       .run();
     for (const { id } of left) this.note(id, "restarted", "queued", null);

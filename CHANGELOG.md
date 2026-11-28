@@ -17,7 +17,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - One Node 24 server (TypeScript, Fastify) serving the web app and an HTTP API from one
   SQLite database and a set of folders; migrations applied at start.
 - A background job queue in the database: named queues with limits, pause, resume,
-  cancel, retries with growing pauses, and jobs that survive a restart.
+  cancel, retries with growing pauses, and jobs that survive a restart (being stopped by
+  a restart does not use up one of a job's attempts).
 - Live updates to the browser over one server-sent-events stream.
 - An orderly stop on SIGTERM or SIGINT: stop accepting, end live streams, give requests
   three seconds, stop jobs so they resume, close the database; exit anyway after eight
