@@ -13,7 +13,7 @@ import type { RouteReply } from "../src/modules/streets/client.ts";
 import { addressProblem } from "../src/modules/streets/connection.ts";
 import { MAX_CELLS_ACROSS, mainRoadsReach, traceRings } from "../src/modules/streets/main-roads-reach.ts";
 import { streetDirections, streetDistanceText, wayName } from "../src/modules/streets/narrative.ts";
-import { estimateBuild } from "../src/modules/streets/tiles.ts";
+import { estimateBuild, timeLeftText } from "../src/modules/streets/tiles.ts";
 import { waitFor } from "./fixtures/downloads/file-server.ts";
 import { buildArchive } from "./fixtures/maps/archive.ts";
 import { type Ground, groundTiles, worldOf } from "./fixtures/maps/terrain.ts";
@@ -234,6 +234,21 @@ describe("words for streets", () => {
     expect(kentAndSussex.minutes).toBeLessThan(5);
     expect(kentAndSussex.freeSpaceBytes).toBe(76_786_201 * 4);
     expect(estimateBuild([], 2_205_301_182, false, 4e9).warnings.join(" ")).toMatch(/4 GB of memory/);
+  });
+
+  it("counts down a build, and says it is taking longer than usual once past the estimate", () => {
+    const stages = ["admins", "tiles", "extract", "swap"];
+    const hour = 60 * 60_000;
+    const tiles = (elapsedMs: number) => timeLeftText("Building walking and cycling (the long part)", stages, 1, hour, elapsedMs);
+    expect(tiles(20 * 60_000)).toBe("Building walking and cycling (the long part): about 40 minutes left of the build");
+    // The Pi's Great Britain build past an hour, the long stage still going: not "about 2 minutes left".
+    expect(tiles(65 * 60_000)).toBe("Building walking and cycling (the long part): taking longer than usual");
+    expect(tiles(59 * 60_000)).toBe("Building walking and cycling (the long part): taking longer than usual");
+    // Packing on time, then late.
+    expect(timeLeftText("Packing the streets", stages, 2, hour, 58 * 60_000)).toBe(
+      "Packing the streets: about 2 minutes left of the build",
+    );
+    expect(timeLeftText("Packing the streets", stages, 2, hour, 70 * 60_000)).toBe("Packing the streets: taking longer than usual");
   });
 
   it("keeps the streets service's address on this computer or its network", () => {
