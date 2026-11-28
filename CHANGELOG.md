@@ -801,9 +801,13 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   spilled out of its ring, and the source file's choices no longer looked half the size of
   their words.
 - Walking and cycling asked for while another build runs (a source file finishing its
-  download mid-build, or a second country) waits and starts by itself once that build ends;
-  Offline maps says it is waiting, and Add a place says so before the press. It was only
-  written to the server's log, and never built.
+  download mid-build, or a second country) is a task queued behind it: it shows as waiting
+  on Offline maps and under Downloads and tasks, can be cancelled from either, survives a
+  restart, and starts once the service is free, building on what the one in front made. It
+  was only written to the server's log, and never built. Asking again for places already
+  being built or waiting says so instead of building them again. A build that cannot start
+  (its source file removed meanwhile) says why by name, with **Try again** and **Dismiss**.
+  Add a place says before the press whether the build in front is under way or waiting.
 - Storage: Offline maps' figure and the locations' bars agree. Nearby places' records,
   which are in Outpost's database, were counted on the location of the file they were read
   from; they are now under Outpost's own data, and the row says how much of its size the

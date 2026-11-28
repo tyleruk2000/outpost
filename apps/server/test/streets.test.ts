@@ -917,40 +917,6 @@ describe("building streets", () => {
     fs.rmSync(path.join(dir, "cancel"), { force: true });
   });
 
-  it("waits, and says so, when walking and cycling are asked for while another build runs, then starts once it has finished", async () => {
-    writeSidecarStatus(dir, sidecarStatus({ state: "ready", current: { ...GB_TILESET, name: "Kent and East Sussex" } }));
-    const { body } = await app.api("POST", "/api/streets/tiles", { regions: ["europe/great-britain/england/kent"] });
-    const first = body.jobId as string;
-    await waitFor(() => fs.existsSync(path.join(dir, "request.json")), "the streets service's side", 5_000);
-    fs.rmSync(path.join(dir, "request.json"));
-    writeSidecarStatus(dir, sidecarStatus({ state: "building", id: first, stage: "tiles", startedAt: Date.now(), current: null }));
-    await waitFor(() => app.ctx.jobs.get(first)?.state === "running", "the streets service's side", 5_000);
-
-    // As Add a place asks once a source file is kept: it cannot start now, so it waits, and Offline maps says so.
-    const asked = app.ctx.services.streets.tiles.buildOrWait({ regions: ["europe/great-britain/england/east-sussex"] });
-    expect(asked).toEqual({ jobId: null, waiting: true });
-    const data = (await app.api("GET", "/api/maps/data")).body as MapDataResponse;
-    const items = data.countries.find((c) => c.country === "GB")!.rows.find((r) => r.kind === "streets")!.items;
-    expect(items.find((item) => item.key === "streets:waiting")).toMatchObject({
-      state: "waiting",
-      title: "Streets for routes: East Sussex",
-      progress: { message: "Starts once the walking and cycling build under way (Kent) has finished." },
-    });
-
-    // The first finishes: the one waiting starts by itself, with what the streets in use hold.
-    writeSidecarStatus(dir, sidecarStatus({ state: "ready", id: first, finishedAt: Date.now(), current: GB_TILESET }));
-    await waitFor(() => fs.existsSync(path.join(dir, "request.json")), "the waiting build's request", 10_000);
-    const request = JSON.parse(fs.readFileSync(path.join(dir, "request.json"), "utf8"));
-    expect(request.id).not.toBe(first);
-    expect(request.name).toMatch(/East Sussex/);
-    const after = (await app.api("GET", "/api/maps/data")).body as MapDataResponse;
-    expect(JSON.stringify(after)).not.toContain("streets:waiting");
-    fs.rmSync(path.join(dir, "request.json"));
-    writeSidecarStatus(dir, sidecarStatus({ state: "ready", id: request.id, finishedAt: Date.now(), current: GB_TILESET }));
-    await app.ctx.jobs.whenIdle();
-    expect(app.ctx.jobs.get(request.id)!.state).toBe("succeeded");
-  });
-
   it("removes the streets in use on request", async () => {
     const pending = app.api("DELETE", "/api/streets/tiles");
     await waitFor(() => fs.existsSync(path.join(dir, "request.json")), "the streets service's side", 5_000);
@@ -960,5 +926,160 @@ describe("building streets", () => {
     writeSidecarStatus(dir, sidecarStatus({ state: "idle", id: request.id, current: null }));
     expect((await pending).status).toBe(200);
     expect((await status()).state).toBe("no-streets");
+  });
+});
+
+describe("a build asked for while another runs", () => {
+  let app: TestApp;
+  let standIn: ValhallaStandIn;
+  let dir: string;
+  let data: string;
+  const KENT = "europe/great-britain/england/kent";
+  const SUSSEX = "europe/great-britain/england/east-sussex";
+  const request = () => path.join(dir, "request.json");
+  const open = async () => {
+    app = await createTestApp({ OUTPOST_VALHALLA_URL: standIn.url, OUTPOST_VALHALLA_DIR: dir }, data);
+  };
+  beforeAll(async () => {
+    standIn = await createValhallaStandIn();
+    dir = tempDir("outpost-valhalla-");
+    data = tempDir("outpost-queued-");
+    writeSidecarStatus(dir, sidecarStatus({ state: "ready", current: GB_TILESET }));
+    await open();
+    await keepCountryFile(app, KENT, "Kent", "GB", 54_460_111);
+    await keepCountryFile(app, SUSSEX, "East Sussex", "GB", 22_326_090);
+  });
+  afterAll(async () => {
+    await app.close();
+    await standIn.close();
+  });
+
+  /** Starts a build and has the service say it is building it. */
+  async function running(regions: string[]): Promise<string> {
+    const { status, body } = await app.api("POST", "/api/streets/tiles", { regions });
+    expect(status, JSON.stringify(body)).toBe(200);
+    const id = body.jobId as string;
+    await waitFor(() => fs.existsSync(request()), "the streets service's side", 5_000);
+    fs.rmSync(request());
+    writeSidecarStatus(dir, sidecarStatus({ state: "building", id, stage: "tiles", startedAt: Date.now(), current: GB_TILESET }));
+    await waitFor(() => app.ctx.jobs.get(id)?.state === "running", "the build to run", 5_000);
+    return id;
+  }
+  async function finish(id: string) {
+    writeSidecarStatus(dir, sidecarStatus({ state: "ready", id, finishedAt: Date.now(), current: GB_TILESET }));
+  }
+  const streetsItems = async () => {
+    const answer = (await app.api("GET", "/api/maps/data")).body as MapDataResponse;
+    return answer.countries.find((c) => c.country === "GB")?.rows.find((r) => r.kind === "streets")?.items ?? [];
+  };
+
+  it("is a task of its own, waiting and said so, that starts once the build in front has finished", async () => {
+    const first = await running([KENT]);
+    const asked = app.ctx.services.streets.tiles.buildOrWait({ regions: [SUSSEX] });
+    expect(asked.waiting).toBe(true);
+    const second = asked.jobId!;
+    expect(app.ctx.jobs.get(second)).toMatchObject({ state: "queued", title: "East Sussex: walking and cycling" });
+    expect((await streetsItems()).find((item) => item.taskId === second)).toMatchObject({
+      state: "waiting",
+      title: "Streets for routes: East Sussex",
+      progress: { message: "Starts once the walking and cycling build under way (Kent) has finished." },
+    });
+    expect(fs.existsSync(path.join(app.ctx.config.dataDir, "streets-waiting.json"))).toBe(false);
+
+    await finish(first);
+    await waitFor(() => fs.existsSync(request()), "the waiting build's request", 10_000);
+    const asked2 = JSON.parse(fs.readFileSync(request(), "utf8"));
+    expect(asked2.id).toBe(second);
+    expect(asked2.name).toBe("East Sussex");
+    fs.rmSync(request());
+    await finish(second);
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(second)!.state).toBe("succeeded");
+  });
+
+  it("says what is already being built or already waiting, and queues no rebuild of it", async () => {
+    const first = await running([KENT]);
+    const again = await app.api("POST", "/api/streets/tiles", { regions: [KENT] });
+    expect(again.status).toBe(409);
+    expect(again.body.error.message).toBe("Walking and cycling for Kent are already being built.");
+    const queued = app.ctx.services.streets.tiles.buildOrWait({ regions: [SUSSEX] });
+    expect(() => app.ctx.services.streets.tiles.buildOrWait({ regions: [SUSSEX] })).toThrow(
+      "Walking and cycling for East Sussex are already waiting to be built.",
+    );
+    expect(app.ctx.jobs.list({ states: ["queued", "running"], types: ["streets.build"] })).toHaveLength(2);
+    // The one waiting can be cancelled: it never asks the service for anything.
+    app.ctx.jobs.cancel(queued.jobId!);
+    expect((await streetsItems()).some((item) => item.taskId === queued.jobId)).toBe(false);
+    await finish(first);
+    await app.ctx.jobs.whenIdle();
+    expect(fs.existsSync(request())).toBe(false);
+  });
+
+  it("waits for the service to be free when the build in front is cancelled and the service is slow to stop", async () => {
+    const first = await running([KENT]);
+    const second = app.ctx.services.streets.tiles.buildOrWait({ regions: [SUSSEX] }).jobId!;
+    app.ctx.jobs.cancel(first);
+    await waitFor(() => fs.existsSync(path.join(dir, "cancel")), "the cancel", 5_000);
+    // Still stopping: the second runs, waits, and says why, without writing a request over the build being stopped.
+    await waitFor(() => app.ctx.jobs.get(second)?.state === "running", "the second to start", 10_000);
+    await waitFor(
+      () => /Waiting for the streets service to finish/.test(app.ctx.jobs.get(second)?.progressMessage ?? ""),
+      "the second to say it is waiting",
+      10_000,
+    );
+    expect(fs.existsSync(request())).toBe(false);
+    fs.rmSync(path.join(dir, "cancel"), { force: true });
+    writeSidecarStatus(dir, sidecarStatus({ state: "failed", id: first, message: "Stopped.", current: GB_TILESET }));
+    await waitFor(() => fs.existsSync(request()), "the second's request", 15_000);
+    expect(JSON.parse(fs.readFileSync(request(), "utf8")).id).toBe(second);
+    fs.rmSync(request());
+    await finish(second);
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(second)!.state).toBe("succeeded");
+  });
+
+  it("ends with words naming the place when its source file was removed while it waited, and can be dismissed", async () => {
+    const first = await running([KENT]);
+    const second = app.ctx.services.streets.tiles.buildOrWait({ regions: [SUSSEX] }).jobId!;
+    const kept = app.ctx.services.countryFiles.keptFiles().find(({ meta }) => meta.regionId === SUSSEX)!;
+    await app.ctx.services.collections.remove(kept.row.id, { deleteFiles: true });
+    await finish(first);
+    await app.ctx.jobs.whenIdle();
+    const failed = app.ctx.jobs.get(second)!;
+    expect(failed.state).toBe("failed");
+    expect(failed.error).toBe(
+      "East Sussex's source file is no longer kept on a connected storage location, so walking and cycling for it cannot be built. Add East Sussex again with its source file kept, then try again.",
+    );
+    expect(failed.error).not.toContain(SUSSEX);
+    const row = (await streetsItems()).find((item) => item.taskId === second);
+    expect(row).toMatchObject({ state: "failed", reason: failed.error });
+    expect((await app.api("POST", `/api/streets/builds/${second}/dismiss`)).status).toBe(200);
+    expect((await streetsItems()).some((item) => item.taskId === second)).toBe(false);
+    await keepCountryFile(app, SUSSEX, "East Sussex", "GB", 22_326_090);
+  });
+
+  it("is still waiting after a restart, and starts once the build in front has finished", async () => {
+    const first = await running([KENT]);
+    const second = app.ctx.services.streets.tiles.buildOrWait({ regions: [SUSSEX] }).jobId!;
+    await app.close();
+    await open();
+    expect(app.ctx.jobs.get(second)!.state).toBe("queued");
+    expect((await streetsItems()).find((item) => item.taskId === second)?.state).toBe("waiting");
+    await waitFor(() => app.ctx.jobs.get(first)?.state === "running", "the first followed again", 10_000);
+    await finish(first);
+    await waitFor(() => fs.existsSync(request()), "the waiting build's request", 15_000);
+    expect(JSON.parse(fs.readFileSync(request(), "utf8")).id).toBe(second);
+    fs.rmSync(request());
+    await finish(second);
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(second)!.state).toBe("succeeded");
+  });
+
+  it("deletes a waiting file left by an earlier build of Outpost, and says so in the log", async () => {
+    const left = path.join(app.ctx.config.dataDir, "streets-waiting.json");
+    fs.writeFileSync(left, "{ not json");
+    await app.close();
+    await open();
+    expect(fs.existsSync(left)).toBe(false);
   });
 });

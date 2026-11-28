@@ -72,8 +72,13 @@ and `cancel` there. `test/streets-valhalla.test.ts` (`OUTPOST_TEST_VALHALLA=1`, 
 runs it the same way: the service as root in a folder Docker makes, Outpost as the user
 running the test, or as uid 1000 when that is root.
 
-A build asked for while another runs waits in `streets-waiting.json` in Outpost's data
-folder and starts when that one settles (or at the next start, if Outpost stopped).
+A build asked for while another runs is a `streets.build` task queued behind it (the
+queue runs one at a time). Its record names the places asked for; which files, and which
+places of the streets in use are kept beside them, is worked out when it starts. Before
+writing `request.json` it waits, up to three hours, while the service says it is building
+something else (a cancelled build slow to stop, one Outpost did not start), then fails with
+words and can be retried. A request for places already being built or waiting is refused
+(409) rather than queued again.
 
 ## The build task
 

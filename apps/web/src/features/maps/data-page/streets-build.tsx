@@ -82,9 +82,14 @@ export function WalkDetails({
     <div className="@container">
       <div className="grid gap-3 pb-3 pl-8 @max-[18rem]:pl-0">
         {under ? (
-          <Notice tone="info" icon={<Hourglass />} title="Another build is under way">
-            Walking and cycling {under.name ? `for ${under.name} ` : ""}are being built now, and only one build runs at a time. This one
-            waits and starts by itself once that has finished; Offline maps says it is waiting.
+          <Notice
+            tone="info"
+            icon={<Hourglass />}
+            title={under.state === "building" ? "Another build is under way" : "Another build is waiting"}
+          >
+            Walking and cycling {under.name ? `for ${under.name} ` : ""}
+            {under.state === "building" ? "are being built now" : "are waiting to be built"}, and only one build runs at a time. This one
+            waits behind it and starts by itself; Offline maps and Downloads and tasks show it waiting, and it can be cancelled there.
           </Notice>
         ) : null}
         {request === null ? (

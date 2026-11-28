@@ -285,6 +285,12 @@ export class JobQueue {
       .all();
   }
 
+  /** Replaces what a job's record says about it (its payload), such as that the person has dismissed it; never its state. */
+  annotate(id: string, payload: Record<string, unknown>): JobRow {
+    this.require(id);
+    return this.update(id, { payload })!;
+  }
+
   /** Stops a job but keeps it, so it can be resumed later. */
   pause(id: string): JobRow {
     return this.stop(id, "paused");

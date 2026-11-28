@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { detailLabel } from "../lib/detail";
 import { isUnderWay, MapDataMenu, MapDataProgress, StateMark, touchSize } from "./pattern";
 import { removable } from "./remove-dialog";
-import { useRepairSourceFile } from "./use-map-data";
+import { useRepairSourceFile, useStreetsBuildAction } from "./use-map-data";
 import {
   BUNDLE_COLUMNS,
   BUNDLE_NAMES,
@@ -150,6 +150,7 @@ export function ItemState({ item, context, title }: { item: MapDataItem; context
           label={`Progress of ${item.title}`}
         />
         <p className="text-small text-ink">{stateLine(message as MapDataItem)}</p>
+        {item.kind === "streets" && item.taskId ? <StreetsBuildControls item={item} /> : null}
       </div>
     );
   }
@@ -173,6 +174,7 @@ export function ItemState({ item, context, title }: { item: MapDataItem; context
           Failed: {line}
         </p>
       ) : null}
+      {item.state === "failed" && item.kind === "streets" && item.taskId ? <StreetsBuildControls item={item} /> : null}
       {item.state === "damaged" && item.kind === "extract" && item.collectionId ? (
         <RepairSourceFile collectionId={item.collectionId} hosts={item.update?.hosts ?? []} />
       ) : null}
@@ -181,6 +183,46 @@ export function ItemState({ item, context, title }: { item: MapDataItem; context
           <Badge>Over a year old</Badge>
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** A walking and cycling build's own buttons: Cancel while under way or waiting; Try again and Dismiss once it failed. */
+function StreetsBuildControls({ item }: { item: MapDataItem }) {
+  const act = useStreetsBuildAction();
+  const jobId = item.taskId!;
+  const what = item.title.replace(/^Streets for routes: /, "");
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {item.state === "failed" ? (
+        <>
+          <Button size="sm" className={touchSize} loading={act.isPending} onClick={() => act.mutate({ jobId, action: "resume" })}>
+            Try again
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={touchSize}
+            disabled={act.isPending}
+            onClick={() => act.mutate({ jobId, action: "dismiss" })}
+            aria-label={`Dismiss: walking and cycling for ${what}`}
+          >
+            Dismiss
+          </Button>
+        </>
+      ) : (
+        <Button
+          size="sm"
+          variant="ghost"
+          className={cn("-ml-2", touchSize)}
+          loading={act.isPending}
+          onClick={() => act.mutate({ jobId, action: "cancel" })}
+          aria-label={`Cancel walking and cycling for ${what}`}
+        >
+          Cancel
+        </Button>
+      )}
+      {act.isError ? <span className="text-small text-danger">{errorMessage(act.error)}</span> : null}
     </div>
   );
 }

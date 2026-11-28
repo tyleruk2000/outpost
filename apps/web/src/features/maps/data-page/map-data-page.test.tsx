@@ -141,6 +141,12 @@ function serve(data: MapDataResponse, extra: Record<string, unknown> = {}) {
   });
 }
 
+/** How many times something was posted, with a body or none. */
+const postedTimes = (path: string) =>
+  (fetch as unknown as { mock: { calls: Array<[string, RequestInit | undefined]> } }).mock.calls.filter(
+    ([url, init]) => String(url).includes(path) && init?.method === "POST",
+  ).length;
+
 const posted = (path: string) =>
   (fetch as unknown as { mock: { calls: Array<[string, RequestInit | undefined]> } }).mock.calls
     .filter(([url, init]) => String(url).includes(path) && init?.method === "POST")
@@ -462,7 +468,10 @@ describe("Add a place", () => {
     );
   });
 
-  it("says before the press when walking and cycling must wait for a build under way", async () => {
+  it.each([
+    ["building", "Another build is under way", "are being built now"],
+    ["waiting", "Another build is waiting", "are waiting to be built"],
+  ] as const)("says before the press when walking and cycling must wait for a build %s", async (state, title, words) => {
     serve(mapData({ streetsInstalled: true, countryFileChoice: { keep: true, locationId: null } }), {
       "GET /api/streets/status": {
         state: "building",
@@ -472,8 +481,8 @@ describe("Add a place", () => {
         build: {
           jobId: "j1",
           name: "Kent",
-          state: "building",
-          stage: "tiles",
+          state,
+          stage: null,
           stageLabel: null,
           step: null,
           message: null,
@@ -485,10 +494,63 @@ describe("Add a place", () => {
     renderScreen(<MapDataPage />, "/maps/data?add=1&country=FR&kinds=streets");
     const dialog = await screen.findByRole("dialog", { name: "Add a place" });
     await within(dialog).findByRole("heading", { name: "What for France?" });
-    expect(await within(dialog).findByText("Another build is under way")).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(/Walking and cycling for Kent are being built now.*starts by itself once that has finished/),
-    ).toBeInTheDocument();
+    expect(await within(dialog).findByText(title)).toBeInTheDocument();
+    expect(within(dialog).getByText(new RegExp(`Walking and cycling for Kent ${words}.*can be cancelled there`))).toBeInTheDocument();
+  });
+
+  it("cancels a walking and cycling build waiting from its row, and tries again or dismisses one that failed", async () => {
+    const user = userEvent.setup();
+    const waiting = item({
+      key: "task:j2:streets",
+      kind: "streets",
+      title: "Streets for routes: East Sussex",
+      state: "waiting",
+      collectionId: null,
+      sizeBytes: null,
+      taskId: "j2",
+      progress: {
+        current: 0,
+        total: null,
+        unit: null,
+        message: "Starts once the walking and cycling build under way (Kent) has finished.",
+        step: null,
+      },
+    });
+    const failed = item({
+      key: "task:j3:streets",
+      kind: "streets",
+      title: "Streets for routes: Kent",
+      state: "failed",
+      collectionId: null,
+      sizeBytes: null,
+      taskId: "j3",
+      reason: "Kent's source file is no longer kept on a connected storage location.",
+    });
+    serve(
+      mapData({
+        streetsInstalled: true,
+        countries: [
+          country("GB", "United Kingdom", { map: [item()], streets: [waiting] }),
+          country("FR", "France", { map: [item({ key: "f" })], streets: [failed] }),
+        ],
+      }),
+      {
+        "GET /api/jobs": { jobs: [{ id: "j2", state: "queued", progress: { current: 0, total: null, message: null } }] },
+        "POST /api/jobs/j2/cancel": { job: {} },
+        "POST /api/jobs/j3/resume": { job: {} },
+        "POST /api/streets/builds/j3/dismiss": { ok: true },
+      },
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click(await screen.findByRole("button", { name: "United Kingdom" }));
+    expect(await screen.findByText("Starts once the walking and cycling build under way (Kent) has finished.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel walking and cycling for East Sussex" }));
+    await waitFor(() => expect(postedTimes("/api/jobs/j2/cancel")).toBe(1));
+    await user.click(screen.getByRole("button", { name: "France" }));
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(postedTimes("/api/jobs/j3/resume")).toBe(1));
+    await user.click(screen.getByRole("button", { name: "Dismiss: walking and cycling for Kent" }));
+    await waitFor(() => expect(postedTimes("/api/streets/builds/j3/dismiss")).toBe(1));
   });
 
   it("says the remembered source-file choice in one line on the main view, with Change, and in the total", async () => {

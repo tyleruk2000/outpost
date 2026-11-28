@@ -474,81 +474,66 @@ export function createStreetsService(ctx: AppContext): StreetsService {
         });
       }
     }
+    // The builds under way and waiting, each its own task: the first is the one the service is on.
     const build = tiles.buildState();
-    if (build && build.state !== "failed" && build.jobId) {
-      const job = ctx.jobs.get(build.jobId);
-      const payload = (job?.payload ?? {}) as StreetsBuildPayload;
-      const countries = [...new Set((payload.regions ?? []).map((r) => r.country))];
+    const queue = tiles.queue();
+    const front = queue[0];
+    const regionsOf = (payload: StreetsBuildPayload) =>
+      payload.regions?.length
+        ? payload.regions.map((r) => ({ regionId: r.regionId, country: r.country }))
+        : (payload.requested ?? []).map((r) => ({
+            regionId: r.regionId,
+            country: r.country ?? tiles.countryFiles().find((f) => f.regionId === r.regionId)?.country ?? null,
+          }));
+    for (const job of queue) {
+      const payload = (job.payload ?? {}) as StreetsBuildPayload;
+      const places = regionsOf(payload);
+      const countries = [...new Set(places.map((r) => r.country))];
+      const inFront = job.id === front?.id;
       for (const country of countries.length > 0 ? countries : [null]) {
         out.push({
           country,
           item: {
-            ...base(`task:${build.jobId}:streets`, `Streets for routes: ${payload.name ?? "building"}`),
-            state: build.state === "waiting" ? "waiting" : "processing",
+            ...base(`task:${job.id}:streets`, `Streets for routes: ${payload.name ?? "building"}`),
+            state: inFront && build?.state === "building" ? "processing" : "waiting",
             progress: {
-              current: job?.progressCurrent ?? 0,
-              total: job?.progressTotal ?? null,
+              current: inFront ? job.progressCurrent : 0,
+              total: inFront ? job.progressTotal : null,
               unit: null,
-              message: build.message ?? build.stageLabel,
-              step: build.step,
+              message: inFront
+                ? (build?.message ?? build?.stageLabel ?? job.progressMessage)
+                : `Starts once the walking and cycling build under way (${(front!.payload as StreetsBuildPayload).name ?? front!.title}) has finished.`,
+              step: inFront ? (build?.step ?? null) : null,
             },
-            regionId: payload.regions?.find((r) => r.country === country)?.regionId ?? null,
-            taskId: build.jobId,
+            regionId: places.find((r) => r.country === country)?.regionId ?? null,
+            taskId: job.id,
           },
         });
       }
     }
-    // A build asked for while another ran: waiting for it, or, when its turn came, unable to start.
-    const next = tiles.waiting();
-    if (next) {
-      const name = listNames(next.regions.map((r) => r.name));
-      const countries = [...new Set(next.regions.map((r) => r.country))];
+    const failed = queue.length === 0 ? tiles.lastFailure() : null;
+    if (failed) {
+      const payload = (failed.payload ?? {}) as StreetsBuildPayload;
+      const places = regionsOf(payload);
+      const countries = [...new Set(places.map((r) => r.country))];
       for (const country of countries.length > 0 ? countries : [null]) {
         out.push({
           country,
-          item: next.problem
-            ? {
-                ...base("streets:waiting", `Streets for routes: ${name}`),
-                state: "failed",
-                reason: `Walking and cycling for ${name} could not start after the build before it: ${next.problem}`,
-                regionId: next.regions.find((r) => r.country === country)?.regionId ?? null,
-              }
-            : {
-                ...base("streets:waiting", `Streets for routes: ${name}`),
-                state: "waiting",
-                progress: {
-                  current: 0,
-                  total: null,
-                  unit: null,
-                  message: next.behind
-                    ? `Starts once the walking and cycling build under way (${next.behind}) has finished.`
-                    : "Starts once the walking and cycling build under way has finished.",
-                  step: null,
-                },
-                regionId: next.regions.find((r) => r.country === country)?.regionId ?? null,
-              },
+          item: {
+            ...base(`task:${failed.id}:streets`, `Streets for routes: ${payload.name ?? "the last build"}`),
+            state: "failed",
+            reason: failed.error ?? "The streets could not be built. The streets in use are as they were.",
+            regionId: places.find((r) => r.country === country)?.regionId ?? null,
+            taskId: failed.id,
+          },
         });
       }
-    }
-    if (build?.state === "failed") {
-      const said = connection.status();
-      out.push({
-        country: null,
-        item: {
-          ...base(`streets:failed:${said?.id ?? "last"}`, `Streets for routes: ${said?.name ?? "the last build"}`),
-          state: "failed",
-          reason: build.message ?? "The streets could not be built. The streets in use are as they were.",
-          taskId: build.jobId,
-        },
-      });
     }
     return out;
   }
 
   return { connection, tiles, status, route, reach, mapDataItems };
 }
-
-const listNames = (words: string[]) => (words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
 
 /** Fires when the browser that asked has gone away, so the question to the streets service is dropped too. */
 function goneSignal(reply: FastifyReply): AbortSignal {
@@ -566,11 +551,7 @@ export async function registerStreets(app: FastifyInstance, ctx: AppContext): Pr
     // A queue of its own: a build holds it for up to an hour, and nothing else waits behind it.
     queue: "streets",
     run: ({ job, payload, signal, progress }) => service.tiles.runJob({ jobId: job.id, payload, signal, progress }),
-    // Whatever way it ended, a build waiting for it may start now.
-    onSettled: () => service.tiles.startWaiting(),
   });
-  // One left waiting when Outpost stopped, whose build finished meanwhile.
-  setTimeout(() => service.tiles.startWaiting(), 0).unref();
 
   app.get("/api/streets/status", async () => service.status());
   app.post("/api/streets/route", async (request, reply) => service.route(streetsRouteSchema.parse(request.body), goneSignal(reply)));
@@ -584,6 +565,12 @@ export async function registerStreets(app: FastifyInstance, ctx: AppContext): Pr
     const body = buildSchema.parse(request.body);
     if ("import" in body) return { ...service.tiles.importFile(body.import), estimate: null };
     return service.tiles.build({ regions: body.regions, ...(body.workLocationId ? { workLocationId: body.workLocationId } : {}) });
+  });
+  /** Takes a build that failed off Offline maps; it stays under Downloads and tasks. */
+  app.post("/api/streets/builds/:id/dismiss", async (request) => {
+    const { id } = z.object({ id: z.string().min(1).max(40) }).parse(request.params);
+    service.tiles.dismiss(id);
+    return { ok: true };
   });
   app.delete("/api/streets/tiles", async () => {
     await service.tiles.remove();
