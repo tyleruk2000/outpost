@@ -267,12 +267,12 @@ was planned in.
 `apps/web/src/features/maps/road-route/`: `road-route-panel.tsx` (the Routes tab's **Road
 route**: form, planned route, saved route, saved list), `point-field.tsx` (a point from the
 map's search, saved places or the map centre), `directions.tsx`, `plain-text.tsx`,
-`road-networks.tsx` (Offline maps, **Road networks for routes**), `layers.ts` (the
-`o-road-route` overlay), `route-map.ts` and `route-card.ts` (the print-kit card; the
+`layers.ts` (the `o-road-route` overlay), `route-map.ts` and `route-card.ts` (the print-kit card; the
 installed maps are read before the overview is drawn), `words.ts` (start and end lines,
 crossing choices, and `legLines`, which cuts the route's geometry into each leg's part by
 the legs' ends). Query keys start with `roads`; `roads.changed` refreshes them. The map's
-point menu has **Road route from here / to here**; `/maps?offline=roads` opens the networks.
+point menu has **Road route from here / to here**; road networks are added and listed on
+Map data (`data-page/`; `/maps?offline=roads` leads to `/maps/data?add=1&kinds=roads`).
 A region's roads come from its country file, one download read for roads and places
 together and then kept or deleted as the person chose (`POST /api/maps/data/add`, see
 [map data](maps.md#map-data-and-country-files)); a kept file is read again with no
