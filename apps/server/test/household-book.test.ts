@@ -222,6 +222,19 @@ describe("the book's answers", () => {
     await ok("PUT", "/api/household-book", { ...some.answers, radioPlanChoice: "all", radioPlanIds: [], baseAnswersAt: some.answersAt });
   });
 
+  it("keeps how many repeaters go on each map, every one until told otherwise", async () => {
+    const saved = await ok<BookResponse>("GET", "/api/household-book");
+    expect(saved.answers.repeaterMapMost).toBeNull();
+    const fewer = await ok<BookResponse>("PUT", "/api/household-book", {
+      ...saved.answers,
+      repeaterMapMost: 3,
+      baseAnswersAt: saved.answersAt,
+    });
+    expect(fewer.answers.repeaterMapMost).toBe(3);
+    expect((await app.api("PUT", "/api/household-book", { ...fewer.answers, repeaterMapMost: 0 })).status).toBe(400);
+    await ok("PUT", "/api/household-book", { ...fewer.answers, repeaterMapMost: null, baseAnswersAt: fewer.answersAt });
+  });
+
   it("keeps which plans go in the book", async () => {
     const saved = await ok<BookResponse>("GET", "/api/household-book");
     expect(saved.answers.planChoice).toBe("all");

@@ -18,6 +18,8 @@ import {
   mappedGroups,
   REPEATERS_PER_PLACE,
   repeaterLocations,
+  repeaterMapBbox,
+  repeaterMapGroups,
   repeaterQueries,
   searchRadiusKm,
 } from "./book-repeaters";
@@ -270,6 +272,29 @@ describe("the repeaters in the book", () => {
     expect(words).toMatch(/no terrain installed there, so a circle at the radio horizon over flat ground/);
     expect(words).toContain("drawn to scale on a plain grid");
   });
+
+  it("draws only the nearest few on each map when asked, framed round them, with the rest still in the tables", async () => {
+    const groups = bookRepeaterGroups(bookInputs());
+    const every = repeaterMapGroups(groups, null);
+    const nearest = repeaterMapGroups(groups, 2);
+    expect(nearest.map((group) => group.location.key)).toEqual(every.map((group) => group.location.key));
+    const home = nearest[0]!;
+    expect([...home.chosen, ...home.also].map((each) => each.repeater.callsign)).toEqual(["GB3NEAR", "GB3UHF"]);
+    expect(home.hidden).toBe(4);
+    // The frame closes in round the two.
+    const span = (bbox: number[]) => bbox[2]! - bbox[0]!;
+    expect(span(repeaterMapBbox(home))).toBeLessThan(span(repeaterMapBbox(every[0]!)) / 2);
+    const fewer = makeBook(bookInputs({ answers: { ...answers, repeaterMapMost: 2 } }));
+    const fewerWords = contentText(fewer.document.content);
+    expect(fewerWords).toContain("Only the nearest 2 are drawn, as chosen for the book; the 4 further away are in the tables.");
+    // The tables are as before.
+    for (const callsign of ["GB3A", "GB3B", "GB3C", "GB3E"]) expect(fewerWords).toContain(callsign);
+    const { svg } = repeaterMapSvg({ group: home, locations: [], ranges: {}, map: null, missing: null, measure: 499 });
+    expect(svg).toContain('data-circle="GB3NEAR"');
+    expect(svg).not.toContain('data-circle="GB3E"');
+    // To look at, with OUTPOST_PRINT_SAMPLES set.
+    if (process.env.OUTPOST_PRINT_SAMPLES) writeSample("book-repeaters-nearest", (await renderPdf(fewer.document)).bytes);
+  }, 60_000);
 
   it("says what output, input, shift and tone mean, once, by the first table", () => {
     expect(words).toContain(

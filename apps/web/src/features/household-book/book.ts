@@ -155,10 +155,10 @@ import {
   type ChosenRepeater,
   chooseRepeaters,
   horizonRange,
-  mappedGroups,
   placeLabel,
   type RepeaterGroup,
   repeaterLocations,
+  repeaterMapGroups,
   SEARCH_WORDS,
 } from "./book-repeaters";
 import { CDC_HYGIENE, FIRST_AID_PAGES, FIRST_AID_POINTERS, KIT_FROM_PAGES, NHS_CREDIT, NHS_READ, RECOVERY_POSITION } from "./first-aid";
@@ -1084,7 +1084,7 @@ function repeaterContent(c: Context, notes: NoteList, summary: string[]): Conten
       `Amateur radio repeaters from Outpost's repeater list${from.length > 0 ? `: ${from.join("; ")}` : ""}. A list says what was listed on its date, not what is on the air now.`,
     ),
   );
-  for (const group of mappedGroups(groups))
+  for (const group of repeaterMapGroups(groups, c.answers.repeaterMapMost ?? null))
     content.push(
       repeaterFigure({
         group,

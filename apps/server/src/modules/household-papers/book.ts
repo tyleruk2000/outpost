@@ -109,6 +109,7 @@ export const bookSchema = z
     planIds: z.array(itemId).max(200).default([]),
     radioPlanChoice: z.enum(["all", "some"]).default("all"),
     radioPlanIds: z.array(itemId).max(200).default([]),
+    repeaterMapMost: z.number().int().min(1).max(8).nullable().default(null),
     baseAnswersAt: z.number().int().nonnegative().nullable().optional(),
   })
   .strict();

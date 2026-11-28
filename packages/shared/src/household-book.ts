@@ -201,6 +201,11 @@ export interface BookAnswers {
   radioPlanChoice: "all" | "some";
   /** The radio plans chosen when `radioPlanChoice` is "some". */
   radioPlanIds: string[];
+  /**
+   * On each map of repeaters, only the nearest this many to the place (or the journey's line), so that a busy map
+   * is clearer; the others stay in the tables. Null draws every one listed round the place.
+   */
+  repeaterMapMost: number | null;
 }
 
 export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
@@ -223,6 +228,7 @@ export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
   planIds: [],
   radioPlanChoice: "all",
   radioPlanIds: [],
+  repeaterMapMost: null,
 };
 
 /** The plans that go in the book, by the answers: all of them, or those chosen that still exist. */

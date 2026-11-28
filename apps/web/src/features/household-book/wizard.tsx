@@ -1001,6 +1001,25 @@ function BookStep({ answers, set, country }: StepProps & { country: string | nul
           cut along.
         </p>
       </div>
+      {answers.sections.includes("frequencies") ? (
+        <div className="grid gap-2">
+          <Segmented<"all" | "4" | "3" | "2">
+            label="Repeaters on each map"
+            value={answers.repeaterMapMost === null ? "all" : (String(answers.repeaterMapMost) as "4" | "3" | "2")}
+            onChange={(most) => set({ repeaterMapMost: most === "all" ? null : Number(most) })}
+            options={[
+              { value: "all", label: "All listed" },
+              { value: "4", label: "Nearest 4" },
+              { value: "3", label: "Nearest 3" },
+              { value: "2", label: "Nearest 2" },
+            ]}
+          />
+          <p className="text-small text-ink-muted">
+            Where a map of repeaters is busy, draw only the nearest to each place. The map closes in round them; the others stay in the
+            tables.
+          </p>
+        </div>
+      ) : null}
       <Section level={3} title="What goes in it">
         <Rows>
           {BOOK_SECTIONS.map((section) => (
