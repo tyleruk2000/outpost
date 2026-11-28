@@ -693,6 +693,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - CSV numbers read by the file's own decimal mark, with ambiguous cells refused.
 - Answers decline only when the model says the passages do not hold the answer.
 - Stream errors on a full or unplugged drive fail the download, not the process.
+- A download whose server sends no length and more than the stated size is held to
+  that size on every attempt; the retry no longer takes and installs whatever it is sent.
 - "Reclaim unused space" waits for writes under way, and blocks all writes, `/dav/` too.
 - A refused reference import leaves nothing behind.
 - Wrong-size search-by-meaning vectors are refused.
