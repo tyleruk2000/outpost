@@ -34,7 +34,7 @@ export const DOOR_START = directions([
   line("start", "Drive north-east on Bell Lane", 300, "300 m", [-0.3555, 51.2905]),
   line("turn", "Turn left onto Guildford Road (B2122)", 800, "800 m", [-0.352, 51.292]),
   line("roundabout", "At the roundabout, take the 2nd exit onto Leatherhead Road (A24)", 1000, "1 km", [-0.34, 51.294]),
-  line("arrive", "Arrive at the A24", 0, "", [-0.33, 51.296]),
+  line("arrive", "Join Leatherhead Road (A24), then the main roads below", 0, "", [-0.33, 51.296]),
 ]);
 
 export const DOOR_END = directions([

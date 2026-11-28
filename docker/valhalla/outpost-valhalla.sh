@@ -5,6 +5,7 @@
 #   outpost-valhalla.sh serve              serve /tiles/current, and build or import when asked
 #   outpost-valhalla.sh build OUT NAME PBF...   build once into the folder OUT (for build-tiles.sh)
 #   outpost-valhalla.sh health             for the container's health check
+#   outpost-valhalla.sh priority           the priority builds run at here ("nice -n 19 ionice -c 3")
 #
 # Asking, in /tiles (the valhalla-tiles volume, which Outpost also mounts):
 #   request.json   written by Outpost, one of
@@ -103,6 +104,18 @@ write_config() {
     >"$dir/valhalla.json"
 }
 
+# low_priority: PRIORITY, the words put before each step of a build so that it gives way to
+# Outpost and everything else on the computer: `nice -n 19` (the lowest processor
+# priority) and `ionice -c 3` (the disk only when nothing else wants it; a Pi took 30 s to
+# answer a health check while Great Britain was being packed). Each only where it is there
+# and allowed: a system without one, or a container that refuses it, builds without it.
+PRIORITY=()
+low_priority() {
+  PRIORITY=()
+  if command -v nice >/dev/null 2>&1 && nice -n 19 true >/dev/null 2>&1; then PRIORITY+=(nice -n 19); fi
+  if command -v ionice >/dev/null 2>&1 && ionice -c 3 true >/dev/null 2>&1; then PRIORITY+=(ionice -c 3); fi
+}
+
 # run_stage DIR STAGE MESSAGE COMMAND...: one step of a build, at low priority, stopped
 # when cancelled or when memory runs short. Returns 0, or 1 with REASON set.
 REASON=""
@@ -111,7 +124,7 @@ run_stage() {
   shift 3
   [ -n "$STATUS_ID" ] && write_status building "$stage" "$message"
   log "$stage: $message"
-  nice -n 10 ionice -c 3 "$@" >>"$dir/build.log" 2>&1 &
+  ${PRIORITY[@]+"${PRIORITY[@]}"} "$@" >>"$dir/build.log" 2>&1 &
   local pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     if [ -e "$HOME_DIR/cancel" ]; then
@@ -344,10 +357,22 @@ health() {
   fi
 }
 
+# Sourced (by the tests), only the functions are defined.
+[ "${BASH_SOURCE[0]}" = "$0" ] || return 0
+
 case "${1:-serve}" in
-  serve) serve ;;
+  serve)
+    low_priority
+    log "builds run at: ${PRIORITY[*]:-normal priority (neither nice nor ionice can be used here)}"
+    serve
+    ;;
+  priority)
+    low_priority
+    printf '%s\n' "${PRIORITY[*]:-}"
+    ;;
   build)
     shift
+    low_priority
     [ "$#" -ge 3 ] || { echo "usage: outpost-valhalla.sh build OUT NAME PBF..." >&2; exit 2; }
     out="$1" name="$2"
     shift 2
@@ -360,7 +385,7 @@ case "${1:-serve}" in
     ;;
   health) health ;;
   *)
-    echo "usage: outpost-valhalla.sh serve | build OUT NAME PBF... | health" >&2
+    echo "usage: outpost-valhalla.sh serve | build OUT NAME PBF... | health | priority" >&2
     exit 2
     ;;
 esac
