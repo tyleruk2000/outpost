@@ -724,6 +724,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - A failed decryption no longer leaves the Encryption screen busy.
 - An HF basis sentence is dated, not "(today)"; a map page made twice a day is one
   document; `formatDuration` never says "60 seconds".
+- On a phone, the Directions sheet shows a walk's or a ride's climb and its steepest
+  stretch under the totals, as the panel does.
 - Many small layout fixes on phones and narrow windows.
 
 ### Security

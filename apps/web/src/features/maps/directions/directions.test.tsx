@@ -10,10 +10,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CHANNEL_TRIP } from "../road-route/test-route";
-import { WALK } from "../road-route/test-streets";
+import { HILLY_WALK, WALK } from "../road-route/test-streets";
 import { DirectionsPicker } from "./picker";
 import { DirectionsBar } from "./route-bar";
-import { DirectionsSheet } from "./route-sheet";
+import { DirectionsSheet, RouteClimb } from "./route-sheet";
 import { useDirections } from "./use-directions";
 import {
   defaultStart,
@@ -61,6 +61,19 @@ describe("the words of Directions", () => {
     });
     expect(routeSummary(WALK).how).toMatch(/^Walking/);
     expect(endsTitle([{ ...REIMS, name: "Home" }, REIMS])).toBe("Home → Reims");
+  });
+
+  it("shows a walk's climb under its totals, as the panel does, and nothing for a route without heights", () => {
+    const { unmount } = render(<RouteClimb route={HILLY_WALK} />);
+    expect(screen.getByText("↑ 310 m ↓ 280 m")).toBeInTheDocument();
+    expect(screen.getByText("310 m of climb, 280 m of descent")).toHaveClass("sr-only");
+    expect(screen.getByText(/Steepest: 14% uphill for 250 m, 1\.2 km from the start \(Continue onto Downs Lane\)\./)).toBeInTheDocument();
+    unmount();
+    for (const route of [WALK, CHANNEL_TRIP]) {
+      const { container: none, unmount: done } = render(<RouteClimb route={route} />);
+      expect(none).toBeEmptyDOMElement();
+      done();
+    }
   });
 
   it("cuts a drive into its roads and crossings, and a walk into its turns", () => {
