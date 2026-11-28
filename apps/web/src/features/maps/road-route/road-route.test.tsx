@@ -322,7 +322,7 @@ describe("the road route panel", () => {
       networks: { networks: [network], building: [], credit },
       coverage: () => ({
         points: [{ country: "GB" }, { country: "FR" }],
-        countries: [country("GB", "United Kingdom", "ready"), country("FR", "France", "missing")],
+        countries: [country("GB", "Great Britain", "ready"), country("FR", "France", "missing")],
         seaCrossing: true,
       }),
     });
@@ -331,7 +331,7 @@ describe("the road route panel", () => {
     await choosePlace("From", "Leatherhead");
     await choosePlace("To", "Chamonix");
     expect(await screen.findByText("France has no roads yet")).toBeInTheDocument();
-    expect(screen.getByText("This route runs through France. United Kingdom is ready.")).toBeInTheDocument();
+    expect(screen.getByText("This route runs through France. Great Britain is ready.")).toBeInTheDocument();
     expect(screen.getByText("Asks the size first. Needs a connection once.")).toBeInTheDocument();
     const plan = screen.getByRole("button", { name: "Plan route" });
     expect(plan).toBeDisabled();
