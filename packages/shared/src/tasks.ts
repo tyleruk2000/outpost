@@ -87,6 +87,14 @@ export const TASK_KINDS: Record<string, TaskKind> = {
     retry: true,
     from: { to: "/storage", label: "Open Storage" },
   },
+  "database.rebuild-search": {
+    name: "Building the search index again",
+    about:
+      "Builds the search index again from your notes and files, after a check found it out of step with them. Saving waits until it has finished.",
+    cancel: false,
+    retry: true,
+    from: { to: "/storage", label: "Open Storage" },
+  },
   "database.vacuum": {
     name: "Reclaiming space in the database",
     about: "Rewrites the database without its unused pages. Other work waits until it has finished.",
