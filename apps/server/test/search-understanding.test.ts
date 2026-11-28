@@ -85,6 +85,17 @@ describe("other ways of saying a word", () => {
     expect(toFtsQuery(expandQuery(parseQuery("bicarb ")).parsed)).toBe('("bicarb" OR "bicarbonate of soda" OR "baking soda")');
   });
 
+  it("never takes one word for a phrase of the table that has more", () => {
+    // "can" and "being" are left out of a search, but a phrase is not one word because of it.
+    const also = (q: string) => expandQuery(parseQuery(q)).also;
+    expect(also("gas ")).not.toContain("jerry can");
+    expect(also("gas ")).not.toContain("jerrycan");
+    expect(also("fuel gauge ")).not.toContain("jerry can");
+    expect(also("bottle opener ")).not.toContain("tin opener");
+    expect(also("sick child ")).not.toContain("vomiting");
+    expect(also("feeling sick ")).not.toContain("vomiting");
+  });
+
   it("carries a spelling's ending over, and leaves other words alone", () => {
     expect(spellingsOf("colours")).toEqual(["colors"]);
     expect(spellingsOf("sterilising")).toEqual(["sterilizing"]);

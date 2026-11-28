@@ -15,9 +15,9 @@
  *    colourful): `OUR`, `ISE`, `TRE` or `ROOTS`.
  * Write words in lower case, in their plain form ("battery", not "batteries"): plurals
  * and other endings are matched by their stem, as the index matches them. A quoted word
- * is never widened. A phrase is known by its words that matter: the small words of
- * `STOP_WORDS` are dropped from what is typed before the table is read, so "bicarbonate
- * of soda" typed is "bicarbonate soda" here; asked for as another way of saying a word,
+ * is never widened. A phrase is known without its connectives ("of", "and": `CONNECTIVES`),
+ * which are dropped from what is typed before the table is read, so "bicarbonate of
+ * soda" typed is "bicarbonate soda" here; asked for as another way of saying a word,
  * the phrase is searched as written, small words and all.
  */
 import { stem } from "./stem.ts";
@@ -389,11 +389,25 @@ interface Entry {
   when: string[] | null;
 }
 
-/** The words of a phrase as typed words are matched against it: without the small words, which are never typed words here. */
+/**
+ * Words that only join a phrase's words ("bicarbonate of soda", "accident and
+ * emergency"). They are left out of a search (they are among `STOP_WORDS`), so a phrase
+ * is matched without them. Only these: "can" in "jerry can" or "being" in "being sick"
+ * are part of the name, and without them the phrase would be one word ("gas" taken for
+ * "gas can", "sick" for "being sick").
+ */
+const CONNECTIVES: ReadonlySet<string> = new Set(["of", "and", "the", "a", "in", "for", "to"]);
+for (const word of CONNECTIVES) if (!STOP_WORDS.has(word)) throw new Error(`"${word}" is a connective but not a stop word`);
+
+/**
+ * The words of a phrase as typed words are matched against it: without its connectives.
+ * A phrase of several words is never left as one: then it is matched as written, which
+ * words typed without their small ones never are.
+ */
 const wordsThatMatter = (phrase: string) => {
   const words = phrase.split(" ");
-  const kept = words.filter((word) => !STOP_WORDS.has(word));
-  return kept.length > 0 ? kept : words;
+  const kept = words.filter((word) => !CONNECTIVES.has(word));
+  return words.length > 1 && kept.length < 2 ? words : kept;
 };
 const stemsOf = (phrase: string) => wordsThatMatter(phrase).map((word) => stem(word));
 
