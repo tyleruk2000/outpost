@@ -825,7 +825,7 @@ Worked out by VOACAP on the server, offline. Types: `propagation.ts`,
 | `POST /api/radio/communication-plans/import` | `{ text }`: a plan file from an export (`format: outpost-communication-plan`) or a bare plan → a new plan; links to pages and documents not held here are dropped. |
 | `POST …/communication-plans/:id/matrix`, `GET` | Works the plan out (≤56 runs) → `PlanResult`; the last result if the plan is unchanged. |
 | `GET /api/radio/observations` | The contact log: `limit` (≤500), `offset`; `imports`, `importing`, `adif`. |
-| `POST /api/radio/observations`, `DELETE …/:id` | One entry: `at`, `frequencyMhz`, `band`, `mode`, `outcome` (`contact`, `heard`, `failed`), `tx`, `rx`, power, antenna, reports, notes. `409` duplicate. |
+| `POST /api/radio/observations`, `PUT …/:id`, `DELETE …/:id` | One entry (`PUT` replaces its fields and keeps its source and import): `at`, `frequencyMhz`, `band`, `mode`, `outcome` (`contact`, `heard`, `failed`), `tx`, `rx`, power, antenna, reports, notes. `409` duplicate. |
 | `POST /api/radio/observations/import` | ADIF, ≤64 MB. ≤128 kB at once (`{ import }`), larger as a `propagation.adif-import` job. All or nothing. `400 not-adif` or `nothing-to-read`; `409 import-busy`. |
 | `DELETE /api/radio/observations/imports/:id` | Takes an import back. |
 | `POST /api/radio/observations/compare` | The log against the engine (≤500 paths). |

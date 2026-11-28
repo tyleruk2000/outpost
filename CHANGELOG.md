@@ -376,7 +376,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - **Communication plans**: stations, hours and bands, each pair both ways, with primary
   and alternate bands chosen by a stated rule; PDF and Markdown.
 - **Contact log**: contacts typed or imported from ADIF 3.1.8 (large files as a job, all
-  or nothing), set beside the predictions as counts.
+  or nothing), set beside the predictions as counts. **Edit** puts an entry right in
+  place; one from a file still goes back with it.
 - **Compare with a second model (ITU P.533)**: optional, built on your computer from the
   ITU's source by **Build the P.533 engine**, with its 137 MB of maps downloaded on
   request; nothing of the ITU's ships with Outpost.

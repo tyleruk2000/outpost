@@ -250,6 +250,8 @@ export interface Unhurried {
 export interface ObservationsService {
   list(limit: number, offset: number): ObservationList;
   create(body: unknown): Observation;
+  /** An entry put right: the same fields as one typed in. It keeps where it came from, so one from a file still goes back with it. */
+  update(id: string, body: unknown): Observation;
   remove(id: string): void;
   /**
    * Reads a file into the log, all of it or none. Given `unhurried`, it looks up from the
@@ -687,6 +689,42 @@ export async function registerObservations(
     }
   }
 
+  /** The fields of an entry as typed in, checked, with the band worked out from the frequency where none was given. */
+  function typedRow(body: unknown) {
+    const input = observation.parse(body);
+    const band =
+      input.band.toLowerCase() || (input.frequencyMhz === null ? "" : (bandOf(input.frequencyMhz)?.id ?? adifBandOf(input.frequencyMhz)));
+    if (input.frequencyMhz === null && !band) throw badRequest("Give the frequency or the band.");
+    const fields = {
+      at: Date.parse(input.at),
+      frequencyMhz: input.frequencyMhz,
+      band,
+      mode: input.mode.toUpperCase(),
+      outcome: input.outcome,
+      txCall: input.tx.call.toUpperCase(),
+      txLat: input.tx.lat,
+      txLon: input.tx.lon,
+      txFrom: typedFrom(input.tx),
+      rxCall: input.rx.call.toUpperCase(),
+      rxLat: input.rx.lat,
+      rxLon: input.rx.lon,
+      rxFrom: typedFrom(input.rx),
+      powerWatts: input.powerWatts,
+      antenna: input.antenna,
+      reportSent: input.reportSent,
+      reportReceived: input.reportReceived,
+      notes: input.notes,
+    };
+    return { ...fields, sameAs: sameAs(fields) };
+  }
+  const duplicate = (same: { importId: string | null }, outcome: string) =>
+    conflict(
+      same.importId !== null && pending().includes(same.importId)
+        ? `The same entry is in the file being brought in at the moment: the same minute, stations, band and mode. ${outcome}`
+        : `That entry is already in the log: the same minute, stations, band and mode. ${outcome}`,
+      { reason: "duplicate" },
+    );
+
   const observations: ObservationsService = {
     list(limit, offset) {
       return {
@@ -711,52 +749,35 @@ export async function registerObservations(
       };
     },
     create(body) {
-      const input = observation.parse(body);
-      const at = Date.parse(input.at);
-      const band =
-        input.band.toLowerCase() || (input.frequencyMhz === null ? "" : (bandOf(input.frequencyMhz)?.id ?? adifBandOf(input.frequencyMhz)));
-      if (input.frequencyMhz === null && !band) throw badRequest("Give the frequency or the band.");
       const now = Date.now();
       const row: NewRow = {
+        ...typedRow(body),
         id: newId(),
-        at,
-        frequencyMhz: input.frequencyMhz,
-        band,
-        mode: input.mode.toUpperCase(),
-        outcome: input.outcome,
-        txCall: input.tx.call.toUpperCase(),
-        txLat: input.tx.lat,
-        txLon: input.tx.lon,
-        txFrom: typedFrom(input.tx),
-        rxCall: input.rx.call.toUpperCase(),
-        rxLat: input.rx.lat,
-        rxLon: input.rx.lon,
-        rxFrom: typedFrom(input.rx),
-        powerWatts: input.powerWatts,
-        antenna: input.antenna,
-        reportSent: input.reportSent,
-        reportReceived: input.reportReceived,
-        notes: input.notes,
         propMode: "",
         source: "manual",
         importId: null,
-        sameAs: "",
         createdAt: now,
         updatedAt: now,
       };
-      row.sameAs = sameAs(row);
-      const same = exists(row.sameAs);
-      if (same) {
-        throw conflict(
-          same.importId !== null && pending().includes(same.importId)
-            ? "The same entry is in the file being brought in at the moment: the same minute, stations, band and mode. Nothing was added."
-            : "That entry is already in the log: the same minute, stations, band and mode. Nothing was added.",
-          { reason: "duplicate" },
-        );
-      }
+      const same = exists(row.sameAs!);
+      if (same) throw duplicate(same, "Nothing was added.");
       db.insert(radioObservations).values(row).run();
       changed();
       return dto(db.select().from(radioObservations).where(eq(radioObservations.id, row.id!)).get()!);
+    },
+    update(id, body) {
+      const held = db.select().from(radioObservations).where(eq(radioObservations.id, id)).get();
+      if (!held) throw notFound("That entry of the log");
+      // Where it came from (typed in, or a file it goes back with) and how the log says it travelled are kept.
+      const fields = typedRow(body);
+      const same = exists(fields.sameAs);
+      if (same && same.id !== id) throw duplicate(same, "Nothing was changed.");
+      db.update(radioObservations)
+        .set({ ...fields, updatedAt: Date.now() })
+        .where(eq(radioObservations.id, id))
+        .run();
+      changed();
+      return dto(db.select().from(radioObservations).where(eq(radioObservations.id, id)).get()!);
     },
     remove(id) {
       const row = db.select({ id: radioObservations.id }).from(radioObservations).where(eq(radioObservations.id, id)).get();
@@ -871,6 +892,9 @@ export async function registerObservations(
     return { ...observations.list(limit, offset), adif: ADIF_READ };
   });
   app.post("/api/radio/observations", async (request) => ({ observation: observations.create(request.body) }));
+  app.put<IdParams>("/api/radio/observations/:id", async (request) => ({
+    observation: observations.update(request.params.id, request.body),
+  }));
   app.delete<IdParams>("/api/radio/observations/:id", async (request) => {
     observations.remove(request.params.id);
     return { ok: true };

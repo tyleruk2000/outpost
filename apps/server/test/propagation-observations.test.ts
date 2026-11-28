@@ -395,6 +395,65 @@ describe("an entry typed in", () => {
   });
 });
 
+describe("an entry put right", () => {
+  const typed = {
+    at: "2026-11-17T09:10:00Z",
+    frequencyMhz: 14.2,
+    band: "",
+    mode: "ssb",
+    outcome: "contact",
+    tx: { call: "g4aaa", lat: 51.5074, lon: -0.1278 },
+    rx: { call: "ea1xyz", lat: null, lon: null },
+    powerWatts: 50,
+    antenna: "",
+    reportSent: "59",
+    reportReceived: "57",
+    notes: "",
+  };
+
+  it("is changed in place, with its band worked out again, and keeps where it came from", async () => {
+    const made = (await app.api("POST", "/api/radio/observations", typed)).body.observation;
+    const changed = await app.api("PUT", `/api/radio/observations/${made.id}`, {
+      ...typed,
+      frequencyMhz: 7.15,
+      rx: { call: "ea1xyz", lat: 43.36, lon: -8.41, locator: "in53ui" },
+      notes: "The band was wrong.",
+    });
+    expect(changed.status).toBe(200);
+    expect(changed.body.observation).toMatchObject({
+      id: made.id,
+      band: "40m",
+      frequencyMhz: 7.15,
+      rx: { call: "EA1XYZ", from: "locator IN53UI" },
+      notes: "The band was wrong.",
+      source: "manual",
+      createdAt: made.createdAt,
+    });
+    const listed = (await list()).observations.filter((item) => item.id === made.id);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]!.band).toBe("40m");
+    // Changed back to the very same entry it was: not a duplicate of itself.
+    expect((await app.api("PUT", `/api/radio/observations/${made.id}`, typed)).status).toBe(200);
+    expect((await app.api("DELETE", `/api/radio/observations/${made.id}`)).status).toBe(200);
+  });
+
+  it("is refused when it would become another entry already in the log, or is not there, or is not valid", async () => {
+    const one = (await app.api("POST", "/api/radio/observations", typed)).body.observation;
+    const other = { ...typed, at: "2026-11-17T09:30:00Z" };
+    const two = (await app.api("POST", "/api/radio/observations", other)).body.observation;
+    const clash = await app.api("PUT", `/api/radio/observations/${two.id}`, typed);
+    expect(clash.status).toBe(409);
+    expect(clash.body.error.message).toContain("already in the log");
+    expect((await app.api("PUT", "/api/radio/observations/nope", typed)).status).toBe(404);
+    const bad = await app.api("PUT", `/api/radio/observations/${one.id}`, { ...typed, mode: "" });
+    expect(bad.status).toBe(400);
+    // Nothing was changed by the refusals.
+    const listed = (await list()).observations.find((item) => item.id === two.id)!;
+    expect(listed.at).toBe(Date.parse(other.at));
+    for (const id of [one.id, two.id]) expect((await app.api("DELETE", `/api/radio/observations/${id}`)).status).toBe(200);
+  });
+});
+
 describeWithVoacapData("comparing the log with predictions", () => {
   let result: ComparisonResult;
 
