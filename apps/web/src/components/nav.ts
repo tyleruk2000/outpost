@@ -238,7 +238,19 @@ export const upkeepNav: NavItem[] = [
         icon: Gauge,
         keywords: "health device temperature sd card wrong time server clock slow",
       },
-      { to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" },
+      {
+        to: "/help/search-and-answers",
+        label: "Search and chat set-up",
+        icon: LifeBuoy,
+        keywords: "set-up guide help models ollama install answers search by meaning",
+      },
+      // The Pi's steps in the deployment guide, from writing the card to things kept to the Pi itself.
+      {
+        to: "/help/deployment#h-on-a-raspberry-pi-step-by-step",
+        label: "Raspberry Pi set-up",
+        icon: HardDrive,
+        keywords: "set-up guide install raspberry pi nas backups on-this-pi.sh",
+      },
     ],
   },
   // The guides, made from docs/ (features/help/guides.ts); each guide is a page of its own, found by the quick search. "i" for information: "h" is Home's.

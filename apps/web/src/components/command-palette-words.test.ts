@@ -46,7 +46,7 @@ const lands: Array<[string, string | null]> = [
   ["24-hour clock", "Settings: Appearance"],
   ["certificate", "Settings: HTTPS"],
   ["version", "Settings: This installation"],
-  ["ollama", "Settings: Set-up guide"],
+  ["ollama", "Settings: Search and chat set-up"],
   ["share with phones", "Settings: Who can use it"],
   // Screens by their everyday words.
   ["water", "Tools: Water"],
@@ -134,8 +134,8 @@ const lands: Array<[string, string | null]> = [
   ["drinking water", "Maps: Layers"],
   // The Help section.
   // A guide by its own name comes first; Help, with every guide, is offered next (below).
-  ["guide", "Settings: Set-up guide"],
-  ["raspberry pi", "Help"],
+  ["guide", "Settings: Search and chat set-up"],
+  ["raspberry pi", "Settings: Raspberry Pi set-up"],
   ["docker", "Help"],
 ];
 
@@ -159,11 +159,20 @@ describe("the quick search's places, for the words people use", () => {
   });
 
   it("lists the Settings screen for “settings”, not each of its sections as well", () => {
-    expect(findPlaces("settings").map(placeName)).toEqual(["Settings", "Settings: Server status", "Settings: Set-up guide"]);
+    expect(findPlaces("settings").map(placeName)).toEqual([
+      "Settings",
+      "Settings: Server status",
+      "Settings: Search and chat set-up",
+      "Settings: Raspberry Pi set-up",
+    ]);
   });
 
   it("offers Help, where every guide is, for “guide”", () => {
-    expect(findPlaces("guide").map(placeName).slice(0, 2)).toEqual(["Settings: Set-up guide", "Help"]);
+    expect(findPlaces("guide").map(placeName).slice(0, 3)).toEqual([
+      "Settings: Search and chat set-up",
+      "Settings: Raspberry Pi set-up",
+      "Help",
+    ]);
   });
 
   it("opens a tab of Maps by its words, at an address the Maps screen reads", () => {

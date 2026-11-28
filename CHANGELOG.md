@@ -642,6 +642,16 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   memory limits are off on Raspberry Pi OS, and leaves Docker's networks out of the
   addresses it prints.
 - `nas-share.sh`, new, tried against a Synology NAS.
+- Follow-ups from that install: **Storage → Connect a share** in Docker leads with the
+  `nas-share.sh` line filled in from the form; the restore, passphrase, keeping-fewer and
+  erasing notices, and the clock's, say how to open Outpost as the Pi with
+  `on-this-pi.sh`; **Settings → Who can use this library** shows the address for phones
+  with a QR code made in the browser; Settings' **Set-up guide** is now **Search and chat
+  set-up**, beside a new **Raspberry Pi set-up**; a guide opened at a heading stays on it
+  while the page settles.
+- **The container keeps the Pi's time zone.** It had none, so it ran on UTC and the
+  nightly backup ran at 4:00 am in a British summer. `compose.yaml` passes `TZ` from
+  `.env` (UTC when it is not set) and `install.sh` sets it to the Pi's own zone.
 
 ### Changed
 

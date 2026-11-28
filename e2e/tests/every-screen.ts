@@ -60,7 +60,8 @@ export const AT_LEAST: Array<[string, string]> = [
   ["Kept on this device", "/kept"],
   ["Settings", "/settings"],
   ["Server status", "/settings/status"],
-  ["Set-up guide", "/help/search-and-answers"],
+  ["Search and chat set-up", "/help/search-and-answers"],
+  ["Raspberry Pi set-up", "/help/deployment#h-on-a-raspberry-pi-step-by-step"],
 ];
 
 /** The made-up name the "not secure" projects reach the test server by (playwright.config.ts). */

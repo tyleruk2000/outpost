@@ -86,9 +86,10 @@ tables of figures take more tokens, so can still be refused.
 ### In Docker, or with the model on another machine
 
 In Docker, `127.0.0.1` is the container. With Docker Desktop use
-`http://host.docker.internal:11434/v1` (tried by the first press). On Linux, add
-`extra_hosts: ["host.docker.internal=host-gateway"]` to the `outpost` service and make the
-model server listen where the container can reach it (`OLLAMA_HOST=0.0.0.0:11434`, or
+`http://host.docker.internal:11434/v1` (tried by the first press). On Linux the
+`compose.yaml` Outpost comes with already gives the container that name (in a Compose file
+of your own, add `extra_hosts: ["host.docker.internal:host-gateway"]` to the `outpost`
+service); make the model server listen where the container can reach it (`OLLAMA_HOST=0.0.0.0:11434`, or
 `--host 0.0.0.0`). See [setup-guide.md](setup-guide.md#when-outpost-runs-in-docker).
 
 A model on another machine works the same way: enter its address. A model server on your

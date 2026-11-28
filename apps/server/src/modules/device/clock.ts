@@ -83,6 +83,13 @@ export function defaultClockDeps(ctx: AppContext): ClockDeps {
   };
 }
 
+/**
+ * The helper is there only where deploy/pi/install.sh added it, on a Pi, where no browser counts as the Pi in
+ * Docker: the two ways to set it there without opening it to every device.
+ */
+const ON_THE_PI =
+  ' On the Raspberry Pi, open Outpost through ./deploy/pi/on-this-pi.sh (from a laptop, after ssh -L 8090:localhost:8090 to the Pi) and set it at http://localhost:8090, or type sudo date -s "2026-11-24 09:30" there with the time now.';
+
 /** How the clock could be set here, and whether this request may. */
 export function clockSetting(request: RequestOrigin, ctx: AppContext, deps: ClockDeps): ClockSetting {
   const how = fs.existsSync(path.join(deps.helperDir, "helper"))
@@ -98,7 +105,7 @@ export function clockSetting(request: RequestOrigin, ctx: AppContext, deps: Cloc
     allowed,
     reason: allowed
       ? null
-      : `Only the computer Outpost runs on may set its clock, because it changes the time for every device. To allow it from other devices, start Outpost with ${CLOCK_OPTION}=true (with Docker, put that line in the .env file and run docker compose up -d).`,
+      : `Only the computer Outpost runs on may set its clock, because it changes the time for every device.${how === "helper" ? ON_THE_PI : ""} To allow it from other devices, start Outpost with ${CLOCK_OPTION}=true (with Docker, put that line in the .env file and run docker compose up -d).`,
     option: CLOCK_OPTION,
   };
 }

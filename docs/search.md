@@ -380,8 +380,8 @@ With Ollama: `ollama pull nomic-embed-text`, then under **More options**:
 | Server address | `http://127.0.0.1:11434/v1` |
 | Model | `nomic-embed-text` |
 
-In Docker, use `http://host.docker.internal:11434/v1` (on Linux, with
-`extra_hosts: ["host.docker.internal:host-gateway"]`).
+In Docker, use `http://host.docker.internal:11434/v1` (on Linux, the `compose.yaml` Outpost
+comes with already has the `extra_hosts` line that gives the container that name).
 
 #### Demonstration vectors
 

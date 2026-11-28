@@ -7,11 +7,13 @@
  * no copy of it. It is only asked for where it may be sent: at the computer Outpost
  * runs on, or from another device over HTTPS.
  */
+
 import { BACKUP_PASSPHRASE_HEADER, BACKUP_PASSPHRASE_SHORT, type BackupProtection, type BackupStatus } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, KeyRound, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { OnThisPi } from "@/components/on-this-pi";
 import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -83,6 +85,7 @@ export function RestorePassphrase({
     return (
       <Notice tone="info" icon={<KeyRound aria-hidden />} title="This backup is protected">
         {whereToType(right)}
+        <OnThisPi />
       </Notice>
     );
   }
@@ -314,6 +317,7 @@ export function BackupProtectionRow({
           ) : null
         }
       />
+      {allowed ? null : <OnThisPi />}
       <PassphraseDialog
         open={asking}
         onOpenChange={setAsking}

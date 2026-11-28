@@ -351,6 +351,34 @@ function dockerAddress(host: string): { addr: string; urlHost: string; needsNumb
 const interfaceNumberSentence = (name: string) =>
   ` Docker needs the network interface as a number: replace ${INTERFACE_PLACEHOLDER} with the number that ip -o link show ${name} prints first.`;
 
+/** What deploy/pi/nas-share.sh writes to /etc/fstab and a credentials file, and so takes (its own checks, kept the same). */
+const SCRIPT_PLAIN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const SCRIPT_PLAIN_USER = /^[A-Za-z0-9][A-Za-z0-9._@-]*$/;
+
+/**
+ * On a Raspberry Pi set up with deploy/pi/install.sh (or another Debian-based Linux computer running Outpost
+ * from a checkout), deploy/pi/nas-share.sh does all of the steps by hand in one go, and mounts the share on the
+ * computer itself, so that it is there after a restart and the Pi starts when the NAS is off. The line is
+ * filled in from the form, a dry run first. Undefined where the script would refuse what was typed (an NFS
+ * export, a port it has no option for, a name with a space or another character it does not write to
+ * /etc/fstab), so that it is never offered a line it turns down.
+ */
+export function nasShareScriptStep(input: ShareInstructionInput): InstructionStep | undefined {
+  if (input.protocol !== "smb" || input.port != null) return undefined;
+  const share = input.share ?? "";
+  const user = input.userName ?? "";
+  if (!SCRIPT_PLAIN.test(input.host) || !SCRIPT_PLAIN.test(share) || !SCRIPT_PLAIN_USER.test(user)) return undefined;
+  const line = (dryRun: boolean) =>
+    `./deploy/pi/nas-share.sh ${dryRun ? "--dry-run " : ""}--server ${input.host} --share ${share} --user ${user}`;
+  return {
+    title: "On a Raspberry Pi: one command does it",
+    body: `In the outpost folder on the Pi, run the first line to see what it would do, then the second. It asks for the NAS password and keeps it where only root can read it, mounts the share at every start (the Pi still starts when the NAS is off), gives it to Outpost and restarts it. Then choose Add location on this screen and pick /storage/nas/${share}. Add --folder and the name of a folder in the share to give Outpost only that folder.`,
+    code: line(true),
+    codeLabel: "Terminal, a dry run",
+    more: { code: line(false), codeLabel: "Terminal" },
+  };
+}
+
 /**
  * The Compose changes that make Docker mount a share for Outpost. The shapes are the
  * ones in docs/storage.md ("A share mounted by Docker").

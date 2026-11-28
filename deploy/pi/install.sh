@@ -73,6 +73,9 @@
 #                     50 GB written to the disk where it works.
 #   --dry-run         Print the commands instead of running them.
 #
+# It also sets TZ in .env to this Pi's time zone, so that the times Outpost writes are the
+# Pi's and not UTC's.
+#
 # It never deletes anything, and it does not touch an existing .env except the lines
 # named above and COMPOSE_FILE (with --lan, the file as it was is kept beside it).
 set -euo pipefail
@@ -251,6 +254,25 @@ add_allowed_host() { # add_allowed_host NAME: adds one name to OUTPOST_ALLOWED_H
   case ",${current}," in *",${name},"*) return ;; esac
   set_env OUTPOST_ALLOWED_HOSTS "${current:+${current},}${name}"
 }
+
+# The Pi's time zone, for the container: without it Outpost runs on UTC there, and the
+# times it writes (a backup's name, a log, when the nightly backup runs) are an hour out
+# in a British summer. Compose passes TZ from .env (compose.yaml). Run again after
+# changing the Pi's zone (sudo raspi-config, Localisation Options), and Outpost follows.
+pi_time_zone() {
+  local zone=""
+  command -v timedatectl >/dev/null 2>&1 && zone="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
+  [ -n "$zone" ] || zone="$(cat /etc/timezone 2>/dev/null || true)"
+  [ -n "$zone" ] || zone="$(readlink /etc/localtime 2>/dev/null | sed -n 's|.*/zoneinfo/||p' || true)"
+  [[ "$zone" =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$ ]] && printf '%s' "$zone"
+}
+zone="$(pi_time_zone || true)"
+if [ -n "$zone" ]; then
+  say "Outpost will keep this Pi's time zone, $zone."
+  set_env TZ "$zone"
+else
+  say "This Pi's time zone could not be read, so Outpost keeps to UTC. Set TZ in .env (for example TZ=Europe/London) to change it."
+fi
 
 $CLOCK_FROM_NETWORK && set_env OUTPOST_ALLOW_REMOTE_CLOCK true
 $METRICS && set_env OUTPOST_METRICS true

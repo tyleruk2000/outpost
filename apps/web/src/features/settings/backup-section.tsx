@@ -4,6 +4,7 @@ import { Download, MonitorSmartphone, RotateCcw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
+import { OnThisPi } from "@/components/on-this-pi";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -207,6 +208,7 @@ export function BackupSection() {
               Outpost has no accounts, so it cannot tell who is asking. Restoring a backup, deleting a stored one and keeping fewer of them
               can only be done at the computer Outpost runs on. Open Outpost there to do it.
             </p>
+            <OnThisPi />
             <p className="mt-1 text-ink-muted">
               Whoever starts Outpost can allow it from every device by starting it with{" "}
               <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{right.option}=true</span>.
@@ -231,11 +233,17 @@ export function BackupSection() {
               </span>
             }
           >
-            {!status.data.supervised
-              ? "The backup has been checked. Stop Outpost and start it again to switch to it."
-              : mayRestore
-                ? "The backup has been checked. Restart Outpost to switch to it."
-                : "The backup has been checked. Restarting stops Outpost for everyone using it, so it can only be done at the computer Outpost runs on. Open Outpost there and restart it to switch to the backup."}
+            {!status.data.supervised ? (
+              "The backup has been checked. Stop Outpost and start it again to switch to it."
+            ) : mayRestore ? (
+              "The backup has been checked. Restart Outpost to switch to it."
+            ) : (
+              <>
+                The backup has been checked. Restarting stops Outpost for everyone using it, so it can only be done at the computer Outpost
+                runs on. Open Outpost there and restart it to switch to the backup.
+                <OnThisPi />
+              </>
+            )}
           </Notice>
         ) : null}
         {status.data && status.data.previousData.length > 0 ? (

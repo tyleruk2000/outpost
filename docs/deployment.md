@@ -84,7 +84,13 @@ It asks for your password where it needs `sudo`. In order, it:
    so leave it running however long it is quiet,
 4. adds two small services: one that lets Outpost set the Pi's clock, and one that
    installs updates from the app (skipped, saying so, while releases are not signed),
-5. fetches the HF propagation planner's data (559 kB).
+5. fetches the HF propagation planner's data (559 kB),
+6. gives Outpost the Pi's time zone (`TZ` in `.env`, read from `timedatectl`), so that the
+   nightly backup runs at 3:00 am Pi time and backups and logs carry the Pi's times. A
+   container has no zone of its own: without `TZ` it keeps to UTC, an hour out in a
+   British summer. Changed the Pi's zone later (`sudo raspi-config`, Localisation
+   Options)? Run the installer again, or change `TZ` in `.env` and run
+   `docker compose up -d`.
 
 It ends with `Outpost is running.` and the addresses to open, such as
 `On your network: http://192.168.1.30:8080`. A warning that memory limits are off is
@@ -701,8 +707,9 @@ launchers are in [development/storage-and-https.md](development/storage-and-http
 | `OUTPOST_BIND` | `127.0.0.1` | Host address the port is published on; `0.0.0.0` shares it. |
 | `OUTPOST_IMAGE` | `outpost:local` | The image Compose builds and runs. |
 | `OUTPOST_MEMORY_LIMIT`, `KIWIX_MEMORY_LIMIT` | `1g`, `512m` | Memory ceilings. |
+| `TZ` | `Etc/UTC` | The time zone Outpost keeps to, such as `Europe/London`: when scheduled backups run, and the times in backups' names and logs. `deploy/pi/install.sh` sets it to the Pi's. |
 
-From `.env`, `compose.yaml` passes the server only the `OUTPOST_ALLOW_…` switches,
+From `.env`, `compose.yaml` passes the server only `TZ`, the `OUTPOST_ALLOW_…` switches,
 `OUTPOST_LAN_ACCESS`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_HTTPS_PORT`,
 `OUTPOST_MAX_UPLOAD_MB`, `OUTPOST_DOWNLOAD_HOSTS`, `OUTPOST_FORGET_PIN` and
 `OUTPOST_METRICS`; add any other to the `outpost` service's `environment:` block.
