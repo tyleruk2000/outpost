@@ -584,6 +584,20 @@ describe("with the streets service", () => {
       mode: "walk",
     });
     expect((await app.api("DELETE", `/api/roads/routes/${saved.id}`)).status).toBe(200);
+    // A ride and a door-to-door drive save alike, each as planned and with its way of travelling.
+    const ride = (await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, BOX_HILL], mode: "cycle" }))
+      .body as StreetsRouteResult;
+    const savedRide = await app.api("POST", "/api/roads/routes", { name: "Box Hill ride", route: ride });
+    expect(savedRide.status).toBe(200);
+    expect(savedRide.body).toMatchObject({ mode: "cycle", fromTo: "Leatherhead to Box Hill" });
+    await installGreatBritainRoads(app);
+    const door = (await app.api("POST", "/api/streets/route", { points: [FETCHAM, DOVER], mode: "drive-door" })).body as StreetsRouteResult;
+    expect(door.spine).toBe("main-roads");
+    const savedDoor = (await app.api("POST", "/api/roads/routes", { name: "To Dover", route: door })).body as SavedRoadRouteDto;
+    expect(savedDoor).toMatchObject({ mode: "drive-door", distanceM: door.summary.distanceM });
+    expect((await app.api("GET", `/api/roads/routes/${savedDoor.id}`)).body.route).toEqual(door);
+    for (const id of [(savedRide.body as SavedRoadRouteDto).id, savedDoor.id])
+      expect((await app.api("DELETE", `/api/roads/routes/${id}`)).status).toBe(200);
     // Something not a route at all is refused.
     const odd = await app.api("POST", "/api/roads/routes", { name: "x", route: { mode: "walk" } });
     expect(odd.status).toBe(400);
