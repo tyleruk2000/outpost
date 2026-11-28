@@ -164,4 +164,6 @@ period has ended are not shown. It never says what to do.
 - **The grab list**: the plan's supplies with amounts and a box to tick.
 
 Each offers **Save as PDF**, **Add to library** (which asks first: the cards hold names,
-numbers and where you will be) and **Share**. Print at actual size.
+numbers and where you will be) and **Share**. Print at actual size. With more than one
+household, each card, sheet and list names the household it is for ("For Caravan"), and so
+does the file's name.

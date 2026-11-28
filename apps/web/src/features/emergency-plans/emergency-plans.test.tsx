@@ -22,7 +22,7 @@ import { textWidth } from "@/features/maps/print/helvetica";
 import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { fridgeSheets, grabSheets, walletSheets } from "./cards";
-import CardsPage from "./cards-page";
+import CardsPage, { cardTitle } from "./cards-page";
 import { RowTools } from "./list-edit";
 import { householdPeopleToOffer } from "./people-section";
 import PlanPage from "./plan-page";
@@ -518,6 +518,12 @@ describe("a plan", () => {
 });
 
 describe("the cards to print", () => {
+  it("names the household in the file's title when there are several", () => {
+    const at = new Date(2026, 10, 16).getTime();
+    expect(cardTitle("fridge", { name: "Power cut", updatedAt: at }, "Caravan")).toMatch(/^Fridge sheet, Power cut, Caravan, /);
+    expect(cardTitle("fridge", { name: "Power cut", updatedAt: at })).toMatch(/^Fridge sheet, Power cut, 16/);
+  });
+
   it("with nobody in the plan, links to where the people are added", async () => {
     const empty = answer();
     empty.plan.body.people = [];
