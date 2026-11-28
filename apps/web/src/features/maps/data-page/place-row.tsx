@@ -193,7 +193,7 @@ function RepairSourceFile({ collectionId, hosts }: { collectionId: string; hosts
       <Button size="sm" className={touchSize} disabled={repair.isPending || repair.isSuccess} onClick={() => repair.mutate(collectionId)}>
         Repair the damaged part
       </Button>
-      <span className="text-small text-ink-muted">
+      <span className={cn("text-small", repair.isError ? "text-danger" : "text-ink-muted")}>
         {repair.isSuccess
           ? "Repairing: follow it in Downloads and tasks."
           : repair.isError

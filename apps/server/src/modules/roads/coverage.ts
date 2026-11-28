@@ -110,7 +110,9 @@ export function coverageOf(
   const reachingNi = networks.filter((n) => n.available && n.northernIreland);
   const countries: RoadCoverageCountry[] = countriesInOrder(samples).map((code) => {
     const ownKept = networks.filter((n) => n.country === code && n.available);
-    const kept = code === "GB" ? [...new Set([...ownKept, ...reachingNi])] : ownKept;
+    // Another country's roads that reach Northern Ireland (Ireland's) count for the United Kingdom only where the route is there.
+    const inUlster = code === "GB" && samples.some((s) => s.segment === -1 && s.country === code && inNorthernIreland(s.lat, s.lon));
+    const kept = inUlster ? [...new Set([...ownKept, ...reachingNi])] : ownKept;
     const onItsWay = building.find((b) => b.country === code && b.phase !== "failed") ?? null;
     const failed = building.find((b) => b.country === code && b.phase === "failed") ?? null;
     const dates = kept.map((n) => n.dataDate).filter((d): d is string => Boolean(d));

@@ -303,6 +303,27 @@ describe("Add a place", () => {
     expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual(["POST /api/roads/networks"]);
   });
 
+  it("starts the own-file form at a storage location that is connected", async () => {
+    const user = userEvent.setup();
+    serve(mapData(), {
+      "POST /api/roads/networks": { downloadId: null, jobId: "j1" },
+      "GET /api/storage/locations": {
+        roots: ["/srv"],
+        locations: [
+          location({ status: "missing" }),
+          location({ id: "nas", name: "NAS", kind: "network", isDefault: false, freeBytes: 1_030_000_000_000 }),
+        ],
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click((await screen.findAllByRole("button", { name: /Add a place/ }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await user.click(within(dialog).getByRole("button", { name: /Routes from your own file/ }));
+    await user.type(await within(dialog).findByLabelText(/Path in that location/), "kent.osm.pbf");
+    await user.click(within(dialog).getByRole("button", { name: "Build routes" }));
+    await waitFor(() => expect(posted("/api/roads/networks")).toMatchObject([{ locationId: "nas" }]));
+  });
+
   it("arrives with several countries from a route, Routes ticked, reads the list of regions on Check size, and adds each", async () => {
     const user = userEvent.setup();
     const server = serve(mapData());
@@ -719,6 +740,24 @@ describe("removing and updating by place", () => {
     await user.click(screen.getByRole("button", { name: "Repair the damaged part" }));
     await waitFor(() => expect(posted("/api/maps/data/repair")).toEqual([{ collectionId: "x" }]));
     expect(await screen.findByText("Repairing: follow it in Downloads and tasks.")).toBeInTheDocument();
+  });
+
+  it("says in the danger colour when a repair could not be started", async () => {
+    const user = userEvent.setup();
+    serve(
+      mapData({
+        countries: [
+          country("MC", "Monaco", {
+            extract: [item({ key: "x", kind: "extract", title: "Monaco: source file", collectionId: "x", state: "damaged" })],
+          }),
+        ],
+      }),
+      { "POST /api/maps/data/repair": { status: 400, error: { code: "bad_request", message: "Check it under Storage first." } } },
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click(await screen.findByRole("button", { name: /^Monaco/ }));
+    await user.click(await screen.findByRole("button", { name: "Repair the damaged part" }));
+    expect(await screen.findByText("Check it under Storage first.")).toHaveClass("text-danger");
   });
 
   it("lists updates by place, each said with what is old, and never a set made once", async () => {

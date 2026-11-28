@@ -98,6 +98,11 @@ describe("the United Kingdom's roads, when they are Great Britain's", () => {
     expect(london.countries.map((c) => [c.code, c.name, c.state])).toEqual([["GB", "Great Britain", "ready"]]);
     const belfast = coverageOf([LONDON, BELFAST], [greatBritain], [], () => "united-kingdom");
     expect(belfast.countries.map((c) => [c.code, c.name, c.state, c.parts])).toEqual([["GB", "United Kingdom", "part", ["Great Britain"]]]);
+    // Only Ireland's roads, which reach Northern Ireland: a route in London alone has none of the United Kingdom's.
+    expect(coverageOf([LONDON], [ireland], [], () => "united-kingdom").countries).toMatchObject([{ code: "GB", state: "missing" }]);
+    expect(coverageOf([BELFAST], [ireland], [], () => "united-kingdom").countries.find((c) => c.code === "GB")).toMatchObject({
+      state: "ready",
+    });
     // Northern Ireland's roads from Ireland's network: Belfast is covered, and the country is the United Kingdom again.
     const both = coverageOf([LONDON, BELFAST], [greatBritain, ireland], [], () => "united-kingdom");
     expect(both.countries.find((c) => c.code === "GB")).toMatchObject({ name: "United Kingdom", state: "ready" });

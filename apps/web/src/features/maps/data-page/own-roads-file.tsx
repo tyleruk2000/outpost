@@ -44,7 +44,9 @@ export function OwnRoadsFile({ heading, onBack, onDone }: { heading: ReactNode; 
   const install = useInstallRoadNetwork();
   const locations = storage.data?.locations ?? [];
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
-  const chosen = locationId ?? locations.find((location) => location.isDefault)?.id ?? locations[0]?.id;
+  // Where the file can be read now: the default location if it is connected, else the first that is.
+  const connected = locations.filter((location) => location.status === "available");
+  const chosen = locationId ?? connected.find((location) => location.isDefault)?.id ?? connected[0]?.id;
   const [relPath, setRelPath] = useState("");
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
