@@ -301,7 +301,7 @@ interface FontkitFont {
   lineGap: number;
   hhea: { ascent: number };
   "OS/2": { typoAscender: number; typoDescender: number };
-  layout(text: string): { advanceWidth: number };
+  layout(text: string): { advanceWidth: number; glyphs: Array<{ bbox: { minY: number } }>; positions: Array<{ yOffset: number }> };
 }
 
 describe("right-to-left names", () => {
@@ -489,9 +489,7 @@ describe("right-to-left names", () => {
     const lowest = (file: string) => {
       const font = createFont(
         Uint8Array.from(atob(withBookLine(fs.readFileSync(path.join(fonts, file)).toString("base64"))), (c) => c.charCodeAt(0)),
-      ) as unknown as FontkitFont & {
-        layout(text: string): { glyphs: Array<{ bbox: { minY: number } }>; positions: Array<{ yOffset: number }> };
-      };
+      ) as unknown as FontkitFont;
       const laid = font.layout(low);
       return Math.min(...laid.glyphs.map((glyph, index) => glyph.bbox.minY + laid.positions[index]!.yOffset)) / font.unitsPerEm;
     };
