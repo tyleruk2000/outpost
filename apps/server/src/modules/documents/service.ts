@@ -27,7 +27,7 @@ import type {
 import { and, asc, desc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, messageOf, notFound } from "../../core/errors.ts";
-import { resolveInside, safeFileName } from "../../core/fs-safe.ts";
+import { READ_NO_FOLLOW, resolveInside, safeFileName } from "../../core/fs-safe.ts";
 import { sha256File } from "../../core/hashing.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, PermanentJobError } from "../../core/jobs.ts";
@@ -52,15 +52,24 @@ import {
   changedWhileRead,
   describeWriteError,
   discardPart,
+  type FileIdentity,
   INCOMING_DIR,
+  identityOf,
   isSameFile,
+  leftWhereMoved,
   moveFile,
   moveOriginal,
   newPartPath,
+  putBack,
   readHead,
   type StagedFile,
   tooLarge,
 } from "./staging.ts";
+
+/** Said with a document added from a file that was to be moved, when the original was left where it was. */
+const ORIGINAL_LEFT =
+  "The original was left where it was, because it changed after it was copied: the library holds the version that was read, and the newer one is still at its old place.";
+
 import { isEpubArchive } from "./zip.ts";
 
 export type DocumentRow = typeof documents.$inferSelect;
@@ -117,6 +126,8 @@ export interface IngestOutcome {
   status: "created" | "duplicate";
   /** The new document, or the one already holding the same bytes. */
   document: DocumentDto;
+  /** Anything the person should be told about their original, in words. */
+  note?: string;
 }
 
 export interface DocumentListQuery {
@@ -481,11 +492,15 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       if (!staged.keepAt) await fs.promises.mkdir(folder, { recursive: true });
       let moved = false;
       let recorded = false;
+      let note: string | undefined;
+      const whereNow = `"${location.name}" (${relPath})`;
       try {
         if (!staged.keepAt) {
           // A person's own file is checked after the rename: a link swapped in at the last moment goes back.
-          if (staged.identity) await moveOriginal(staged.partPath, finalPath, staged.identity, staged.originalName);
-          else await moveFile(staged.partPath, finalPath);
+          if (staged.identity) {
+            const { leftAtSource } = await moveOriginal(staged.partPath, finalPath, staged.identity, staged.originalName, whereNow);
+            if (leftAtSource) note = ORIGINAL_LEFT;
+          } else await moveFile(staged.partPath, finalPath);
           moved = true;
         }
         sqlite.transaction(() => {
@@ -523,11 +538,19 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
             for (const tagId of tagIds) pruneTag.run({ id: tagId });
           })();
         }
-        // Put a moved-in original back before removing the folder made for it.
-        if (moved && !staged.owned) await moveFile(finalPath, staged.partPath).catch(() => undefined);
-        // A file recorded where it lies has no folder of its own to clear away.
-        if (!staged.keepAt) await fs.promises.rm(folder, { recursive: true, force: true }).catch(() => undefined);
-        throw error;
+        let failure = error;
+        if (!staged.keepAt) {
+          if (staged.owned) {
+            // Outpost's own part file, moved or half copied: it is Outpost's to remove.
+            await fs.promises.rm(finalPath, { force: true }).catch(() => undefined);
+          } else if (moved && !(await putBack(finalPath, staged.partPath))) {
+            // A moved-in original goes back to its own name, never over what is there now; if it cannot, it stays and the person is told where.
+            failure = leftWhereMoved(staged.originalName, whereNow);
+          }
+          // The folder made for the document goes only if nothing is left in it: it may hold a person's file.
+          await fs.promises.rmdir(folder).catch(() => undefined);
+        }
+        throw failure;
       }
 
       const row = requireRow(id);
@@ -535,7 +558,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       index(row, []);
       enqueueExtraction(row);
       changed(id);
-      return { status: "created", document: toDto(row) };
+      return { status: "created", document: toDto(row), ...(note ? { note } : {}) };
     } catch (error) {
       await discard();
       throw describeWriteError(error, location.name);
@@ -549,18 +572,22 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     const source = path.resolve(input.sourcePath);
     // Opened once, never through a link, and everything below is read through this handle: a file
     // swapped for another (or for a link) part of the way through cannot be checked as one and kept as another.
-    const handle = await fs.promises.open(source, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0)).catch((error: unknown) => {
-      if ((error as NodeJS.ErrnoException).code === "ELOOP")
+    // O_NONBLOCK: a pipe put in its place cannot hold up every other file waiting to be added.
+    const handle = await fs.promises.open(source, READ_NO_FOLLOW).catch((error: unknown) => {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ELOOP" || code === "EMLINK")
         throw badRequest(`"${originalName}" is a link to somewhere else, so it was not added to the library.`);
       throw badRequest(`"${originalName}" could not be found, so it was not added to the library.`);
     });
     let stat: fs.Stats;
+    let identity: FileIdentity;
     let head: Buffer;
     let sha256: string;
     let partPath: string | null = null;
     let sameDrive = false;
     try {
       stat = await handle.stat();
+      identity = identityOf(await handle.stat({ bigint: true }));
       if (!stat.isFile()) throw badRequest(`"${originalName}" could not be found, so it was not added to the library.`);
       if (stat.size > ctx.config.maxUploadBytes) throw tooLarge(originalName, ctx.config.maxUploadBytes);
 
@@ -584,7 +611,12 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
           partPath = await newPartPath(location.path);
           try {
             await pipeline(handle.createReadStream({ start: 0, autoClose: false }), fs.createWriteStream(partPath));
-            if ((await fs.promises.stat(partPath)).size !== stat.size) {
+            const after = await handle.stat({ bigint: true });
+            if (
+              (await fs.promises.stat(partPath)).size !== stat.size ||
+              after.size !== identity.size ||
+              after.mtimeNs !== identity.mtimeNs
+            ) {
               throw new AppError(
                 "conflict",
                 `"${originalName}" changed while it was being copied. Try again once it is no longer being written.`,
@@ -603,12 +635,15 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     const facts = { locationId: location.id, originalName, format, sha256, sizeBytes: stat.size, head };
     if (partPath) {
       const outcome = await oneAtATime(() => commit({ ...facts, partPath: partPath!, owned: true }, input));
-      if (input.move && outcome.status === "created") await fs.promises.rm(source, { force: true });
+      if (!input.move || outcome.status !== "created") return outcome;
+      // The original goes only while its name is still the file that was copied, unchanged: a newer version saved
+      // over it during the copy is kept, and the person is told.
+      if (!(await isSameFile(source, identity))) return { ...outcome, note: ORIGINAL_LEFT };
+      await fs.promises.unlink(source).catch(() => undefined);
       return outcome;
     }
     // Kept where it is, or moved by a rename: by its name, so the name must still be the file read.
     // Checked here and again once moved in or recorded, which is the check that cannot be raced.
-    const identity = { ino: stat.ino, dev: stat.dev };
     if (!(await isSameFile(source, identity))) throw changedWhileRead(originalName);
     if (input.inPlace) {
       const keepAt = path

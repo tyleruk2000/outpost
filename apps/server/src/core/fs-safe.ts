@@ -73,6 +73,51 @@ export function safeFileName(name: string, fallback = "file"): string {
   return cleaned;
 }
 
+/**
+ * Flags for reading a file a person keeps: never through a link at its own name (O_NOFOLLOW),
+ * and never waiting on a pipe put in its place (O_NONBLOCK, which changes nothing for a file).
+ */
+export const READ_NO_FOLLOW = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0);
+
+export const replacedByLink = () => new AppError("conflict", "This file has been replaced by a link, so Outpost will not open it.");
+const replacedByNonFile = () =>
+  new AppError("conflict", "This file has been replaced by something that is not a file, so Outpost will not open it.");
+
+/**
+ * Opens a file that a document, kept where a person put it, is recorded at: by its own name,
+ * not through a link, and only if it is a regular file. Everything is then read through the
+ * handle, so what was checked is what is read. A missing file throws its own error (ENOENT).
+ */
+export async function openRegularFile(file: string): Promise<{ handle: fs.promises.FileHandle; stat: fs.Stats }> {
+  let handle: fs.promises.FileHandle;
+  try {
+    handle = await fs.promises.open(file, READ_NO_FOLLOW);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    // ELOOP on Linux and macOS, EMLINK on FreeBSD.
+    if (code === "ELOOP" || code === "EMLINK") throw replacedByLink();
+    throw error;
+  }
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile()) throw replacedByNonFile();
+    return { handle, stat };
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
+}
+
+/** The whole of a file, read as `openRegularFile` reads it. */
+export async function readRegularFile(file: string): Promise<Buffer> {
+  const { handle } = await openRegularFile(file);
+  try {
+    return await handle.readFile();
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function pathExists(target: string): Promise<boolean> {
   try {
     await fs.promises.access(target);

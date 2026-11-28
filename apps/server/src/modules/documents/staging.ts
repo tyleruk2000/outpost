@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { AppError } from "../../core/errors.ts";
+import { READ_NO_FOLLOW } from "../../core/fs-safe.ts";
 import { assertContentMatches, type FileFormat, formatForName, SNIFF_BYTES } from "./file-types.ts";
 
 export const INCOMING_DIR = "documents/.incoming";
@@ -164,51 +165,108 @@ export async function moveFile(from: string, to: string): Promise<void> {
   }
 }
 
-/** Which file a name was found to be when it was read: what it must still be when it is kept. */
+/**
+ * Which file a name was found to be when it was read, and as what: what it must still be when
+ * it is kept, moved or removed. Device and inode say which file; size and modification time,
+ * to the nanosecond, say it was not written to since.
+ */
 export interface FileIdentity {
-  ino: number;
-  dev: number;
+  dev: bigint;
+  ino: bigint;
+  size: bigint;
+  mtimeNs: bigint;
 }
 
-/** True when `file` is, by its own name and without following a link, the regular file `expected`. */
+export const identityOf = (stat: fs.BigIntStats): FileIdentity => ({
+  dev: stat.dev,
+  ino: stat.ino,
+  size: stat.size,
+  mtimeNs: stat.mtimeNs,
+});
+
+const sameIdentity = (stat: fs.BigIntStats, expected: FileIdentity) =>
+  stat.isFile() &&
+  stat.dev === expected.dev &&
+  stat.ino === expected.ino &&
+  stat.size === expected.size &&
+  stat.mtimeNs === expected.mtimeNs;
+
+/** True when `file` is, by its own name and without following a link, the regular file `expected`, unchanged. */
 export async function isSameFile(file: string, expected: FileIdentity): Promise<boolean> {
-  const now = await fs.promises.lstat(file).catch(() => undefined);
-  return Boolean(now?.isFile() && now.ino === expected.ino && now.dev === expected.dev);
+  const now = await fs.promises.lstat(file, { bigint: true }).catch(() => undefined);
+  return Boolean(now && sameIdentity(now, expected));
 }
 
 export const changedWhileRead = (name: string) =>
   new AppError("conflict", `"${name}" changed while it was being read. Try again once it is no longer being written.`);
 
+/** Said when what was moved in could not be put back without replacing something: where it is now. */
+export const leftWhereMoved = (name: string, whereNow: string) =>
+  new AppError(
+    "conflict",
+    `"${name}" changed while it was being added, and what was moved could not be put back without replacing what is at its old name now, so it was left at ${whereNow}. Nothing was added to the library.`,
+  );
+
+/**
+ * Puts what was moved to `to` back at `from`, only if nothing is at `from` now: a hard link
+ * never replaces a name that is taken, where a rename would. False when it could not be put
+ * back (the name is taken, or the drive has no hard links); it is then still at `to`.
+ */
+export async function putBack(to: string, from: string): Promise<boolean> {
+  try {
+    await fs.promises.link(to, from);
+  } catch {
+    return false;
+  }
+  // Back at its own name; the second name inside Outpost's folder goes. Should that fail, both names are the same file.
+  await fs.promises.unlink(to).catch(() => undefined);
+  return true;
+}
+
 /**
  * Moves a person's own file in by name, then makes sure what was moved is the file that was
- * read. Node has no rename that refuses a link, so a link swapped in for the file in the instant
- * before the rename would otherwise be moved in and kept: it is checked after the rename and, if
- * it is not the file, put back exactly where it was. Across drives the copy is read through a
- * handle opened without following links, and the original's name is removed only while it is
- * still that file.
+ * read. Node has no rename that refuses a link, so a link (or another file) swapped in in the
+ * instant before the rename would otherwise be moved in and kept: it is checked after the
+ * rename and put back where it was, without ever replacing what is there now; if it cannot be,
+ * it is left where it was moved to and the error says where (`whereNow`).
+ *
+ * Across drives the copy is read through a handle opened without following links, and must
+ * be unchanged from start to end; the original's name is then removed only while it is still
+ * that file, unchanged. If it is not, it is left where it is (`leftAtSource`), and the copy,
+ * which is of the file that was read, is kept.
  */
-export async function moveOriginal(from: string, to: string, expected: FileIdentity, name: string): Promise<void> {
+export async function moveOriginal(
+  from: string,
+  to: string,
+  expected: FileIdentity,
+  name: string,
+  whereNow: string,
+): Promise<{ leftAtSource: boolean }> {
   try {
     await fs.promises.rename(from, to);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
-    const handle = await fs.promises.open(from, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0)).catch(() => {
+    const handle = await fs.promises.open(from, READ_NO_FOLLOW).catch(() => {
       throw changedWhileRead(name);
     });
     try {
-      const stat = await handle.stat();
-      if (!stat.isFile() || stat.ino !== expected.ino || stat.dev !== expected.dev) throw changedWhileRead(name);
+      if (!sameIdentity(await handle.stat({ bigint: true }), expected)) throw changedWhileRead(name);
       await pipeline(handle.createReadStream({ start: 0, autoClose: false }), fs.createWriteStream(to, { flags: "wx" }));
+      // Written to while it was copied: the copy may be half of each.
+      if (!sameIdentity(await handle.stat({ bigint: true }), expected)) throw changedWhileRead(name);
+      if (BigInt((await fs.promises.stat(to)).size) !== expected.size) throw changedWhileRead(name);
     } catch (copyError) {
-      await fs.promises.rm(to, { force: true }).catch(() => undefined);
+      // Only Outpost's own copy, made with "wx" so that it can be nothing else, is removed.
+      if ((copyError as NodeJS.ErrnoException).code !== "EEXIST") await fs.promises.rm(to, { force: true }).catch(() => undefined);
       throw copyError;
     } finally {
       await handle.close();
     }
-    if (await isSameFile(from, expected)) await fs.promises.rm(from, { force: true });
-    return;
+    if (!(await isSameFile(from, expected))) return { leftAtSource: true };
+    await fs.promises.unlink(from);
+    return { leftAtSource: false };
   }
-  if (await isSameFile(to, expected)) return;
-  await fs.promises.rename(to, from).catch(() => undefined);
-  throw changedWhileRead(name);
+  if (await isSameFile(to, expected)) return { leftAtSource: false };
+  if (await putBack(to, from)) throw changedWhileRead(name);
+  throw leftWhereMoved(name, whereNow);
 }
