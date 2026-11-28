@@ -649,6 +649,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   with a QR code made in the browser; Settings' **Set-up guide** is now **Search and chat
   set-up**, beside a new **Raspberry Pi set-up**; a guide opened at a heading stays on it
   while the page settles.
+- **Tasks say what they count**: looking through an import counts files then pages,
+  reading and bringing in a Calibre library books, and a map layer read from a file its
+  bytes or the population grid's tiles, so a task reads "3 of 12 files", not a bare
+  number. The downloads plan lists the tasks alongside, each with when it should finish.
 - **The container keeps the Pi's time zone.** It had none, so it ran on UTC and the
   nightly backup ran at 4:00 am in a British summer. `compose.yaml` passes `TZ` from
   `.env` (UTC when it is not set) and `install.sh` sets it to the Pi's own zone.

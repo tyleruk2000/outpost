@@ -18,7 +18,10 @@ choice is in the address (`/downloads?show=tasks`), so a bookmark keeps it.
 The plan at the top says how much is left, how fast it is coming and when each download
 should finish. Beside it, **Speed limit** caps the connection Outpost uses (as fast as it
 allows, a preset, or **Other…** to type one), **At once** sets how many transfers run
-together (one to eight), and **Pause all** and **Resume all** act on every download. **In progress** has each download with its bar, speed and time left;
+together (one to eight), and **Pause all** and **Resume all** act on every download.
+Under the schedule, **Tasks alongside** has the tasks under way while it downloads, each
+with when it should finish from its own progress, or why it has no time yet (it has only
+just started, or does not say how much there is). **In progress** has each download with its bar, speed and time left;
 **Needs attention** holds those that stopped and will not continue by themselves, with
 the reason and **Retry**; **History** lists what finished.
 
@@ -30,7 +33,7 @@ time, every change of state, its checksum and where it was put. See
 
 The list has every task under way and the 50 that ended last. **Running**, **Waiting**,
 **Finished** and **Failed** narrow it; each says how many there are. A running task has a
-bar, how far it has got in what it counts (passages, pages, files, ways, bytes), how many
+bar, how far it has got in what it counts (passages, pages, files, books, tiles, ways, bytes), how many
 it does a minute and, when it knows how much there is, about how long it has left.
 
 Some tasks can be paused: building search by meaning, reading scanned pages and adding a
