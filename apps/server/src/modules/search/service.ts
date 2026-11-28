@@ -19,7 +19,7 @@ import { chunks, searchEntities } from "../../db/schema.ts";
 import { type AlsoIn, type CardSource, cardQuery, collapseSameTitles, firstCard, type SearchCard, waterCard } from "./cards.ts";
 import { type ChunkOptions, chunkSections, type Section } from "./chunker.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
-import { adjusted, adjustFor, type Intent, intentOf, plainIntent } from "./intent.ts";
+import { adjusted, adjustFor, type Intent, intentOf, plainIntent, saysWhatItIs } from "./intent.ts";
 import {
   countTerms,
   FEW,
@@ -325,7 +325,7 @@ export const referenceBudgets = {
 };
 
 /**
- * What a reference article whose title is the answer ("Burn" for "treat a burn": every
+ * What a reference article whose title is the answer ("Bowline" for "how to tie a bowline": every
  * word of the title is a word of the question, and it holds every word a title would)
  * gains on top of its score. kiwix-serve's title search finds these; its full text often
  * ranks them below long pages that mention the words many times.
@@ -1044,7 +1044,8 @@ export function createSearchService(ctx: AppContext): SearchService {
         const parts = scoreFields(terms, fields);
         if (parts.found === 0 || parts.coverage < RELAXED_COVERAGE) return [];
         if (parts.found === parts.of) everyWord?.add(resultKey(result));
-        if (nouns && titleIsAnswer(result.title, terms, nouns)) {
+        const answers = nouns && !(intent && saysWhatItIs(intent, { collection: result.collection, article: result.kind === "reference" }));
+        if (answers && titleIsAnswer(result.title, terms, nouns)) {
           // The words it lacks only say what to do ("treat"): scored on the words a title would hold, it holds them all.
           const held = new Set(nouns.map((noun) => noun.toLowerCase()));
           const titled = terms.filter((term) => term.term.split(" ").every((word) => held.has(word.toLowerCase())));

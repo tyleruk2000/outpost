@@ -693,6 +693,9 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 ### Fixed
 
 - Search counts every match, so every page can be reached.
+- "What to do for a burn" and "treat a burn" put first aid first, not encyclopaedia
+  articles named for the injury (or "Ken Burns"): asked what to do about an injury or an
+  illness, an encyclopaedia's article says what it is.
 - A whole book found by its words says which chapter matched: a PDF's bookmarks name the
   chapter of each page, scanned pages read by OCR included, and are searched and shown
   as other documents' headings are. A PDF added before gets them with **Read text again**.

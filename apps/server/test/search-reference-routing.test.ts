@@ -336,13 +336,19 @@ describe("reference search, routed", () => {
         hits: [{ title: "Burn", path: "burn", snippet: "To treat a burn, see burn." }],
       }),
     ]);
+    // Asked about a burn, the encyclopaedia's article named for it is the answer.
+    const about = await lines(base, "burn");
+    const aboutResults = finals(about).find((line) => line.title === "WikiMed Medical Encyclopedia")!.results as Line[];
+    expect(aboutResults[0]).toMatchObject({ title: "Burn" });
+    const word = finals(about).find((line) => line.title === "Wiktionary")!.results[0];
+    expect(word.score).toBeLessThan(aboutResults[0]!.score);
+
+    // Asked what to do for one, it says only what a burn is: the page saying what to do comes first (outpost-1cws).
     const all = await lines(base, "treat a burn");
     const results = finals(all).find((line) => line.title === "WikiMed Medical Encyclopedia")!.results as Line[];
-    expect(results.map((result) => result.title)).toEqual(["Burn", "First aid for minor injuries"]);
-    expect(results[0]!.why).toBe("The title is what was asked; favoured: medical source");
-    const word = finals(all).find((line) => line.title === "Wiktionary")!.results[0];
-    expect(word.why).not.toBe("The title is what was asked");
-    expect(word.score).toBeLessThan(results[0]!.score);
+    expect(results.map((result) => result.title)).toEqual(["First aid for minor injuries", "Burn"]);
+    expect(results[1]!.why).toMatch(/says what it is, not what to do/);
+    expect(results[1]!.why).not.toMatch(/The title is what was asked/);
   });
 });
 

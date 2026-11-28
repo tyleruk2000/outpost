@@ -98,6 +98,13 @@ const ACTION = stems("fix repair replace change make build tie use mend start st
 const MEDICAL_SOURCE =
   /\b(medic\w*|health|nhs|first[- ]aid|wikimed|clinical|nursing|paramedic\w*|red cross|st john|ambulance|resuscitation)\b/i;
 const FIRST_AID_SOURCE = /\bfirst[- ]aid\b/i;
+const ENCYCLOPAEDIA = /\b(wikipedia|wikimed|encyclopa?edias?)\b/i;
+/**
+ * What an encyclopaedia's article keeps of its score for a question asking what to do about an injury or an illness
+ * ("what to do for a burn", "treat a snake bite"): its article on a burn says what a burn is, and a first aid manual
+ * what to do. Every burn article's title holds "burn", as "Ken Burns" does, and came before the first aid manual.
+ */
+export const SAYS_WHAT_IT_IS = 0.9;
 const HOW_TO_SOURCE =
   /\b(questions and answers|q&a|stack ?exchange|manuals?|handbooks?|guides?|how[- ]to|wikihow|instructions|instructables|ifixit)\b/i;
 const VEHICLE_SOURCE = /\b(motor|vehicles?|mechanics?|cars?|automotive|driving|highway code)\b/i;
@@ -161,7 +168,10 @@ export function intentOf(query: IntentQuery): Intent {
   ).map((sense) => ({ word: words[stemmed.indexOf(sense.word)]!, other: sense.other }));
   return {
     medical: has(MEDICAL) || phrase.includes("first aid"),
-    howTo: ignored.some((word) => HOW_WORDS.has(word)) || (stemmed.length > 1 && ACTION.has(stemmed[0]!)),
+    howTo:
+      ignored.some((word) => HOW_WORDS.has(word)) ||
+      (ignored.includes("what") && ignored.includes("do")) ||
+      (stemmed.length > 1 && ACTION.has(stemmed[0]!)),
     vehicle: has(VEHICLE),
     safety: phrase.includes("carbon monoxide") || (has(HAZARD) && has(SAFETY)),
     senses,
@@ -184,6 +194,14 @@ function offSubject(intent: Intent, collection: string | null): boolean {
   return !about.some((id) => intent.subjects!.has(id));
 }
 
+/**
+ * Asked what to do about an injury or an illness, an encyclopaedia's article says what it is (`SAYS_WHAT_IT_IS`): its
+ * title naming the injury does not make it the answer, and it is not favoured as a medical source.
+ */
+export function saysWhatItIs(intent: Intent, source: Pick<IntentSource, "collection" | "article">): boolean {
+  return intent.medical && intent.howTo && Boolean(source.article) && ENCYCLOPAEDIA.test(source.collection ?? "");
+}
+
 /** How a result's score is adjusted for the kind of question, and why. */
 export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustment {
   if (plainIntent(intent)) return { factor: 1, notes: [], trusted: false };
@@ -200,7 +218,8 @@ export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustmen
   let favour = 1;
   const kinds: string[] = [];
   const trusted = intent.medical && MEDICAL_SOURCE.test(kind);
-  if (trusted) {
+  const aboutOnly = saysWhatItIs(intent, source);
+  if (trusted && !aboutOnly) {
     favour *= 1.25;
     kinds.push(FIRST_AID_SOURCE.test(kind) ? "first aid source" : "medical source");
   }
@@ -235,6 +254,10 @@ export function adjustFor(intent: Intent, source: IntentSource): IntentAdjustmen
   ) {
     factor *= NAMES_ANOTHER;
     notes.push("about something else");
+  }
+  if (aboutOnly) {
+    factor *= SAYS_WHAT_IT_IS;
+    notes.push("says what it is, not what to do");
   }
   for (const sense of intent.senses) {
     if (sense.other.test(shown)) {

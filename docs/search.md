@@ -235,8 +235,11 @@ archives are asked.
   them.
 - **One list.** Articles are scored by the same rule as your own items; one that shows
   less than half of what was asked is dropped. An article whose title is exactly what was
-  asked ("Burn" for "treat a burn"), in a collection that fits the question, says "The
-  title is what was asked".
+  asked ("Bowline" for "how to tie a bowline"), in a collection that fits the question, says
+  "The title is what was asked". Asked what to do about an injury or an illness ("what to
+  do for a burn", "treat a burn"), an encyclopaedia's article named for it says what it is,
+  not what to do: it is not favoured, counts a little less ("says what it is, not what to
+  do"), and first aid comes first.
 - **On Everything**, the ten best articles join the list of your own results as they arrive,
   each where its score puts it, on a phone as on a wide screen: "Car battery flat after
   sitting for 9 months" comes above a radio manual that mentions a flat battery. Between two

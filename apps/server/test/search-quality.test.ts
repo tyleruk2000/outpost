@@ -218,6 +218,18 @@ describe("search quality on the household evaluation set", () => {
     for (const row of mashing) expect(row.byMeaningAlone, `${row.q}: ${row.titles.join(" | ")}`).toBe(0);
   });
 
+  it("puts first aid before encyclopaedia articles named for the injury when asked what to do for a burn", () => {
+    for (const q of ["what to do for a burn", "treat a burn"]) {
+      const row = rows.find((candidate) => candidate.q === q)!;
+      expect(["Burns and scalds", "First aid manual"], `${q}: ${row.titles.slice(0, 5).join(" | ")}`).toContain(row.titles[0]);
+      expect(row.titles.slice(0, 3), q).toContain("First aid manual");
+      expect(
+        row.titles.slice(0, 5).filter((title) => /Ken Burns|Mr\. Burns/.test(title)),
+        q,
+      ).toEqual([]);
+    }
+  });
+
   it("answers the owner's question with the car battery page first", () => {
     const row = rows.find((candidate) => candidate.q === "How to change car battery")!;
     expect(row.titles[0]).toBe("Car maintenance manual");

@@ -177,7 +177,13 @@ export function routeWords(parsed: ParsedQuery): RouteWords {
     .flatMap((term, index) => [term, ...(parsed.alternatives?.[index] ?? [])])
     .flatMap((term) => term.split(" "));
   const all = [...words, ...(parsed.ignored ?? [])].map((word) => word.toLowerCase());
-  return { words, howTo: all.some((word) => HOW_TO_WORDS.has(word)) };
+  return { words, howTo: all.some((word) => HOW_TO_WORDS.has(word)) || asksWhatToDo(parsed.ignored ?? []) };
+}
+
+/** "What to do for a burn", "what do I do if…": the small words left out of a search still say it asks what to do. */
+export function asksWhatToDo(ignored: string[]): boolean {
+  const words = ignored.map((word) => word.toLowerCase());
+  return words.includes("what") && words.includes("do");
 }
 
 const tokens = (text: string) =>
