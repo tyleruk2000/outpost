@@ -20,6 +20,11 @@ services:
     restart: unless-stopped
     init: true
     environment:
+      # The server's time zone: when scheduled backups run, and the local times and dates the
+      # server itself writes (see TZ in .env.example). Backup file names and logs stay UTC.
+      # A container has none of its own: set TZ in .env to the computer's zone, as
+      # deploy/pi/install.sh does on a Pi. UTC when it is not set.
+      TZ: ${TZ:-Etc/UTC}
       # Reachable only from this machine unless you opt in. See .env.example.
       OUTPOST_LAN_ACCESS: ${OUTPOST_LAN_ACCESS:-false}
       # Tells the server which address its port is published on (see "ports" below), so
@@ -123,6 +128,10 @@ services:
       VALHALLA_BUILD_THREADS: ${VALHALLA_BUILD_THREADS:-2}
       VALHALLA_SERVE_THREADS: ${VALHALLA_SERVE_THREADS:-2}
       VALHALLA_MIN_AVAILABLE_MB: ${VALHALLA_MIN_AVAILABLE_MB:-800}
+      # Who Outpost runs as (its image's "node" user, 1000): this service runs as root and gives
+      # Outpost's user the shared folder, where Outpost leaves its requests.
+      OUTPOST_UID: ${OUTPOST_UID:-1000}
+      OUTPOST_GID: ${OUTPOST_GID:-1000}
     networks:
       - streets
     volumes:

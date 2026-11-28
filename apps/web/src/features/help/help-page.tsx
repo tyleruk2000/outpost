@@ -14,33 +14,43 @@ import { Disclosure, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { plural } from "@/lib/utils";
-import { GUIDE_GROUPS, GUIDES, type Guide, guidePath } from "./guides";
+import { GUIDE_GROUPS, GUIDES, type Guide, type GuideGroupId, guidePath, HELP_SCREENS } from "./guides";
 
 const titleOf = (guide: Guide) => GUIDE_INDEX[guide.slug]?.title ?? guide.slug;
 
-/** The guides holding every word typed, in the order Help lists them. */
-export function matchGuides(typed: string, guides: Guide[] = GUIDES): Guide[] {
-  const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return guides;
-  return guides.filter((guide) => {
-    const text = `${titleOf(guide)} ${guide.about} ${guide.keywords ?? ""}`.toLowerCase();
-    return words.every((word) => text.includes(word));
-  });
+/** One row of Help: a guide, or a screen that explains (guides.ts, `HELP_SCREENS`), opened where it is. */
+interface Entry {
+  key: string;
+  to: string;
+  title: string;
+  about: string;
+  keywords?: string;
+  group: GuideGroupId;
 }
 
-function GuideRows({ guides }: { guides: Guide[] }) {
+const ENTRIES: Entry[] = [
+  ...GUIDES.map((guide) => ({ ...guide, key: guide.slug, to: guidePath(guide.slug), title: titleOf(guide) })),
+  ...HELP_SCREENS.map((screen) => ({ ...screen, key: screen.to })),
+];
+
+/** Whether a row holds every word typed. Help lists the rows that do, in its own order. */
+function holds(typed: string, text: string): boolean {
+  const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
+  const lower = text.toLowerCase();
+  return words.every((word) => lower.includes(word));
+}
+
+function GuideRows({ guides }: { guides: Entry[] }) {
   return (
     <Rows>
       {guides.map((guide) => (
-        <li key={guide.slug}>
+        <li key={guide.key}>
           <Link
-            to={guidePath(guide.slug)}
+            to={guide.to}
             className="group -mx-2 flex items-center gap-4 rounded-control px-2 py-3.5 transition-colors duration-(--duration-fast) hover:bg-surface"
           >
             <span className="min-w-0 flex-1">
-              <span className="block font-title text-lead text-ink [overflow-wrap:anywhere] group-hover:text-primary">
-                {titleOf(guide)}
-              </span>
+              <span className="block font-title text-lead text-ink [overflow-wrap:anywhere] group-hover:text-primary">{guide.title}</span>
               <span className="mt-0.5 block text-small text-ink-muted">{guide.about}</span>
             </span>
             <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint" />
@@ -54,7 +64,7 @@ function GuideRows({ guides }: { guides: Guide[] }) {
 export default function HelpPage() {
   const [typed, setTyped] = useState("");
   const words = typed.trim();
-  const found = words ? matchGuides(words) : [];
+  const found = words ? ENTRIES.filter((entry) => holds(words, `${entry.title} ${entry.about} ${entry.keywords ?? ""}`)) : [];
   return (
     <Page width="reading">
       <PageHeader
@@ -91,7 +101,7 @@ export default function HelpPage() {
         </section>
       ) : (
         GUIDE_GROUPS.map((group) => {
-          const guides = GUIDES.filter((guide) => guide.group === group.id);
+          const guides = ENTRIES.filter((entry) => entry.group === group.id);
           if (guides.length === 0) return null;
           if (group.closed) {
             return (

@@ -202,11 +202,11 @@ Inside a container, “this computer” is the container, not the machine Docker
 
 With Docker Desktop, on a Mac or on Windows, the name works as it is.
 
-With Docker on Linux, add this to the `outpost` service in `compose.yaml`, then start Outpost again:
+With Docker on Linux, a Raspberry Pi included, the `compose.yaml` that comes with Outpost already gives the container the name, so there is nothing to add. In a Compose file of your own, add this to the `outpost` service, then start Outpost again:
 
 ```
 extra_hosts:
-  - "host.docker.internal=host-gateway"
+  - "host.docker.internal:host-gateway"
 ```
 
 If Ollama is still not found, tell it to listen on the network as in the section above: seen from a container, the machine it runs on is another computer.

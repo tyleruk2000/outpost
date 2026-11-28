@@ -70,13 +70,16 @@ function DownloadAgain({ item }: { item: MapDataItem }) {
     <div className="grid gap-2">
       {!found ? (
         <p className="text-small text-ink-muted">
-          Check asks {hostsText(hosts)} how large and how new the newest copy is. Nothing is downloaded until you press Update.
+          {item.undated
+            ? `Check asks ${hostsText(hosts)} how large its newest copy is. ${item.undated}, so Outpost cannot tell whether it is newer than yours: Update downloads it again either way.`
+            : `Check asks ${hostsText(hosts)} how large and how new the newest copy is.`}{" "}
+          Nothing is downloaded until you press Update.
         </p>
       ) : (
         <p className="tabular text-small text-ink">
           {found.newer === false
             ? `This is the newest already${newest ? ` (${newest})` : ""}.`
-            : `${found.newer ? "A newer one is there" : "The source gives no date to compare"}${newest ? `, from ${newest}` : ""}: ${
+            : `${found.newer ? "A newer one is there" : item.undated ? `${item.undated} to compare with yours` : "The source gives no date to compare"}${newest ? `, from ${newest}` : ""}: ${
                 found.sizeBytes ? formatBytes(found.sizeBytes) : "size not given"
               } to download from ${hostsText(found.hosts)}, onto ${where}. The one you have is deleted once the new one is in place.`}
         </p>
@@ -256,7 +259,7 @@ export function UpdateEntry({ item, data }: { item: MapDataItem; data: MapDataRe
         <span className="text-ink-muted">
           {" "}
           · {KIND_NAMES[item.kind]}
-          {item.dataDate ? ` · from ${dayText(item.dataDate)}` : ""}
+          {item.dataDate ? ` · from ${dayText(item.dataDate)}` : item.undated ? ` · ${item.undated}` : ""}
         </span>
       </p>
       {way === "download" ? (

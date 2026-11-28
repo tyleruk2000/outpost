@@ -55,6 +55,8 @@ export interface StreetsTileset {
 /** A build or import under way, or the last one that failed. */
 export interface StreetsBuildState {
   jobId: string | null;
+  /** The places being built ("Kent and East Sussex"), where known. */
+  name?: string | null;
   state: "waiting" | "building" | "failed";
   /** The step ("merge", "admins", "tiles", "extract", "import", "swap"), and its words. */
   stage: string | null;

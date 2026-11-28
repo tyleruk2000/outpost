@@ -4,9 +4,10 @@ import { expect, test, watchForErrors } from "./fixtures";
 
 /**
  * The screens whose title is not their name in the navigation: Home's is "Your library", a sentence about it, and
- * the set-up guide's is a sentence too long for a line of the sidebar ("Setting up search by meaning, answers and chat").
+ * the set-up guide's is a sentence too long for a line of the sidebar ("Setting up search by meaning, answers and chat"),
+ * and the Raspberry Pi's set-up is a part of the deployment guide, whose title is the guide's.
  */
-const TITLED_OTHERWISE = new Set(["/", "/help/search-and-answers"]);
+const TITLED_OTHERWISE = new Set(["/", "/help/search-and-answers", "/help/deployment#h-on-a-raspberry-pi-step-by-step"]);
 
 test.describe("every screen, on a wide screen", () => {
   test("is reached from Home by pressing only what the sidebar shows, and each parent screen links to those under it", async ({

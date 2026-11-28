@@ -265,6 +265,14 @@ of what each feature does are in its own guide.
   most, [street-routes-measurements.md](development/street-routes-measurements.md)); France's is unmeasured on a Pi. Routes
   through Germany and Austria (downloaded by Land) untried. The printed route card not printed or
   followed on a drive; directions compared with one person's own written route only.
+- **Walking and cycling**: built on one Raspberry Pi 5 (8 GB, SD card) for Kent, Greater London and
+  Great Britain, on its own disk (the figures in
+  [street-routes-measurements.md](development/street-routes-measurements.md)); the United
+  Kingdom's 91 minutes and anything larger than Great Britain are estimates. Not tried: a Pi 4 or a
+  4 GB board, working on a NAS or a USB disk, a build stopped by a power cut, a second build waiting
+  for the first and starting by itself (tried against a stand-in only), and walks, rides and
+  reachable areas compared with a person on foot or on a bicycle. The test against the real
+  streets service (`OUTPOST_TEST_VALHALLA=1`, `test/streets-valhalla.test.ts`) needs Docker and is not part of the usual runs.
 
 ## Keeping things on a phone
 

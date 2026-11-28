@@ -60,6 +60,17 @@ describe("Help", () => {
     expect(screen.getByRole("link", { name: /^API reference/ })).toBeVisible();
   });
 
+  it("lists How search by meaning works among the guides, opened where it is in Search", async () => {
+    show("/help");
+    const how = within(screen.getByRole("heading", { level: 2, name: "How it works and where things come from" }).closest("section")!);
+    expect(how.getByRole("link", { name: /^How search by meaning works/ })).toHaveAttribute("href", "/search/how-meaning-works");
+    // Found by what it is about, as the guides are.
+    await userEvent.type(screen.getByRole("searchbox", { name: "Find a guide" }), "embedding");
+    expect(
+      within(screen.getByRole("region", { name: "Guides found" })).getByRole("link", { name: /^How search by meaning works/ }),
+    ).toBeVisible();
+  });
+
   it("has every guide in the list", () => {
     show("/help");
     for (const guide of GUIDES) expect(document.querySelector(`a[href="/help/${guide.slug}"]`), guide.slug).not.toBeNull();

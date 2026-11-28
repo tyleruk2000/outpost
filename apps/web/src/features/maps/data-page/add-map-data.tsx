@@ -25,6 +25,7 @@
 import {
   type Bbox,
   formatBytes,
+  layerAllowance,
   type MapDataAddRequest,
   type MapDataBundleKind,
   type MapDataPlace,
@@ -38,7 +39,7 @@ import {
   type ReferenceRegionDto,
   type ReferenceRegionsResponse,
 } from "@outpost/shared";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ChevronRight,
@@ -64,7 +65,7 @@ import { useHomeCountry } from "@/features/frequencies/home-country";
 import { useCatalogue, useLayersSummary, useStartDownloads } from "@/features/layers/data";
 import { api, errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { estimateRegion, type RegionEstimate, useMapRegions, useStartPlaces } from "../data";
+import { estimateRegion, type RegionEstimate, useMapOverview, useMapRegions, useStartPlaces } from "../data";
 import { useImagery, useStartWorld } from "../imagery/data";
 import { SATELLITE_AREA_COST, SatellitePicture, WorldPictureChoice, worldLine } from "../imagery/panel";
 import { detailChoices, detailLabel } from "../lib/detail";
@@ -263,6 +264,15 @@ function Where({
     enabled: view !== null && (view?.zoom ?? 0) >= 3,
     staleTime: Number.POSITIVE_INFINITY,
   });
+  const client = useQueryClient();
+  /** Geofabrik's list of regions, read on the person's press: until it is, parts of countries are found only by their English names. */
+  const readList = useMutation({
+    mutationFn: () => api.post<ReferenceRegionsResponse>("/api/reference/regions", {}),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["layers", "regions"] });
+      return client.invalidateQueries({ queryKey: mapDataKeys.all });
+    },
+  });
   const [picking, setPicking] = useState(false);
   const [pickFailed, setPickFailed] = useState(false);
   const pick = async (point: { lat: number; lon: number }) => {
@@ -309,12 +319,7 @@ function Where({
 
       {typed.length >= 2 ? (
         results.length === 0 && !found.isFetching ? (
-          <p className="text-small text-ink-muted">
-            Nothing is called that. Try a country's name in English, or tap it on the map.
-            {found.data && !found.data.regionsListed
-              ? " For a smaller part, choose its country first: its parts can be picked once you have pressed Check size."
-              : ""}
-          </p>
+          <p className="text-small text-ink-muted">Nothing is called that. Try a country's name in English, or tap it on the map.</p>
         ) : (
           <ul aria-label="Places found" className="-mx-2 grid gap-0.5">
             {results.map((result) =>
@@ -347,6 +352,18 @@ function Where({
             )}
           </ul>
         )
+      ) : null}
+      {typed.length >= 2 && found.data && !found.data.regionsListed ? (
+        <div className="grid justify-items-start gap-2" data-testid="read-regions">
+          <p className="max-w-[60ch] text-small text-ink-muted">
+            A part of a country (a state, a region, England) is found once Geofabrik's list of its files is read: about 500 kB from
+            download.geofabrik.de, read once and kept.
+          </p>
+          <Button size="sm" className={touchSize} onClick={() => readList.mutate()} loading={readList.isPending}>
+            Read the list of parts
+          </Button>
+          {readList.isError ? <p className="text-small text-danger">{errorMessage(readList.error)}</p> : null}
+        </div>
       ) : null}
 
       <div className="grid gap-1.5">
@@ -659,7 +676,8 @@ function Flow({
         : next[0]?.type === "world" && held("map")
           ? ["nearby"]
           : ["map"];
-    setTicks(new Set(wanted.length > 0 ? wanted : next[0]?.type === "country" ? ["routes"] : ["map"]));
+    // Asked for nothing (an area a map covers already): nothing ticked, rather than a map it has.
+    setTicks(new Set(asked?.length === 0 ? [] : wanted.length > 0 ? wanted : next[0]?.type === "country" ? ["routes"] : ["map"]));
     setZoom(null);
     setLeftOut(new Set());
     setSizes(null);
@@ -669,16 +687,36 @@ function Flow({
 
   // Arriving with a place: straight to what to add for it.
   const [applied, setApplied] = useState(false);
+  const overview = useMapOverview();
+  /**
+   * An area a map on this device already covers at the detail it would be added at: its Map is not ticked, so
+   * that adding satellite pictures of the view on screen is one tick, not a map to untick first.
+   */
+  const mapped = (bbox: Bbox) =>
+    (overview.data?.regions ?? []).some(
+      (region) =>
+        region.tileType !== "terrain" &&
+        region.status === "installed" &&
+        // On a drive that is unplugged now, it covers nothing.
+        region.available &&
+        region.bounds[0] <= bbox[0] &&
+        region.bounds[1] <= bbox[1] &&
+        region.bounds[2] >= bbox[2] &&
+        region.bounds[3] >= bbox[3] &&
+        region.maxZoom >= defaultZoom(bbox, null),
+    );
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the place is known
   useEffect(() => {
     if (applied || !start) return;
+    // An area waits for what maps are held, to know whether to tick Map.
+    if (start.area && overview.isPending) return;
     const codes = start.countries?.length ? start.countries : start.country ? [start.country] : [];
     setApplied(true);
     if (start.world) return choose([WORLD], start.bundles, start.layers);
     if (start.area)
       return choose(
         [{ type: "area", code: null, name: start.area.name, countryName: null, regionId: null, part: null, bbox: start.area.bbox }],
-        start.bundles ?? ["map"],
+        start.bundles ?? (mapped(start.area.bbox) ? [] : ["map"]),
         start.layers,
       );
     if (codes.length === 0) return;
@@ -691,7 +729,7 @@ function Flow({
         start.layers,
       );
     });
-  }, [start]);
+  }, [start, overview.isPending]);
 
   // Each step's heading has the keyboard, so the step is read from its start (WCAG 2.4.3).
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each step
@@ -868,6 +906,10 @@ function Flow({
   };
 
   const fileBytes = found ? Object.values(found.file).reduce<number>((sum, bytes) => sum + (bytes ?? 0), 0) : 0;
+  /** The source files read, downloaded or kept: what the kinds read from them are worked out from. */
+  const sourceBytes = found
+    ? Object.entries(found.file).reduce<number>((sum, [id, bytes]) => sum + (bytes ?? keptFor(id)?.sizeBytes ?? 0), 0)
+    : 0;
   const mapBytes = found ? Object.values(found.map).reduce((sum, estimate) => sum + estimate.totalBytes, 0) : 0;
   const namesBytes = found?.names && !found.names.installed ? found.names.sizeBytes : 0;
   const worldBytes = ticks.has("imagery") && places[0]?.type === "world" && worldOption ? worldOption.transferBytes : 0;
@@ -1041,6 +1083,13 @@ function Flow({
             })),
         };
   const detailOf = (bundle: Choosable): ReactNode => {
+    if (bundle === "map" && first?.type === "area" && first.bbox && mapped(first.bbox))
+      return (
+        <>
+          {BUNDLE_DETAILS.map}
+          <span className="block">A map you hold already covers this view.</span>
+        </>
+      );
     if (bundle === "map" && first?.type === "world") return "Countries, cities and main roads everywhere, and the world's towns by name";
     if (bundle === "map" && first?.countryName) return `${BUNDLE_DETAILS.map}: all of ${first.countryName}`;
     if (bundle === "walk")
@@ -1168,7 +1217,12 @@ function Flow({
 
   /** The size of one kind from its own source, once asked; held kinds say so. */
   const kindTrailing = (kind: NearbyKind): ReactNode => {
-    if (kind.provider === SOURCE_FILE) return heldKind(kind, nearbyPlace, summary.data) ? "Held" : null;
+    if (kind.provider === SOURCE_FILE) {
+      // Nothing more is downloaded for it: what its places take in the database, worked out from the source file's size.
+      if (found && nearby.has(kind.id) && sourceBytes > 0)
+        return `up to ${formatBytes(kind.layers.reduce((sum, layer) => sum + layerAllowance(sourceBytes, layer), 0))}`;
+      return heldKind(kind, nearbyPlace, summary.data) ? "Held" : null;
+    }
     const bytes = (found?.others ?? [])
       .filter((estimate) => estimate.provider === kind.provider)
       .flatMap((estimate) => estimate.items)
@@ -1193,6 +1247,14 @@ function Flow({
       {sources.map((source) => (
         <div key={source} className="grid">
           <p className="text-micro text-ink-muted">From {source}</p>
+          {found &&
+          sourceBytes > 0 &&
+          kinds.some((kind) => kind.source === source && kind.provider === SOURCE_FILE && nearby.has(kind.id)) ? (
+            <p className="max-w-[70ch] text-micro text-ink-muted">
+              Nothing more is downloaded for these: each size is the most its places take in Outpost's database, worked out from the source
+              file's size.
+            </p>
+          ) : null}
           <ul aria-label={`Kinds from ${source}`} aria-describedby="add-kinds" className="grid">
             {kinds
               .filter((kind) => kind.source === source)
@@ -1522,5 +1584,7 @@ function AgreeTick({
 export function startOfPlace(place: MapDataPlace, bundle: MapDataBundleKind): AddStart {
   if (place.type === "world") return { world: true, bundles: [bundle] };
   if (place.country) return { country: place.country, bundles: [bundle] };
+  // A drawn area: Add a place for the same box, with what was asked ticked.
+  if (place.type === "area" && place.bbox) return { area: { name: place.name, bbox: place.bbox }, bundles: [bundle] };
   return { bundles: [bundle] };
 }

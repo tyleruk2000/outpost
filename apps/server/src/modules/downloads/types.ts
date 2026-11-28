@@ -111,7 +111,8 @@ export interface InstallContext {
   sizeBytes: number;
   sha256: string;
   signal: AbortSignal;
-  progress(current: number, total?: number | null, message?: string): void;
+  /** `unit` says what an installer counts ("tiles"), where it is not the bytes the download counted. */
+  progress(current: number, total?: number | null, message?: string, unit?: string): void;
 }
 
 /**

@@ -186,7 +186,8 @@ test.describe("on a phone", () => {
         "/settings",
         [
           ["Server status", "/settings/status"],
-          ["Set-up guide", "/help/search-and-answers"],
+          ["Search and chat set-up", "/help/search-and-answers"],
+          ["Raspberry Pi set-up", "/help/deployment#h-on-a-raspberry-pi-step-by-step"],
         ],
       ],
       ["Help", "/help", []],

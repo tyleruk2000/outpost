@@ -1,5 +1,5 @@
 /**
- * The ranking rules of docs/search.md, one at a time: small words left out, every word
+ * The ranking rules of docs/search-ranking.md, one at a time: small words left out, every word
  * first and then most of them, coverage, closeness, one scale for every source, kiwix's
  * answers scored again, items grouped before they are limited, and places kept apart.
  */

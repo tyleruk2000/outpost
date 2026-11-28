@@ -87,7 +87,9 @@ the grid counts inside it: "About 220,000 people live inside this ring, by World
 2020 estimate. This is who lives there, not a prediction of harm." Counts are rounded to
 two significant figures. A ring smaller than four grid cells, or less than half inside
 the grid, gets no count; one partly inside is counted for the part covered and says so.
-The fallout pattern gets no count.
+The fallout pattern gets no count. With no grid for the rings, the section says so and
+offers **Add population density for** the country the rings are in, which opens Add a place
+on Offline maps with Population density ticked.
 
 ### The wind
 

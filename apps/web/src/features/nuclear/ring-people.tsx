@@ -4,14 +4,16 @@
  * (population-words.ts). This is the only thing the scenario asks of the reference
  * layers: it never lists, counts or highlights mapped infrastructure inside a ring.
  */
-import { type EffectRing, type EffectsResult, type PopulationSumResponse, roundDistance } from "@outpost/shared";
-import { useQueries } from "@tanstack/react-query";
+import { type EffectRing, type EffectsResult, type MapDataWhereResponse, type PopulationSumResponse, roundDistance } from "@outpost/shared";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Layers } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { useLayersSummary } from "@/features/layers/data";
+import { addLayerLink, addLayerText } from "@/features/maps/data-page/nearby-kinds";
 import { api, errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
 import { destination } from "./geometry";
@@ -39,7 +41,25 @@ function ringsBox(at: { lat: number; lon: number }, metres: number): Box {
   ];
 }
 
-export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: number }; result: EffectsResult; onGetData: () => void }) {
+/**
+ * Where the population grid is added: Add a place on Offline maps, with Population density ticked for
+ * the country the rings are in (found on this device, as Add a place finds it), or for a country chosen there.
+ */
+function useAddPopulation(at: { lat: number; lon: number }, wanted: boolean): { to: string; label: string } {
+  const lat = at.lat.toFixed(2);
+  const lon = at.lon.toFixed(2);
+  const country = useQuery({
+    queryKey: ["maps", "data", "where", "point", lat, lon],
+    queryFn: () => api.get<MapDataWhereResponse>(`/api/maps/data/where?lat=${lat}&lon=${lon}`),
+    enabled: wanted,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const found = country.data?.results[0];
+  if (!found) return { to: "/maps/data?add=1&kinds=places&layers=population", label: "Add population density" };
+  return { to: addLayerLink("population", { country: found.country }), label: addLayerText("Population density", found.countryName) };
+}
+
+export function RingPeople({ at, result }: { at: { lat: number; lon: number }; result: EffectsResult }) {
   const summary = useLayersSummary();
   // Asked once the scenario has stopped changing, not on every keystroke.
   const settled = useDebounced(
@@ -68,6 +88,8 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
     })),
   });
 
+  const add = useAddPopulation(at, summary.isSuccess && near.length === 0);
+
   let body: ReactNode;
   if (summary.isPending) body = <Skeleton className="h-10 w-full" />;
   else if (summary.isError)
@@ -77,12 +99,14 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         <p className="text-small text-ink-muted">
           {sets.length === 0
-            ? "No population grid is installed. To see how many people live inside each ring, get WorldPop's population grid for the country (1 km cells, CC BY 4.0) from Layer data in the Layers tab."
-            : `No installed population grid reaches these rings (installed: ${sets.map((set) => set.country).join(", ")}). To count the people inside them, get WorldPop's grid for this country from Layer data in the Layers tab.`}
+            ? "No population grid is installed. To see how many people live inside each ring, add WorldPop's population grid for the country (1 km cells, CC BY 4.0) on Offline maps, as one of its nearby places."
+            : `No installed population grid reaches these rings (installed: ${sets.map((set) => set.country).join(", ")}). To count the people inside them, add WorldPop's grid for this country on Offline maps, as one of its nearby places.`}
         </p>
         <div>
-          <Button onClick={onGetData}>
-            <Layers aria-hidden /> Get layer data
+          <Button asChild>
+            <Link to={add.to}>
+              <Layers aria-hidden /> {add.label}
+            </Link>
           </Button>
         </div>
       </div>

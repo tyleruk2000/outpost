@@ -5,6 +5,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GUIDES, guidePath } from "@/features/help/guides";
 import RadioPage from "@/features/radio/radio-page";
 import { ThemeProvider } from "@/lib/theme";
 import { CommandPalette } from "./command-palette";
@@ -69,8 +70,21 @@ describe("the navigation's description of every screen", () => {
     const prefixes = routes()
       .filter((route) => route.endsWith("/*"))
       .map((route) => `/${route.slice(0, -2)}`);
-    const nowhere = everyScreen.map((item) => item.to).filter((to) => !exact.has(to) && !prefixes.includes(to));
+    // A guide drawn from docs/ is a route with a parameter (help/:slug): its entry leads to one of GUIDES, at a heading in it.
+    const guides = new Set(GUIDES.filter((guide) => !guide.own).map((guide) => guidePath(guide.slug)));
+    const nowhere = everyScreen
+      .map((item) => item.to)
+      .filter((to) => !exact.has(to) && !prefixes.includes(to) && !(to.includes("#") && guides.has(to.split("#")[0] ?? "")));
     expect(nowhere).toEqual([]);
+  });
+
+  it("under Settings, names the Ollama guide for what it sets up, beside the Raspberry Pi's", () => {
+    const settings = allNav.find((item) => item.to === "/settings")!;
+    expect(settings.children!.map((child) => [child.label, child.to])).toEqual([
+      ["Server status", "/settings/status"],
+      ["Search and chat set-up", "/help/search-and-answers"],
+      ["Raspberry Pi set-up", "/help/deployment#h-on-a-raspberry-pi-step-by-step"],
+    ]);
   });
 
   it("names each screen once, at one address, and gives each shortcut to one screen", () => {
@@ -178,7 +192,7 @@ describe("the sidebar", () => {
     showSidebar("/");
     const sidebar = screen.getByRole("complementary", { name: "Main" });
     expect(within(sidebar).queryByRole("link", { name: "Manage and clean up" })).toBeNull();
-    expect(within(sidebar).getByRole("link", { name: "Set-up guide" })).toBeInTheDocument();
+    expect(within(sidebar).getByRole("link", { name: "Search and chat set-up" })).toBeInTheDocument();
   });
 
   it("collapsed to icons, opens a menu of a screen and those under it from the keyboard", async () => {

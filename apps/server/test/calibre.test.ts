@@ -163,6 +163,11 @@ describe("bringing in a Calibre library", () => {
     const done = (await app.api("GET", `/api/calibre/${dto.id}`)).body.import;
     expect(done.state).toBe("completed");
     expect(done.report).toEqual({ added: 2, alreadyThere: 0, failed: [], stopped: false });
+    // Reading and bringing in both count books, so a task reads "1 of 2 books".
+    const { jobs } = (await app.api("GET", "/api/jobs?limit=50")).body as { jobs: Array<{ type: string; progress: { unit?: string } }> };
+    for (const type of ["calibre.read", "calibre.import"]) {
+      expect(jobs.find((job) => job.type === type)?.progress.unit, type).toBe("books");
+    }
 
     const list = (await app.api("GET", "/api/documents")).body.documents;
     const dune = list.find((doc: { title: string }) => doc.title === "Dune");

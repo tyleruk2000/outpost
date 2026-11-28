@@ -415,7 +415,13 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
           says how to give it one.
         </Notice>
       ) : !basemap ? (
-        <p className="mt-3 text-small text-ink-muted">Download a map region first; an area is kept from what is installed.</p>
+        <p className="mt-3 text-small text-ink-muted">
+          No map is on the server yet: an area is kept from its maps.{" "}
+          <Link to="/maps/data?add=1" className="font-medium underline underline-offset-2">
+            Add a place on Offline maps
+          </Link>{" "}
+          first.
+        </p>
       ) : (
         <div className="mt-3 grid gap-3">
           {installed.length > 0 ? (

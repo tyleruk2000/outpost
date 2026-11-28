@@ -180,8 +180,13 @@ export function countryOfArea(box: Bbox, presetId: string | null): string | null
 const dayOf = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString().slice(0, 10) : null);
 
 /** The day a collection's data is from: its version where that is a day ("2026-11-21" or a map build's "20261121"). */
+/** The day a version says: a date, a build day (20261115), or an edition of a month (OS Open Names' "2026-10", its first day). */
 const dayOfVersion = (version: string | null) =>
-  version && /^\d{4}-\d{2}-\d{2}/.test(version) ? version.slice(0, 10) : dayOfBuild(version);
+  version && /^\d{4}-\d{2}-\d{2}/.test(version)
+    ? version.slice(0, 10)
+    : version && /^\d{4}-\d{2}$/.test(version)
+      ? `${version}-01`
+      : dayOfBuild(version);
 
 const hostsOf = (url: string) => {
   try {
@@ -210,6 +215,12 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
   const { collections, storage, downloads, settings } = ctx.services;
 
   const hosts = updateHosts(ctx);
+  /** Why hills and heights have no date: their source, by name where it is Mapterhorn's, gives none. */
+  const terrainUndated = () => {
+    const host = hosts.terrain()[0] ?? "";
+    const source = /(^|\.)mapterhorn\.com$/.test(host) ? "Mapterhorn" : host || "Its source";
+    return `${source} gives no date for its heights`;
+  };
   /** How a collection of this kind is brought up to date. */
   function updateWay(row: CollectionRow, kind: MapDataKind): MapDataUpdateWay | null {
     const way = (how: MapDataUpdateWay["how"], list: string[], note: string | null = null): MapDataUpdateWay => ({
@@ -217,7 +228,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       hosts: list,
       note,
     });
-    if (kind === "imagery") return way("elsewhere", [], "Fetched again under Maps, Offline, Satellite pictures.");
+    if (kind === "imagery") return way("elsewhere", [], "Not updated: add the area again under Add a place and choose a newer picture.");
     if (kind === "map" || kind === "terrain")
       return row.meta.imported ? null : way("download", kind === "map" ? hosts.map() : hosts.terrain());
     if (kind === "names")
@@ -284,7 +295,10 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
         sizeBytes: row.sizeBytes,
         locationId: row.locationId,
         locationName: location?.name ?? "Unknown location",
-        dataDate: dayOfVersion(row.version) ?? dayOf(row.installedAt),
+        // Hills and heights from a source that gives no date (Mapterhorn) have none: the day they were
+        // downloaded is not the day of their data, and would make them "over a year old" by the calendar alone.
+        dataDate: dayOfVersion(row.version) ?? (kind === "terrain" ? null : dayOf(row.installedAt)),
+        ...(kind === "terrain" && !dayOfVersion(row.version) ? { undated: terrainUndated() } : {}),
         progress: moving ? progressOf(moving) : null,
         collectionId: row.id,
         regionId: typeof row.meta.regionId === "string" ? row.meta.regionId : null,
@@ -355,7 +369,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       if (bounds && isWorld(bounds)) put(null, item, true);
       // By the country outlines: a ready-made area, a map brought in from a file and one drawn by hand alike.
       else if (!imagery && bounds) put(countryOfArea(bounds as Bbox, preset), item);
-      else other.push(item);
+      else other.push({ ...item, bbox: (bounds as Bbox | undefined) ?? null });
     }
     for (const row of active.filter((d) => d.kind === "map" || d.kind === "terrain")) {
       const meta = row.meta as { bbox?: Bbox; regionId?: string; imagery?: unknown };
@@ -363,7 +377,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       const item = fromDownload(row, kind);
       if (meta.bbox && isWorld(meta.bbox)) put(null, item, true);
       else if (!meta.imagery && meta.bbox) put(countryOfArea(meta.bbox, meta.regionId ?? null), item);
-      else other.push(item);
+      else other.push({ ...item, bbox: meta.bbox ?? null });
     }
     // A failed download stays shown until it is retried or removed; so does every unfinished one above.
     for (const row of downloads.unfinished().filter((d) => d.state === "failed" && (d.kind === "map" || d.kind === "terrain")))
@@ -386,9 +400,16 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
     }
 
     // ── Places to find ──
+    /**
+     * What each set of nearby places takes in Outpost's database, apart from its file: its records are
+     * in the database on Outpost's own disk, not on the storage location its file is on, which Storage's
+     * bar for that location counts. Said under Outpost's own data, so the two agree.
+     */
+    const inDatabase = new Map<string, number>();
     for (const pack of ctx.services.layers?.packs() ?? []) {
       const row = collections.get(pack.id);
       if (!row) continue;
+      inDatabase.set(`collection:${row.id}`, Math.max(0, pack.sizeBytes - (row.sizeBytes ?? 0)));
       const item = {
         ...fromCollection(row, "places"),
         count: pack.records,
@@ -523,7 +544,11 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       (item, index) => !item.downloadId && item.sizeBytes && everything.findIndex((other) => other.key === item.key) === index,
     );
     const byLocation = new Map<string | null, number>();
-    for (const item of mapItemOnDisk) byLocation.set(item.locationId, (byLocation.get(item.locationId) ?? 0) + (item.sizeBytes ?? 0));
+    for (const item of mapItemOnDisk) {
+      const database = Math.min(item.sizeBytes ?? 0, inDatabase.get(item.key) ?? 0);
+      byLocation.set(item.locationId, (byLocation.get(item.locationId) ?? 0) + (item.sizeBytes ?? 0) - database);
+      if (database > 0) byLocation.set(null, (byLocation.get(null) ?? 0) + database);
+    }
     const choice = settings.get("maps.countryFileKeep");
     const lastKept = countryFiles.at(0);
     return {
@@ -536,6 +561,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
             bytes,
             available: locationId === null || locations.get(locationId)?.status === "available",
           }))
+          .filter((entry) => entry.bytes > 0)
           .sort((a, b) => b.bytes - a.bytes),
         active: new Set(
           everything

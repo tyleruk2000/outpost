@@ -10,10 +10,20 @@ describe("the words of Map data", () => {
     expect(places[0]).toMatch(/^Hospitals, .+ and 1 more$/);
     expect(places).toContain("89,326 places");
     expect(readyFacts(item({ kind: "roads", locationName: null, sizeBytes: 30_000_000 })).at(-1)).toMatch(/^roads from /);
+    // Hills and heights whose source gives no date say so, not the day they were downloaded.
+    expect(readyFacts(item({ kind: "terrain", dataDate: null, undated: "Mapterhorn gives no date for its heights" })).at(-1)).toBe(
+      "Mapterhorn gives no date for its heights",
+    );
   });
 
   it("says where something under way stands, in the person's words", () => {
     expect(stateLine(item({ state: "waiting", ahead: 2 }))).toBe("Waiting behind 2 downloads");
+    const behind = "Starts once the walking and cycling build under way (Kent) has finished.";
+    expect(
+      stateLine(
+        item({ kind: "streets", state: "waiting", progress: { current: 0, total: null, unit: null, message: behind, step: null } }),
+      ),
+    ).toBe(behind);
     expect(
       stateLine(
         item({

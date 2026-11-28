@@ -140,6 +140,37 @@ function scrollToHeading(root: ParentNode | null, elementId: string): boolean {
   return true;
 }
 
+/** How long a heading arrived at from the address is kept in view while the page settles, in milliseconds. */
+const HEADING_SETTLE_MS = 2000;
+
+/**
+ * Goes to the heading, then keeps it where it landed while the page settles: a font that arrives late, a picture,
+ * or a part of a long guide drawn only as it comes into view can each push the heading down after the first
+ * scroll (a Pi on its own Wi-Fi, Nov 2026). Given up the moment the person scrolls themselves. Returns the stop.
+ */
+function goToHeading(root: ParentNode | null, elementId: string): () => void {
+  if (!scrollToHeading(root, elementId)) return () => {};
+  const target = document.getElementById(elementId);
+  const landed = target?.getBoundingClientRect().top ?? 0;
+  let frame = 0;
+  let stopped = false;
+  const started = performance.now();
+  const stop = () => {
+    stopped = true;
+    cancelAnimationFrame(frame);
+    for (const kind of ["wheel", "touchstart", "keydown", "pointerdown"]) window.removeEventListener(kind, stop);
+  };
+  const check = () => {
+    if (stopped || !target?.isConnected) return;
+    if (Math.abs(target.getBoundingClientRect().top - landed) > 2) target.scrollIntoView({ block: "start" });
+    if (performance.now() - started > HEADING_SETTLE_MS) stop();
+    else frame = requestAnimationFrame(check);
+  };
+  for (const kind of ["wheel", "touchstart", "keydown", "pointerdown"]) window.addEventListener(kind, stop, { passive: true });
+  frame = requestAnimationFrame(check);
+  return stop;
+}
+
 /** A link to a place in this document. The rest of the address stays as it is, so a chapter of a book stays that chapter. */
 function Jump({ to, short, children }: { to: string; short?: boolean; children: ReactNode }) {
   const { search } = useLocation();
@@ -530,10 +561,10 @@ export function MarkdownDocument({
   const article = useRef<HTMLElement>(null);
   const { hash } = useLocation();
 
-  // Arriving at "#h-some-heading" (from another chapter, or a link within this one) goes to that heading.
+  // Arriving at "#h-some-heading" (from another chapter, a guide, or a link within this one) goes to that heading.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the headings are there once the blocks are drawn
   useEffect(() => {
-    if (hash.startsWith("#h-")) scrollToHeading(article.current, decodeURIComponent(hash.slice(1)));
+    if (hash.startsWith("#h-")) return goToHeading(article.current, decodeURIComponent(hash.slice(1)));
   }, [hash, blocks]);
 
   if (sections.length === 0) return <p className="text-ink-muted">{empty}</p>;

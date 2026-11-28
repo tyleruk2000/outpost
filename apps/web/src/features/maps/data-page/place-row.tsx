@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { detailLabel } from "../lib/detail";
 import { isUnderWay, MapDataMenu, MapDataProgress, StateMark, touchSize } from "./pattern";
 import { removable } from "./remove-dialog";
-import { useRepairSourceFile } from "./use-map-data";
+import { useRepairSourceFile, useStreetsBuildAction } from "./use-map-data";
 import {
   BUNDLE_COLUMNS,
   BUNDLE_NAMES,
@@ -150,6 +150,7 @@ export function ItemState({ item, context, title }: { item: MapDataItem; context
           label={`Progress of ${item.title}`}
         />
         <p className="text-small text-ink">{stateLine(message as MapDataItem)}</p>
+        {item.kind === "streets" && item.taskId ? <StreetsBuildControls item={item} /> : null}
       </div>
     );
   }
@@ -173,6 +174,7 @@ export function ItemState({ item, context, title }: { item: MapDataItem; context
           Failed: {line}
         </p>
       ) : null}
+      {item.state === "failed" && item.kind === "streets" && item.taskId ? <StreetsBuildControls item={item} /> : null}
       {item.state === "damaged" && item.kind === "extract" && item.collectionId ? (
         <RepairSourceFile collectionId={item.collectionId} hosts={item.update?.hosts ?? []} />
       ) : null}
@@ -181,6 +183,46 @@ export function ItemState({ item, context, title }: { item: MapDataItem; context
           <Badge>Over a year old</Badge>
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** A walking and cycling build's own buttons: Cancel while under way or waiting; Try again and Dismiss once it failed. */
+function StreetsBuildControls({ item }: { item: MapDataItem }) {
+  const act = useStreetsBuildAction();
+  const jobId = item.taskId!;
+  const what = item.title.replace(/^Streets for routes: /, "");
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {item.state === "failed" ? (
+        <>
+          <Button size="sm" className={touchSize} loading={act.isPending} onClick={() => act.mutate({ jobId, action: "resume" })}>
+            Try again
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={touchSize}
+            disabled={act.isPending}
+            onClick={() => act.mutate({ jobId, action: "dismiss" })}
+            aria-label={`Dismiss: walking and cycling for ${what}`}
+          >
+            Dismiss
+          </Button>
+        </>
+      ) : (
+        <Button
+          size="sm"
+          variant="ghost"
+          className={cn("-ml-2", touchSize)}
+          loading={act.isPending}
+          onClick={() => act.mutate({ jobId, action: "cancel" })}
+          aria-label={`Cancel walking and cycling for ${what}`}
+        >
+          Cancel
+        </Button>
+      )}
+      {act.isError ? <span className="text-small text-danger">{errorMessage(act.error)}</span> : null}
     </div>
   );
 }
@@ -206,9 +248,9 @@ function RepairSourceFile({ collectionId, hosts }: { collectionId: string; hosts
 
 /** What a place's name says beside it: home, drawn, everywhere. */
 function placeNote(place: MapDataPlace, home: string | null): string | null {
-  if (place.type === "country" && place.country === home) return "home";
-  if (place.type === "area") return "drawn";
-  if (place.type === "world") return "everywhere, less detail";
+  if (place.type === "country" && place.country === home) return "Home";
+  if (place.type === "area") return "Drawn on the map";
+  if (place.type === "world") return "Everywhere, at less detail";
   return null;
 }
 
@@ -243,16 +285,17 @@ export function PlaceRow({ place, context }: { place: MapDataPlace; context: Row
   const toMove = place.items.filter(movable);
   const canRemove = place.items.some(removable);
   const imagery = byKind.get("imagery");
-  // A drawn area or the world's basics offer only what they can have: no routes for a drawn area.
-  const offered = (kind: MapDataBundleKind) =>
-    place.type === "country" ? true : place.type === "world" ? kind === "map" || kind === "nearby" : kind === "map";
+  // A drawn area or the world's basics offer only what they can have: a map and nearby places, no routes or walking and cycling.
+  const offered = (kind: MapDataBundleKind) => place.type === "country" || kind === "map" || kind === "nearby";
   return (
-    <li data-pattern="row" data-place={place.key} className="py-1">
+    // A narrow column for the text (a phone at large text; rem here follows the text): the size goes under the name, so the
+    // name is not squeezed to a letter a line beside the size and the menu.
+    <li data-pattern="row" data-place={place.key} className="@container/place py-1">
       <div
-        className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-0.5 py-2 md:[grid-template-columns:var(--place-grid)] md:gap-x-4"
+        className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-0.5 py-2 @max-[20rem]/place:grid-cols-[minmax(0,1fr)_auto] md:[grid-template-columns:var(--place-grid)] md:gap-x-4"
         style={{ "--place-grid": gridColumns(context.columns.length) } as React.CSSProperties}
       >
-        <h3 className="min-w-0 md:col-auto">
+        <h3 className="min-w-0 @max-[20rem]/place:col-start-1 @max-[20rem]/place:row-start-1 md:col-auto">
           <button
             type="button"
             aria-expanded={open}
@@ -264,7 +307,13 @@ export function PlaceRow({ place, context }: { place: MapDataPlace; context: Row
               <span className="text-body font-medium text-ink [overflow-wrap:anywhere] group-hover:underline group-hover:decoration-1 group-hover:underline-offset-2">
                 {place.name}
               </span>
-              {note ? <span className="text-small text-ink-muted"> · {note}</span> : null}
+              {/* A line of its own: beside the name it broke after the dot on a phone ("World basics ·" / "everywhere, less detail"). */}
+              {note ? (
+                <>
+                  <span className="sr-only"> · </span>
+                  <span className="block text-small text-ink-muted">{note}</span>
+                </>
+              ) : null}
               {place.parts.length > 0 ? <span className="block text-micro text-ink-muted">{place.parts.join(", ")}</span> : null}
             </span>
             <ChevronDown
@@ -275,10 +324,11 @@ export function PlaceRow({ place, context }: { place: MapDataPlace; context: Row
         </h3>
         <div
           data-part="marks"
-          className="order-last col-span-3 flex flex-wrap items-center gap-x-4 gap-y-1 md:order-none md:col-span-1 md:contents"
+          className="order-last col-span-3 flex flex-wrap items-center gap-x-4 gap-y-1 @max-[20rem]/place:col-span-full md:order-none md:col-span-1 md:contents"
         >
           {context.columns.map((kind) => (
-            <span key={kind} className="min-w-0">
+            // A kind a place cannot have holds its column on a wide screen; on a phone it takes no room.
+            <span key={kind} className="min-w-0 max-md:has-[[data-state=not-offered]]:hidden">
               <StateMark
                 bundle={offered(kind) ? (byKind.get(kind) ?? null) : null}
                 name={BUNDLE_NAMES[kind]}
@@ -294,15 +344,19 @@ export function PlaceRow({ place, context }: { place: MapDataPlace; context: Row
             </span>
           ) : null}
         </div>
-        <span className="tabular text-right text-small text-ink-muted">{place.sizeBytes > 0 ? formatBytes(place.sizeBytes) : "–"}</span>
-        <MapDataMenu
-          label={`Actions for ${place.name}`}
-          onUpdate={canUpdate ? () => context.onUpdate(place) : undefined}
-          onMove={toMove.length > 0 ? () => setMoving(true) : undefined}
-          onRemove={canRemove ? () => context.onRemove(place) : undefined}
-          onDetails={() => setOpen((current) => !current)}
-          detailsOpen={open}
-        />
+        <span className="tabular text-right text-small text-ink-muted @max-[20rem]/place:col-start-1 @max-[20rem]/place:row-start-2 @max-[20rem]/place:text-left">
+          {place.sizeBytes > 0 ? formatBytes(place.sizeBytes) : "–"}
+        </span>
+        <div className="@max-[20rem]/place:col-start-2 @max-[20rem]/place:row-start-1">
+          <MapDataMenu
+            label={`Actions for ${place.name}`}
+            onUpdate={canUpdate ? () => context.onUpdate(place) : undefined}
+            onMove={toMove.length > 0 ? () => setMoving(true) : undefined}
+            onRemove={canRemove ? () => context.onRemove(place) : undefined}
+            onDetails={() => setOpen((current) => !current)}
+            detailsOpen={open}
+          />
+        </div>
       </div>
       {open ? <PlaceDetails id={detailsId} place={place} context={context} /> : <div id={detailsId} hidden />}
       {toMove.length > 0 ? <MoveItemsDialog items={toMove.map(asManaged)} open={moving} onOpenChange={setMoving} /> : null}

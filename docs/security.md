@@ -331,7 +331,7 @@ cut; a route may hold 10,000 ways and 200,000 points. One question at a time; a 
 is left for 30 seconds. Nothing is stored until a person adds a route. A route is only as
 right as OpenStreetMap.
 
-**Satellite imagery and aerial photographs** ([maps.md](maps.md#satellite-imagery)), only
+**Satellite imagery and aerial photographs** ([map-styles.md](map-styles.md#satellite-imagery)), only
 on **Find pictures**, **Continue**, **Fetch** or **Download**:
 
 - Hosts fixed in code: `earth-search.aws.element84.com` (search),

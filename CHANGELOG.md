@@ -627,6 +627,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   quick search.
 - **Which model**: seven models compared on a Mac for answers and looking things up.
 - Map and radio quick starts for whoever did not set Outpost up.
+- The map and search guides in smaller parts: the Maps screen, map data, styles and
+  layers, places and coordinates, reach, walking and cycling, and sun and radio; search,
+  ranking, reference collections, OCR and search by meaning, each a guide of its own.
+  **How search by meaning works** is listed under Help too.
 
 #### Chat: tools a model can use, and MCP
 
@@ -656,6 +660,21 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   memory limits are off on Raspberry Pi OS, and leaves Docker's networks out of the
   addresses it prints.
 - `nas-share.sh`, new, tried against a Synology NAS.
+- Follow-ups from that install: **Storage → Connect a share** in Docker leads with the
+  `nas-share.sh` line filled in from the form; the restore, passphrase, keeping-fewer and
+  erasing notices, and the clock's, say how to open Outpost as the Pi with
+  `on-this-pi.sh`; **Settings → Who can use this library** shows the address for phones
+  with a QR code made in the browser; Settings' **Set-up guide** is now **Search and chat
+  set-up**, beside a new **Raspberry Pi set-up**; a guide opened at a heading stays on it
+  while the page settles.
+- **Tasks say what they count**: looking through an import counts files then pages,
+  reading and bringing in a Calibre library books, and a map layer read from a file its
+  bytes or the population grid's tiles, so a task reads "3 of 12 files", not a bare
+  number. The downloads plan lists the tasks alongside, each with when it should finish.
+- **The container keeps the Pi's time zone.** It had none, so it ran on UTC and the
+  nightly backup ran at 4:00 am in a British summer. `compose.yaml` passes `TZ` from
+  `.env` (UTC when it is not set) and `install.sh` sets it to the Pi's own zone where
+  `.env` has no `TZ`. Backup file names and logs stay in UTC.
 
 ### Changed
 
@@ -779,6 +798,53 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   service stopped, says the service is not answering and where to look, rather than
   asking to add walking and cycling again. Troubleshooting lists the streets service's
   messages.
+- Add a place: the kinds of nearby places read from the source file say what each takes
+  after **Check size** ("up to 120 MB", the most they can take, from the source file's size), as the kinds from their
+  own source did; a part of a country can be found in **Where?** before Geofabrik's list has
+  been read, with **Read the list of parts** under the search, instead of choosing the
+  country and pressing **Check size** first.
+- Radio buttons and tick boxes grow with the text: at 200% the radio's dot no longer
+  spilled out of its ring, and the source file's choices no longer looked half the size of
+  their words. Their reach for a finger is at least 44 px at any text size, smaller text
+  included.
+- Walking and cycling asked for while another build runs (a source file finishing its
+  download mid-build, or a second country) is a task queued behind it: it shows as waiting
+  on Offline maps and under Downloads and tasks, can be cancelled from either, survives a
+  restart, and starts once the service is free, building on what the one in front made. It
+  was only written to the server's log, and never built. Asking again for places already
+  being built or waiting says so instead of building them again. A build that cannot start
+  (its source file removed meanwhile) says why by name, with **Try again** and **Dismiss**.
+  Add a place says before the press whether the build in front is under way or waiting.
+- Storage: Offline maps' figure and the locations' bars agree. Nearby places' records,
+  which are in Outpost's database, were counted on the location of the file they were read
+  from; they are now under Outpost's own data, and the row says how much of its size the
+  bars do not show. Its places list no longer squeezes where and how big into a column of a
+  word or two on a phone at 200% text.
+- Satellite pictures of the view: Add this view leaves **Map** unticked where a map on a
+  connected storage location already covers the view, and says so beside it ("A map you hold
+  already covers this view"): one press fewer (eight, as before Add a place).
+- Offline maps on a phone: a place's note ("Everywhere, at less detail", "Drawn on the map",
+  "Home") is a line under its name instead of breaking after a dot; a kind a place cannot
+  have takes no room in its row; at large text the size goes under the name, which was
+  squeezed to a letter a line. A drawn area offers **Nearby places: Add**, opening Add a
+  place for the same box, as Add a place offers them for an area.
+- Words: nearby places' source is "OpenStreetMap, from a country's source file", and the
+  Overpass messages send you to the country's nearby places on Offline maps rather than "a
+  Geofabrik extract"; keeping a map area on a phone with no map yet links to Add a place
+  rather than saying "Download a map region first"; a routes task's last stage is "Saving
+  the roads for routes", not "Writing the network"; a satellite picture's update says to add
+  the area again and choose a newer picture.
+- Hills and heights no longer show the day they were downloaded as the day of their data:
+  Mapterhorn gives no date, and Offline maps and **Check** say so. OS Open Names is dated by
+  its edition (it was dated by its download too), so it is over a year old when its edition
+  is, and is checked and updated through **Check for updates** like the rest.
+- Walking and cycling under Docker: Compose passes `OUTPOST_UID` and `OUTPOST_GID` (1000 by
+  default) to the streets service, which gives that user their shared folder; the test
+  against the real service runs the service as root and Outpost as uid 1000, as Docker
+  does, so a folder Outpost cannot write in fails the test as it failed on the Pi.
+- Nuclear preparedness: with no population grid for the rings, the button is **Add
+  population density for** the rings' country, opening Add a place with it ticked; it no
+  longer said "Get layer data", a dialog that is gone.
 
 ### Security
 

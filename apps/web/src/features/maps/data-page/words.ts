@@ -98,6 +98,7 @@ export function readyFacts(item: MapDataItem, detail?: string | null): string[] 
   if (item.locationName) facts.push(item.locationName);
   const day = dayText(item.dataDate);
   if (day) facts.push(item.kind === "roads" ? `roads from ${day}` : `from ${day}`);
+  else if (item.undated) facts.push(item.undated);
   return facts;
 }
 
@@ -105,7 +106,9 @@ export function readyFacts(item: MapDataItem, detail?: string | null): string[] 
 export function stateLine(item: MapDataItem): string | null {
   switch (item.state) {
     case "waiting":
-      return item.ahead ? `Waiting behind ${plural(item.ahead, "download")}` : "Waiting to start";
+      if (item.ahead) return `Waiting behind ${plural(item.ahead, "download")}`;
+      // What it waits for, where the server says (walking and cycling waiting for the build under way).
+      return item.progress?.message ?? "Waiting to start";
     case "processing": {
       const what = item.progress?.message ?? (item.kind === "roads" ? "Reading the main roads" : "Reading the file");
       const step = item.progress?.step && item.progress.step.of > 1 ? ` (step ${item.progress.step.at} of ${item.progress.step.of})` : "";

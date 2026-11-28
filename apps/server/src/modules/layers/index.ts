@@ -157,7 +157,9 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   ctx.jobs.register<ImportInput>(IMPORT_JOB, {
     queue: "import",
     async run({ payload, signal, progress }) {
-      const result = await service.importFile(payload, signal, (current, total, message) => progress({ current, total, message }));
+      const result = await service.importFile(payload, signal, (current, total, message, unit) =>
+        progress({ current, total, message, ...(unit ? { unit } : {}) }),
+      );
       return {
         packId: result.pack.id,
         imported: result.imported,

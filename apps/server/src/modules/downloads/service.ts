@@ -727,8 +727,13 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           sizeBytes: file.sizeBytes,
           sha256: file.sha256,
           signal,
-          progress: (current, total, message) =>
-            run.progress({ current, message: message ?? "Installing", ...(total === undefined ? {} : { total }) }),
+          progress: (current, total, message, unit) =>
+            run.progress({
+              current,
+              message: message ?? "Installing",
+              ...(total === undefined ? {} : { total }),
+              ...(unit ? { unit } : {}),
+            }),
         };
         const claimant = claimed.find((entry) => entry.kind === row.kind && entry.owns(row));
         const installed = await (claimant?.installer ?? installers.get(row.kind) ?? defaultInstaller)(install);

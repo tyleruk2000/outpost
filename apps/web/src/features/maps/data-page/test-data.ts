@@ -31,7 +31,9 @@ export function country(code: string, name: string, items: Partial<Record<MapDat
     country: code,
     name,
     regionId: code === "GB" ? "united-kingdom" : null,
-    rows: (["map", "terrain", "names", "roads", "places", "extract"] as const).map((kind) => ({ kind, items: items[kind] ?? [] })),
+    rows: (["map", "terrain", "names", "roads", "places", "extract", ...(items.streets ? (["streets"] as const) : [])] as const).map(
+      (kind) => ({ kind, items: items[kind] ?? [] }),
+    ),
     lastRead: null,
   };
 }

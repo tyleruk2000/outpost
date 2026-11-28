@@ -1,3 +1,4 @@
+import type { JobDto } from "@outpost/shared";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -288,5 +289,64 @@ describe("The download plan", () => {
     expect(await screen.findByText("The plan could not be worked out.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "In progress" })).toBeInTheDocument();
     expect(screen.getByText("412 MB of 1.90 GB")).toBeInTheDocument();
+  });
+
+  it("forecasts the tasks running beside the downloads, from their own progress", async () => {
+    const task = (over: Partial<JobDto>): JobDto => ({
+      id: "t1",
+      type: "semantic.index",
+      queue: "index",
+      state: "running",
+      title: "Build semantic search index",
+      subject: null,
+      progress: { current: 1200, total: 6000, message: null, unit: "passages", ratePerSecond: 4 },
+      error: null,
+      errorKind: null,
+      attempts: 1,
+      maxAttempts: 1,
+      result: null,
+      createdAt: 1,
+      startedAt: 2,
+      finishedAt: null,
+      updatedAt: 3,
+      ...over,
+    });
+    serve({
+      "GET /api/jobs": ({ url }: { url: URL }) =>
+        url.searchParams.get("active") === "true"
+          ? {
+              jobs: [
+                task({}),
+                task({
+                  id: "t2",
+                  type: "import.analyse",
+                  title: "Looking through handbook.zip",
+                  progress: { current: 3, total: 12, message: null, unit: "files", ratePerSecond: null },
+                }),
+                task({
+                  id: "t3",
+                  type: "document.ocr",
+                  state: "queued",
+                  title: "Reading scanned pages",
+                  progress: { current: 0, total: null, message: null },
+                }),
+                task({ id: "t0", type: "download.run", title: "Download Best of Wikipedia" }),
+              ],
+            }
+          : { jobs: [] },
+    });
+    renderScreen(<DownloadsPage />);
+    const tasks = within((await screen.findByRole("heading", { name: "Tasks alongside" })).closest("section") as HTMLElement);
+    // 4,800 passages left at 240 a minute: 20 minutes.
+    const index = within(tasks.getByRole("listitem", { name: /^Building search by meaning/ }));
+    expect(index.getByText("1,200 of 6,000 passages")).toBeInTheDocument();
+    expect(index.getByText(/^Finishes about (tomorrow at )?\d\d:\d\d, in about 20 minutes$/)).toBeInTheDocument();
+    const reading = within(tasks.getByRole("listitem", { name: /^Looking through an import/ }));
+    expect(reading.getByText("3 of 12 files")).toBeInTheDocument();
+    expect(reading.getByText("No time yet: it has only just started")).toBeInTheDocument();
+    expect(within(tasks.getByRole("listitem", { name: /^Reading scanned pages/ })).getByText("Waiting for its turn")).toBeInTheDocument();
+    // A download is in the plan above already, not again here.
+    expect(tasks.queryByText(/Best of Wikipedia/)).not.toBeInTheDocument();
+    expect(tasks.getByRole("link", { name: "Building search by meaning" })).toHaveAttribute("href", "/downloads/tasks/t1");
   });
 });
