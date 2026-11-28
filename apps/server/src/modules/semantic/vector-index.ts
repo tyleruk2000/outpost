@@ -34,8 +34,14 @@ export interface VectorIndex {
   /** Whether any vector is stored for the model. Asked on every search, so it does not count them. */
   has(modelId: string): boolean;
   removeModel(modelId: string): number;
-  /** Lets go of what is held in memory, to be read again at the next search: the passages' numbers changed. */
-  forget(): void;
+  /**
+   * Passages given new numbers, their vectors moved with them (`from` → `to`): the rows held
+   * in memory take the new numbers. Only when that cannot be done is the matrix let go, to be
+   * read again (seconds on a Raspberry Pi for a large library) at the next search.
+   */
+  renumbered(moves: Array<[from: number, to: number]>): void;
+  /** How many times the matrix has been read from the database, for tests. */
+  loads(): number;
 }
 
 export function vectorToBlob(vector: Float32Array): Buffer {
@@ -88,7 +94,9 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
     idle = setTimeout(letGo, MATRIX_IDLE_MS);
     idle.unref();
   };
+  let loads = 0;
   const load = (modelId: string, expected: number): Held | null => {
+    loads += 1;
     const first = sqlite.prepare("SELECT vector FROM embeddings WHERE model_id = ? LIMIT 1").pluck().get(modelId) as Buffer | undefined;
     if (!first) return null;
     const dimensions = first.byteLength / 4;
@@ -196,6 +204,16 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
       return removed;
     },
 
-    forget: letGo,
+    renumbered(moves) {
+      if (!held) return;
+      for (const [from, to] of moves) {
+        if (!held.matrix.renumber(from, to)) {
+          letGo();
+          return;
+        }
+      }
+    },
+
+    loads: () => loads,
   };
 }

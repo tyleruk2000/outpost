@@ -101,6 +101,29 @@ describe("semantic and hybrid search", () => {
     await app.ctx.jobs.whenIdle();
   }
 
+  it("follows a retitled item's passages to their new numbers without reading every vector again", async () => {
+    await buildIndex();
+    const { index } = app.ctx.services.semantic;
+    const first = (await app.api("GET", "/api/search?q=purification&mode=semantic")).body;
+    const before = first.results[0].passages[0].chunkId as number;
+    const loads = index.loads();
+    expect(loads).toBeGreaterThan(0);
+    app.ctx.services.search.upsert({
+      kind: "document",
+      entityId: "d-water",
+      title: "Field hygiene, second edition",
+      url: "/library/documents/d-water",
+      collection: "Medicine and first aid",
+      sourcePath: "documents/d-water/hygiene.pdf",
+      sections: [{ page: 3, heading: "Safe drinking", text: "Boil it for one minute, or filter and treat it, before drinking." }],
+    });
+    const { body } = await app.api("GET", "/api/search?q=purification&mode=semantic");
+    expect(body.results[0]).toMatchObject({ entityId: "d-water", title: "Field hygiene, second edition" });
+    const after = body.results[0].passages[0].chunkId as number;
+    expect(after).not.toBe(before);
+    expect(index.loads()).toBe(loads);
+  });
+
   it("stays a keyword search, and says so, until vectors exist", async () => {
     const { body } = await app.api("GET", "/api/search?q=purification&mode=semantic");
     expect(body.mode).toBe("keyword");

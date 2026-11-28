@@ -464,7 +464,7 @@ export interface SearchService {
   /** Called after an entity's passages change, so vectors can follow. */
   onChunksChanged(listener: (entityRowId: number) => void): void;
   /** Called after passages are given new numbers with their text and vectors unchanged, so copies held in memory can be read again. */
-  onChunksRenumbered(listener: () => void): void;
+  onChunksRenumbered(listener: (moves: Array<[from: number, to: number]>) => void): void;
   /**
    * Runs `work` so that whatever it deletes or replaces is erased rather than only
    * unlinked: freed database pages are overwritten with zeros, deleted passages are
@@ -682,7 +682,7 @@ export function createSearchService(ctx: AppContext): SearchService {
   /** What `syncKind` was last given, by kind and item, so that an unchanged item is not written again. */
   const synced = new Map<string, Map<string, string>>();
   const chunkListeners: Array<(entityRowId: number) => void> = [];
-  const renumberListeners: Array<() => void> = [];
+  const renumberListeners: Array<(moves: Array<[from: number, to: number]>) => void> = [];
 
   const chunkOptions = (): ChunkOptions => ({
     size: ctx.services.settings.get("indexing.chunkSize"),
@@ -707,8 +707,8 @@ export function createSearchService(ctx: AppContext): SearchService {
   };
 
   const owners = createOwners(sqlite);
-  /** Set by `upsert` when it gave passages new numbers, for the listeners once it returns. */
-  let renumbered = false;
+  /** The passages `upsert` gave new numbers (old → new), for the listeners once it returns. */
+  let renumbered: Array<[from: number, to: number]> = [];
 
   const upsert = sqlite.transaction((entity: IndexEntity) => {
     const now = Date.now();
@@ -786,8 +786,8 @@ export function createSearchService(ctx: AppContext): SearchService {
         renumberChunk.vectors.run({ id: row.id, to });
         renumberChunk.remove.run(row.id);
         owners.notePassage(to, rowId);
+        renumbered.push([row.id, to]);
       }
-      if (stale.length > 0) renumbered = true;
       return { chunks: passages.length, changed: false, rowId };
     }
 
@@ -1216,11 +1216,11 @@ export function createSearchService(ctx: AppContext): SearchService {
     searchPassages,
 
     upsert(entity) {
-      renumbered = false;
+      renumbered = [];
       const { rowId, ...outcome } = upsert(entity);
       if (outcome.changed) forgetPassageCount(sqlite);
       if (outcome.changed) for (const listener of chunkListeners) listener(rowId);
-      if (renumbered) for (const listener of renumberListeners) listener();
+      if (renumbered.length > 0) for (const listener of renumberListeners) listener(renumbered);
       return outcome;
     },
 

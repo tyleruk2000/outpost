@@ -151,7 +151,8 @@ results p95 about 35 ms on the laptop.
 `chunks_fts` and `chunks_words` are external-content FTS5 tables kept in step by insert
 and delete triggers. A passage is never `UPDATE`d (migration 0048 refuses it): a new title
 or new tags put each passage back under a new number, its vectors copied across, and the
-vector matrix in memory is let go (`onChunksRenumbered`). The reason: an encrypting save
+rows of the vector matrix in memory take the new numbers (`onChunksRenumbered`; the
+matrix is let go and read again only if that cannot be done). The reason: an encrypting save
 turns on FTS5 `secure-delete` for that save (`scrubbing`), and in SQLite 3.54 erasing a
 passage that had earlier been deleted and put back under the same number in the ordinary
 way breaks the index (`fts5: checksum mismatch`, then "database disk image is malformed"

@@ -282,7 +282,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     laterIndexing();
   });
   // Passages given new numbers carry their vectors with them; the matrix in memory still has the old numbers.
-  search.onChunksRenumbered(() => index.forget());
+  search.onChunksRenumbered((moves) => index.renumbered(moves));
   ctx.onClose.push(() => debounce && clearTimeout(debounce));
 
   // ── Search source ──
