@@ -98,6 +98,7 @@ export function readyFacts(item: MapDataItem, detail?: string | null): string[] 
   if (item.locationName) facts.push(item.locationName);
   const day = dayText(item.dataDate);
   if (day) facts.push(item.kind === "roads" ? `roads from ${day}` : `from ${day}`);
+  else if (item.undated) facts.push(item.undated);
   return facts;
 }
 

@@ -57,6 +57,11 @@ export interface MapDataItem {
   state: MapDataState;
   /** Bytes on disk; for a download, the size it will be once arrived, where known. */
   sizeBytes: number | null;
+  /**
+   * Why it has no date, where its source gives none (Mapterhorn's hills and heights): said in its
+   * place, rather than the day it was downloaded passed off as the day of its data.
+   */
+  undated?: string | null;
   /** The area a map or satellite picture of a drawn area covers, where it is listed as an area of its own. */
   bbox?: [number, number, number, number] | null;
   /** The storage location; null for a road network, which is kept with Outpost's own data. */

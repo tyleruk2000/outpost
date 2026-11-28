@@ -201,7 +201,12 @@ file**).
 ### Updating
 
 Something over twelve months old says **Over a year old**; sets made once and never revised
-(Natural Earth's borders, census grids) never do. **Check for updates** lists each place
+(Natural Earth's borders, census grids) never do. Hills and heights have no date: Mapterhorn
+gives none, so their row says "Mapterhorn gives no date for its heights" rather than the day
+they were downloaded, they are never said to be over a year old, and **Check** says Outpost
+cannot tell whether its newest copy is newer than yours (**Update** downloads it again either
+way). Ordnance Survey's place names for Great Britain are dated by their edition ("from 1 Oct
+2026" for October 2026's), and are checked and updated in the same list as everything else. **Check for updates** lists each place
 ("France · Map from 1 Jun 2025"), and **Update** in a row's menu does the same for one place.
 Nothing is checked or downloaded until you press:
 

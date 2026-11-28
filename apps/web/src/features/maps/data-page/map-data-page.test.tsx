@@ -255,7 +255,14 @@ describe("Offline maps", () => {
     serve(
       mapData({
         other: [
-          item({ key: "lake", kind: "imagery", title: "Lake shore", collectionId: "lake", sizeBytes: 200_000_000, bbox: [6.8, 45.9, 7, 46] }),
+          item({
+            key: "lake",
+            kind: "imagery",
+            title: "Lake shore",
+            collectionId: "lake",
+            sizeBytes: 200_000_000,
+            bbox: [6.8, 45.9, 7, 46],
+          }),
         ],
       }),
     );
@@ -266,7 +273,9 @@ describe("Offline maps", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add a place" });
     await within(dialog).findByRole("heading", { name: "What for Lake shore?" });
     expect(within(dialog).getByRole("checkbox", { name: /^Nearby places/ })).toBeChecked();
-    expect(within(dialog).getByRole("list", { name: "Kinds from OpenStreetMap, asked of an Overpass server for the area" })).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("list", { name: "Kinds from OpenStreetMap, asked of an Overpass server for the area" }),
+    ).toBeInTheDocument();
   });
 
   it("with nothing yet, offers one button: Add a place", async () => {
@@ -898,6 +907,41 @@ describe("removing and updating by place", () => {
     const dialog = await screen.findByRole("dialog", { name: "Check for updates" });
     expect(within(dialog).getByRole("heading", { name: "France · Map from 1 Jun 2025" })).toBeInTheDocument();
     expect(dialog).not.toHaveTextContent("Natural Earth");
+  });
+
+  it("says hills and heights have no date to compare, before and after Check, rather than a date they do not have", async () => {
+    const user = userEvent.setup();
+    const undated = "Mapterhorn gives no date for its heights";
+    serve(
+      mapData({
+        countries: [
+          country("FR", "France", {
+            terrain: [
+              item({
+                key: "t",
+                kind: "terrain",
+                title: "France (terrain)",
+                collectionId: "t",
+                dataDate: null,
+                undated,
+                update: { how: "download", hosts: ["download.mapterhorn.com"], note: null },
+              }),
+            ],
+          }),
+        ],
+      }),
+      {
+        "POST /api/maps/data/check": { hosts: ["download.mapterhorn.com"], sizeBytes: 1_200_000_000, dataDate: null, newer: null },
+      },
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    await user.click(await screen.findByRole("button", { name: "Actions for France" }));
+    await user.click(await screen.findByRole("menuitem", { name: /Update/ }));
+    const dialog = await screen.findByRole("dialog", { name: /Update/ });
+    expect(dialog).toHaveTextContent(`France (terrain) · Hills and heights · ${undated}`);
+    expect(dialog).toHaveTextContent(`${undated}, so Outpost cannot tell whether it is newer than yours`);
+    await user.click(within(dialog).getByRole("button", { name: /Check for a newer copy/ }));
+    expect(await within(dialog).findByText(new RegExp(`^${undated} to compare with yours: 1\\.20 GB to download`))).toBeInTheDocument();
   });
 });
 

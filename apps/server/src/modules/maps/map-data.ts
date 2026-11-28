@@ -180,8 +180,13 @@ export function countryOfArea(box: Bbox, presetId: string | null): string | null
 const dayOf = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString().slice(0, 10) : null);
 
 /** The day a collection's data is from: its version where that is a day ("2026-11-21" or a map build's "20261121"). */
+/** The day a version says: a date, a build day (20261115), or an edition of a month (OS Open Names' "2026-10", its first day). */
 const dayOfVersion = (version: string | null) =>
-  version && /^\d{4}-\d{2}-\d{2}/.test(version) ? version.slice(0, 10) : dayOfBuild(version);
+  version && /^\d{4}-\d{2}-\d{2}/.test(version)
+    ? version.slice(0, 10)
+    : version && /^\d{4}-\d{2}$/.test(version)
+      ? `${version}-01`
+      : dayOfBuild(version);
 
 const hostsOf = (url: string) => {
   try {
@@ -210,6 +215,12 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
   const { collections, storage, downloads, settings } = ctx.services;
 
   const hosts = updateHosts(ctx);
+  /** Why hills and heights have no date: their source, by name where it is Mapterhorn's, gives none. */
+  const terrainUndated = () => {
+    const host = hosts.terrain()[0] ?? "";
+    const source = /(^|\.)mapterhorn\.com$/.test(host) ? "Mapterhorn" : host || "Its source";
+    return `${source} gives no date for its heights`;
+  };
   /** How a collection of this kind is brought up to date. */
   function updateWay(row: CollectionRow, kind: MapDataKind): MapDataUpdateWay | null {
     const way = (how: MapDataUpdateWay["how"], list: string[], note: string | null = null): MapDataUpdateWay => ({
@@ -284,7 +295,10 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
         sizeBytes: row.sizeBytes,
         locationId: row.locationId,
         locationName: location?.name ?? "Unknown location",
-        dataDate: dayOfVersion(row.version) ?? dayOf(row.installedAt),
+        // Hills and heights from a source that gives no date (Mapterhorn) have none: the day they were
+        // downloaded is not the day of their data, and would make them "over a year old" by the calendar alone.
+        dataDate: dayOfVersion(row.version) ?? (kind === "terrain" ? null : dayOf(row.installedAt)),
+        ...(kind === "terrain" && !dayOfVersion(row.version) ? { undated: terrainUndated() } : {}),
         progress: moving ? progressOf(moving) : null,
         collectionId: row.id,
         regionId: typeof row.meta.regionId === "string" ? row.meta.regionId : null,

@@ -777,6 +777,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   rather than saying "Download a map region first"; a routes task's last stage is "Saving
   the roads for routes", not "Writing the network"; a satellite picture's update says to add
   the area again and choose a newer picture.
+- Hills and heights no longer show the day they were downloaded as the day of their data:
+  Mapterhorn gives no date, and Offline maps and **Check** say so. OS Open Names is dated by
+  its edition (it was dated by its download too), so it is over a year old when its edition
+  is, and is checked and updated through **Check for updates** like the rest.
 - Nuclear preparedness: with no population grid for the rings, the button is **Add
   population density for** the rings' country, opening Add a place with it ticked; it no
   longer said "Get layer data", a dialog that is gone.
