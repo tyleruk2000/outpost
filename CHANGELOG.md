@@ -17,9 +17,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - One Node 24 server (TypeScript, Fastify) serving the web app and an HTTP API from one
   SQLite database and a set of folders; migrations applied at start.
 - A background job queue in the database: named queues with limits, pause, resume,
-  cancel, retries with growing pauses, and jobs that survive a restart (an orderly stop
-  does not use up one of a job's attempts; a crash does, so a job that takes the server
-  down every time it runs fails at its last attempt instead of starting again forever).
+  cancel, retries with growing pauses, and jobs that survive a restart. Neither an
+  orderly stop nor a power cut uses up one of a job's attempts; a job that was running
+  when the server died three times in a row is not started again, with a note to resume
+  it, so that one which takes the server down cannot do so on every start.
 - Live updates to the browser over one server-sent-events stream.
 - An orderly stop on SIGTERM or SIGINT: stop accepting, end live streams, give requests
   three seconds, stop jobs so they resume, close the database; exit anyway after eight

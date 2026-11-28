@@ -94,6 +94,11 @@ export const jobs = sqliteTable(
     errorKind: text("error_kind"),
     attempts: integer("attempts").notNull().default(0),
     maxAttempts: integer("max_attempts").notNull().default(1),
+    /**
+     * How many times in a row the process died while this job ran (killed, out of memory, the power cut), with no
+     * orderly stop. Counted apart from attempts: a power cut is not the job failing. Back to 0 when a run ends.
+     */
+    interruptions: integer("interruptions").notNull().default(0),
     runAfter: integer("run_after").notNull().default(0),
     /** What the job is about, e.g. "download:01H…", for lookups from the owning module. */
     subject: text("subject"),
