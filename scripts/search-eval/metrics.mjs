@@ -11,8 +11,9 @@
  */
 import { readFileSync } from "node:fs";
 
-export function loadQueries() {
-  return JSON.parse(readFileSync(new URL("./queries.json", import.meta.url), "utf8")).queries;
+/** The evaluation set's questions; `held-out.json` for the questions nobody tunes on. */
+export function loadQueries(file = "queries.json") {
+  return JSON.parse(readFileSync(new URL(`./${file}`, import.meta.url), "utf8")).queries;
 }
 
 /** Everything a result shows, as one string. */

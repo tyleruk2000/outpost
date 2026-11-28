@@ -68,6 +68,8 @@ describe("search quality on the household evaluation set", () => {
   /** The same searches with search by meaning on, when the built-in model is here. */
   const meaningRows: Row[] = [];
   const keywordAgain: Row[] = [];
+  /** scripts/search-eval/held-out.json: questions nobody tuned on, to see whether tuning carries over. */
+  const heldOutRows: Row[] = [];
   // biome-ignore lint/suspicious/noExplicitAny: rows of a plain JavaScript module
   const referenceRows: any[] = [];
 
@@ -97,8 +99,8 @@ describe("search quality on the household evaluation set", () => {
     }
     for (const entity of library()) app.ctx.services.search.upsert(entity);
     const pool = recorded.collections.flatMap((collection) => collection.hits).map(asResult);
-    const evaluate = async (into: Row[]) => {
-      for (const query of loadQueries() as Query[]) {
+    const evaluate = async (into: Row[], queries = loadQueries() as Query[]) => {
+      for (const query of queries) {
         const started = performance.now();
         let { body } = await app.api("GET", `/api/search?q=${encodeURIComponent(query.q)}&limit=20`);
         const ms = performance.now() - started;
@@ -121,6 +123,8 @@ describe("search quality on the household evaluation set", () => {
       }
     };
     await evaluate(rows);
+    // The held-out questions, nobody tuned on: reported on their own, never a target.
+    await evaluate(heldOutRows, loadQueries("held-out.json") as Query[]);
     // The reference collections on their own, as the search screen asks for them, one search after another.
     const base = await app.app.listen({ port: 0, host: "127.0.0.1" });
     for (const query of loadQueries() as Query[]) {
@@ -149,7 +153,7 @@ describe("search quality on the household evaluation set", () => {
         : "";
       writeFileSync(
         process.env.SEARCH_EVAL_OUT,
-        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n${formatSummary("fixture library, persona questions", summarise(persona(rows)))}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
+        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n${formatSummary("fixture library, household questions", summarise(household(rows)))}\n${formatSummary("fixture library, everyday searches", summarise(everyday(rows)))}\n${formatSummary("fixture library, persona questions", summarise(persona(rows)))}\n${formatSummary("held-out questions (not tuned on)", summarise(heldOutRows))}\n\n${formatTable(heldOutRows)}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
       );
     }
   }, 120_000);

@@ -297,6 +297,12 @@ word).
   useful, below 0.6 on the persona set, when the medicine question's first two are not grade 3 or
   "bleeding wont stop" shows a brake page, when keyboard-mashing finds anything by meaning alone, and below success@3 80% or with any list page among the reference
   collections' own results. `SEARCH_EVAL_OUT=table.txt` writes both tables.
+- `scripts/search-eval/held-out.json`: 20 questions written on 28 November 2026 before the
+  changes after it, graded the same way, that nothing is ever tuned on. The test reports them
+  on their own line ("held-out questions (not tuned on)") and asserts nothing about them: a
+  wide gap below the main set says the main set has been overfitted. First run: nDCG@5
+  0.400, success@3 80%, one question with no result ("child has diarrhoea"), against 0.769
+  and 97% on the main set.
 - `node scripts/search-eval.mjs http://host:8080` runs it against a running Outpost with
   GET requests only and grades by pattern, each set apart as well (a dropped connection is
   asked once more); `--rescore` also orders that server's
