@@ -308,11 +308,13 @@ describe("right-to-left names", () => {
   const bidi = bidiFactory();
 
   /** The words on a page with where each starts, left to right. */
-  async function placedWords(bytes: Uint8Array): Promise<Array<{ text: string; x: number; y: number }>> {
+  async function placedWords(bytes: Uint8Array): Promise<Array<{ text: string; x: number; y: number; width: number }>> {
     const pdf = await getDocument({ data: bytes.slice() }).promise;
     const text = await (await pdf.getPage(1)).getTextContent();
     return text.items.flatMap((item) =>
-      "str" in item && item.str.trim() ? [{ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number }] : [],
+      "str" in item && item.str.trim()
+        ? [{ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number, width: item.width }]
+        : [],
     );
   }
   const xOf = (words: Array<{ text: string; x: number }>, word: string) => {
@@ -401,10 +403,15 @@ describe("right-to-left names", () => {
     expect(xOf(words, "علي")).toBeGreaterThan(xOf(words, "السيد"));
     expect(xOf(words, "phone")).toBeGreaterThan(xOf(words, "محمد"));
     expect(xOf(words, "فاطمة")).toBeGreaterThan(xOf(words, "يوسف"));
-    // A cell that reads right to left is set against the right of its column; one in Latin against the left, as its head.
-    const nameColumn = xOf(words, "Name");
-    expect(xOf(words, "يوسف")).toBeGreaterThan(nameColumn + 10);
-    expect(xOf(words, "כהן")).toBeGreaterThan(nameColumn + 10);
+    // A column of names that read right to left is set against its right edge, its heading with it; one in Latin
+    // against the left, as its heading.
+    const rightOf = (word: string) => {
+      const found = words.find((item) => item.text === word || item.text.split(/\s+/).includes(word))!;
+      return found.x + found.width;
+    };
+    const nameEdge = rightOf("Name");
+    expect(rightOf("فاطمة")).toBeCloseTo(nameEdge, 0);
+    expect(rightOf("דוד")).toBeCloseTo(nameEdge, 0);
     expect(xOf(words, "+20")).toBeCloseTo(xOf(words, "Phone"), 0);
     // Set on the same line as the Latin beside it: the fallback fonts take the book's line height, so a name in
     // Arabic or Hebrew does not sit lower in its row than the number next to it, nor make the row taller.
@@ -450,6 +457,66 @@ describe("right-to-left names", () => {
     }
   });
 
+  it("leaves room under Arabic marks that reach low, clear of the rule under the row", async () => {
+    // Kasra and kasratan under the letters, in the regular and the bold: the lowest Arabic marks there are.
+    const low = "كِتَابٍ ـِـٍ";
+    const doc = printDocument({
+      paper: "a4",
+      title: "Marks",
+      made: new Date(Date.UTC(2026, 10, 22)),
+      footerName: "Marks",
+      footerRight: "",
+      parts: [
+        {
+          kind: "plain",
+          content: [
+            dataTable(
+              ["Name", "Note"],
+              [
+                [low, "kasra below"],
+                [`**${low}**`, "bold"],
+                ["Ann Lee", "Latin"],
+              ],
+            ),
+          ],
+        },
+      ],
+    });
+    const made = await renderPdf(doc);
+    writeSample("arabic-marks", made.bytes);
+    // How far the lowest mark reaches below the baseline, in the fonts as printed, against the room the row leaves.
+    const fonts = path.resolve(import.meta.dirname, "fonts", "noto");
+    const lowest = (file: string) => {
+      const font = createFont(
+        Uint8Array.from(atob(withBookLine(fs.readFileSync(path.join(fonts, file)).toString("base64"))), (c) => c.charCodeAt(0)),
+      ) as unknown as FontkitFont & {
+        layout(text: string): { glyphs: Array<{ bbox: { minY: number } }>; positions: Array<{ yOffset: number }> };
+      };
+      const laid = font.layout(low);
+      return Math.min(...laid.glyphs.map((glyph, index) => glyph.bbox.minY + laid.positions[index]!.yOffset)) / font.unitsPerEm;
+    };
+    const pdf = await getDocument({ data: made.bytes.slice() }).promise;
+    const items = (await (await pdf.getPage(1)).getTextContent()).items.flatMap((item) =>
+      "str" in item && item.str.trim() ? [{ text: item.str, y: item.transform[5] as number, width: item.width }] : [],
+    );
+    const yOf = (word: string) => items.find((item) => item.text.includes(word))!.y;
+    // The **bold** cell is set in the bold, not in boxes for letters the book's own bold lacks.
+    const words = items.filter((item) => item.text.includes("\u0643"));
+    expect(words).toHaveLength(2);
+    expect(words[1]!.width / words[0]!.width).toBeGreaterThan(1.03);
+    // Rows in order down the page: the gap from one baseline to the next is the row's room below its baseline and
+    // above the next one's. The row of marks must leave its own marks at least a point above the rule.
+    const { PRINT_TYPE } = await import("./tokens");
+    for (const [file, from, to] of [
+      ["NotoSansArabic-Regular.ttf", "kasra", "bold"],
+      ["NotoSansArabic-Bold.ttf", "bold", "Latin"],
+    ] as const) {
+      const room = yOf(from) - yOf(to) - PRINT_TYPE.table * BOOK_LINE.ascender - 2; // less the next row's ascent and top padding
+      const below = -lowest(file) * PRINT_TYPE.table;
+      expect(room - below, file).toBeGreaterThanOrEqual(1);
+    }
+  }, 60_000);
+
   it("knows a passage that reads right to left by its first letter that has a direction", () => {
     expect(startsRightToLeft("فاطمة بنت يوسف")).toBe(true);
     expect(startsRightToLeft("**דוד** כהן")).toBe(true);
@@ -459,8 +526,22 @@ describe("right-to-left names", () => {
     const table = dataTable(["Name", "Phone"], [["فاطمة بنت يوسف", "Ann"]], { right: [1] }) as {
       table: { body: Array<Array<{ alignment: string }>> };
     };
+    // A column of right-to-left names is set right, its heading with it, so the column keeps one edge.
     expect(table.table.body[1]!.map((cell) => cell.alignment)).toEqual(["right", "right"]);
-    expect(table.table.body[0]!.map((cell) => cell.alignment)).toEqual(["left", "right"]);
+    expect(table.table.body[0]!.map((cell) => cell.alignment)).toEqual(["right", "right"]);
+    const columnOf = (head: string, names: string[]) =>
+      (
+        dataTable(
+          [head],
+          names.map((name) => [name]),
+        ) as {
+          table: { body: Array<Array<{ alignment: string }>> };
+        }
+      ).table.body.map((row) => row[0]!.alignment);
+    // Mixed, a column goes by its heading's direction: left under "Name", right under an Arabic heading.
+    expect(columnOf("Name", ["فاطمة بنت يوسف", "Ann Lee", "דוד כהן"])).toEqual(["left", "left", "left", "left"]);
+    expect(columnOf("الاسم", ["فاطمة بنت يوسف", "Ann Lee"])).toEqual(["right", "right", "right"]);
+    expect(columnOf("Name", ["Ann Lee", "", "Bo"])).toEqual(["left", "left", "left", "left"]);
   });
 
   it("prints bold Arabic and Hebrew in their bold, in text and in a drawing", async () => {

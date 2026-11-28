@@ -273,6 +273,21 @@ describe("the repeaters in the book", () => {
     expect(words).toContain("drawn to scale on a plain grid");
   });
 
+  it("keeps the tables' order of preference when drawing only a few: FM first, nearest first within it", () => {
+    const at = (callsign: string, km: number, over: Partial<RepeaterDto> = {}) => {
+      const each = repeater(callsign, km, 0, over) as RepeaterDto & { lat: number; lon: number };
+      return { repeater: each, distanceMeters: km * 1000, bearingDegrees: 90 };
+    };
+    const group = {
+      location: locations[0]!,
+      chosen: [at("GB3FMA", 5), at("GB3FMB", 8), at("GB3DIG", 1, { modes: ["dmr"] })],
+      also: [{ ...at("GB3FMC", 3), listedUnder: "Home" }],
+    };
+    const [drawn] = repeaterMapGroups([group], 2);
+    expect([...drawn!.chosen, ...drawn!.also].map((each) => each.repeater.callsign).sort()).toEqual(["GB3FMA", "GB3FMC"]);
+    expect(drawn!.hidden).toBe(2);
+  });
+
   it("draws only the nearest few on each map when asked, framed round them, with the rest still in the tables", async () => {
     const groups = bookRepeaterGroups(bookInputs());
     const every = repeaterMapGroups(groups, null);

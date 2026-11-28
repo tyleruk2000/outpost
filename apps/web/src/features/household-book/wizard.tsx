@@ -21,6 +21,7 @@ import {
   NO_HOME_PLACE,
   placeName,
   RECEIVER_PROFILES,
+  REPEATER_MAP_CHOICES,
   sourceById,
 } from "@outpost/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1003,15 +1004,17 @@ function BookStep({ answers, set, country }: StepProps & { country: string | nul
       </div>
       {answers.sections.includes("frequencies") ? (
         <div className="grid gap-2">
-          <Segmented<"all" | "4" | "3" | "2">
+          <Segmented<string>
             label="Repeaters on each map"
-            value={answers.repeaterMapMost === null ? "all" : (String(answers.repeaterMapMost) as "4" | "3" | "2")}
-            onChange={(most) => set({ repeaterMapMost: most === "all" ? null : Number(most) })}
+            value={
+              answers.repeaterMapMost !== null && REPEATER_MAP_CHOICES.includes(answers.repeaterMapMost)
+                ? String(answers.repeaterMapMost)
+                : "all"
+            }
+            onChange={(most) => set({ repeaterMapMost: REPEATER_MAP_CHOICES.find((choice) => String(choice) === most) ?? null })}
             options={[
               { value: "all", label: "All listed" },
-              { value: "4", label: "Nearest 4" },
-              { value: "3", label: "Nearest 3" },
-              { value: "2", label: "Nearest 2" },
+              ...REPEATER_MAP_CHOICES.map((choice) => ({ value: String(choice), label: `Nearest ${choice}` })),
             ]}
           />
           <p className="text-small text-ink-muted">

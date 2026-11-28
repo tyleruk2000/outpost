@@ -284,8 +284,8 @@ export interface MappedGroup extends RepeaterGroup {
 }
 
 /**
- * The places that get a map, each with only the nearest `most` of its repeaters (chosen or also near, by distance
- * from the place or the journey's line) when the household asked for fewer on a busy map; the map's frame then
+ * The places that get a map, each with only the first `most` of its repeaters (chosen or also near) in the tables'
+ * order of preference: FM first, then the nearest to the place or the journey's line when the household asked for fewer on a busy map; the map's frame then
  * closes in round those. Null keeps every one.
  */
 export function repeaterMapGroups(groups: readonly RepeaterGroup[], most: number | null): MappedGroup[] {
@@ -294,7 +294,9 @@ export function repeaterMapGroups(groups: readonly RepeaterGroup[], most: number
     if (most === null || all.length <= most) return { ...group, hidden: 0 };
     const kept = new Set(
       [...all]
-        .sort((a, b) => a.distanceMeters - b.distanceMeters)
+        // The tables' own order of preference, FM first, then the nearest within it: a nearer digital-only one does not
+        // push off an FM one the tables put before it.
+        .sort((a, b) => Number(isFm(b.repeater)) - Number(isFm(a.repeater)) || a.distanceMeters - b.distanceMeters)
         .slice(0, most)
         .map((each) => each.repeater.id),
     );

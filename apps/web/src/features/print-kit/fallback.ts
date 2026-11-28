@@ -201,7 +201,12 @@ export function withFallbacks(doc: TDocumentDefinitions, rtl?: RightToLeft): { d
     if (Array.isArray(value)) return value.map(inline);
     if (value && typeof value === "object" && "text" in value) {
       const node = value as { text: unknown };
-      if (typeof node.text === "string" && needsFallback(node.text)) return { ...node, text: split(node.text) };
+      if (typeof node.text === "string" && needsFallback(node.text)) {
+        // pdfmake does not pass a run's style (bold, a colour) down to runs inside it, so each piece is given it.
+        const { text, ...style } = node as { text: string } & Record<string, unknown>;
+        const pieces = split(text) as unknown as Array<string | { text: string; font: FallbackFont }>;
+        return { text: pieces.map((piece) => (typeof piece === "string" ? { ...style, text: piece } : { ...style, ...piece })) };
+      }
       if (Array.isArray(node.text)) return { ...node, text: node.text.map(inline) };
     }
     return value;
@@ -246,6 +251,8 @@ export function withFallbacks(doc: TDocumentDefinitions, rtl?: RightToLeft): { d
       if (typeof record.text === "string") {
         if (needsFallback(record.text)) record.text = split(record.text);
       } else if (Array.isArray(record.text)) record.text = record.text.map(inline);
+      // Words given as one run of their own ({ text: [...] }, as `rich` gives a table cell): its runs are looked at too.
+      else if (record.text && typeof record.text === "object") record.text = inline(record.text);
     }
     for (const key of ["stack", "columns", "ul", "ol", "section", "content", "header", "footer"])
       if (key in record) record[key] = walk(record[key]);

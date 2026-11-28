@@ -1149,11 +1149,14 @@ For **Settings → Updates** ([updating.md](updating.md)).
   (The Noto Project Authors), SIL Open Font License 1.1, from the variable files in
   https://github.com/google/fonts (`ofl/notosans*`, read 2026-11-22), instanced and subset
   with fontTools 4.68 for print; `OFL.txt` in `apps/web/src/features/print-kit/fonts/noto/`.
-  The bold Arabic and Hebrew (`NotoSansArabic-Bold.ttf`, `NotoSansHebrew-Bold.ttf`) are
-  `NotoSansArabic[wdth,wght].ttf` and `NotoSansHebrew[wdth,wght].ttf` from the same
-  repository (read 2026-11-28), instanced at wght 700 and wdth 100 with fontTools 4.60.1 and
-  subset to exactly the letters of the regular files, all layout features kept (the same steps
-  at wght 400 give the shipped regulars, byte for byte the same size).
+  The bold Arabic and Hebrew (`NotoSansArabic-Bold.ttf`, `NotoSansHebrew-Bold.ttf`) are made
+  by `scripts/make-print-fonts.py` (run by hand; it fetches nothing) from
+  `ofl/notosansarabic/NotoSansArabic[wdth,wght].ttf` and
+  `ofl/notosanshebrew/NotoSansHebrew[wdth,wght].ttf` in the same repository (downloaded
+  2026-11-28): instanced at wght 700 and wdth 100 with fontTools 4.60.1, subset to exactly the
+  letters of the shipped regulars with every layout feature kept, and named Bold. The same
+  steps at wght 400 give files the same size as the shipped regulars, differing only in a few
+  bytes of the head table (dates and checksums).
 
 ## Printed power plan: where the fuses go (read 2026-11-22)
 

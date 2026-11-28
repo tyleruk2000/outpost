@@ -411,6 +411,46 @@ describe("an entry put right", () => {
     notes: "",
   };
 
+  it("from a file keeps where each end's position came from unless it is changed, and cannot be put right while its file is coming in", async () => {
+    const file = `${header}${record({ ...acceptance, QSO_DATE: "20261118", TIME_ON: "0815", CALL: "G4PUT" })}`;
+    const brought = await importFile("put-right.adi", file);
+    expect(brought.status).toBe(200);
+    const entry = (await list()).observations.find((item) => item.rx.call === "G4PUT")!;
+    expect(entry.tx.from).toBe("locator IO91WM");
+    const asTyped = {
+      at: new Date(entry.at).toISOString(),
+      frequencyMhz: entry.frequencyMhz,
+      band: "",
+      mode: entry.mode,
+      outcome: entry.outcome,
+      tx: { call: entry.tx.call, lat: entry.tx.lat, lon: entry.tx.lon },
+      rx: { call: entry.rx.call, lat: entry.rx.lat, lon: entry.rx.lon },
+      powerWatts: entry.powerWatts,
+      antenna: entry.antenna,
+      reportSent: entry.reportSent,
+      reportReceived: entry.reportReceived,
+      notes: "Put right",
+    };
+    // Only the notes changed: the positions are as the file gave them, so they still say so.
+    const notes = await app.api("PUT", `/api/radio/observations/${entry.id}`, asTyped);
+    expect(notes.status).toBe(200);
+    expect(notes.body.observation).toMatchObject({ notes: "Put right", source: "adif", importId: entry.importId });
+    expect(notes.body.observation.tx.from).toBe("locator IO91WM");
+    expect(notes.body.observation.rx.from).toBe(entry.rx.from);
+    // A position typed afresh says where it came from now.
+    const moved = await app.api("PUT", `/api/radio/observations/${entry.id}`, { ...asTyped, tx: { call: "G4AAA", lat: 51.4, lon: -0.2 } });
+    expect(moved.body.observation.tx.from).toBe("coordinates");
+
+    // While its file is being brought in, an entry is not in the log, and is not found to be put right.
+    app.ctx.sqlite.prepare(`UPDATE observation_imports SET skipped = '{"pending":true}' WHERE id = ?`).run(entry.importId);
+    try {
+      expect((await app.api("PUT", `/api/radio/observations/${entry.id}`, asTyped)).status).toBe(404);
+    } finally {
+      app.ctx.sqlite.prepare(`UPDATE observation_imports SET skipped = '{}' WHERE id = ?`).run(entry.importId);
+    }
+    expect((await app.api("DELETE", `/api/radio/observations/imports/${entry.importId}`)).status).toBe(200);
+  });
+
   it("is changed in place, with its band worked out again, and keeps where it came from", async () => {
     const made = (await app.api("POST", "/api/radio/observations", typed)).body.observation;
     const changed = await app.api("PUT", `/api/radio/observations/${made.id}`, {

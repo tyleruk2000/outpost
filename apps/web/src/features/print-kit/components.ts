@@ -272,6 +272,15 @@ export function dataTable(
   options: { right?: number[]; widths?: Array<number | string>; bold?: number[] } = {},
 ): Content {
   const right = new Set(options.right ?? []);
+  // A column whose words all read right to left (Arabic or Hebrew names) is set against its right, its heading with
+  // it. Where it mixes them with left-to-right words, it goes by its heading's direction, so a column keeps one edge.
+  head.forEach((title, column) => {
+    if (right.has(column)) return;
+    const words = rows.map((row) => row[column]).filter((value): value is string => typeof value === "string" && value.trim() !== "");
+    const ways = new Set(words.map(startsRightToLeft));
+    const readsRight = ways.size === 1 ? ways.has(true) : ways.size > 1 && startsRightToLeft(title);
+    if (readsRight) right.add(column);
+  });
   const cell = (text: string | Content, column: number, isHead: boolean): TableCell =>
     typeof text === "string"
       ? {
@@ -280,7 +289,7 @@ export function dataTable(
           fontSize: isHead ? T.small + 0.5 : T.table,
           color: C.ink,
           // A cell that reads right to left (an Arabic or Hebrew name) is set against the right of its column.
-          alignment: right.has(column) || startsRightToLeft(text) ? "right" : "left",
+          alignment: right.has(column) ? "right" : "left",
         }
       : (text as TableCell);
   const filled = head.some((title) => title.trim() !== "");

@@ -33,7 +33,7 @@ import {
   type ObservationOutcome,
   parseMaidenhead,
 } from "@outpost/shared";
-import { desc, eq, isNull, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, isNull, notInArray, or } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -766,10 +766,23 @@ export async function registerObservations(
       return dto(db.select().from(radioObservations).where(eq(radioObservations.id, row.id!)).get()!);
     },
     update(id, body) {
-      const held = db.select().from(radioObservations).where(eq(radioObservations.id, id)).get();
+      // An entry of a file still being brought in is not in the log yet, so it cannot be put right either.
+      const held = db
+        .select()
+        .from(radioObservations)
+        .where(and(eq(radioObservations.id, id), settled()))
+        .get();
       if (!held) throw notFound("That entry of the log");
       // Where it came from (typed in, or a file it goes back with) and how the log says it travelled are kept.
       const fields = typedRow(body);
+      // So is where each end's position came from ("locator IO91WM", as the file gave it), unless the position was changed.
+      const kept = (lat: number | null, lon: number | null, from: string, typed: { locator?: unknown } | undefined) =>
+        lat === null || lon === null || typed?.locator ? null : from;
+      const input = body as { tx?: { locator?: unknown }; rx?: { locator?: unknown } };
+      if (fields.txLat === held.txLat && fields.txLon === held.txLon)
+        fields.txFrom = kept(fields.txLat, fields.txLon, held.txFrom, input.tx) ?? fields.txFrom;
+      if (fields.rxLat === held.rxLat && fields.rxLon === held.rxLon)
+        fields.rxFrom = kept(fields.rxLat, fields.rxLon, held.rxFrom, input.rx) ?? fields.rxFrom;
       const same = exists(fields.sameAs);
       if (same && same.id !== id) throw duplicate(same, "Nothing was changed.");
       db.update(radioObservations)

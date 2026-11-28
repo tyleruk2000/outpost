@@ -86,8 +86,10 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   mirrored, figures and Latin left to right inside them. Arabic letters are joined by the
   font engine inside pdfmake. A line that starts with Arabic or Hebrew is read as a
   right-to-left line; it is still placed by the paper's alignment (left, unless set), except
-  in a `dataTable`, where a cell that starts with Arabic or Hebrew is set against the right of
-  its column.
+  in a `dataTable`, where a column whose cells all start with Arabic or Hebrew is set against
+  its right, heading and all; a column that mixes them with left-to-right cells goes by its
+  heading's direction. The book's line leaves Arabic's lowest marks (kasratan, in the bold too)
+  well clear of a table's rule; `print-kit.test.ts` measures it.
   The order is worked out for a passage as one line, so a right-to-left passage that wraps
   reads its lines in the wrong order: use these scripts for names and short phrases, not
   paragraphs. This takes bidi-js and fontkit, loaded only when a document has them. Ordering

@@ -231,7 +231,10 @@ describe("the book's answers", () => {
       baseAnswersAt: saved.answersAt,
     });
     expect(fewer.answers.repeaterMapMost).toBe(3);
-    expect((await app.api("PUT", "/api/household-book", { ...fewer.answers, repeaterMapMost: 0 })).status).toBe(400);
+    // Only the choices the book offers: the nearest 4, 3 or 2, or all.
+    for (const most of [0, 1, 5, 8, 2.5]) {
+      expect((await app.api("PUT", "/api/household-book", { ...fewer.answers, repeaterMapMost: most })).status, String(most)).toBe(400);
+    }
     await ok("PUT", "/api/household-book", { ...fewer.answers, repeaterMapMost: null, baseAnswersAt: fewer.answersAt });
   });
 
@@ -381,6 +384,18 @@ describe("answers saved before the binder became part of the book", () => {
         "grab-cards",
       ]);
       expect(response.body.answers).toMatchObject({ planChoice: "all", grabCardSize: "wallet", radioPlanChoice: "all" });
+    } finally {
+      await own.close();
+    }
+  });
+
+  it("read a number of repeaters on each map that is not one of the choices as all, keeping the rest", async () => {
+    const own = await createTestApp({}, undefined, { voacapData: false });
+    try {
+      const odd = { ...DEFAULT_BOOK_ANSWERS, householdName: "The Allens", repeaterMapMost: 6 };
+      own.ctx.db.insert(householdBook).values({ id: "household", answers: odd, answersAt: 1, made: null }).run();
+      const response = await own.api<BookResponse>("GET", "/api/household-book");
+      expect(response.body.answers).toMatchObject({ householdName: "The Allens", repeaterMapMost: null });
     } finally {
       await own.close();
     }
