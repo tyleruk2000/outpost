@@ -374,3 +374,39 @@ describe("an archive without a full-text index", () => {
     expect(details.collection.meta.kiwix.search.fullText).toBe("none");
   });
 });
+
+describe("reference search on a slow computer", () => {
+  // On a Raspberry Pi a title search took a tenth of a second or more, and they went one at a
+  // time: a widened search of thirty archives waited three to six seconds for its titles alone.
+  const TITLE_MS = 100;
+  const slowShelves = () => [
+    shelf(1, "Motor Vehicle Mechanics Q&A", ["Tyre pressure"], { category: "repair", titleDelayMs: TITLE_MS }),
+    ...Array.from({ length: 23 }, (_, index) =>
+      shelf(index + 2, `Shelf ${index + 2} Q&A`, index === 20 ? ["Tyre swing"] : ["Pressure cooker"], { titleDelayMs: TITLE_MS }),
+    ),
+  ];
+
+  it("asks for titles in every place kiwix-serve has free, never more than its four at once", async () => {
+    const { base, kiwix } = await world(slowShelves());
+    const started = performance.now();
+    const all = await lines(base, "swing", "all");
+    const ms = performance.now() - started;
+    expect(all.at(-1)).toMatchObject({ type: "end", searched: 24, more: 0 });
+    expect(finals(all).flatMap((line) => line.results.map((result: Line) => result.title))).toContain("Tyre swing");
+    expect(kiwix.titlesPeak()).toBeGreaterThan(1);
+    expect(kiwix.peak()).toBeLessThanOrEqual(4);
+    // One at a time, the 24 title searches alone took 2.4 s.
+    expect(ms).toBeLessThan(24 * TITLE_MS * 0.75);
+  });
+
+  it("widens in the same way", async () => {
+    const { base, kiwix } = await world(slowShelves());
+    const started = performance.now();
+    const widened = await lines(base, "swing");
+    const ms = performance.now() - started;
+    expect(widened.find((line) => line.type === "widen")).toBeTruthy();
+    expect(widened.at(-1)).toMatchObject({ type: "end", searched: 24, more: 0 });
+    expect(kiwix.peak()).toBeLessThanOrEqual(4);
+    expect(ms).toBeLessThan(24 * TITLE_MS * 0.75);
+  });
+});

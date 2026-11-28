@@ -33,7 +33,7 @@ import { isJunkHit } from "./junk.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
 import { type ArchiveProfile, createRouteMemory, routeArchives, routeWords, TITLE_ANSWER_PRIOR } from "./routing.ts";
 import { createSearchHealth, type SearchMark } from "./search-health.ts";
-import { type Asked, createSearchQueue } from "./search-queue.ts";
+import { type Asked, createPlaces, createSearchQueue } from "./search-queue.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
 
 interface KiwixMeta {
@@ -204,10 +204,13 @@ export const referenceTimings = {
    */
   titleLimitMs: 3_000,
   /**
-   * How many title searches are at kiwix-serve at once, beside the full-text ones: one, so
-   * that the two together are never more than the four requests kiwix-serve works on.
+   * How many searches, full text and titles together, are at kiwix-serve at once: the four
+   * requests it works on. Title searches take any of them the full-text searches leave
+   * free (`atOnce` at most), and a place given back goes to a title search first: they
+   * take a tenth of a second on a Raspberry Pi, and one at a time a widened search of
+   * thirty archives waited three to six seconds for its titles alone.
    */
-  titlesAtOnce: 1,
+  placesAtOnce: 4,
 };
 
 /** How a search of reference collections is shaped (routing.ts chooses which archives come first). */
@@ -612,22 +615,26 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
 
   /** One archive's answer to a search of its full text, as the queue keeps it. */
   type BookAnswer = { refused: false; total: number; hits: Hit[] } | { refused: true; status: number; body: string };
-  const queue = createSearchQueue<BookAnswer>({
-    concurrency: referenceTimings.atOnce,
-    limitMs: referenceTimings.archiveLimitMs,
-    ceilingMs: referenceTimings.archiveCeilingMs,
-    remember: 600,
-    rememberMs: 5 * 60_000,
-  });
-  ctx.onClose.push(() => queue.close());
+  // Titles join the shared places first, so that a place given back goes to a title search before the full text.
+  const places = createPlaces(referenceTimings.placesAtOnce);
   const titleQueue = createSearchQueue<Hit[]>({
-    concurrency: referenceTimings.titlesAtOnce,
+    concurrency: referenceTimings.placesAtOnce,
+    places,
     limitMs: referenceTimings.titleLimitMs,
     ceilingMs: referenceTimings.archiveCeilingMs,
     remember: 600,
     rememberMs: 5 * 60_000,
   });
   ctx.onClose.push(() => titleQueue.close());
+  const queue = createSearchQueue<BookAnswer>({
+    concurrency: referenceTimings.atOnce,
+    places,
+    limitMs: referenceTimings.archiveLimitMs,
+    ceilingMs: referenceTimings.archiveCeilingMs,
+    remember: 600,
+    rememberMs: 5 * 60_000,
+  });
+  ctx.onClose.push(() => queue.close());
 
   // Which archives answered well for which words lately, and which cannot be searched by their full text.
   const memory = createRouteMemory();
@@ -741,16 +748,9 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         // The words as typed and, when they can be said another way ("tire" for "tyre"), once more that way:
         // never more than two requests to an archive for its full text.
         const patterns = alternate && alternate !== q ? [q, alternate] : [q];
-        // Titles first, for every archive: they answer in a fraction of the time, and put the first results on screen.
-        const titles = rows.map((row) =>
-          titleTerm
-            ? titleQueue.ask(
-                `${zimOf(row)!.uuid}\n${titleTerm}`,
-                (running) => suggestBook(row, titleTerm, referenceShape.titles, running),
-                waiting,
-              )
-            : Promise.resolve<Asked<Hit[]>>({ status: "found", value: [] }),
-        );
+        // The full text is asked first, so that it starts in its three places at once as before; the titles take the
+        // fourth and, since they answer in a fraction of the time and put the first results on screen, every place
+        // given back while titles are still waiting (`placesAtOnce`).
         const fullText = rows.map((row) =>
           health.fullTextNow(row.id)
             ? Promise.all(
@@ -770,6 +770,15 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
                 ),
               )
             : null,
+        );
+        const titles = rows.map((row) =>
+          titleTerm
+            ? titleQueue.ask(
+                `${zimOf(row)!.uuid}\n${titleTerm}`,
+                (running) => suggestBook(row, titleTerm, referenceShape.titles, running),
+                waiting,
+              )
+            : Promise.resolve<Asked<Hit[]>>({ status: "found", value: [] }),
         );
         await Promise.all(
           rows.map(async (row, index) => {

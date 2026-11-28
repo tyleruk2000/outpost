@@ -251,8 +251,13 @@ Reference archives (`modules/kiwix`):
   (3) results scoring `GOOD_SCORE` (0.6), and otherwise on `scope=all`.
 - Full text (`referenceShape.firstEach`, 8, from each routed archive) goes through Outpost's
   own queue three at a time, because kiwix-serve works four at a time and finishes searches
-  whose caller has gone; title search (`suggest`, for `titleWords`) through a second queue,
-  one at a time. A collection's titles go out as a `done: false` part, replaced by its last.
+  whose caller has gone; title search (`suggest`, for `titleWords`) through a second queue.
+  The two share `referenceTimings.placesAtOnce` (4) places (`createPlaces`): full text is
+  asked first and takes its three, titles the fourth, and a place given back goes to a
+  waiting title search first. One at a time, a widened search of thirty archives on a Pi
+  waited three to six seconds for its titles alone (`test/search-reference-routing.test.ts`,
+  "on a slow computer", replays it with 100 ms title searches: 2.5 s before, under 1.8 s
+  after). A collection's titles go out as a `done: false` part, replaced by its last.
 - `junk.ts` drops list pages before scoring; `rank` (the search service's `rescore`, with
   `titleIsAnswer` and `TITLE_MATCH_BONUS` where the archive's prior reaches
   `TITLE_ANSWER_PRIOR`) puts every article on the one scale.

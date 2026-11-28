@@ -661,6 +661,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   a save from an older copy and offer a choice; at most 500 power plans.
 - **Finding your way**: Downloads, Storage and Settings always in view; child screens lead
   back; one name for each thing; Settings lists its sections.
+- **Reference collections searched widely answer sooner**: their title searches, a tenth
+  of a second each on a Pi, use every place at kiwix-serve the full-text searches leave
+  free instead of going one at a time (never more than its four at once). Thirty
+  archives had waited three to six seconds for their titles alone.
 - **Quick search** finds screens and Settings sections by everyday words, and lists the
   shortcuts; Search puts what is on this device first.
 - **One way everywhere**: one look for toasts, separators, dates, empty states and
