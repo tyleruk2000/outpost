@@ -248,7 +248,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
         progress: (message, done, total, unit) => input.progress(done, total, message, unit),
       });
       if (data.nodeId.length === 0) throw new PermanentJobError("The file holds no main roads Outpost could read: no network was made.");
-      input.progress(1, 1, "Writing the network", null);
+      input.progress(1, 1, "Saving the roads for routes", null);
       const id = newId();
       const relPath = `roads/${id}.roads`;
       await fs.promises.mkdir(roadsDir(), { recursive: true });

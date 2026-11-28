@@ -67,7 +67,7 @@ export const PROVIDERS: ReferenceProviderDto[] = [
       "OpenStreetMap: “If you alter or build upon our data, you may distribute the result only under the same license.” The Overpass manual lists as problematic “Setting up an app for more than just OSM mappers and relying on the public instances as backend”; users “keep their download volume below about 1 GB per day”. The dresel.systems servers (Europe, North America): “Free to use, no API key. Limit of 4 parallel queries per IP address”, “Please send a User-Agent or Referer that identifies your app.”",
     termsRead: READ,
     verdict: "fetch",
-    why: "One layer of one country or box per question, one question at a time, to a public server whose operator allows it (dresel.systems, for Europe and North America) or to one you declare yourself. Food and supplies only for the area on screen, up to about a county. Private.coffee's server is not used: its terms exclude “projects related to warfare, military applications”. overpass-api.de is not used: its operators ask that applications not rely on it. Elsewhere, use a Geofabrik extract.",
+    why: "One layer of one country or box per question, one question at a time, to a public server whose operator allows it (dresel.systems, for Europe and North America) or to one you declare yourself. Food and supplies only for the area on screen, up to about a county. Private.coffee's server is not used: its terms exclude “projects related to warfare, military applications”. overpass-api.de is not used: its operators ask that applications not rely on it. Elsewhere, add the country's nearby places on Offline maps: they are read from its source file.",
     layers: ["military", "nuclear", "hospitals", "emergency", "shelters", "food"],
     scopes: ["country", "bbox"],
     importFormats: [],
@@ -77,7 +77,7 @@ export const PROVIDERS: ReferenceProviderDto[] = [
   },
   {
     id: "osm-extract",
-    name: "OpenStreetMap, from a Geofabrik extract",
+    name: "OpenStreetMap, from a country's source file",
     publisher: "OpenStreetMap contributors; extracts by Geofabrik GmbH",
     url: "https://download.geofabrik.de/",
     license: "ODbL 1.0",

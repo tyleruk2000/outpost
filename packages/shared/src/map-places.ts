@@ -151,6 +151,17 @@ function placeOf(
   };
 }
 
+/** The box round several. */
+function unionOf(boxes: Array<[number, number, number, number]>): [number, number, number, number] | null {
+  if (boxes.length === 0) return null;
+  return [
+    Math.min(...boxes.map((box) => box[0])),
+    Math.min(...boxes.map((box) => box[1])),
+    Math.max(...boxes.map((box) => box[2])),
+    Math.max(...boxes.map((box) => box[3])),
+  ];
+}
+
 /** An area's own name: a map and its terrain are one area ("Cairngorms" and "Cairngorms (terrain)"). */
 const areaName = (title: string) => title.replace(/\s*\(terrain\)$/i, "").trim();
 
@@ -195,10 +206,17 @@ export function mapPlacesOf(
     const name = areaName(item.title);
     areas.set(name, [...(areas.get(name) ?? []), item]);
   }
+  // A drawn area offers a map and its nearby places, as Add a place does for an area.
   const drawn = [...areas.entries()]
-    .map(([name, items]) =>
-      placeOf({ key: `area:${items[0]!.key}`, type: "area", name, country: null, regionId: null, lastRead: null }, items, [], now),
-    )
+    .map(([name, items]) => ({
+      ...placeOf(
+        { key: `area:${items[0]!.key}`, type: "area", name, country: null, regionId: null, lastRead: null },
+        items,
+        ["map", "nearby"],
+        now,
+      ),
+      bbox: unionOf(items.flatMap((item) => (item.bbox ? [item.bbox] : []))),
+    }))
     .sort((a, b) => a.name.localeCompare(b.name, "en"));
 
   const world =

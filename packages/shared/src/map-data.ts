@@ -57,6 +57,8 @@ export interface MapDataItem {
   state: MapDataState;
   /** Bytes on disk; for a download, the size it will be once arrived, where known. */
   sizeBytes: number | null;
+  /** The area a map or satellite picture of a drawn area covers, where it is listed as an area of its own. */
+  bbox?: [number, number, number, number] | null;
   /** The storage location; null for a road network, which is kept with Outpost's own data. */
   locationId: string | null;
   locationName: string | null;
@@ -226,6 +228,8 @@ export interface MapDataPlace {
   locations: string[];
   /** How many of its items are over a year old (ageless sets left out). */
   stale: number;
+  /** A drawn area's box, where its items say it: what Add a place adds more to. */
+  bbox?: [number, number, number, number] | null;
 }
 
 /** `GET /api/maps/data/where?q=` (or `?lat=&lon=`, or `?countries=FR,CH`): a country, a part or a town, found offline. */

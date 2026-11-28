@@ -766,6 +766,17 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   word or two on a phone at 200% text.
 - Satellite pictures of the view: Add this view leaves **Map** unticked where a map on this
   device already covers the view, one press fewer (eight, as before Add a place).
+- Offline maps on a phone: a place's note ("Everywhere, at less detail", "Drawn on the map",
+  "Home") is a line under its name instead of breaking after a dot; a kind a place cannot
+  have takes no room in its row; at large text the size goes under the name, which was
+  squeezed to a letter a line. A drawn area offers **Nearby places: Add**, opening Add a
+  place for the same box, as Add a place offers them for an area.
+- Words: nearby places' source is "OpenStreetMap, from a country's source file", and the
+  Overpass messages send you to the country's nearby places on Offline maps rather than "a
+  Geofabrik extract"; keeping a map area on a phone with no map yet links to Add a place
+  rather than saying "Download a map region first"; a routes task's last stage is "Saving
+  the roads for routes", not "Writing the network"; a satellite picture's update says to add
+  the area again and choose a newer picture.
 - Nuclear preparedness: with no population grid for the rings, the button is **Add
   population density for** the rings' country, opening Add a place with it ticked; it no
   longer said "Get layer data", a dialog that is gone.

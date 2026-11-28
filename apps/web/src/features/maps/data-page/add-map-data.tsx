@@ -1575,5 +1575,7 @@ function AgreeTick({
 export function startOfPlace(place: MapDataPlace, bundle: MapDataBundleKind): AddStart {
   if (place.type === "world") return { world: true, bundles: [bundle] };
   if (place.country) return { country: place.country, bundles: [bundle] };
+  // A drawn area: Add a place for the same box, with what was asked ticked.
+  if (place.type === "area" && place.bbox) return { area: { name: place.name, bbox: place.bbox }, bundles: [bundle] };
   return { bundles: [bundle] };
 }

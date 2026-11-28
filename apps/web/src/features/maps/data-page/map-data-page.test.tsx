@@ -205,7 +205,7 @@ describe("Offline maps", () => {
     expect(names).toEqual([
       expect.stringMatching(/^United Kingdom/),
       "France",
-      "Lake shore · drawn",
+      "Lake shore · Drawn on the map",
       expect.stringMatching(/^World basics/),
     ]);
     // The download feeding the routes and the source file is one line, not two.
@@ -248,6 +248,25 @@ describe("Offline maps", () => {
     expect(details).toHaveTextContent(/Over a year old, from 1 Jun 2025/);
     expect(details).toHaveTextContent(/Kept on Internal storage/);
     expect(details).toHaveTextContent(/Source file/);
+  });
+
+  it("offers a drawn area its nearby places, opening Add a place for the same box with Nearby places ticked", async () => {
+    const user = userEvent.setup();
+    serve(
+      mapData({
+        other: [
+          item({ key: "lake", kind: "imagery", title: "Lake shore", collectionId: "lake", sizeBytes: 200_000_000, bbox: [6.8, 45.9, 7, 46] }),
+        ],
+      }),
+    );
+    renderScreen(<MapDataPage />, "/maps/data");
+    const row = (await screen.findAllByRole("listitem")).find((each) => each.getAttribute("data-place")?.startsWith("area:"))!;
+    expect(within(row).getByText("Drawn on the map")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: /Add nearby places for Lake shore/i }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Lake shore?" });
+    expect(within(dialog).getByRole("checkbox", { name: /^Nearby places/ })).toBeChecked();
+    expect(within(dialog).getByRole("list", { name: "Kinds from OpenStreetMap, asked of an Overpass server for the area" })).toBeInTheDocument();
   });
 
   it("with nothing yet, offers one button: Add a place", async () => {

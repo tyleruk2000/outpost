@@ -97,7 +97,8 @@ each thing a place can have stands:
 
 On a phone the row is the place's name, its size and **…**, then one line ("Map, Routes 43%,
 Nearby places: Add"); on a wider screen the same rows line up as a table. **Add** in a row
-starts Add a place for that place with that ticked. A row opens to what is behind each word:
+starts Add a place for that place with that ticked; an area drawn on the map offers a map and
+its nearby places (no routes), and World basics the world's. A row opens to what is behind each word:
 the day the data is from, where it is kept, the source file, and progress with Pause and
 Cancel.
 

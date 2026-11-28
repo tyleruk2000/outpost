@@ -160,7 +160,7 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
     if (!found) {
       throw new AppError(
         "bad_request",
-        "No public Overpass server whose terms allow this covers that area: the ones Outpost uses cover Europe and North America. Use a Geofabrik extract for the country instead, or declare an Overpass server of your own in route-sources.json.",
+        "No public Overpass server whose terms allow this covers that area: the ones Outpost uses cover Europe and North America. Add the country's nearby places on Offline maps instead (read from its source file), or declare an Overpass server of your own in route-sources.json.",
       );
     }
     return found;
@@ -249,7 +249,7 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
       }
       if (typeof body.remark === "string" && /timed out|out of memory|runtime error/i.test(body.remark)) {
         throw new PermanentJobError(
-          `The Overpass server gave up on the question (${body.remark.slice(0, 120)}). Try a smaller area, or a Geofabrik extract.`,
+          `The Overpass server gave up on the question (${body.remark.slice(0, 120)}). Try a smaller area, or add the country's nearby places on Offline maps.`,
         );
       }
       if (!Array.isArray(body.elements)) throw new PermanentJobError("The answer from the Overpass server holds no map data.");

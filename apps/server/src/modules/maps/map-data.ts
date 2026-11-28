@@ -217,7 +217,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       hosts: list,
       note,
     });
-    if (kind === "imagery") return way("elsewhere", [], "Fetched again under Maps, Offline, Satellite pictures.");
+    if (kind === "imagery") return way("elsewhere", [], "Not updated: add the area again under Add a place and choose a newer picture.");
     if (kind === "map" || kind === "terrain")
       return row.meta.imported ? null : way("download", kind === "map" ? hosts.map() : hosts.terrain());
     if (kind === "names")
@@ -355,7 +355,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       if (bounds && isWorld(bounds)) put(null, item, true);
       // By the country outlines: a ready-made area, a map brought in from a file and one drawn by hand alike.
       else if (!imagery && bounds) put(countryOfArea(bounds as Bbox, preset), item);
-      else other.push(item);
+      else other.push({ ...item, bbox: (bounds as Bbox | undefined) ?? null });
     }
     for (const row of active.filter((d) => d.kind === "map" || d.kind === "terrain")) {
       const meta = row.meta as { bbox?: Bbox; regionId?: string; imagery?: unknown };
@@ -363,7 +363,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       const item = fromDownload(row, kind);
       if (meta.bbox && isWorld(meta.bbox)) put(null, item, true);
       else if (!meta.imagery && meta.bbox) put(countryOfArea(meta.bbox, meta.regionId ?? null), item);
-      else other.push(item);
+      else other.push({ ...item, bbox: meta.bbox ?? null });
     }
     // A failed download stays shown until it is retried or removed; so does every unfinished one above.
     for (const row of downloads.unfinished().filter((d) => d.state === "failed" && (d.kind === "map" || d.kind === "terrain")))
