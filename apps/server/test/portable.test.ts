@@ -353,6 +353,18 @@ describe("writing a portable drive", () => {
     }
   });
 
+  it("carries the cover of each book it carries, and no other", async () => {
+    const { app, drive } = await setup();
+    const covers = path.join(app.ctx.config.dataDir, "covers");
+    fs.mkdirSync(covers, { recursive: true });
+    fs.writeFileSync(path.join(covers, "d-tides.jpg"), "cover of the tide tables");
+    fs.writeFileSync(path.join(covers, "d-gone.png"), "cover of a book not carried");
+    await app.api("POST", "/api/portable/build", request(drive));
+    await app.ctx.jobs.whenIdle();
+    expect(fs.readFileSync(path.join(drive, "data/covers/d-tides.jpg"), "utf8")).toBe("cover of the tide tables");
+    expect(fs.existsSync(path.join(drive, "data/covers/d-gone.png"))).toBe(false);
+  });
+
   it("refuses a second drive while one is waiting to be written, however much other work has been queued since", async () => {
     const { app, drive } = await setup();
     queueWaitingJobs(app, "portable.build", 1);

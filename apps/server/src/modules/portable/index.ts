@@ -314,17 +314,20 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         `${skippedDocuments} document${skippedDocuments === 1 ? " is" : "s are"} on a storage location that is not connected and will be left out.`,
       );
 
-    // Notes attachments and extracted text travel with the database, and so does the
-    // copy of VOACAP's coefficients the planner reads, so that the drive predicts offline.
-    for (const folder of ["attachments", "extracted", "propagation/voacap-coefficients"]) {
+    // Notes attachments and extracted text travel with the database, and so do the covers
+    // kept for books from Calibre (named by the document's id), and the copy of VOACAP's
+    // coefficients the planner reads, so that the drive predicts offline.
+    const carried = new Set(includedDocumentIds);
+    for (const folder of ["attachments", "extracted", "covers", "propagation/voacap-coefficients"]) {
       const root = path.join(config.dataDir, folder);
       for (const file of await listFiles(root)) {
-        if (folder === "extracted" && !includedDocumentIds.includes(path.basename(file.rel, ".json"))) continue;
+        if (folder === "extracted" && !carried.has(path.basename(file.rel, ".json"))) continue;
+        if (folder === "covers" && !carried.has(path.basename(file.rel, path.extname(file.rel)))) continue;
         copies.push({
           from: path.join(root, file.rel),
           to: path.join(target, "data-incoming", folder, file.rel),
           bytes: file.bytes,
-          label: folder.startsWith("propagation/") ? "HF propagation data" : "Notes and index",
+          label: folder.startsWith("propagation/") ? "HF propagation data" : folder === "covers" ? "Book covers" : "Notes and index",
         });
       }
     }

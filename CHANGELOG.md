@@ -502,7 +502,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 
 - A standalone Outpost written to a removable drive: the app, checked Node runtimes,
   launchers for macOS, Windows and Linux, a narrowed database and chosen content; the
-  collection reader for macOS and Linux; updated in place.
+  collection reader for macOS and Linux; updated in place. Books from Calibre keep their
+  covers on the drive.
 - **Storage → Bring back changes from a drive**: a preview by kind, conflicts kept both
   ways unless chosen, nothing removed at home unless ticked, as a stoppable, undoable
   job that only reads the drive. A drive records what each item was when written.
