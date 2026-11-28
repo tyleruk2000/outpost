@@ -9,6 +9,7 @@
  * (tokens.ts). docs/development/printed-pages.md says how to use them.
  */
 import type { Content, ContentTable, CustomTableLayout, DynamicContent, TableCell } from "pdfmake/interfaces";
+import { startsRightToLeft } from "./order";
 import { PRINT_COLOURS as C, PRINT_FONT, PRINT_MARGINS, PRINT_PAPERS, type PrintPaper, PRINT_SPACE as S, PRINT_TYPE as T } from "./tokens";
 
 /**
@@ -278,7 +279,8 @@ export function dataTable(
           bold: isHead || options.bold?.includes(column),
           fontSize: isHead ? T.small + 0.5 : T.table,
           color: C.ink,
-          alignment: right.has(column) ? "right" : "left",
+          // A cell that reads right to left (an Arabic or Hebrew name) is set against the right of its column.
+          alignment: right.has(column) || startsRightToLeft(text) ? "right" : "left",
         }
       : (text as TableCell);
   const filled = head.some((title) => title.trim() !== "");

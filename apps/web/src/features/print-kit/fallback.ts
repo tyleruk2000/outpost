@@ -261,22 +261,87 @@ export function withFallbacks(doc: TDocumentDefinitions, rtl?: RightToLeft): { d
   return { doc: { ...doc, content, header: header as never, footer: footer as never }, fonts };
 }
 
-/** Each fallback font's files, as base64, loaded when first needed. Single-weight fonts use their one file for bold. */
+/**
+ * Each fallback font's files, as base64, loaded when first needed. Noto Sans, Arabic and Hebrew have a bold; the
+ * others are single-weight and use their one file for bold.
+ */
 export const FALLBACK_LOADERS: Record<FallbackFont, () => Promise<{ regular: string; bold: string }>> = {
   NotoSans: async () => {
     const [regular, bold] = await Promise.all([
       import("./fonts/noto/NotoSans-Regular.ttf?inline"),
       import("./fonts/noto/NotoSans-Bold.ttf?inline"),
     ]);
-    return { regular: base64(regular.default), bold: base64(bold.default) };
+    return { regular: fontFile(regular.default), bold: fontFile(bold.default) };
   },
-  NotoSansArabic: async () => single((await import("./fonts/noto/NotoSansArabic-Regular.ttf?inline")).default),
-  NotoSansHebrew: async () => single((await import("./fonts/noto/NotoSansHebrew-Regular.ttf?inline")).default),
+  NotoSansArabic: async () => {
+    const [regular, bold] = await Promise.all([
+      import("./fonts/noto/NotoSansArabic-Regular.ttf?inline"),
+      import("./fonts/noto/NotoSansArabic-Bold.ttf?inline"),
+    ]);
+    return { regular: fontFile(regular.default), bold: fontFile(bold.default) };
+  },
+  NotoSansHebrew: async () => {
+    const [regular, bold] = await Promise.all([
+      import("./fonts/noto/NotoSansHebrew-Regular.ttf?inline"),
+      import("./fonts/noto/NotoSansHebrew-Bold.ttf?inline"),
+    ]);
+    return { regular: fontFile(regular.default), bold: fontFile(bold.default) };
+  },
   NotoSansDevanagari: async () => single((await import("./fonts/noto/NotoSansDevanagari-Regular.ttf?inline")).default),
   NotoSansThai: async () => single((await import("./fonts/noto/NotoSansThai-Regular.ttf?inline")).default),
   NotoSansSC: async () => single((await import("./fonts/noto/NotoSansSC-Regular.ttf?inline")).default),
   NotoSansKR: async () => single((await import("./fonts/noto/NotoSansKR-Regular.ttf?inline")).default),
 };
 
-const base64 = (url: string) => url.slice(url.indexOf(",") + 1);
-const single = (url: string) => ({ regular: base64(url), bold: base64(url) });
+/**
+ * The book's line, from Atkinson Hyperlegible Next Regular's own metrics (hhea: ascender 984, descender −316, no
+ * gap, in 1,000 units to the em). pdfmake sets a line's baseline by the tallest ascender on it and its height by
+ * the fonts' ascender and descender, so a fallback with its own (Noto Sans Arabic's are 1,374 and −738) would sit a
+ * name lower than the Latin beside it and make its table row taller. Each fallback is given the book's instead.
+ */
+export const BOOK_LINE = { ascender: 0.984, descender: -0.316 } as const;
+
+/**
+ * A font file, as base64, with its ascender and descender set to the book's line (scaled to its own units to the
+ * em) and its line gap to none: in hhea, and in OS/2's typographic metrics, which the font engine inside pdfmake
+ * reads instead where the font says to use them (as the Noto fonts do). Only those numbers change; the letters, and
+ * the OS/2 Windows metrics, stay as they are.
+ */
+export function withBookLine(file: string): string {
+  const bytes = Uint8Array.from(atob(file), (character) => character.charCodeAt(0));
+  const view = new DataView(bytes.buffer);
+  const tables = new Map<string, number>();
+  const count = view.getUint16(4);
+  for (let index = 0; index < count; index += 1) {
+    const record = 12 + index * 16;
+    const tag = String.fromCharCode(...bytes.subarray(record, record + 4));
+    tables.set(tag, view.getUint32(record + 8));
+  }
+  const head = tables.get("head");
+  if (head === undefined) return file;
+  const units = view.getUint16(head + 18);
+  const ascender = Math.round(BOOK_LINE.ascender * units);
+  const descender = Math.round(BOOK_LINE.descender * units);
+  // hhea: ascender, descender and line gap at 4, 6 and 8; OS/2: sTypoAscender, sTypoDescender and sTypoLineGap at 68, 70 and 72.
+  const places = [
+    ["hhea", 4],
+    ["OS/2", 68],
+  ] as const;
+  for (const [tag, offset] of places) {
+    const table = tables.get(tag);
+    if (table === undefined) continue;
+    const at = table + offset;
+    view.setInt16(at, ascender);
+    view.setInt16(at + 2, descender);
+    view.setInt16(at + 4, 0);
+  }
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  return btoa(binary);
+}
+
+const fontFile = (url: string) => withBookLine(url.slice(url.indexOf(",") + 1));
+const single = (url: string) => {
+  const file = fontFile(url);
+  return { regular: file, bold: file };
+};
