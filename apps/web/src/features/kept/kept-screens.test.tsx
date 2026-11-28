@@ -461,6 +461,16 @@ describe("the medical sheets kept on this device", () => {
     expect(row).toHaveTextContent("2 sheets, 1 of them locked: they open here with their passphrase");
   });
 
+  it("says on its row when the household it is for was removed, and can still be removed from the device", async () => {
+    await keptSheets("Caravan", "caravan");
+    const { getKept } = await import("./store");
+    await putKept({ ...(await getKept("medical", "caravan"))!, householdId: "caravan", householdRemoved: true });
+    showKeptPage();
+    const row = (await screen.findByRole("link", { name: "Medical sheets for Caravan" })).closest("li")!;
+    expect(row).toHaveTextContent("This household was removed; its copy is still on this");
+    expect(within(row).getByRole("button", { name: /Remove/ })).toBeVisible();
+  });
+
   it("shows a sheet that is not locked, and keeps a locked one locked", async () => {
     await keptSheets();
     const { default: KeptMedicalScreen } = await import("./kept-medical-screen");

@@ -35,7 +35,7 @@ import {
   useAreaWork,
 } from "./area";
 import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE } from "./device";
-import { keepMedical, keepNote, keepPlaces, keepTrack, MEDICAL_ID, PLACES_ID } from "./keep";
+import { isEarlierCopy, keepMedical, keepNote, keepPlaces, keepTrack, MEDICAL_ID, PLACES_ID } from "./keep";
 import { type KeptMedical, keepingSupported, outOfRoomMessage, removeKept, useKept } from "./store";
 
 const KEPT_PATH = "/kept";
@@ -185,14 +185,28 @@ export function KeepPlacesRow({ count }: { count: number }) {
  * one that is not locked is readable by anyone who can open this browser. Each household's
  * sheets are a copy of their own: the row is about the household shown (`householdId`).
  */
-export function KeepMedicalRow({ householdId = MEDICAL_ID, count, open }: { householdId?: string; count: number; open: number }) {
+export function KeepMedicalRow({
+  householdId = MEDICAL_ID,
+  householdName = null,
+  count,
+  open,
+}: {
+  householdId?: string;
+  /** The household's name when there are several, else null: an earlier copy under its id counts as its own only if it matches. */
+  householdName?: string | null;
+  count: number;
+  open: number;
+}) {
   const kept = useKept();
   const [asking, setAsking] = useState(false);
   const keep = useKeeping(
     () => keepMedical(householdId),
     (done) => toast.success(`${plural(done.count, "medical sheet")} kept on this ${DEVICE}.`),
   );
-  const item = kept?.find((entry): entry is KeptMedical => entry.kind === "medical" && entry.id === householdId);
+  const item = kept?.find(
+    (entry): entry is KeptMedical =>
+      entry.kind === "medical" && entry.id === householdId && (!isEarlierCopy(entry) || (entry.householdName ?? null) === householdName),
+  );
   if ((count === 0 && !item) || !keepingSupported()) return null;
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border pt-3">

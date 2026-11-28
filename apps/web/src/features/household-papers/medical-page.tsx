@@ -145,6 +145,7 @@ export default function MedicalPage() {
             )}
             <KeepMedicalRow
               householdId={sheets.data?.household?.id}
+              householdName={sheets.data?.household?.several ? sheets.data.household.name : null}
               count={list.length}
               open={list.filter((sheet) => !sheet.encrypted).length}
             />

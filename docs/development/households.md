@@ -219,9 +219,13 @@ Each of these is so by choice:
 - The first household, when it has no home place of its own, takes the saved place with
   the home icon (`homePlaceOf`, in `households/service.ts` only).
 - The phone keeps one copy of the medical sheets per household, under the household's id
-  (a copy from before is under `household`, the first's). `keepMedical(id?)` fetches
+  (`householdId` on the record). A copy from before (no `householdId`, filed under
+  `household` whichever household it was) is matched on the next refresh by the name it
+  was kept with (none: the first household) and moved to that household's id; one that
+  matches no household, or several, is left as it was (`unmatched`), and keeping the first
+  household's sheets moves it aside rather than writing over it. `keepMedical(id?)` fetches
   `GET /api/medical-sheets?household=<id>` (left out: the current household's); a refresh
   brings each copy up to date from its own household, and leaves a removed household's
-  copy as it was.
+  copy as it was (`householdRemoved`, said on its row under Kept).
 - An insert that leaves `household_id` out takes the column default, the first
   household: every per-household service sets it, so a new one must too.

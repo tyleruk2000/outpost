@@ -6,7 +6,7 @@ import { type FakeCacheStorage, installFakeCaches } from "./fake-caches";
 import { BASE_GLYPH_RANGES, collectGlyphRanges, glyphPath, spritePaths } from "./glyphs";
 import { attachmentsOf, keepMedical, keepNote, keepPlaces, keepTrack, MAX_KEPT_PAGES, refreshKept } from "./keep";
 import { findKeptPage } from "./kept-note-screen";
-import { forgetKeptSnapshot, getKept, keepingSupported, listKept, removeKept } from "./store";
+import { forgetKeptSnapshot, getKept, keepingSupported, listKept, putKept, putKeptJson, removeKept } from "./store";
 
 const doc = (...content: unknown[]): NoteDoc => ({ type: "doc", content }) as unknown as NoteDoc;
 const text = (value: string) => ({ type: "paragraph", content: [{ type: "text", text: value }] });
@@ -75,6 +75,10 @@ function fakeServer() {
       const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.origin);
       const path = url.pathname;
       state.asked.push(path + url.search);
+      if (path === "/api/households") {
+        const households = Object.entries(state.medical.households).map(([id, each]) => ({ id, name: each.name }));
+        return json({ households, currentId: state.medical.current });
+      }
       if (path === "/api/medical-sheets") {
         const id = url.searchParams.get("household") ?? state.medical.current;
         const household = state.medical.households[id];
@@ -331,12 +335,57 @@ describe("keeping the medical sheets", () => {
     expect(server.asked).toContain("/api/medical-sheets?household=household");
   });
 
-  it("keeps the copy of a household removed at home as it was", async () => {
+  it("keeps the copy of a household removed at home as it was, and says the household was removed", async () => {
     server.medical.current = "caravan";
     await keepMedical();
     delete server.medical.households.caravan;
     await refreshKept();
-    expect((await getKept("medical", "caravan"))?.count).toBe(2);
+    expect(await getKept("medical", "caravan")).toMatchObject({ count: 2, householdRemoved: true });
+  });
+
+  /** A copy kept before there was one per household: under the id "household", whichever household it was. */
+  async function keptBefore(householdName: string | null, count = 9) {
+    await putKeptJson(await caches.open("outpost-kept:medical:household"), "/api/medical-sheets", { sheets: [], householdName });
+    await putKept({
+      kind: "medical",
+      id: "household",
+      title: householdName ? `Medical sheets for ${householdName}` : "Medical sheets",
+      householdName,
+      count,
+      locked: 0,
+      bytes: 10,
+      keptAt: 1,
+      refreshedAt: 1,
+    });
+  }
+
+  it("files a copy kept before under the household it was kept for, by its name, and brings it up to date from there", async () => {
+    await keptBefore("Caravan");
+    await refreshKept();
+    expect(await getKept("medical", "caravan")).toMatchObject({ householdId: "caravan", householdName: "Caravan", count: 2 });
+    expect(await getKept("medical", "household")).toBeUndefined();
+    expect(server.asked).not.toContain("/api/medical-sheets?household=household");
+  });
+
+  it("takes a copy kept before with one household as the first household's", async () => {
+    await keptBefore(null);
+    await refreshKept();
+    expect(await getKept("medical", "household")).toMatchObject({ householdId: "household", count: 1 });
+  });
+
+  it("leaves a copy kept before that matches no household as it was, under the name it was kept with", async () => {
+    await keptBefore("Boat");
+    await refreshKept();
+    expect(await getKept("medical", "household")).toMatchObject({ title: "Medical sheets for Boat", count: 9, unmatched: true });
+    expect(server.asked.some((path) => path.startsWith("/api/medical-sheets"))).toBe(false);
+  });
+
+  it("does not write home's sheets over a copy kept before of another household", async () => {
+    await keptBefore("Boat");
+    await keepMedical();
+    expect(await getKept("medical", "household")).toMatchObject({ householdId: "household", householdName: "Home", count: 1 });
+    const old = (await listKept()).find((item) => item.kind === "medical" && item.id !== "household");
+    expect(old).toMatchObject({ title: "Medical sheets for Boat", count: 9 });
   });
 });
 
