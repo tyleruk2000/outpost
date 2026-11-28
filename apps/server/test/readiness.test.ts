@@ -65,6 +65,25 @@ describe("roll call", () => {
     expect(lastWeek.lines.every((line) => line.latest === null || line.answered)).toBe(true);
   });
 
+  it("names the radio a check-in heard over the mesh came from, so its last position can be shown beside it", async () => {
+    app.ctx.services.board.receive({
+      channel: "meshtastic:longfast",
+      source: "meshtastic",
+      externalId: "roll-1",
+      kind: "checkin",
+      status: "safe",
+      author: "Kit",
+      body: "",
+      meta: { node: { id: "!a1b2c3d4", shortName: "KIT", longName: "Kit's radio" } },
+    });
+    await ok("POST", "/api/board/check-ins", { author: "Lee", status: "safe" });
+    const roll = await ok<RollCallResponse>("GET", "/api/board/roll-call");
+    expect(roll.lines.find((line) => line.name === "Kit")?.latest).toMatchObject({ channel: "meshtastic:longfast", radio: "!a1b2c3d4" });
+    // One written here came from no radio; the roll call never carries a position itself.
+    expect(roll.lines.find((line) => line.name === "Lee")?.latest?.radio).toBeNull();
+    expect(JSON.stringify(roll)).not.toMatch(/"(lat|lon|position)":/);
+  });
+
   it("asks on a radio channel named as well as on the board", async () => {
     const asked = await ok<RollCallAskResponse>("POST", "/api/board/roll-calls", { by: "Ana", alsoOn: ["meshtastic:longfast"] });
     expect(asked.refused).toEqual([]);

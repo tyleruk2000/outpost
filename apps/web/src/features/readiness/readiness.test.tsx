@@ -59,6 +59,7 @@ describe("what the screens say", () => {
         hasPosition: false,
         createdAt: NOW - 2 * 60 * 60_000,
         channel: "board",
+        radio: null,
       },
     };
     expect(rollCallWords(line, NOW)).toBe("safe · Gone to Mum's · 13:00 today (2 hours ago)");
@@ -191,7 +192,16 @@ describe("the screens", () => {
         {
           name: "Sam",
           answered: true,
-          latest: { id: "m", status: "safe", body: "", place: null, hasPosition: false, createdAt: Date.now(), channel: "board" },
+          latest: {
+            id: "m",
+            status: "safe",
+            body: "",
+            place: null,
+            hasPosition: false,
+            createdAt: Date.now(),
+            channel: "board",
+            radio: null,
+          },
         },
         { name: "Jo", answered: false, latest: null },
       ],
@@ -207,6 +217,56 @@ describe("the screens", () => {
     expect(screen.getByRole("button", { name: /I'm safe/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Ask everyone to check in/ }));
     expect(await screen.findByRole("dialog", { name: "Ask everyone to check in" })).toBeTruthy();
+  });
+
+  it("shows where a radio that checked in last reported itself, only where that radio is switched on for the map", async () => {
+    const now = Date.now();
+    const heard = (name: string, radio: string) => ({
+      name,
+      answered: true,
+      latest: {
+        id: name,
+        status: "safe" as const,
+        body: "",
+        place: null,
+        hasPosition: false,
+        createdAt: now - 60_000,
+        channel: "meshtastic:longfast",
+        radio,
+      },
+    });
+    const roll: RollCallResponse = {
+      since: now - 60 * 60_000,
+      answered: 3,
+      asks: [],
+      lines: [heard("Kit", "!a1b2c3d4"), heard("Max", "!00000002"), heard("Ola", "!00000003")],
+    };
+    serve({
+      "/api/board/roll-call": roll,
+      "/api/board/summary": { checkIns: [], people: [], newSince: 0, newestAt: null, fileDays: 7, limits: {} },
+      "/api/mesh": { channels: [] },
+      "/api/mesh/positions": {
+        radios: [
+          {
+            id: "!a1b2c3d4",
+            transport: "meshtastic",
+            shortName: "KIT",
+            longName: "Kit's radio",
+            onMap: true,
+            at: now - 20 * 60_000,
+            position: { lat: 54.6, lon: -3.13, altitude: null },
+          },
+          // Switched off: the server sends no place, and none is shown.
+          { id: "!00000002", transport: "meshtastic", shortName: "MAX", longName: null, onMap: false, at: now, position: null },
+        ],
+      },
+    });
+    renderScreen(<CheckInPage />);
+    const link = await screen.findByRole("link", { name: /Kit's radio was last at 54\.60° N, 3\.13° W, 20 minutes ago/ });
+    expect(link.getAttribute("href")).toBe("/maps?lat=54.60000&lon=-3.13000&z=15");
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.find((row) => row.textContent?.includes("Max"))?.textContent).not.toMatch(/was last at/);
+    expect(rows.find((row) => row.textContent?.includes("Ola"))?.textContent).not.toMatch(/was last at/);
   });
 
   it("shows each line of the drill as held, missing or not checked, with the screen that fixes it", async () => {
