@@ -46,7 +46,7 @@ const invalidations: Record<string, string[][]> = {
   // A reference pack was installed, updated or removed (features/layers).
   "layers.changed": [["layers"], ["collections"], ["manage"], ["search"]],
   "contacts.changed": [["contacts"], ["search"], ["manage"], ["household-papers", "binder"], ["household-book", "answers"]],
-  "repeaters.changed": [["repeaters"], ["search"]],
+  "repeaters.changed": [["repeaters"], ["search"], ["household-book", "answers"]],
   // A road network was added, updated or removed, or a road route saved, renamed or deleted (maps/road-route).
   "roads.changed": [["roads"]],
   // Streets for routes were built, brought in or removed, or a build moved on (the optional streets service).

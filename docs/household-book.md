@@ -215,8 +215,9 @@ plans or its places change, and replace the printed copy.
 
 When anything the last book was made from has changed or been deleted since (the answers,
 emergency plans, contacts, saved places, medical sheets, Keeping in touch, radio plans,
-supplies and the household), Home and the book's screen say which, with a link to make it again. Facts read
-round home (help nearby, the wind, terrain) are not watched. A household binder made
+supplies and the household, and, for a book with radio frequencies in it, the repeaters
+under **Radio → Repeaters**), Home and the book's screen say which, with a link to make it
+again. Facts read round home (help nearby, the wind, terrain) are not watched. A household binder made
 before the binder became part of the book stands in for the book until the book is made.
 
 ## Several households

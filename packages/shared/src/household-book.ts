@@ -289,6 +289,7 @@ export const BOOK_SOURCES = [
   { id: "medical", label: "medical sheets" },
   { id: "comms", label: "keeping in touch" },
   { id: "radio", label: "radio plans" },
+  { id: "repeaters", label: "repeaters" },
   { id: "supplies", label: "supplies and the household" },
 ] as const;
 export type BookSource = (typeof BOOK_SOURCES)[number]["id"];

@@ -792,6 +792,9 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   country rather than **Other areas**. A map of a part of a country (England, a region the
   regions layer knows) is of the part, not the whole country, and is named for it; a town
   finds its part from its place names (England, Ohio, Cumbria) without the regions layer.
+- Home and the household book say the book is older than the repeaters when a repeater
+  is added, changed or removed under **Radio → Repeaters** after a book with radio
+  frequencies in it was made; they did not notice before.
 
 ### Security
 
