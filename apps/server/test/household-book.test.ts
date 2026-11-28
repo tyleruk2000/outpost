@@ -83,6 +83,7 @@ describe("the book's answers", () => {
       "places",
       "plans",
       "radio",
+      "repeaters",
       "supplies",
     ]);
     const saved = await ok<BookResponse>("PUT", "/api/household-book", {
@@ -161,6 +162,32 @@ describe("the book's answers", () => {
     await madeNow();
     await ok("DELETE", `/api/emergency-plans/${added.plan.id}`);
     expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+  });
+
+  it("says a book with radio frequencies is older than the repeaters when one is added, changed or removed", async () => {
+    const madeNow = async (sections: string[]) => {
+      const now = await ok<BookResponse>("GET", "/api/household-book");
+      await ok("POST", "/api/household-book/made", { pages: 41, sections, summary: {}, fingerprints: now.fingerprints });
+      expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual([]);
+    };
+    await madeNow(["frequencies"]);
+    const added = await ok<{ repeater: { id: string; updatedAt: number } }>("POST", "/api/repeaters", {
+      callsign: "QZ3HAND",
+      outputHz: 145_725_000,
+      lat: 54.4,
+      lon: -2.9,
+    });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["repeaters"]);
+    await madeNow(["frequencies"]);
+    await ok("PATCH", `/api/repeaters/${added.repeater.id}`, { callsign: "QZ3HAND", outputHz: 145_737_500, lat: 54.4, lon: -2.9 });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["repeaters"]);
+    await madeNow(["frequencies"]);
+    await ok("DELETE", `/api/repeaters/${added.repeater.id}`);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["repeaters"]);
+    // A book without the frequencies has no repeaters in it to be old.
+    await madeNow(["situations"]);
+    await ok("POST", "/api/repeaters", { callsign: "QZ3MORE", outputHz: 145_600_000, lat: 54.4, lon: -2.9 });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual([]);
   });
 
   it("says the book is older than the radio plans when one is added, changed or deleted", async () => {

@@ -15,6 +15,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict } from "../../core/errors.ts";
+import { openRegularFile } from "../../core/fs-safe.ts";
 import { type JobRow, toJobDto } from "../../core/jobs.ts";
 import { syncedWriteStream } from "../../core/synced-write.ts";
 import { documents } from "../../db/schema.ts";
@@ -84,7 +85,8 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
           await fs.promises.mkdir(path.dirname(destination), { recursive: true });
           const hash = createHash("sha256");
           await pipeline(
-            fs.createReadStream(source, { highWaterMark: 1024 * 1024 }),
+            // By its own name, not through a link put in its place.
+            (await openRegularFile(source)).handle.createReadStream({ highWaterMark: 1024 * 1024 }),
             async function* (stream) {
               for await (const chunk of stream) {
                 hash.update(chunk as Buffer);

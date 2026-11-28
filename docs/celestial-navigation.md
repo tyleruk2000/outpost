@@ -27,7 +27,8 @@ look at the Sun through a sextant without its shades.
 6. **Running fix.** If you moved between sights, give the course and speed made good; the fix
    is for the time of the last sight. Two Sun sights a few hours apart make a fix by day.
 
-The fix is drawn on a plotting sheet; **Show on the map** puts the lines, fix and ellipse on
+The fix is drawn on a plotting sheet wide enough for every line, however far it passes from
+the position worked from; **Show on the map** puts the lines, fix and ellipse on
 the offline map. Sights are kept on this device.
 
 ## Noon and Polaris

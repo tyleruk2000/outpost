@@ -24,7 +24,7 @@ import {
   type CalibrePlan,
   type CalibreReport,
 } from "@outpost/shared";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNotNull } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
@@ -38,6 +38,9 @@ export type CalibreImportRow = typeof calibreImports.$inferSelect;
 
 export const READ_JOB = "calibre.read";
 export const IMPORT_JOB = "calibre.import";
+export const SERIES_JOB = "calibre.series";
+/** In `library_meta` once the series of books brought in earlier are in search. */
+const SERIES_KEY = "calibre.seriesInSearch";
 const QUEUE = "import";
 const ACTIVE = new Set(["queued", "running", "paused"]);
 const COVER_EXTS = ["jpg", "jpeg", "png", "webp", "gif"];
@@ -69,6 +72,11 @@ export interface CalibreService {
   details(documentId: string): BookDetailsDto | null;
   /** The kept cover of a document, or undefined. */
   cover(documentId: string): { path: string; mime: string } | undefined;
+  /**
+   * Puts the series of books brought in before series were searchable into search, as a job,
+   * once for each library (`library_meta` remembers it). Null when there is nothing to do.
+   */
+  indexSeriesIfNeeded(): JobRow | null;
 }
 
 declare module "../../core/context.ts" {
@@ -228,6 +236,8 @@ export function createCalibreService(ctx: AppContext): CalibreService {
         createdAt: Date.now(),
       })
       .run();
+    // Search finds a book by its series as well as its title.
+    if (book.series) await ctx.services.documents.refreshSearch(documentId);
   }
 
   async function description(root: string, book: ScannedBook): Promise<string | null> {
@@ -328,6 +338,42 @@ export function createCalibreService(ctx: AppContext): CalibreService {
 
   ctx.jobs.register<JobPayload>(READ_JOB, { queue: QUEUE, run: read, onSettled: settle });
   ctx.jobs.register<JobPayload>(IMPORT_JOB, { queue: QUEUE, run: importJob, onSettled: settle });
+
+  // Each book with a series has its search entry written again from its stored text. Measured in the test suite's
+  // set-up (1,000 books of 12 kB of text on a shared four-core machine) at 30 ms a book: about ten minutes for
+  // 20,000 books in series, in the background as a job that can be paused, and only once.
+  const seriesDone = () => Boolean(ctx.sqlite.prepare("SELECT 1 FROM library_meta WHERE key = ?").get(SERIES_KEY));
+  const markSeriesDone = () =>
+    ctx.sqlite.prepare("INSERT INTO library_meta (key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE SET value = '1'").run(SERIES_KEY);
+  ctx.jobs.register<Record<string, never>>(SERIES_JOB, {
+    queue: QUEUE,
+    async run(run) {
+      const ids = db
+        .select({ id: bookDetails.documentId })
+        .from(bookDetails)
+        .where(isNotNull(bookDetails.series))
+        .all()
+        .map((row) => row.id);
+      for (const [index, id] of ids.entries()) {
+        run.signal.throwIfAborted();
+        if (index % 50 === 0) run.progress({ current: index, total: ids.length, message: null, unit: "books" });
+        await documents.refreshSearch(id);
+      }
+      markSeriesDone();
+      return { books: ids.length };
+    },
+  });
+  function indexSeriesIfNeeded(): JobRow | null {
+    if (seriesDone()) return null;
+    const waiting = ctx.jobs.findBySubject(SERIES_JOB).find((job) => ACTIVE.has(job.state));
+    if (waiting) return waiting;
+    if (!db.select({ id: bookDetails.documentId }).from(bookDetails).where(isNotNull(bookDetails.series)).limit(1).get()) {
+      markSeriesDone();
+      return null;
+    }
+    return ctx.jobs.enqueue(SERIES_JOB, {}, { title: "Making books findable by their series", subject: SERIES_JOB });
+  }
+  indexSeriesIfNeeded();
 
   // A stop in the middle: the queue resumes jobs it still holds; anything else is said to have stopped.
   for (const row of db.select().from(calibreImports).all()) {
@@ -439,6 +485,8 @@ export function createCalibreService(ctx: AppContext): CalibreService {
         inCalibreFolder: !document.relPath.startsWith(`documents/${documentId}/`),
       };
     },
+
+    indexSeriesIfNeeded,
 
     cover(documentId) {
       const row = db.select({ coverExt: bookDetails.coverExt }).from(bookDetails).where(eq(bookDetails.documentId, documentId)).get();

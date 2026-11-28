@@ -2,7 +2,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import type { DocumentDto, UploadResult } from "@outpost/shared";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EXTRACT_JOB } from "../src/modules/documents/service.ts";
 import { buildEpub, buildPdf, buildZip, multipart, tinyPng, type UploadFile } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -907,6 +907,58 @@ describe("the service, as other modules use it", () => {
     expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
     expect(fs.readFileSync(secret, "utf8")).toBe("The private notes of someone else.");
     expect(documents.list().total).toBe(0);
+  });
+
+  it("never keeps a link swapped in after the file was read, moved in or kept where it is", async () => {
+    const { documents, storage } = app.ctx.services;
+    const secret = path.join(app.dir, "private-notes.txt");
+    fs.writeFileSync(secret, "The private notes of someone else.");
+    const location = storage.getDefault();
+    const swapForLink = (file: string) => {
+      fs.rmSync(file);
+      fs.symlinkSync(secret, file);
+    };
+
+    // Moved in by a rename: the link goes in place of the file at the last moment before the rename.
+    const moving = path.join(location.path, "moving.txt");
+    fs.writeFileSync(moving, "Read and checked as this.");
+    const rename = fs.promises.rename;
+    const renameSpy = vi.spyOn(fs.promises, "rename").mockImplementation(async (from, to) => {
+      if (String(from) === moving && fs.lstatSync(moving).isFile()) swapForLink(moving);
+      return rename(from, to);
+    });
+    try {
+      await expect(documents.ingestFile({ sourcePath: moving, originalName: "moving.txt", move: true })).rejects.toMatchObject({
+        code: "conflict",
+      });
+    } finally {
+      renameSpy.mockRestore();
+    }
+    // The link is put back where it was, untouched, and nothing of it is kept.
+    expect(fs.lstatSync(moving).isSymbolicLink()).toBe(true);
+    expect(fs.readlinkSync(moving)).toBe(secret);
+    expect(fs.readdirSync(path.join(location.path, "documents")).filter((name) => name !== ".incoming")).toEqual([]);
+
+    // Kept where it is: the link goes in just after the last look at it by name.
+    const keeping = path.join(location.path, "keeping.txt");
+    fs.writeFileSync(keeping, "Also read and checked as this.");
+    const lstat = fs.promises.lstat;
+    let looks = 0;
+    const lstatSpy = vi.spyOn(fs.promises, "lstat").mockImplementation(async (file, ...rest) => {
+      const result = await lstat(file, ...(rest as []));
+      if (String(file) === keeping && looks++ === 0) swapForLink(keeping);
+      return result;
+    });
+    try {
+      await expect(documents.ingestFile({ sourcePath: keeping, originalName: "keeping.txt", inPlace: true })).rejects.toMatchObject({
+        code: "conflict",
+      });
+    } finally {
+      lstatSpy.mockRestore();
+    }
+    expect(fs.lstatSync(keeping).isSymbolicLink()).toBe(true);
+    expect(documents.list().total).toBe(0);
+    expect(fs.readFileSync(secret, "utf8")).toBe("The private notes of someone else.");
   });
 
   it("checks an EPUB whose mimetype is not first through the file it opened", async () => {

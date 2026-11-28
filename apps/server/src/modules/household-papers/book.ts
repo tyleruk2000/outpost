@@ -38,8 +38,15 @@ const BOOK_READS: Record<Exclude<BookSource, "answers">, SourceId[]> = {
   medical: ["medical", "people"],
   comms: ["comms"],
   radio: ["radioPlans"],
+  repeaters: ["repeaters"],
   supplies: ["supplies", "people"],
 };
+
+/**
+ * Sources only one section reads: a book made without that section is not old when they change. Repeaters are
+ * everyone's and change with every list brought in, so a book with no radio frequencies is not called old by them.
+ */
+const ONLY_IN_SECTION: Partial<Record<BookSource, BookSectionId>> = { repeaters: "frequencies" };
 
 const L = BOOK_LIMITS;
 const itemId = z.string().min(1).max(64);
@@ -187,7 +194,12 @@ export function createBookService(
     >),
   });
   const staleOf = (made: BookMade | null, at: Record<BookSource, string>): BookSource[] =>
-    made?.fingerprints ? BOOK_SOURCE_IDS.filter((id) => made.fingerprints![id] !== undefined && made.fingerprints![id] !== at[id]) : [];
+    made?.fingerprints
+      ? BOOK_SOURCE_IDS.filter((id) => {
+          const only = ONLY_IN_SECTION[id];
+          return made.fingerprints![id] !== undefined && made.fingerprints![id] !== at[id] && (!only || made.sections.includes(only));
+        })
+      : [];
 
   /**
    * The binder is part of the book now. Until a book is made, the last binder made stands

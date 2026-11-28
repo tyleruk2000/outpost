@@ -502,7 +502,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 
 - A standalone Outpost written to a removable drive: the app, checked Node runtimes,
   launchers for macOS, Windows and Linux, a narrowed database and chosen content; the
-  collection reader for macOS and Linux; updated in place.
+  collection reader for macOS and Linux; updated in place. Books from Calibre keep their
+  covers on the drive.
 - **Storage → Bring back changes from a drive**: a preview by kind, conflicts kept both
   ways unless chosen, nothing removed at home unless ticked, as a stoppable, undoable
   job that only reads the drive. A drive records what each item was when written.
@@ -608,7 +609,7 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   through updates, listed under **Library → Learning** and printable
   (`0029_learning_progress`).
 - **Import from Calibre** under Library: copy the books or use them in place; the Calibre
-  folder is only read.
+  folder is only read. Search and the library's list find a book by its series.
 
 #### Catalogue additions (17 November 2026)
 
@@ -839,8 +840,29 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - Nuclear preparedness: with no population grid for the rings, the button is **Add
   population density for** the rings' country, opening Add a place with it ticked; it no
   longer said "Get layer data", a dialog that is gone.
+- Celestial navigation's plotting sheet draws a line of position that passes more than
+  eight miles from the position worked from; it drew an empty sheet. Its north arrow's N
+  is no longer cut by the edge, and no name is put over the scale.
+- The night sky's chart names the Moon, the planets and the bright stars on a phone; kept
+  clear of every faint dot, it had room for one name. "True north" and "True south" sit
+  beside the horizon, not across it.
+- Home and the household book say the book is older than the repeaters when a repeater
+  is added, changed or removed under **Radio → Repeaters** after a book with radio
+  frequencies in it was made; they did not notice before.
 
 ### Security
+
+- **A file added to the library from a folder is not kept if something is swapped in for it
+  at the last moment.** A person's own file moved in, or recorded where it is, is checked by
+  its name once it has been moved or recorded. What was swapped in is put back at its old
+  name only if that name is free (never over a newer file there); otherwise it is left where
+  it was moved to and the message says where. Nothing is added to the library either way.
+- **A file moved in from another drive is removed only while it is still the file copied**,
+  unchanged; one saved again during the copy is left where it is, and the person is told.
+- **A document's file is never read through a link.** Opening it, reading its text, OCR,
+  pictures, audio tags and moving it to another location all open it by its own name and
+  refuse a link or anything that is not a file, with "This file has been replaced by a link,
+  so Outpost will not open it."
 
 - **A symbolic link in a storage root no longer opens the whole disk.** Paths are checked
   as written and again with links followed (on a Mac `/Volumes/Macintosh HD` links to `/`).

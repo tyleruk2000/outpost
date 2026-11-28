@@ -25,7 +25,7 @@ installed and no internet needed.
   progress, power plans, every household with its people (the drive screen names them), supplies, weather places and barometer readings, emergency
   plans, nuclear scenarios, reference layers, network devices, games, and PGP keys (a
   private key only in its passphrase-protected form).
-- **Your choice:** all documents or none, contacts (on by default), and the collections
+- **Your choice:** all documents or none (books from Calibre with their covers), contacts (on by default), and the collections
   and maps you tick.
 - **Never copied:** the mesh radio set-up and radios heard, the MCP switch, Heard on the
   radio's receivers and what they heard, download history, jobs, earlier versions of

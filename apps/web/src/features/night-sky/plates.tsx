@@ -21,6 +21,9 @@ export function SkyChartPlate({ model, when, placeName }: { model: ChartModel; w
   );
 }
 
+/** Stars this bright or brighter keep labels off their dots. */
+const LABEL_CLEAR_OF_MAGNITUDE = 2.5;
+
 function Chart({ box, model }: { box: PlateBox; model: ChartModel }) {
   const f = box.font;
   const size = Math.min(box.width, box.rem * 36);
@@ -38,7 +41,9 @@ function Chart({ box, model }: { box: PlateBox; model: ChartModel }) {
     { text: "W", at: [cx + r + f * 0.8, cy] as Point },
   ];
   for (const c of compass) taken.push(pointBox(c.at, f * 0.7));
-  for (const star of model.stars) taken.push(pointBox(at(star.at), 3));
+  // A label may lie over a faint star (its halo keeps both readable), never over a bright one: kept clear of every
+  // dot, a phone-width chart had room for one name and none for the Moon.
+  for (const star of model.stars) if (star.magnitude <= LABEL_CLEAR_OF_MAGNITUDE) taken.push(pointBox(at(star.at), 3));
   for (const body of model.bodies) taken.push(pointBox(at(body.at), 6));
   // Labels: the Moon and planets first, then the brightest named stars, each only where it fits.
   const labels = [
@@ -135,7 +140,10 @@ function PoleDrawing({ box, view, north }: { box: PlateBox; view: PoleView; nort
   const from = view.pointers.from ? at(view.pointers.from) : null;
   const to = view.pointers.to ? at(view.pointers.to) : null;
   if (from && to) avoid.push({ kind: "segment", a: from, b: pole });
-  const horizonPath = polyline(view.horizon.map(at).filter((p) => p[0] >= 0 && p[0] <= box.width && p[1] >= 0 && p[1] <= height));
+  const horizonPoints = view.horizon.map(at).filter((p) => p[0] >= 0 && p[0] <= box.width && p[1] >= 0 && p[1] <= height);
+  const horizonPath = polyline(horizonPoints);
+  // "True north" sits beside the horizon, not across it: across, the line showed between its words.
+  for (const [i, p] of horizonPoints.slice(1).entries()) avoid.push({ kind: "segment", a: horizonPoints[i]!, b: p });
   const label = (point: Point, text: string, tone: "name" | "figure" | "accent" = "name") => {
     const placed = placeLabel(point, text, f, taken, bounds, 6, avoid);
     return placed ? (

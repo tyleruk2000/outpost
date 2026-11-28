@@ -5,7 +5,7 @@
  * Everything here ends up as plain text in the search index and is never rendered as
  * markup, so the parsing is about finding words and headings, not preserving layout.
  */
-import fs from "node:fs";
+
 import type { Element, Nodes as HastNodes, Root as HastRoot } from "hast";
 import { toText } from "hast-util-to-text";
 import type { Nodes as MdastNodes, Root as MdastRoot } from "mdast";
@@ -14,6 +14,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { openRegularFile } from "../../core/fs-safe.ts";
 import { withoutPictureData } from "./embedded-pictures.ts";
 import { type Extracted, type ExtractedSection, tidyText } from "./extract-types.ts";
 
@@ -30,7 +31,7 @@ export function decodeText(bytes: Buffer): string {
 }
 
 async function readStart(file: string, maxBytes: number): Promise<{ text: string; note?: string }> {
-  const handle = await fs.promises.open(file, "r");
+  const handle = (await openRegularFile(file)).handle;
   try {
     const { size } = await handle.stat();
     const length = Math.min(size, maxBytes);

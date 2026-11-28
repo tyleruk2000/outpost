@@ -7,6 +7,7 @@ import { toolScreens } from "../tools/screens";
 import CelestialNavigationPage from "./celnav-page";
 import { EXAMPLE, formBlocks, workedExample } from "./form";
 import { celnavData } from "./map-layers";
+import { plotReach } from "./plot-plate";
 import { formatAngle, formatLatLon, plotOf, readAngle, type SightRecord, sightInstant, workSights } from "./sights";
 
 beforeEach(() => localStorage.clear());
@@ -86,6 +87,16 @@ describe("working sights", () => {
     expect(kinds.filter((k) => k === "line")).toHaveLength(3);
     expect(kinds).toContain("fix");
     expect(kinds).toContain("ellipse");
+  });
+
+  it("draws a sheet that reaches every line of position, however far it passes from the position worked from", () => {
+    // From 37 miles west of the true place, Vega (in the west)'s line passes far outside the eight miles a sheet starts at.
+    const dr = { lat: 51.5, lon: -2 };
+    const { worked } = workSights([sightOf("Vega", "a")], dr, { course: "", speed: "" });
+    const plot = plotOf(worked, null, dr, at);
+    const intercept = Math.abs(worked[0]!.reduction.intercept);
+    expect(intercept).toBeGreaterThan(10);
+    expect(plotReach(plot)).toBeGreaterThan(intercept);
   });
 
   it("says what is missing from a sight not yet filled in", () => {

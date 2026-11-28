@@ -2,13 +2,13 @@
  * HTTP routes of the document library. The rules live in `service.ts`; this file
  * validates input, checks who is asking, and shapes responses.
  */
-import fs from "node:fs";
+import type fs from "node:fs";
 import type { DocumentMarkdownResponse, DocumentOcrResponse, DocumentResponse, OcrStatus } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
-import { safeFileName } from "../../core/fs-safe.ts";
+import { openRegularFile, safeFileName } from "../../core/fs-safe.ts";
 import { registerMultipart } from "../../core/multipart.ts";
 import { readPicture } from "./embedded-pictures.ts";
 import { registerEpubReader } from "./epub-reader.ts";
@@ -177,50 +177,64 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
   app.get<IdParams>("/api/documents/:id/file", async (request, reply) => {
     const document = service.get(request.params.id);
     const file = service.absolutePath(document.id);
-    const stat = await fs.promises.stat(file).catch(() => undefined);
-    if (!stat?.isFile()) {
+    // Opened once, not through a link put at its name, and only if it is a file; everything sent is read through this handle.
+    const { handle, stat } = await openRegularFile(file).catch((error: unknown) => {
+      if (error instanceof AppError) throw error;
       throw new AppError(
         "not_found",
         `The file of "${document.title}" is missing from its storage location (${document.relPath}). It may have been moved or deleted outside Outpost.`,
       );
+    });
+    // The stream sent closes the handle; every other way out closes it here.
+    let handedOver = false;
+    try {
+      return await sendFile(handle, stat, () => {
+        handedOver = true;
+      });
+    } finally {
+      if (!handedOver) await handle.close();
     }
 
-    const { download } = z.object({ download: switchOn }).parse(request.query);
-    const served = servedAs(formatForExt(document.ext), download);
-    const etag = `"${document.sha256}"`;
-    reply
-      .header("Content-Security-Policy", FILE_CSP)
-      .header("X-Content-Type-Options", "nosniff")
-      .header("Content-Disposition", contentDisposition(served.disposition, safeFileName(document.originalName)))
-      .header("Accept-Ranges", "bytes")
-      .header("ETag", etag)
-      // The bytes behind an id never change, so a browser may keep them and revalidate.
-      .header("Cache-Control", "private, no-cache")
-      .header("Last-Modified", new Date(document.createdAt).toUTCString());
-
-    if (matchesEtag(request.headers["if-none-match"], etag)) return reply.status(304).send();
-
-    // A range is only honoured for the version the client already has part of.
-    const ifRange = request.headers["if-range"];
-    const current = ifRange === undefined || (typeof ifRange === "string" && matchesEtag(ifRange, etag));
-    const range = current ? parseRange(request.headers.range, stat.size) : undefined;
-    if (range === "unsatisfiable") {
-      return reply
-        .status(416)
-        .header("Content-Range", `bytes */${stat.size}`)
-        .send({ error: { code: "bad_request", message: "The requested part of the file does not exist." } });
-    }
-
-    reply.type(served.contentType);
-    if (range) {
+    async function sendFile(handle: fs.promises.FileHandle, stat: fs.Stats, handOver: () => void) {
+      const { download } = z.object({ download: switchOn }).parse(request.query);
+      const served = servedAs(formatForExt(document.ext), download);
+      const etag = `"${document.sha256}"`;
       reply
-        .status(206)
-        .header("Content-Range", `bytes ${range.start}-${range.end}/${stat.size}`)
-        .header("Content-Length", range.end - range.start + 1);
-      return reply.send(fs.createReadStream(file, { start: range.start, end: range.end }));
+        .header("Content-Security-Policy", FILE_CSP)
+        .header("X-Content-Type-Options", "nosniff")
+        .header("Content-Disposition", contentDisposition(served.disposition, safeFileName(document.originalName)))
+        .header("Accept-Ranges", "bytes")
+        .header("ETag", etag)
+        // The bytes behind an id never change, so a browser may keep them and revalidate.
+        .header("Cache-Control", "private, no-cache")
+        .header("Last-Modified", new Date(document.createdAt).toUTCString());
+
+      if (matchesEtag(request.headers["if-none-match"], etag)) return reply.status(304).send();
+
+      // A range is only honoured for the version the client already has part of.
+      const ifRange = request.headers["if-range"];
+      const current = ifRange === undefined || (typeof ifRange === "string" && matchesEtag(ifRange, etag));
+      const range = current ? parseRange(request.headers.range, stat.size) : undefined;
+      if (range === "unsatisfiable") {
+        return reply
+          .status(416)
+          .header("Content-Range", `bytes */${stat.size}`)
+          .send({ error: { code: "bad_request", message: "The requested part of the file does not exist." } });
+      }
+
+      reply.type(served.contentType);
+      if (range) {
+        reply
+          .status(206)
+          .header("Content-Range", `bytes ${range.start}-${range.end}/${stat.size}`)
+          .header("Content-Length", range.end - range.start + 1);
+        handOver();
+        return reply.send(handle.createReadStream({ start: range.start, end: range.end }));
+      }
+      reply.header("Content-Length", stat.size);
+      handOver();
+      return reply.send(handle.createReadStream({ start: 0 }));
     }
-    reply.header("Content-Length", stat.size);
-    return reply.send(fs.createReadStream(file));
   });
 
   app.get("/api/tags", async () => ({ tags: service.tags() }));
