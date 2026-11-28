@@ -7,7 +7,7 @@
  */
 import type { RoadCoverageCountry, RoadCoverageResponse, RoadMissingCountry, RoadNetworkBuilding, RoadNetworkDto } from "@outpost/shared";
 import { countryOf } from "../layers/countries.ts";
-import { countryOfPoint } from "./countries.ts";
+import { countryOfPoint, inNorthernIreland } from "./countries.ts";
 import { meters } from "./graph.ts";
 
 /** Between samples along a line: small enough to see the narrowest sea crossings (Dover to Calais is 33 km). */
@@ -101,13 +101,18 @@ const inBox = (box: [number, number, number, number], lat: number, lon: number) 
 /** Coverage of a route's points: the country of each, and each country it touches with where its roads stand. */
 export function coverageOf(
   points: readonly LatLon[],
-  networks: readonly Pick<RoadNetworkDto, "name" | "country" | "bbox" | "available" | "dataDate">[],
+  networks: readonly (Pick<RoadNetworkDto, "name" | "country" | "bbox" | "available" | "dataDate"> & { northernIreland?: boolean })[],
   building: readonly RoadNetworkBuilding[],
   regionOf: (code: string) => string | null,
 ): RoadCoverageResponse {
   const { samples, pointCountries, seaCrossing } = samplesAlong(points);
+  // Northern Ireland's roads are in a network whose junctions reach it (the United Kingdom's, Ireland and Northern Ireland's), never in Great Britain's.
+  const reachingNi = networks.filter((n) => n.available && n.northernIreland);
   const countries: RoadCoverageCountry[] = countriesInOrder(samples).map((code) => {
-    const kept = networks.filter((n) => n.country === code && n.available);
+    const ownKept = networks.filter((n) => n.country === code && n.available);
+    // Another country's roads that reach Northern Ireland (Ireland's) count for the United Kingdom only where the route is there.
+    const inUlster = code === "GB" && samples.some((s) => s.segment === -1 && s.country === code && inNorthernIreland(s.lat, s.lon));
+    const kept = inUlster ? [...new Set([...ownKept, ...reachingNi])] : ownKept;
     const onItsWay = building.find((b) => b.country === code && b.phase !== "failed") ?? null;
     const failed = building.find((b) => b.country === code && b.phase === "failed") ?? null;
     const dates = kept.map((n) => n.dataDate).filter((d): d is string => Boolean(d));
@@ -115,12 +120,14 @@ export function coverageOf(
     if (onItsWay) return { ...base, state: "downloading", parts: [], progress: onItsWay };
     if (kept.length === 0) return { ...base, state: "missing", parts: [], progress: failed };
     // Kept, but does what is kept reach the points in it? (Points only: the road between may well go round a part not kept.) A network with no box is taken as the whole country.
-    const whole = kept.some((n) => !n.bbox);
-    const outside =
-      !whole && samples.some((s) => s.segment === -1 && s.country === code && !kept.some((n) => n.bbox && inBox(n.bbox, s.lat, s.lon)));
-    return outside
-      ? { ...base, state: "part", parts: kept.map((n) => n.name), progress: failed }
-      : { ...base, state: "ready", parts: [], progress: null };
+    const covering = (s: Sample) => (code === "GB" && inNorthernIreland(s.lat, s.lon) ? reachingNi : ownKept);
+    const outside = samples.some(
+      (s) => s.segment === -1 && s.country === code && !covering(s).some((n) => !n.bbox || inBox(n.bbox, s.lat, s.lon)),
+    );
+    if (outside) return { ...base, state: "part", parts: kept.map((n) => n.name), progress: failed };
+    // The United Kingdom's roads kept for Great Britain alone, and no point of the route in Northern Ireland: say Great Britain.
+    const name = code === "GB" && reachingNi.length === 0 ? "Great Britain" : base.name;
+    return { ...base, name, state: "ready", parts: [], progress: null };
   });
   return { points: pointCountries.map((country) => ({ country })), countries, seaCrossing };
 }

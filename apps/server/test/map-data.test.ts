@@ -9,9 +9,12 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import type { DownloadDetail, ManagedItemsResponse, MapDataItem, MapDataResponse, UsageResponse } from "@outpost/shared";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { jobs } from "../src/db/schema.ts";
 import { datedFilesIn, dateOfName } from "../src/modules/layers/adapters/geofabrik-file.ts";
-import { countryLikeBox, countryOfBox } from "../src/modules/maps/map-data.ts";
+import { COUNTRY_FILE_REPAIR_JOB } from "../src/modules/maps/country-file-repair.ts";
+import { countryOfArea } from "../src/modules/maps/map-data.ts";
 import { buildPbf } from "./fixtures/layers/builders.ts";
 import { createGeofabrikStandIn } from "./fixtures/layers/geofabrik-stand-in.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -45,12 +48,25 @@ describe("which dated file to fetch", () => {
     expect(dateOfName("united-kingdom-latest.osm.pbf")).toBeNull();
   });
 
-  it("finds the country of a ready-made map area", () => {
-    expect(countryOfBox([-8.65, 49.85, 1.77, 60.86])).toBe("GB");
-    expect(countryOfBox([5.7, 49.4, 6.6, 50.2])).toBe("LU");
-    // A map brought in from a file: its country when the boxes are much the same, never for a valley drawn by hand.
-    expect(countryLikeBox([-8.7, 49.8, 1.8, 60.9])).toBe("GB");
-    expect(countryLikeBox([6.75, 45.85, 7.05, 46.0])).toBeNull();
+  it("finds the country of a ready-made map area by the country outlines, not by boxes", () => {
+    expect(countryOfArea([-8.65, 49.85, 1.77, 60.86], "united-kingdom")).toBe("GB");
+    expect(countryOfArea([5.7, 49.4, 6.6, 50.2], "country-lu")).toBe("LU");
+    // Bavaria: Austria's box holds its middle (Munich is in Austria's box), but its land is Germany's.
+    expect(countryOfArea([8.97, 47.27, 13.84, 50.56], "bavaria")).toBe("DE");
+    // The Lake District, and New England (inside Canada's box, and the United States' own).
+    expect(countryOfArea([-3.55, 54.17, -2.6, 54.78], "lake-district")).toBe("GB");
+    expect(countryOfArea([-73.7, 41.0, -69.9, 45.0], "new-england")).toBe("US");
+  });
+
+  it("finds the country of a map brought in from a file, or drawn, by its land, and none for one across several", () => {
+    // A map of Great Britain imported from a file, with no ready-made region; a box of Bavaria; Strasbourg and Kehl, either side of the Rhine.
+    expect(countryOfArea([-8.7, 49.8, 1.8, 60.9], null)).toBe("GB");
+    expect(countryOfArea([10.5, 47.6, 12.5, 48.6], null)).toBe("DE");
+    expect(countryOfArea([7.65, 48.5, 7.95, 48.65], null)).toBeNull();
+    // The Alps, from Grenoble to Innsbruck: four countries, none most of it.
+    expect(countryOfArea([5.7, 45.0, 11.4, 47.3], null)).toBeNull();
+    // Open sea.
+    expect(countryOfArea([-30, 40, -29, 41], null)).toBeNull();
   });
 });
 
@@ -257,6 +273,59 @@ describe("one country file for roads and places", () => {
     // A road network is not on a storage location: it is not moved.
     const moved = await app.api("POST", "/api/manage/move", { keys: [network.key], locationId: app.ctx.services.storage.getDefault().id });
     expect(moved.body.refused[0].reason).toMatch(/kept with Outpost's own data/);
+  });
+
+  it("repairs a damaged kept file by fetching only the damaged stretch, on a press", async () => {
+    const [kept] = app.ctx.services.collections.list({ kind: "extract" });
+    const file = app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath);
+    // Only a damaged file is repaired.
+    expect((await app.api("POST", "/api/maps/data/repair", { collectionId: kept!.id })).status).toBe(400);
+    const bytes = fs.readFileSync(file);
+    const at = Math.floor(bytes.length * 0.6);
+    bytes[at] = bytes[at]! ^ 0xff;
+    fs.writeFileSync(file, bytes);
+    app.ctx.services.collections.verify(kept!.id);
+    await app.ctx.jobs.whenIdle();
+    expect(rowOf(await data(), "extract")).toMatchObject([{ state: "damaged" }]);
+
+    standIn.ranges.length = 0;
+    standIn.requests.length = 0;
+    const started = await app.api("POST", "/api/maps/data/repair", { collectionId: kept!.id });
+    expect(started.status, JSON.stringify(started.body)).toBe(200);
+    expect(started.body.taskId).toEqual(expect.any(String));
+    await app.ctx.jobs.whenIdle();
+    const task = app.ctx.jobs.get(started.body.taskId);
+    expect(task?.state, task?.error ?? "").toBe("succeeded");
+    // One bounded stretch, not the whole file.
+    expect(standIn.ranges).toHaveLength(1);
+    const [, start, end] = /^bytes=(\d+)-(\d+)$/.exec(standIn.ranges[0]!)!.map(Number);
+    expect(start).toBeLessThanOrEqual(at);
+    expect(end).toBeGreaterThanOrEqual(at);
+    expect(fs.readFileSync(file).equals(body)).toBe(true);
+    expect(rowOf(await data(), "extract")).toMatchObject([{ state: "ready" }]);
+  });
+
+  it("never asks Geofabrik again by itself when a repair is started again by a restart", async () => {
+    const [kept] = app.ctx.services.collections.list({ kind: "extract" });
+    const file = app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath);
+    const bytes = fs.readFileSync(file);
+    bytes[Math.floor(bytes.length * 0.6)]! ^= 0xff;
+    fs.writeFileSync(file, bytes);
+    // As the server leaves a task it was running when it stopped: queued again, "Resuming after restart".
+    const job = app.ctx.jobs.enqueue(
+      COUNTRY_FILE_REPAIR_JOB,
+      { collectionId: kept!.id },
+      { title: "Monaco: source file: repair", subject: `collection:${kept!.id}`, maxAttempts: 1, paused: true },
+    );
+    app.ctx.db.update(jobs).set({ progressMessage: "Resuming after restart" }).where(eq(jobs.id, job.id)).run();
+    standIn.ranges.length = 0;
+    standIn.requests.length = 0;
+    app.ctx.jobs.resume(job.id);
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(job.id)).toMatchObject({ state: "failed", error: expect.stringMatching(/not finished: press Repair again/) });
+    expect(standIn.requests).toEqual([]);
+    expect(fs.readFileSync(file).equals(bytes)).toBe(true);
+    fs.writeFileSync(file, body);
   });
 
   it("says when a kept file has gone missing, and removes it only when asked", async () => {

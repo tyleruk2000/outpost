@@ -10,6 +10,9 @@ import type { AddressInfo } from "node:net";
 import type { MapDataCountry, MapDataItem, MapDataWhereResponse } from "@outpost/shared";
 import { isMapItemStale, mapBundleOf, mapPlacesOf } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createHttpClient } from "../src/core/http.ts";
+import { createRegionIndex } from "../src/modules/layers/adapters/geofabrik-regions.ts";
+import { partOfDivision } from "../src/modules/maps/map-data.ts";
 import { createGeofabrikStandIn } from "./fixtures/layers/geofabrik-stand-in.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -248,6 +251,26 @@ describe("where, offline", () => {
       regionId: "germany",
       part: { regionId: "bayern" },
     });
+  });
+
+  it("gives a part its own box for a map of it alone, not its country's", async () => {
+    expect((await app.api("POST", "/api/reference/regions")).status).toBe(200);
+    const england = (await where("q=england")).results.find((result) => result.type === "part");
+    expect(england).toMatchObject({ part: { regionId: "england" }, country: "GB" });
+    // The ready-made England, not the United Kingdom's box.
+    expect(england!.partBbox).toEqual([-6.45, 49.85, 1.77, 55.82]);
+    expect(england!.bbox).not.toEqual(england!.partBbox);
+    // Cumbria has no ready-made area and no regions layer is held: no box is made up.
+    expect((await where("q=cumbria")).results.find((result) => result.type === "part")?.partBbox).toBeNull();
+  });
+
+  it("finds the part a town is in by its place names' division, with no regions layer", () => {
+    const listed = createRegionIndex(app.ctx, createHttpClient({ allowPrivate: true })).kept()!.regions;
+    expect(partOfDivision(listed, "GB", { source: "geonames", admin1: "ENG" })?.id).toBe("england");
+    expect(partOfDivision(listed, "US", { source: "geonames", admin1: "OH" })?.id).toBe("us/ohio");
+    expect(partOfDivision(listed, "GB", { source: "os", admin1: "Keswick, Cumbria, England" })?.id).toBe("cumbria");
+    expect(partOfDivision(listed, "GB", { source: "geonames", admin1: "WLS" })).toBeNull();
+    expect(partOfDivision(listed, "DE", { source: "geonames", admin1: null })).toBeNull();
   });
 
   it("refuses what is not a place to look for", async () => {

@@ -35,8 +35,9 @@ import type { JobRow } from "../../core/jobs.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import type { DownloadRow } from "../downloads/types.ts";
 import { resolveGeofabrikFile } from "../layers/adapters/geofabrik-file.ts";
-import { createRegionIndex, GEOFABRIK_BASE } from "../layers/adapters/geofabrik-regions.ts";
+import { createRegionIndex, GEOFABRIK_BASE, type GeofabrikRegion } from "../layers/adapters/geofabrik-regions.ts";
 import { EXTRACT_LAYERS } from "../layers/adapters/osm-tags.ts";
+import { countryOfPoint } from "../layers/borders.ts";
 import { COUNTRIES, countryOf } from "../layers/countries.ts";
 import { foldName } from "../layers/store.ts";
 import { countryLookup } from "../roads/plan.ts";
@@ -44,7 +45,7 @@ import { DEFAULT_PLACE_LAYERS, isCountryFileDownload } from "./country-files.ts"
 
 import type { OsNamesService } from "./os-names/index.ts";
 import { OS_DOWNLOADS_API } from "./os-names/source.ts";
-import { exonymsMatching } from "./region-exonyms.ts";
+import { exonymsMatching, REGION_EXONYMS } from "./region-exonyms.ts";
 import { bboxSchema, dayOfBuild } from "./regions.ts";
 import { BUILD_BASE_URL, BUILDS_URL, hostOf } from "./source.ts";
 
@@ -132,33 +133,48 @@ export const mapDataAddSchema = z
       context.addIssue({ code: "custom", path: ["country"], message: "Say which country's place names to add." });
   });
 
-const area = (box: readonly number[]) => Math.max(0, box[2]! - box[0]!) * Math.max(0, box[3]! - box[1]!);
-const overlap = (a: readonly number[], b: readonly number[]) =>
-  area([Math.max(a[0]!, b[0]!), Math.max(a[1]!, b[1]!), Math.min(a[2]!, b[2]!), Math.min(a[3]!, b[3]!)]);
 const isWorld = (box: readonly number[]) => box[2]! - box[0]! > 300;
 
-/**
- * The country a map of no ready-made area (a file brought in, an older download) is of: one whose
- * box is most of the same box (shared over joined at least 0.6), so that a map of the United
- * Kingdom imported from a file is listed with the United Kingdom and a valley drawn by hand is not.
- */
-export function countryLikeBox(box: Bbox): string | null {
-  const likeness = (bbox: Bbox) => overlap(box, bbox) / (area(box) + area(bbox) - overlap(box, bbox));
-  const best = COUNTRIES.map((country) => ({ code: country.code, like: likeness(country.bbox) })).sort((a, b) => b.like - a.like)[0];
-  return best && best.like >= 0.6 ? best.code : null;
-}
+/** Points a map's box is looked at on, each way: 17 by 17. */
+const AREA_GRID = 16;
+/** The share of a map's land one country needs for the map to be listed with it: half for a ready-made area, more for one of the person's. */
+const READY_MADE_SHARE = 0.5;
+const OWN_SHARE = 0.6;
+const areaAnswers = new Map<string, string | null>();
 
-/** The country a ready-made map area is of: the smallest whose box holds its middle and most of it. */
-export function countryOfBox(box: Bbox): string | null {
+/**
+ * The country a map area is of, by the country outlines (layers/borders.ts), not by boxes:
+ * its box is looked at on a grid of 17 by 17 points, and the country that holds the most of
+ * the points on land is it, when it holds half of them for a ready-made area, or 0.6 for a
+ * map brought in from a file or drawn by hand. So Bavaria is Germany's though Austria's box
+ * holds its middle, and a map across the Alps is of no one country. A ready-made country
+ * (`country-lu`) is that country's, however much of its box its neighbours hold.
+ */
+export function countryOfArea(box: Bbox, presetId: string | null): string | null {
+  const named = /^country-([a-z]{2})$/.exec(presetId ?? "")?.[1]?.toUpperCase();
+  if (named && countryOf(named)) return named;
+  const readyMade = presetId !== null;
+  const key = `${box.join(",")}:${readyMade}`;
+  const known = areaAnswers.get(key);
+  if (known !== undefined) return known;
   const [west, south, east, north] = box;
-  const lon = (west + east) / 2;
-  const lat = (south + north) / 2;
-  // The country whose box is most like the area's (shared over joined), of those that hold its middle and half of it.
-  const likeness = (bbox: Bbox) => overlap(box, bbox) / (area(box) + area(bbox) - overlap(box, bbox));
-  const candidates = COUNTRIES.filter(
-    ({ bbox }) => lon >= bbox[0] && lon <= bbox[2] && lat >= bbox[1] && lat <= bbox[3] && overlap(box, bbox) >= 0.5 * area(box),
-  ).sort((a, b) => likeness(b.bbox) - likeness(a.bbox));
-  return candidates[0]?.code ?? null;
+  const hits = new Map<string, number>();
+  let land = 0;
+  if (east >= west && north >= south) {
+    for (let i = 0; i <= AREA_GRID; i += 1) {
+      for (let j = 0; j <= AREA_GRID; j += 1) {
+        const code = countryOfPoint(south + ((north - south) * i) / AREA_GRID, west + ((east - west) * j) / AREA_GRID);
+        if (!code) continue;
+        land += 1;
+        hits.set(code, (hits.get(code) ?? 0) + 1);
+      }
+    }
+  }
+  const [best] = [...hits.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const answer = best && best[1] >= land * (readyMade ? READY_MADE_SHARE : OWN_SHARE) ? best[0] : null;
+  if (areaAnswers.size > 500) areaAnswers.clear();
+  areaAnswers.set(key, answer);
+  return answer;
 }
 
 const dayOf = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString().slice(0, 10) : null);
@@ -337,7 +353,8 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       const bounds = tiles?.bounds;
       const preset = typeof row.meta.regionId === "string" ? row.meta.regionId : null;
       if (bounds && isWorld(bounds)) put(null, item, true);
-      else if (!imagery && bounds) put(preset ? countryOfBox(bounds as Bbox) : countryLikeBox(bounds as Bbox), item);
+      // By the country outlines: a ready-made area, a map brought in from a file and one drawn by hand alike.
+      else if (!imagery && bounds) put(countryOfArea(bounds as Bbox, preset), item);
       else other.push(item);
     }
     for (const row of active.filter((d) => d.kind === "map" || d.kind === "terrain")) {
@@ -345,7 +362,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       const kind: MapDataKind = meta.imagery ? "imagery" : row.kind === "terrain" ? "terrain" : "map";
       const item = fromDownload(row, kind);
       if (meta.bbox && isWorld(meta.bbox)) put(null, item, true);
-      else if (!meta.imagery && meta.regionId && meta.bbox) put(countryOfBox(meta.bbox), item);
+      else if (!meta.imagery && meta.bbox) put(countryOfArea(meta.bbox, meta.regionId ?? null), item);
       else other.push(item);
     }
     // A failed download stays shown until it is retried or removed; so does every unfinished one above.
@@ -735,13 +752,53 @@ export const mapDataWhereSchema = z
 
 const MAX_WHERE = 12;
 
+/** GeoNames' first-level divisions where Geofabrik's parts are the same divisions by name. */
+const GEONAMES_DIVISIONS: Record<string, Record<string, string>> = {
+  GB: { ENG: "England", SCT: "Scotland", WLS: "Wales", NIR: "Northern Ireland" },
+};
+
+/**
+ * The part of Geofabrik's list a town is in, by the division its place names give, without
+ * the regions layer: GeoNames' code as ISO 3166-2 ("OH" is US-OH) or by name (GB's "ENG" is
+ * England), or OS Open Names' words ("Aberystwyth, Ceredigion, Wales").
+ */
+export function partOfDivision(
+  listed: ReadonlyArray<GeofabrikRegion>,
+  code: string,
+  town: Pick<PlaceDto, "source" | "admin1">,
+): GeofabrikRegion | null {
+  const admin1 = town.admin1?.trim();
+  if (!admin1) return null;
+  const parts = listed.filter((region) => region.country === code && region.depth > 0);
+  if (town.source === "os") {
+    // The smallest part any of its words names: Cumbria before England.
+    const words = new Set(
+      admin1
+        .split(",")
+        .map((word) => foldName(word))
+        .filter(Boolean),
+    );
+    const named = parts.filter((region) => words.has(foldName(region.name))).sort((a, b) => b.depth - a.depth);
+    return named[0] ?? null;
+  }
+  const iso = `${code}-${admin1.toUpperCase()}`;
+  const byCode = parts.find((region) => region.sub?.includes(iso));
+  if (byCode) return byCode;
+  const name = GEONAMES_DIVISIONS[code]?.[admin1.toUpperCase()];
+  return name ? (parts.find((region) => foldName(region.name) === foldName(name)) ?? null) : null;
+}
+
 /**
  * "Where?" for Add a place, answered from what Outpost holds and nothing else: a country by its
  * name, a part of one from Geofabrik's list (once read), a town from the place names held, which
  * is said with its country and the part it is in ("Chamonix is in France: Rhône-Alpes"), and the
  * country of a point tapped on the small world map.
  */
-export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
+export function createMapDataWhere(
+  ctx: AppContext,
+  client: HttpClient,
+  presets: () => ReadonlyArray<{ id: string; name: string; bbox: Bbox }> = () => [],
+) {
   return function where(query: z.infer<typeof mapDataWhereSchema>): MapDataWhereResponse {
     const listed = createRegionIndex(ctx, client).kept()?.regions ?? null;
     const wholeOf = (code: string) => listed?.find((region) => region.depth === 0 && region.country === code) ?? null;
@@ -765,14 +822,45 @@ export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
         lon: null,
       };
     };
-    /** The part of its country a point is in, by the regions layer where it is held. */
-    const partAt = (lat: number, lon: number, code: string): MapDataWhereResult["part"] => {
+    /**
+     * The part of its country a point is in: by the regions layer where it is held; else, for a
+     * town, by the division its place names give (GeoNames' "ENG", "OH"; OS Open Names' "…, Wales").
+     */
+    const partAt = (lat: number, lon: number, code: string, town?: Pick<PlaceDto, "source" | "admin1">): MapDataWhereResult["part"] => {
       if (!listed) return null;
       const suggested = ctx.services.layers?.regions({ lat, lon }).suggested ?? [];
       const whole = wholeOf(code)?.id;
       for (const entry of suggested) {
         const region = listed.find((each) => each.id === entry.id);
         if (region && region.id !== whole && region.country === code) return { regionId: region.id, name: region.name };
+      }
+      const division = town ? partOfDivision(listed, code, town) : null;
+      return division ? { regionId: division.id, name: division.name } : null;
+    };
+    /** A part's own box: a ready-made area of its name in the same country, else its record in the regions layer where held. */
+    const partBoxOf = (part: MapDataWhereResult["part"], code: string): Bbox | null => {
+      if (!part) return null;
+      const names = new Set(
+        [
+          part.name,
+          part.name.replace(/\s*\(.*\)$/, ""),
+          ...REGION_EXONYMS.filter((e) => e.id === part.regionId).flatMap((e) => e.english),
+        ].map(foldName),
+      );
+      const preset = presets().find((each) => names.has(foldName(each.name)) && countryOfArea(each.bbox, each.id) === code);
+      if (preset) return preset.bbox;
+      const store = ctx.services.layers?.store;
+      if (!store) return null;
+      for (const name of names) {
+        let hits: ReturnType<typeof store.search> = [];
+        try {
+          hits = store.search(name, { layers: ["regions"], countries: [code] }, 5);
+        } catch {
+          hits = [];
+        }
+        const hit = hits.find((each) => foldName(each.name) === name && (!each.country || each.country.toUpperCase() === code));
+        const box = hit ? store.detail(hit.id, new Map())?.bbox : null;
+        if (box) return box;
       }
       return null;
     };
@@ -784,8 +872,9 @@ export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
 
     if (query.lat !== undefined && query.lon !== undefined) {
       const code = countryLookup(query.lat, query.lon, null);
-      const found = code ? countryResult(code, partAt(query.lat, query.lon, code)) : null;
-      if (found) push(found);
+      const part = code ? partAt(query.lat, query.lon, code) : null;
+      const found = code ? countryResult(code, part) : null;
+      if (found) push({ ...found, partBbox: code ? partBoxOf(part, code) : null });
     }
 
     const typed = foldName(query.q ?? "");
@@ -811,6 +900,7 @@ export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
           regionId: wholeOf(country.code)?.id ?? null,
           part: { regionId: exonym.id, name: `${region?.name ?? exonym.name} (${english})` },
           bbox: country.bbox,
+          partBbox: partBoxOf({ regionId: exonym.id, name: region?.name ?? exonym.name }, country.code),
           lat: null,
           lon: null,
         });
@@ -830,6 +920,7 @@ export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
             regionId: wholeOf(country.code)?.id ?? null,
             part: { regionId: region.id, name: region.name },
             bbox: country.bbox,
+            partBbox: partBoxOf({ regionId: region.id, name: region.name }, country.code),
             lat: null,
             lon: null,
           });
@@ -846,14 +937,16 @@ export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
           const code = (town.country ?? countryLookup(town.lat, town.lon, null))?.toUpperCase();
           const country = code ? countryOf(code) : undefined;
           if (!country) continue;
+          const part = partAt(town.lat, town.lon, country.code, town);
           push({
             type: "town",
             name: town.name,
             country: country.code,
             countryName: country.name,
             regionId: wholeOf(country.code)?.id ?? null,
-            part: partAt(town.lat, town.lon, country.code),
+            part,
             bbox: country.bbox,
+            partBbox: partBoxOf(part, country.code),
             lat: town.lat,
             lon: town.lon,
           });

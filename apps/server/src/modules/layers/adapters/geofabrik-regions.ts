@@ -34,6 +34,8 @@ const MAX_INDEX_BYTES = 8 * 1048576;
 /** An extract as the server keeps it: with its file's address, which the browser does not need. */
 export interface GeofabrikRegion extends ReferenceRegionDto {
   pbf: string;
+  /** Its ISO 3166-2 codes, as the index gives them ("US-OH"): a town's division is matched by them. Absent in a list kept before they were. */
+  sub?: string[];
 }
 
 interface KeptIndex {
@@ -107,7 +109,15 @@ export function readRegions(text: string, base = GEOFABRIK_BASE): GeofabrikRegio
   const add = (entry: Entry, country: string, parent: string | null, depth: number) => {
     if (seen.has(entry.id) || depth > 3) return;
     seen.add(entry.id);
-    out.push({ id: entry.id, name: entry.name, country, parent, depth, pbf: entry.pbf });
+    out.push({
+      id: entry.id,
+      name: entry.name,
+      country,
+      parent,
+      depth,
+      pbf: entry.pbf,
+      ...(entry.sub.length > 0 ? { sub: entry.sub } : {}),
+    });
     for (const child of [...(children.get(entry.id) ?? [])].sort(byName)) add(child, country, entry.id, depth + 1);
   };
   const named = countries.map((entry) => ({
@@ -178,7 +188,7 @@ export function createRegionIndex(ctx: AppContext, client: HttpClient): RegionIn
         held: data !== null,
         readAt: data?.readAt ?? null,
         source: data?.source ?? `${base}/${INDEX_PATH}`,
-        regions: (data?.regions ?? []).map(({ pbf: _pbf, ...region }) => region),
+        regions: (data?.regions ?? []).map(({ pbf: _pbf, sub: _sub, ...region }) => region),
         suggested,
       };
     },
