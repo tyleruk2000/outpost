@@ -104,7 +104,7 @@ export interface LayersService {
   importFile(
     input: ImportInput,
     signal: AbortSignal,
-    progress: (current: number, total: number | null, message: string) => void,
+    progress: (current: number, total: number | null, message: string, unit?: string) => void,
   ): Promise<ReferenceImportResult>;
   layers(): Promise<ReferenceLayersResponse>;
   /**
@@ -132,7 +132,7 @@ export interface LayersService {
     /** Whether the file stays once read, for what the pack says about updating. */
     kept: boolean;
     signal: AbortSignal;
-    progress: (current: number, total: number | null, message: string) => void;
+    progress: (current: number, total: number | null, message: string, unit?: string) => void;
   }): Promise<{ packId: string; dataDate: string | null; records: number }>;
   close(): Promise<void>;
 }
@@ -306,7 +306,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     filePath: string,
     sizeBytes: number,
     signal: AbortSignal,
-    progress: (current: number, total: number | null, message: string) => void,
+    progress: (current: number, total: number | null, message: string, unit?: string) => void,
   ) {
     const country = countryOf((input.options.country ?? "").toUpperCase());
     if (!country) throw badRequest("Say which country the grid is for, as two letters (GB, LU).");
@@ -360,7 +360,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     sha256: string | null;
     sourceDate: string | null;
     signal: AbortSignal;
-    progress: (current: number, total: number | null, message: string) => void;
+    progress: (current: number, total: number | null, message: string, unit?: string) => void;
     /** Read from a country file, which is not the pack's to delete: the pack keeps only its record. */
     countryFile?: boolean;
     /** The country file stays once read. */
@@ -513,7 +513,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       sha256,
       sourceDate,
       signal,
-      progress: (current, total, message) => progress(current, total, message),
+      progress: (current, total, message, unit) => progress(current, total, message, unit),
     });
     return { collectionId: collection.id };
   };

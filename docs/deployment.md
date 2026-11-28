@@ -84,7 +84,15 @@ It asks for your password where it needs `sudo`. In order, it:
    so leave it running however long it is quiet,
 4. adds two small services: one that lets Outpost set the Pi's clock, and one that
    installs updates from the app (skipped, saying so, while releases are not signed),
-5. fetches the HF propagation planner's data (559 kB).
+5. fetches the HF propagation planner's data (559 kB),
+6. gives Outpost the Pi's time zone (`TZ` in `.env`, read from `timedatectl`) where `.env`
+   has no `TZ` line yet; one already there is left alone. A container has no zone of its
+   own: without `TZ` it keeps to UTC, so a nightly backup set for 3:00 am would run at
+   4:00 am in a British summer. With it, scheduled backups run by the Pi's clock, and so
+   do the other local times the server writes (see `TZ` under
+   [Environment variables](#read-by-composeyaml-only)). Backup file names and the logs
+   stay in UTC. Changed the Pi's zone later (`sudo raspi-config`, Localisation Options)?
+   Change `TZ` in `.env` and run `docker compose up -d`.
 
 It ends with `Outpost is running.` and the addresses to open, such as
 `On your network: http://192.168.1.30:8080`. A warning that memory limits are off is
@@ -141,7 +149,7 @@ itself: see [step 10](#10-things-kept-to-the-pi-itself).
 
 **Home → Download a map → Add a place**, choose the country, tick **Map**, **Routes** and
 **Nearby places**, and choose whether to keep the country's source file (the United
-Kingdom's is 2.3 GB, and walking and cycling is built from it) ([maps.md](maps.md)).
+Kingdom's is 2.3 GB, and walking and cycling is built from it) ([map-data.md](map-data.md#the-source-file)).
 
 Walking, cycling and door-to-door routes come from an optional add-on
 ([Street routes](#street-routes)). Add it on the Pi:
@@ -180,7 +188,8 @@ Open `http://localhost:8090` on the laptop: there, those things are allowed. **C
 closes it again; it changes no setting. With a screen and keyboard on the Pi, run the
 second line there and open the same address in the Pi's browser (the desktop version of
 the system has one). The clock can also be
-set on the Pi itself with `sudo date -s "2026-11-24 09:30"` (your time now).
+set on the Pi itself with `sudo date -s "YYYY-MM-DD HH:MM"`, with today's date and the
+time now in place of the letters.
 
 ### 11. Updating, and going back
 
@@ -497,7 +506,7 @@ NTFS need the mount options `uid=1000,gid=1000`. Mount drives at a fixed place
   server on the board too, or to index very large PDFs.
 - Leave **Documents processed at once** at 1 and downloads at 1 or 2 at a time.
 - Search by meaning reads about a thousand passages every four minutes on a Pi 5. For a
-  large library, let a laptop [do the reading](search.md#reading-the-library-on-a-faster-computer).
+  large library, let a laptop [do the reading](search-by-meaning.md#reading-the-library-on-a-faster-computer).
 
 #### Street routes
 
@@ -514,7 +523,7 @@ downloads Valhalla's image, about 700 MB, once). Elsewhere, put `COMPOSE_PROFILE
 in `.env` and run `docker compose up -d --build`.
 
 Then add **Walking and cycling** for a place under **Maps → Offline maps**, in **Add a
-place** ([maps.md](maps.md#walking-and-cycling)). On a Pi 5 with 8 GB, Great Britain took
+place** ([map-getting-around.md](map-getting-around.md#walking-and-cycling)). On a Pi 5 with 8 GB, Great Britain took
 56 minutes and the United Kingdom 91; each needed about 8 GB free while building, takes
 2.7 to 2.9 GB after, and wrote about 53 GB to the disk it worked on. Choose a NAS or USB
 disk as the place it works to spare the SD card. That location must be mounted read-write
@@ -701,8 +710,9 @@ launchers are in [development/storage-and-https.md](development/storage-and-http
 | `OUTPOST_BIND` | `127.0.0.1` | Host address the port is published on; `0.0.0.0` shares it. |
 | `OUTPOST_IMAGE` | `outpost:local` | The image Compose builds and runs. |
 | `OUTPOST_MEMORY_LIMIT`, `KIWIX_MEMORY_LIMIT` | `1g`, `512m` | Memory ceilings. |
+| `TZ` | `Etc/UTC` | The server's time zone, such as `Europe/London`. It decides when scheduled backups run, the times in the event log's Markdown export, the dates in text the server writes (a chat kept as a note, a merge's notes), where a learner's day and week begin, and the zone **Server status** names. Backup file names and logs stay in UTC. `deploy/pi/install.sh` sets it to the Pi's where `.env` has none. |
 
-From `.env`, `compose.yaml` passes the server only the `OUTPOST_ALLOW_…` switches,
+From `.env`, `compose.yaml` passes the server only `TZ`, the `OUTPOST_ALLOW_…` switches,
 `OUTPOST_LAN_ACCESS`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_HTTPS_PORT`,
 `OUTPOST_MAX_UPLOAD_MB`, `OUTPOST_DOWNLOAD_HOSTS`, `OUTPOST_FORGET_PIN` and
 `OUTPOST_METRICS`; add any other to the `outpost` service's `environment:` block.

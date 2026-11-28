@@ -67,6 +67,7 @@ function serve(options: {
   backups?: StoredBackup[];
   stored?: StoredBackupsResponse;
   status?: Partial<BackupStatus>;
+  inContainer?: boolean;
 }) {
   requests = [];
   let current = options.schedule;
@@ -96,6 +97,8 @@ function serve(options: {
         });
       }
       if (url.pathname === "/api/backup/schedule") return json(current);
+      if (url.pathname === "/api/system")
+        return json({ host: { os: "linux", inContainer: options.inContainer ?? false }, lanAccess: true });
       if (url.pathname === "/api/backup/stored")
         return json(options.stored ?? { available: true, reason: null, backups: options.backups ?? [] });
       if (url.pathname === "/api/storage/locations") return json({ roots: [], locations });
@@ -350,6 +353,28 @@ describe("automatic backups in Settings", () => {
     expect(within(section).getByText("Restoring and deleting are offered at the computer Outpost runs on.")).toBeVisible();
     expect(within(section).getByText(/Keeping fewer can only be set at the computer Outpost runs on\./)).toBeVisible();
     expect(within(section).getByRole("button", { name: "Back up now" })).toBeEnabled();
+  });
+
+  it("in Docker, where no browser counts as that computer, says how to open Outpost as the Pi", async () => {
+    serve({ schedule: schedule({ right: remote }), backups: [backup()], inContainer: true });
+    const section = await show()();
+    const upload = screen.getByRole("region", { name: "Backup" });
+    // Beside restoring, and beside the passphrase, which is kept to that computer too.
+    expect(await within(upload).findAllByText("cd outpost && ./deploy/pi/on-this-pi.sh")).toHaveLength(2);
+    expect(within(upload).getAllByText("ssh -L 8090:localhost:8090 yourname@outpost.local")[0]).toBeVisible();
+    expect(within(upload).getAllByRole("link", { name: "Things kept to the Pi itself" })[0]).toHaveAttribute(
+      "href",
+      "/help/deployment#h-10-things-kept-to-the-pi-itself",
+    );
+    expect(await within(section).findByText("cd outpost && ./deploy/pi/on-this-pi.sh")).toBeVisible();
+  });
+
+  it("outside a container, says only to open Outpost at that computer", async () => {
+    serve({ schedule: schedule({ right: remote }), backups: [backup()] });
+    await show()();
+    const upload = screen.getByRole("region", { name: "Backup" });
+    expect(await within(upload).findByText("Restoring is not offered on this device")).toBeVisible();
+    expect(screen.queryByText(/on-this-pi\.sh/)).not.toBeInTheDocument();
   });
 
   it("offers the restart that applies a restore at the computer Outpost runs on, and nowhere else", async () => {

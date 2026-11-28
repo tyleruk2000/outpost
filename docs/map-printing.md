@@ -64,4 +64,4 @@ size, and a phone's browser may not print at all. The PDF is the dependable way
 
 One page, no atlas of sheets. The area cannot cross the 180° meridian. A paper map is fixed
 on the day it is made, and only as good as the installed map and terrain
-([Contour lines](maps.md#contour-lines)).
+([Contour lines](map-styles.md#contour-lines)).

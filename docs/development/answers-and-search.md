@@ -107,7 +107,7 @@ elicitation, sampling, roots, batches, HTTP+SSE, authorization, `x-mcp-header`.
 ### Ranking weights
 
 The one scale every result is put on (`score.ts`; the guide's summary is
-[search.md](../search.md#ranking)):
+[search-ranking.md](../search-ranking.md)):
 
 | Part | Share | What it asks |
 | --- | --- | --- |

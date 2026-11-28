@@ -1,9 +1,9 @@
 import type { MarkdownBlock, MarkdownInline } from "@outpost/shared";
-import { render as renderBare, screen, within } from "@testing-library/react";
+import { render as renderBare, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/lib/theme";
 import { MarkdownDocument, missingRefs, plainText, refTarget, sectionsOf } from "./document-markdown";
 
@@ -280,6 +280,41 @@ describe("links that stay inside Outpost", () => {
     // A heading called "Root" does not become the element the app itself is mounted in.
     expect(screen.getByRole("heading", { name: "Root" })).toHaveAttribute("id", "h-root");
     expect(screen.getByRole("heading", { name: "No id" })).not.toHaveAttribute("id");
+  });
+});
+
+describe("arriving at a heading named in the address", () => {
+  it("goes to it once drawn, and back to it when what is above it changes height as the page settles", async () => {
+    let top = 900;
+    const scrolled: string[] = [];
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(function (this: Element) {
+      scrolled.push(this.id);
+      top = 0;
+    });
+    const rect = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      return { top: this.id === "h-street-routes" ? top : 0 } as DOMRect;
+    });
+    try {
+      render(
+        <MarkdownDocument
+          title="Installing"
+          blocks={[paragraph("Long words."), { t: "heading", depth: 3, id: "street-routes", c: words("Street routes") }]}
+        />,
+        "/help/deployment#h-street-routes",
+      );
+      expect(scrolled).toEqual(["h-street-routes"]);
+      // A font arrives, or a picture above it: the heading is pushed down again, and is gone back to.
+      top = 240;
+      await waitFor(() => expect(scrolled).toEqual(["h-street-routes", "h-street-routes"]));
+      // Once the person scrolls themselves, it is left where they put it.
+      window.dispatchEvent(new Event("wheel"));
+      top = 500;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(scrolled).toHaveLength(2);
+    } finally {
+      scrollIntoView.mockRestore();
+      rect.mockRestore();
+    }
   });
 });
 

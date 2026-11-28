@@ -3,9 +3,11 @@
  * Each says exactly what it removes and what it keeps, shows the real figures, and
  * waits for a confirmation that repeats them.
  */
+
 import { type CleanupStatus, type DerivedStep, ERASE_CONFIRMATION, formatBytes, localByReason } from "@outpost/shared";
 import { CircleAlert, MonitorSmartphone } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { OnThisPi } from "@/components/on-this-pi";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -443,6 +445,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
               Outpost has no accounts, so it cannot tell who is asking. Erasing your own things can only be started at the computer Outpost
               runs on. Open Outpost there to do it.
             </p>
+            <OnThisPi />
             <p className="mt-1 text-ink-muted">
               Whoever starts Outpost can allow it from every device by starting it with{" "}
               <span className="font-mono text-[0.8125rem]">{status.erase.option}=true</span>.

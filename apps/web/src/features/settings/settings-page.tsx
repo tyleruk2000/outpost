@@ -7,6 +7,7 @@ import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { AccessPinSetting } from "@/features/access/access-section";
 import { useAccess } from "@/features/access/data";
+import { PhoneAddress } from "@/features/access/phone-address";
 import { BoardSettingsSection } from "@/features/board/settings-section";
 import { ReceiversSettingsSection } from "@/features/heard/receivers-section";
 import { GuidesLine } from "@/features/help/guides-line";
@@ -135,6 +136,7 @@ export default function SettingsPage() {
           </>
         )}
       </p>
+      {info?.lanAccess ? <PhoneAddress /> : null}
       <AccessPinSetting />
     </SettingsSection>
   );

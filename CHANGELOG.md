@@ -627,6 +627,10 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   quick search.
 - **Which model**: seven models compared on a Mac for answers and looking things up.
 - Map and radio quick starts for whoever did not set Outpost up.
+- The map and search guides in smaller parts: the Maps screen, map data, styles and
+  layers, places and coordinates, reach, walking and cycling, and sun and radio; search,
+  ranking, reference collections, OCR and search by meaning, each a guide of its own.
+  **How search by meaning works** is listed under Help too.
 
 #### Chat: tools a model can use, and MCP
 
@@ -654,6 +658,21 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   memory limits are off on Raspberry Pi OS, and leaves Docker's networks out of the
   addresses it prints.
 - `nas-share.sh`, new, tried against a Synology NAS.
+- Follow-ups from that install: **Storage → Connect a share** in Docker leads with the
+  `nas-share.sh` line filled in from the form; the restore, passphrase, keeping-fewer and
+  erasing notices, and the clock's, say how to open Outpost as the Pi with
+  `on-this-pi.sh`; **Settings → Who can use this library** shows the address for phones
+  with a QR code made in the browser; Settings' **Set-up guide** is now **Search and chat
+  set-up**, beside a new **Raspberry Pi set-up**; a guide opened at a heading stays on it
+  while the page settles.
+- **Tasks say what they count**: looking through an import counts files then pages,
+  reading and bringing in a Calibre library books, and a map layer read from a file its
+  bytes or the population grid's tiles, so a task reads "3 of 12 files", not a bare
+  number. The downloads plan lists the tasks alongside, each with when it should finish.
+- **The container keeps the Pi's time zone.** It had none, so it ran on UTC and the
+  nightly backup ran at 4:00 am in a British summer. `compose.yaml` passes `TZ` from
+  `.env` (UTC when it is not set) and `install.sh` sets it to the Pi's own zone where
+  `.env` has no `TZ`. Backup file names and logs stay in UTC.
 
 ### Changed
 

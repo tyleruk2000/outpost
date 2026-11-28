@@ -17,7 +17,7 @@ makes the code denser. A saved place's code holds its position but not its name,
 the printed sheet.
 
 Saved places, routes and radio ranges on Maps have their own **QR code** too
-([maps.md](maps.md#a-place-a-route-or-a-range-on-a-phone-by-qr-code)).
+([map-places.md](map-places.md#a-place-a-route-or-a-range-on-a-phone-by-qr-code)).
 
 ### On the screen
 

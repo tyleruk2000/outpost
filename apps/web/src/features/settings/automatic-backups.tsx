@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleAlert, DatabaseBackup, Download, Ellipsis, FlaskConical, Lock, LockOpen, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { OnThisPi } from "@/components/on-this-pi";
 import { ErrorState, Notice, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -432,7 +433,10 @@ function StoredBackups({
             })}
           </Rows>
           {allowed ? null : (
-            <p className="mt-2 text-small text-ink-muted">Restoring and deleting are offered at the computer Outpost runs on.</p>
+            <>
+              <p className="mt-2 text-small text-ink-muted">Restoring and deleting are offered at the computer Outpost runs on.</p>
+              <OnThisPi />
+            </>
           )}
         </>
       )}

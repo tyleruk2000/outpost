@@ -7,6 +7,7 @@ import {
   dockerShareInstructions,
   type InstructionStep,
   linuxShareInstructions,
+  nasShareScriptStep,
   PASSWORD_PLACEHOLDER,
   parseShareServer,
   type ShareHostMode,
@@ -65,6 +66,8 @@ export function ShareInstructions({ mode, hints, onClose }: { mode: ShareHostMod
         ? dockerShareInstructions(input, hints)
         : linuxShareInstructions(input, hints)
       : undefined;
+  // On a Pi the script does every step below in one go: offered first, filled in, where it takes what was typed.
+  const script = steps && input && mode === "docker" ? nasShareScriptStep(input) : undefined;
 
   return (
     <>
@@ -138,9 +141,20 @@ export function ShareInstructions({ mode, hints, onClose }: { mode: ShareHostMod
 
         {problem ? <Notice tone="warning">{problem}</Notice> : null}
 
+        {script ? (
+          <section aria-label="On a Raspberry Pi">
+            <h2 className="mb-2 text-lead font-semibold text-ink">{script.title}</h2>
+            <div className="grid gap-2 border-y border-border py-4">
+              <p className="max-w-[70ch] text-small text-ink-muted">{script.body}</p>
+              {script.code ? <CopyBlock label={script.codeLabel ?? "Terminal"} text={script.code} /> : null}
+              {script.more ? <CopyBlock label={script.more.codeLabel} text={script.more.code} /> : null}
+            </div>
+          </section>
+        ) : null}
+
         {steps ? (
           <section aria-label="What to do">
-            <h2 className="mb-2 text-lead font-semibold text-ink">What to do</h2>
+            <h2 className="mb-2 text-lead font-semibold text-ink">{script ? "Anywhere else: what to do by hand" : "What to do"}</h2>
             <Steps steps={steps} />
             <p className="mt-3 max-w-[70ch] text-small text-ink-muted">
               {protocol === "smb" ? (

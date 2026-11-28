@@ -99,7 +99,8 @@ export interface ReadContext {
   meta: ReferenceMeta;
   sink: FeatureSink;
   signal: AbortSignal;
-  progress(current: number, total: number | null, message: string): void;
+  /** `unit` says what the counts are of ("bytes", "tiles"), so that the task reads "3 of 12 tiles". Kept until changed. */
+  progress(current: number, total: number | null, message: string, unit?: string): void;
   retrievedAt: number;
   /** The date the publisher's server gave the file (its Last-Modified), as YYYY-MM-DD, when there was one. */
   sourceDate: string | null;

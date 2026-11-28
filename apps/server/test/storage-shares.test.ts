@@ -11,6 +11,7 @@ import {
   isValidSharePassword,
   isValidShareUser,
   linuxShareInstructions,
+  nasShareScriptStep,
   PASSWORD_PLACEHOLDER,
   parseShareAddress,
   parseShareServer,
@@ -1388,6 +1389,34 @@ describe("instructions for Docker and Linux", () => {
     expect(nfsText).toContain('      o: "addr=192.168.1.20,rw,nfsvers=4.1,soft,timeo=150"');
     expect(nfsText).toContain('      device: ":/volume1/outpost"');
     expect(nfsText).not.toContain("NAS_PASSWORD");
+  });
+
+  it("leads, for an SMB share, with deploy/pi/nas-share.sh filled in, where the script takes the details as typed", () => {
+    const step = nasShareScriptStep({ protocol: "smb", host: "192.168.1.20", share: "docs", userName: "walker" });
+    expect(step?.code).toBe("./deploy/pi/nas-share.sh --dry-run --server 192.168.1.20 --share docs --user walker");
+    expect(step?.more?.code).toBe("./deploy/pi/nas-share.sh --server 192.168.1.20 --share docs --user walker");
+    expect(step?.body).toContain("/storage/nas/docs");
+    expect(step?.body).not.toContain(PASSWORD_PLACEHOLDER);
+    // A name with characters the script will not write to /etc/fstab, a port it has no option for, an NFS
+    // export, an IPv6 address: the script would refuse, so the steps by hand are all there is.
+    expect(nasShareScriptStep({ protocol: "smb", host: "192.168.1.20", share: "Family Photos", userName: "walker" })).toBeUndefined();
+    expect(nasShareScriptStep({ protocol: "smb", host: "nas.local", port: 4450, share: "docs", userName: "walker" })).toBeUndefined();
+    expect(nasShareScriptStep({ protocol: "nfs", host: "192.168.1.20", exportPath: "/volume1/outpost" })).toBeUndefined();
+    expect(nasShareScriptStep({ protocol: "smb", host: "fe80::1%eth0", share: "docs", userName: "walker" })).toBeUndefined();
+    expect(nasShareScriptStep({ protocol: "smb", host: "nas.local", share: "docs", userName: "me@home" })?.more?.code).toBe(
+      "./deploy/pi/nas-share.sh --server nas.local --share docs --user me@home",
+    );
+  });
+
+  it("withholds the nas-share.sh line for any value a shell would read as more than a word", () => {
+    const hostile = ["a b", 'a"b', "a'b", "$(id)", "`id`", "a;b", "a\nb", "-x", "--dry-run", "a|b", "a&b", "a>b", "*", "~root", "a\\b"];
+    const plain = { protocol: "smb" as const, host: "192.168.1.20", share: "docs", userName: "walker" };
+    expect(nasShareScriptStep(plain)).toBeDefined();
+    for (const value of hostile) {
+      expect(nasShareScriptStep({ ...plain, host: value }), `server ${JSON.stringify(value)}`).toBeUndefined();
+      expect(nasShareScriptStep({ ...plain, share: value }), `share ${JSON.stringify(value)}`).toBeUndefined();
+      expect(nasShareScriptStep({ ...plain, userName: value }), `user ${JSON.stringify(value)}`).toBeUndefined();
+    }
   });
 
   it("writes the fstab line and the credentials-file steps", () => {

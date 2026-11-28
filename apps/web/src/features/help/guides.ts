@@ -143,9 +143,41 @@ export const GUIDES: Guide[] = [
     slug: "search",
     file: "search.md",
     group: "using",
-    about: "What the search box understands, how results are ranked, and search by meaning.",
-    keywords: "find look up results semantic",
+    about: "The two places to search, what the search box understands, and the answer above the results.",
+    keywords: "find look up results quick search did you mean filters",
     opens: { to: "/search", label: "Open Search" },
+  },
+  {
+    slug: "search-ranking",
+    file: "search-ranking.md",
+    group: "using",
+    about: "The order of a search's results, the sources it favours, and why each result is there.",
+    keywords: "ranking order results favoured sources why found",
+    opens: { to: "/search", label: "Open Search" },
+  },
+  {
+    slug: "search-reference-collections",
+    file: "search-reference-collections.md",
+    group: "using",
+    about: "How a search reaches into Wikipedia and the other reference collections, and which of their pages it leaves out.",
+    keywords: "wikipedia kiwix zim reference collections archive results",
+    opens: { to: "/search", label: "Open Search" },
+  },
+  {
+    slug: "ocr",
+    file: "ocr.md",
+    group: "using",
+    about: "Reading the words in scanned pages and pictures of text, so that they can be searched.",
+    keywords: "ocr scanned scan pictures of text tesseract recognise",
+    opens: { to: "/settings#indexing", label: "Open Reading documents in Settings" },
+  },
+  {
+    slug: "search-by-meaning",
+    file: "search-by-meaning.md",
+    group: "using",
+    about: "Turning search by meaning on, what it costs, where its model runs, and its limits.",
+    keywords: "semantic embeddings vectors meaning model index",
+    opens: { to: "/settings#semantic", label: "Open Search by meaning in Settings" },
   },
   {
     slug: "answers",
@@ -216,8 +248,48 @@ export const GUIDES: Guide[] = [
     slug: "maps",
     file: "maps.md",
     group: "using",
-    about: "Adding a place under Offline maps, contour lines, printing, routes and tracks, and where the maps come from.",
-    keywords: "map offline maps add a place region route gpx print contour",
+    about: "The Maps screen: the search box, the panel beside the map, the nearest places and the height of the ground.",
+    keywords: "map offline maps screen nearest height",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "map-data",
+    file: "map-data.md",
+    group: "using",
+    about: "Adding a place under Offline maps, nearby places, the source file, updating and removing, and keeping an area on a phone.",
+    keywords: "map data offline maps add a place region country download update remove source file pbf",
+    opens: { to: "/maps/data", label: "Open Offline maps" },
+  },
+  {
+    slug: "map-styles",
+    file: "map-styles.md",
+    group: "using",
+    about: "The map's styles, contour lines, the layers over it, where its data comes from, and a map source of your own.",
+    keywords: "map style contour lines hills terrain attribution credit openstreetmap protomaps",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "map-places",
+    file: "map-places.md",
+    group: "using",
+    about: "Saved places, finding a place with no internet, grid references, UTM, MGRS and Maidenhead, and bearings.",
+    keywords: "markers saved places place search postcode grid reference utm mgrs maidenhead coordinates bearings",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "map-getting-around",
+    file: "map-getting-around.md",
+    group: "using",
+    about: "What is reachable from a point in a given time, walking and cycling, and road routes in short.",
+    keywords: "reachable from here isochrone walking cycling on foot terrain",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "map-sun-and-radio",
+    file: "map-sun-and-radio.md",
+    group: "using",
+    about: "Sunrise and sunset anywhere, day and night over the map, line of sight, and a radio's estimated range.",
+    keywords: "sunrise sunset twilight grey line line of sight radio range repeaters",
     opens: { to: "/maps", label: "Open Maps" },
   },
   {
@@ -645,6 +717,29 @@ export const GUIDES: Guide[] = [
     file: "development/worldwide.md",
     group: "developers",
     about: "Where Outpost assumed the United Kingdom, and what each screen does elsewhere.",
+  },
+];
+
+/**
+ * Screens of Outpost that are explanations in their own right, with figures from this Outpost and drawings no page
+ * of docs/ has: listed under Help beside the guides and found the same way, and opened where they are.
+ */
+export interface HelpScreen {
+  to: string;
+  title: string;
+  group: GuideGroupId;
+  /** One sentence: what a person reads it for. */
+  about: string;
+  keywords?: string;
+}
+
+export const HELP_SCREENS: HelpScreen[] = [
+  {
+    to: "/search/how-meaning-works",
+    title: "How search by meaning works",
+    group: "how-it-works",
+    about: "What Outpost does when search by meaning is on, in plain words and diagrams, with this Outpost's own figures.",
+    keywords: "semantic embedding embeddings vectors meaning model passages explained",
   },
 ];
 

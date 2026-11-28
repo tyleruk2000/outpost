@@ -578,6 +578,8 @@ describe("downloaded packs", () => {
     const job = await importFile("osm-pbf", "imports/liechtenstein.osm.pbf", { country: "LI" }, "Liechtenstein extract");
     expect(job.state).toBe("succeeded");
     expect(job.result.imported).toBe(2);
+    // Its progress is the file read so far, so the task reads "1.2 MB of 3.4 MB", not a bare number.
+    expect(job.progress.unit).toBe("bytes");
     const view = await overlay("bbox=9.4,47,9.7,47.3&zoom=10&layers=hospitals,emergency&countries=LI");
     expect(view.points.map((point) => point.layer).sort()).toEqual(["emergency", "hospitals"]);
   });

@@ -38,8 +38,8 @@ Only actions that fetch something new, each started by a person pressing a butto
 | Offline maps: **Check size** and **Download** for a place's map | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the `maps.tileSource` archive; for terrain, the `maps.terrainSource` archive |
 | Offline maps: **Download** for a place's map (its towns by name) | `download.geonames.org` |
 | Offline maps: **Check size** and **Download** for routes, nearby places or a source file | `download.geofabrik.de`, for its list of countries and their parts, and the country's source file ([road-routes.md](road-routes.md#adding-routes-for-a-place)) |
-| Place names for Great Britain: **Check the size**, **Download** | `api.os.uk`, which redirects to `omseprd1stdstordownload.blob.core.windows.net` ([maps.md](maps.md#place-names-for-great-britain)) |
-| **Find a route** on Maps | The route source shown beside the search (as shipped, `ovp.dresel.systems` or `overpass.private.coffee`), sent the name typed and, for **This map view**, its edges ([maps.md](map-routes.md#finding-a-known-route)) |
+| Place names for Great Britain: **Check the size**, **Download** | `api.os.uk`, which redirects to `omseprd1stdstordownload.blob.core.windows.net` ([map-places.md](map-places.md#place-names-for-great-britain)) |
+| **Find a route** on Maps | The route source shown beside the search (as shipped, `ovp.dresel.systems` or `overpass.private.coffee`), sent the name typed and, for **This map view**, its edges ([map-routes.md](map-routes.md#finding-a-known-route)) |
 | Repeaters: **Get the list**, **Bring up to date** | The publisher named beside the source (as shipped, `www.irts.ie` and `hearham.com`) ([radio.md](radio.md#where-to-get-a-list)) |
 | **Save to library** on a link in a reference page | The host in the link. The address must be `http` or `https`, end in a kind of file the library keeps, and not be on a private network. |
 | **Look at the page**, **Save page** under "Save a web page" | The host in the address pasted, and the hosts of its pictures if you asked for them ([notes-and-imports.md](notes-and-imports.md#saving-a-web-page)) |
