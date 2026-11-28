@@ -117,6 +117,8 @@ const boughtSchema = z
   })
   .strict();
 const importSchema = z.object({
+  /** The household the preview was read against (`ImportPreview.household`); left out by an older page: the current one. */
+  householdId: z.string().max(64).optional(),
   rows: z
     .array(z.object({ action: z.enum(["add", "update", "skip"]), id: z.string().max(64).optional(), item: itemSchema }))
     .max(SUPPLY_LIMITS.items),
@@ -244,17 +246,18 @@ export async function registerSupplies(app: FastifyInstance, ctx: AppContext): P
   /** Reads a file and says what it would do. Changes nothing. */
   app.post("/api/supplies/import/preview", async (request) => {
     const { text } = z.object({ text: z.string().max(SUPPLY_LIMITS.csvBytes) }).parse(request.body);
-    return previewCsv(text, service.items());
+    const household = ctx.services.households.current();
+    return { household: { id: household.id, name: household.name }, ...previewCsv(text, service.items(household.id)) };
   });
 
   app.post("/api/supplies/import/apply", async (request): Promise<ImportResult> => {
-    const { rows } = importSchema.parse(request.body);
+    const { rows, householdId } = importSchema.parse(request.body);
     const chosen = rows.filter((row) => row.action !== "skip") as Array<{
       action: "add" | "update";
       id?: string;
       item: z.infer<typeof itemSchema>;
     }>;
-    const { added, updated } = service.importRows(chosen);
+    const { added, updated } = service.importRows(chosen, householdId);
     return { added, updated, skipped: rows.length - chosen.length };
   });
 }

@@ -9,6 +9,7 @@ import {
   type EmergencyPlan,
   neededOf,
   PLACE_ROLES,
+  type PlanHousehold,
   type PlanPhase,
   type PlanResolved,
   planKindLabel,
@@ -51,6 +52,8 @@ export interface ReadPerson {
 
 export interface Readable {
   name: string;
+  /** The household's name when there are several, so that a printed copy says whose it is; null with one. */
+  household: string | null;
   kind: string;
   emergencyNumber: string;
   steps: Array<{ id: string; phase: PlanPhase; text: string }>;
@@ -73,11 +76,12 @@ export function amountText(needed: number | null, unit: string): string {
   return unit.trim() ? `${figure} ${unit.trim()}` : figure;
 }
 
-export function readableOf(plan: EmergencyPlan, resolved: PlanResolved, people?: number): Readable {
+export function readableOf(plan: EmergencyPlan, resolved: PlanResolved, people?: number, owner?: PlanHousehold): Readable {
   const { body } = plan;
   const household = people ?? Math.max(1, body.people.length);
   return {
     name: plan.name,
+    household: owner?.several ? owner.name : null,
     kind: plan.kindText.trim() || planKindLabel(plan.kind),
     emergencyNumber: plan.emergencyNumber,
     steps: body.steps.map((step) => ({ id: step.id, phase: step.phase, text: step.text })),

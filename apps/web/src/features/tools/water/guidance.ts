@@ -4,6 +4,7 @@
  * where bodies differ, each is quoted and the screen says whose figure it uses. US pages
  * keep their US spelling inside quotation marks.
  */
+import { isUkRegion } from "@/lib/region";
 import type { Source } from "../kit";
 
 const READ = "2026-11-16";
@@ -145,6 +146,35 @@ export const PLANNING_FIGURES: readonly PlanningFigure[] = [
     source: WATER_SOURCES.whoTn9,
   },
 ];
+
+/** The United States and its territories, where FEMA's guidance (Ready.gov) is the government's own. */
+const US_REGIONS = new Set(["US", "PR", "GU", "VI", "AS", "MP"]);
+
+/**
+ * The planning figure the calculator starts on, by Home's country (else the device's
+ * region): FEMA's (Ready.gov, docs/sources.md) in the United States and its territories;
+ * the UK government's everywhere else, as before, since Outpost has read no other
+ * government's figure. Only a first choice: the hint says whose guidance it is, the person
+ * can choose any, and what they choose is kept.
+ */
+export function startingFigure(region: string | null | undefined): PlanningFigure["id"] {
+  const code = region?.toUpperCase() ?? null;
+  if (code && US_REGIONS.has(code)) return "fema";
+  return "uk";
+}
+
+/** "the United States", "the Netherlands", "Germany": a country's name as a sentence takes it. */
+const withThe = (name: string) =>
+  /^(United |Netherlands|Philippines|Czech Republic|Bahamas|Gambia|Maldives)/.test(name) ? `the ${name}` : name;
+
+/** What the calculator says about the figure it starts on, and why. */
+export function startingHint(region: string | null | undefined, countryName: string | null | undefined): string {
+  const code = region?.toUpperCase() ?? null;
+  const where = countryName ? withThe(countryName) : null;
+  if (startingFigure(code) === "fema") return `Starts on FEMA's figure (Ready.gov), for ${where ?? "the United States"}.`;
+  if (isUkRegion(code)) return `Starts on the UK government's figure, for ${where ?? "the UK"}.`;
+  return `Starts on the UK government's figure: it is UK guidance, and Outpost has none from ${where ? `${where}'s` : "your country's"} government. Choose another if it does not fit.`;
+}
 
 // ── Rain run-off ────────────────────────────────────────────────────────────
 

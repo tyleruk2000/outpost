@@ -134,7 +134,7 @@ function readDate(text: string): string | null | undefined {
   return undefined;
 }
 
-export function previewCsv(text: string, existing: SupplyItem[]): ImportPreview {
+export function previewCsv(text: string, existing: SupplyItem[]): Omit<ImportPreview, "household"> {
   if (Buffer.byteLength(text, "utf8") > SUPPLY_LIMITS.csvBytes)
     throw badRequest("That file is larger than Outpost reads as a list of supplies (2 MB).");
   if (/^\s*</.test(text)) throw badRequest("That file looks like a web page, not a CSV file of supplies.");

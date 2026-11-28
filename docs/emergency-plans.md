@@ -59,7 +59,17 @@ guidance, and says whose words it is:
   words may not be copied; put your own words in its place;
 - **Your own words**.
 
-Steps you take out can be put back. Outpost writes no safety advice of its own: where no
+Steps you take out can be put back.
+
+**Steps for the UK only.** A step of a UK template that is about the UK's own services
+or pages (105 for a power cut, Floodline, NHS 111, the Met Office, GOV.UK, Ofcom, Gas
+Safe, the British Red Cross's pages) is left out of a plan started for a household whose
+home is outside the UK (Jersey, Guernsey and the Isle of Man count as the UK). It is
+listed with the steps taken out, "For the UK only", to be put back if it does apply.
+Safety advice that only mentions 999 ("get out, stay out, call 999") is kept everywhere.
+With no home country known, every step is kept, wherever the device is set to.
+
+Outpost writes no safety advice of its own: where no
 usable official source covers something, the template asks you under **For you to
 decide**. The radiation emergency template is in
 [nuclear-preparedness.md](nuclear-preparedness.md#the-radiation-emergency-template).
@@ -135,6 +145,11 @@ started; each tick is kept with its time, so whoever opens it next sees what is 
 another. Once started, it links to **Check in on the household board**
 ([messages.md](messages.md)).
 
+**Read the plan**, on the plan's screen, shows the whole plan in order with nothing that
+changes it: the number, the steps for before, during and after, who to call, where to
+meet, the household, where things are, if the phones fail, what to take and the notes.
+**Change the plan** and **Use now** lead on from it.
+
 On a phone, add the page to the Home Screen from the browser's Share menu. **Keep on this
 phone**, at its foot, lets it open with the server out of reach (on a secure page); ticks
 are sent when it is back ([offline.md](offline.md#an-emergency-plan)).
@@ -164,4 +179,6 @@ period has ended are not shown. It never says what to do.
 - **The grab list**: the plan's supplies with amounts and a box to tick.
 
 Each offers **Save as PDF**, **Add to library** (which asks first: the cards hold names,
-numbers and where you will be) and **Share**. Print at actual size.
+numbers and where you will be) and **Share**. Print at actual size. With more than one
+household, each card, sheet and list names the household it is for ("For Caravan"), and so
+does the file's name.

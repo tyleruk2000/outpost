@@ -141,8 +141,9 @@ so summer time is counted when the plan is for a summer month. A drawing of the 
 day follows, an hour a cell, with UTC over it and local time under it. Then the bands in
 order of preference (the plan's own table, then its other bands), the stations, each
 pair's grid of hours on every band as the plan's own paper prints it, and the plan's
-notes. A station shows a call sign when a contact marked for emergencies has the
-station's name or call sign. An emergency plan that names the radio plan is listed.
+notes. A station shows the call sign given it in the radio plan; a station without one
+shows a contact's, when a contact marked for emergencies has the station's name or call
+sign. An emergency plan that names the radio plan is listed.
 
 The figures are the matrix last worked out for the plan, as it stands, on this Outpost.
 A plan with none (never worked out, or changed since) goes in with its bands in the order

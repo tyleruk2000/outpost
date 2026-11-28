@@ -867,6 +867,11 @@ export interface ImportPreviewRow {
 }
 
 export interface ImportPreview {
+  /**
+   * The household the file was read against (the current one): its duplicates are that
+   * household's. The apply names it back, so that the rows land there or nowhere.
+   */
+  household: { id: string; name: string };
   rows: ImportPreviewRow[];
   /** Columns the file has that are not read. */
   ignoredColumns: string[];

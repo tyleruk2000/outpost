@@ -31,9 +31,12 @@ const KINDS: Array<{ value: Kind; label: string; what: string }> = [
 ];
 const shortDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" }).format(date);
 
-/** "Fridge sheet, Power cut, 16 Nov 2026": dated by when the plan was last changed, so the same plan makes the same file. */
-export const cardTitle = (kind: Kind, plan: Pick<EmergencyPlan, "name" | "updatedAt">) =>
-  `${KINDS.find((each) => each.value === kind)!.what}, ${plan.name}, ${shortDate(new Date(plan.updatedAt))}`;
+/**
+ * "Fridge sheet, Power cut, 16 Nov 2026", with the household's name after the plan's when
+ * there are several: dated by when the plan was last changed, so the same plan makes the same file.
+ */
+export const cardTitle = (kind: Kind, plan: Pick<EmergencyPlan, "name" | "updatedAt">, household: string | null = null) =>
+  `${KINDS.find((each) => each.value === kind)!.what}, ${plan.name}, ${household ? `${household}, ` : ""}${shortDate(new Date(plan.updatedAt))}`;
 
 /** " (Storm)", or nothing when the name already says what kind of plan it is. */
 const kindAside = (plan: EmergencyPlan) => {
@@ -72,7 +75,7 @@ export function CardsPdf({ plan, readable, kind, paper }: { plan: EmergencyPlan;
   }, [readable, kind, paper, at]);
   const make = useCallback(() => laid.doc, [laid]);
   const made = useKitPdf(make, {
-    title: cardTitle(kind, plan),
+    title: cardTitle(kind, plan, readable.household),
     kind: KINDS.find((each) => each.value === kind)!.what,
     from: { what: `the emergency plan “${plan.name}”`, path: `/prepare/plans/${plan.id}/cards` },
   });
@@ -108,7 +111,10 @@ export default function CardsPage() {
   const response = usePlan(id);
   const [kind, setKind] = useState<Kind>("wallet");
   const [paper, setPaper] = useState<CardPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
-  const readable = useMemo(() => (response.data ? readableOf(response.data.plan, response.data.resolved) : null), [response.data]);
+  const readable = useMemo(
+    () => (response.data ? readableOf(response.data.plan, response.data.resolved, undefined, response.data.household) : null),
+    [response.data],
+  );
 
   const about: Record<Kind, ReactNode> = {
     wallet: readable ? (

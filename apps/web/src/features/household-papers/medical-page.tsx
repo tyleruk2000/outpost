@@ -143,7 +143,12 @@ export default function MedicalPage() {
                 )}
               </Rows>
             )}
-            <KeepMedicalRow count={list.length} open={list.filter((sheet) => !sheet.encrypted).length} />
+            <KeepMedicalRow
+              householdId={sheets.data?.household?.id}
+              householdName={sheets.data?.household?.several ? sheets.data.household.name : null}
+              count={list.length}
+              open={list.filter((sheet) => !sheet.encrypted).length}
+            />
             <form onSubmit={addOther} className="mt-4 flex flex-wrap items-end gap-2">
               <Field
                 label="Someone else"
